@@ -316,6 +316,12 @@ def import_github_project(
     """
     Import a GitHub repository as a portfolio project with full AI analysis.
 
+    IMPORTANT: Only use this tool when user OWNS the repository (is_owned=True).
+    For CLIPPING GitHub repos the user doesn't own, use scrape_webpage_for_project instead
+    (it works with GitHub URLs and doesn't require OAuth).
+
+    This tool requires GitHub OAuth and verifies the user owns/contributed to the repo.
+
     This tool:
     1. Uses GitHub REST API to fetch README, file tree, and dependency files
     2. Normalizes that data into the repo_data shape used by the AI analyzer
@@ -364,31 +370,33 @@ def import_github_project(
             'error': 'GitHub account not connected. Please connect GitHub in settings.',
         }
 
-    logger.info(f'Starting GitHub import for {owner}/{repo} by user {user.username}')
+    logger.info(f'Starting GitHub import for {owner}/{repo} by user {user.username}, is_owned={is_owned}')
 
     # Fetch repository files/structure via GitHub REST API
     github_service = GitHubService(token)
 
-    # Verify user owns or contributed to the repository
-    # If verified, auto-set is_owned=True regardless of what AI agent passed
-    try:
-        is_authorized = github_service.verify_repo_access_sync(owner, repo)
-        if not is_authorized:
-            return {
-                'success': False,
-                'error': (
-                    f'You can only import repositories you own or have contributed to. '
-                    f'The repository {owner}/{repo} does not appear to be associated '
-                    f'with your GitHub account.'
-                ),
-            }
-        # User is owner/contributor/collaborator - this is their own work
-        is_owned = True
-        logger.info(f'Auto-detected ownership for {owner}/{repo}: is_owned=True')
-    except Exception as e:
-        logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
-        # If verification fails, allow import but log warning
-        # This prevents blocking legitimate imports due to API issues
+    # Only verify ownership if user claims to own the repo
+    # For clippings (is_owned=False), skip verification - anyone can clip public repos
+    if is_owned:
+        try:
+            is_authorized = github_service.verify_repo_access_sync(owner, repo)
+            if not is_authorized:
+                return {
+                    'success': False,
+                    'error': (
+                        f'You can only import repositories you own or have contributed to. '
+                        f'The repository {owner}/{repo} does not appear to be associated '
+                        f'with your GitHub account. If you want to save this repo as a '
+                        f'clipping instead, just let me know!'
+                    ),
+                }
+            logger.info(f'Verified ownership for {owner}/{repo}: is_owned=True')
+        except Exception as e:
+            logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
+            # If verification fails, allow import but log warning
+            # This prevents blocking legitimate imports due to API issues
+    else:
+        logger.info(f'Skipping ownership verification for clipping: {owner}/{repo}')
 
     repo_files = github_service.get_repository_info_sync(owner, repo)
 
@@ -600,14 +608,18 @@ def scrape_webpage_for_project(
     """
     Scrape any webpage and create a project with full AI analysis.
 
-    Use this tool when the user provides a NON-GITHUB URL and wants to
-    import it as a project. This uses AI to:
+    Use this tool when:
+    - User provides ANY non-GitHub URL
+    - User wants to CLIP a GitHub URL (is_owned=False) - no OAuth needed!
+
+    This tool uses AI to:
     - Extract title, description, and metadata
     - Generate structured sections (overview, features, tech stack, etc.)
     - Assign categories, topics, and tools
-    - Create a beautiful portfolio page like GitHub imports
+    - Create a beautiful portfolio page
 
-    For GitHub URLs, use import_github_project instead.
+    For GitHub URLs where user OWNS the repo (is_owned=True), use import_github_project
+    for richer analysis with README parsing. But for CLIPPING GitHub repos, use THIS tool.
 
     Returns:
         Dictionary with success status, project details, or error message
@@ -638,13 +650,21 @@ def scrape_webpage_for_project(
     except User.DoesNotExist:
         return {'success': False, 'error': 'User not found'}
 
-    # Check if this is a GitHub URL - should use import_github_project instead
-    if 'github.com' in url.lower():
+    # For GitHub URLs, only allow scraping when clipping (is_owned=False)
+    # If user claims ownership, they should use import_github_project for richer analysis
+    if 'github.com' in url.lower() and is_owned:
         return {
             'success': False,
-            'error': 'This is a GitHub URL. Please use import_github_project instead for richer analysis.',
+            'error': (
+                'For your own GitHub repositories, please use import_github_project '
+                'for richer analysis with README parsing and tech stack detection.'
+            ),
             'is_github': True,
         }
+
+    # For GitHub clippings, log that we're using scraper (no OAuth needed)
+    if 'github.com' in url.lower():
+        logger.info(f'Scraping GitHub URL as clipping (no OAuth needed): {url}')
 
     logger.info(f'Scraping webpage for project: {url} (user: {user.username})')
 

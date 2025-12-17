@@ -33,6 +33,9 @@ interface Invitation {
   reviewedBy: string | null;
   reviewNotes: string;
   approvalEmailSentAt: string | null;
+  userSignedUp?: boolean;
+  userJoinedAt?: string | null;
+  userLastLogin?: string | null;
 }
 
 interface InvitationStats {
@@ -360,11 +363,12 @@ export default function InvitationsPage() {
                       />
                     </div>
                   )}
-                  <div className={statusFilter === 'pending' ? 'col-span-3' : statusFilter === 'approved' ? 'col-span-3' : 'col-span-4'}>Requester</div>
+                  <div className={statusFilter === 'pending' ? 'col-span-3' : statusFilter === 'approved' ? 'col-span-2' : 'col-span-4'}>Requester</div>
                   <div className={statusFilter === 'approved' ? 'col-span-2' : 'col-span-3'}>Reason</div>
-                  <div className="col-span-2">Status</div>
+                  <div className={statusFilter === 'approved' ? 'col-span-1' : 'col-span-2'}>Status</div>
                   {statusFilter === 'approved' && <div className="col-span-2">Email</div>}
-                  <div className="col-span-2">Date</div>
+                  {statusFilter === 'approved' && <div className="col-span-2">User Activity</div>}
+                  <div className={statusFilter === 'approved' ? 'col-span-3' : 'col-span-2'}>Date</div>
                   {statusFilter === 'pending' && <div className="col-span-1">Actions</div>}
                 </div>
 
@@ -389,7 +393,7 @@ export default function InvitationsPage() {
                       )}
 
                       {/* Requester */}
-                      <div className={`${statusFilter === 'pending' ? 'md:col-span-3' : statusFilter === 'approved' ? 'md:col-span-3' : 'md:col-span-4'}`}>
+                      <div className={`${statusFilter === 'pending' ? 'md:col-span-3' : statusFilter === 'approved' ? 'md:col-span-2' : 'md:col-span-4'}`}>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
                             <UserIcon className="w-5 h-5 text-primary-600 dark:text-cyan-neon" />
@@ -441,7 +445,7 @@ export default function InvitationsPage() {
                       </div>
 
                       {/* Status */}
-                      <div className="md:col-span-2 flex items-center">
+                      <div className={`${statusFilter === 'approved' ? 'md:col-span-1' : 'md:col-span-2'} flex items-center`}>
                         <StatusBadge status={invitation.status} />
                       </div>
 
@@ -470,8 +474,38 @@ export default function InvitationsPage() {
                         </div>
                       )}
 
+                      {/* User Activity (approved only) */}
+                      {statusFilter === 'approved' && (
+                        <div className="md:col-span-2 flex items-center">
+                          {invitation.userSignedUp ? (
+                            <div className="text-sm">
+                              <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                                <CheckCircleIcon className="w-4 h-4" />
+                                <span className="font-medium">Signed up</span>
+                              </div>
+                              {invitation.userLastLogin ? (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  Last login: {formatDate(invitation.userLastLogin)}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                                  Never logged in
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-sm">
+                              <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
+                                <ClockIcon className="w-4 h-4" />
+                                <span>Not signed up yet</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Date */}
-                      <div className="md:col-span-2 flex items-center">
+                      <div className={`${statusFilter === 'approved' ? 'md:col-span-3' : 'md:col-span-2'} flex items-center`}>
                         <div className="text-sm">
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
                             <CalendarIcon className="w-4 h-4" />

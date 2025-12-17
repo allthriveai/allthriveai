@@ -5,8 +5,10 @@ Helper functions for billing operations, permissions, and token management.
 """
 
 import logging
+from datetime import timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -22,6 +24,21 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
+# Daily request limit defaults
+DEFAULT_DAILY_REQUEST_SOFT_LIMIT = 200
+DEFAULT_DAILY_REQUEST_HARD_LIMIT = 500
+
+
+class DailyRequestLimitExceededError(Exception):
+    """Raised when a user exceeds their daily AI request limit."""
+
+    def __init__(self, user_id: int, request_count: int, limit: int, message: str = None):
+        self.user_id = user_id
+        self.request_count = request_count
+        self.limit = limit
+        self.message = message or f'Daily AI request limit exceeded: {request_count} requests (limit: {limit})'
+        super().__init__(self.message)
+
 
 def is_beta_mode():
     """Check if beta mode is enabled (bypasses all subscription gates)."""
@@ -31,6 +48,126 @@ def is_beta_mode():
 def _log_beta_access(user, feature: str):
     """Log when beta mode grants feature access (for auditing)."""
     logger.debug(f'Beta mode: granting {feature} access to user {user.id}')
+
+
+def get_daily_request_limits() -> tuple[int, int]:
+    """
+    Get daily AI request limits from settings.
+
+    Returns:
+        Tuple of (soft_limit, hard_limit)
+    """
+    soft_limit = getattr(settings, 'AI_DAILY_REQUEST_SOFT_LIMIT', DEFAULT_DAILY_REQUEST_SOFT_LIMIT)
+    hard_limit = getattr(settings, 'AI_DAILY_REQUEST_HARD_LIMIT', DEFAULT_DAILY_REQUEST_HARD_LIMIT)
+    return soft_limit, hard_limit
+
+
+def _get_daily_request_cache_key(user_id: int) -> str:
+    """Get the cache key for daily request count."""
+    today = timezone.now().date().isoformat()
+    return f'ai_daily_requests:{user_id}:{today}'
+
+
+def get_user_daily_request_count(user_id: int) -> int:
+    """
+    Get the current daily AI request count for a user.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        Number of AI requests made today
+    """
+    cache_key = _get_daily_request_cache_key(user_id)
+    count = cache.get(cache_key)
+    return int(count) if count is not None else 0
+
+
+def increment_daily_request_count(user_id: int) -> int:
+    """
+    Increment the daily AI request count for a user.
+
+    Uses Redis INCR for atomic increment with automatic expiry at midnight.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        New request count after increment
+    """
+    cache_key = _get_daily_request_cache_key(user_id)
+
+    try:
+        # Try to increment existing key
+        new_count = cache.incr(cache_key)
+    except ValueError:
+        # Key doesn't exist, set it to 1 with TTL until end of day
+        # Calculate seconds until midnight
+        now = timezone.now()
+        midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        ttl_seconds = int((midnight - now).total_seconds())
+
+        cache.set(cache_key, 1, timeout=ttl_seconds)
+        new_count = 1
+
+    return new_count
+
+
+def check_daily_request_limit(user_id: int) -> tuple[bool, int]:
+    """
+    Check if a user is within their daily AI request limit.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        Tuple of (is_allowed: bool, current_count: int)
+
+    Raises:
+        DailyRequestLimitExceededError: If hard limit is exceeded
+    """
+    soft_limit, hard_limit = get_daily_request_limits()
+
+    # 0 means unlimited
+    if hard_limit == 0:
+        return True, get_user_daily_request_count(user_id)
+
+    current_count = get_user_daily_request_count(user_id)
+
+    # Check hard limit
+    if current_count >= hard_limit:
+        StructuredLogger.log_service_operation(
+            service_name='DailyRequestLimit',
+            operation='limit_exceeded',
+            success=False,
+            metadata={
+                'user_id': user_id,
+                'request_count': current_count,
+                'hard_limit': hard_limit,
+            },
+            logger_instance=logger,
+        )
+        raise DailyRequestLimitExceededError(
+            user_id=user_id,
+            request_count=current_count,
+            limit=hard_limit,
+            message=f"You've reached your daily limit of {hard_limit} AI requests. "
+            f'Please try again tomorrow or contact support if you need more.',
+        )
+
+    # Check soft limit (warn but allow)
+    if current_count >= soft_limit:
+        logger.warning(
+            f'User {user_id} approaching daily request limit: {current_count}/{hard_limit}',
+            extra={
+                'user_id': user_id,
+                'request_count': current_count,
+                'soft_limit': soft_limit,
+                'hard_limit': hard_limit,
+            },
+        )
+
+    return True, current_count
 
 
 # Transient errors that should be retried
@@ -129,7 +266,14 @@ def can_make_ai_request(user) -> tuple[bool, str]:
     Returns:
         Tuple of (can_make_request: bool, reason: str)
     """
-    # Beta mode allows unlimited AI requests
+    # ALWAYS check daily limit first (abuse protection)
+    soft_limit, hard_limit = get_daily_request_limits()
+    if hard_limit > 0:
+        daily_count = get_user_daily_request_count(user.id)
+        if daily_count >= hard_limit:
+            return False, f'Daily request limit exceeded ({daily_count}/{hard_limit})'
+
+    # Beta mode allows unlimited AI requests (but daily limit above still applies)
     if is_beta_mode():
         return True, 'Beta mode - unlimited access'
 
@@ -163,22 +307,50 @@ def _check_subscription_quota(subscription: UserSubscription) -> bool:
     return subscription.ai_requests_used_this_month < subscription.tier.monthly_ai_requests
 
 
-def check_and_reserve_ai_request(user) -> tuple[bool, str]:
+def check_and_reserve_ai_request(
+    user, tokens_used: int = 0, ai_provider: str = '', ai_model: str = ''
+) -> tuple[bool, str]:
     """
     Atomically check AND reserve an AI request slot.
 
     This prevents TOCTOU race conditions by combining the check and
     deduction into a single atomic database operation.
 
+    IMPORTANT: Always tracks credit pack usage for analytics, even in beta mode.
+    IMPORTANT: Daily request limits are ALWAYS enforced, even in beta mode.
+
     Args:
         user: Django User instance
+        tokens_used: Number of tokens/credits to track (for credit pack analytics)
+        ai_provider: AI provider name (for tracking)
+        ai_model: AI model name (for tracking)
 
     Returns:
         Tuple of (success: bool, message: str)
+
+    Raises:
+        DailyRequestLimitExceededError: If daily request limit is exceeded
     """
-    # Beta mode allows unlimited AI requests without reservation
+    from .credit_pack_service import CreditPackService, is_credit_pack_enforcement_enabled
+
+    # ALWAYS check daily request limit first (abuse protection, even in beta)
+    # This will raise DailyRequestLimitExceededError if limit exceeded
+    check_daily_request_limit(user.id)
+
+    # Always track credit pack usage for analytics (even in beta)
+    if tokens_used > 0:
+        CreditPackService.track_usage(user, tokens_used, ai_provider, ai_model)
+
+    # Increment daily request counter (for tracking)
+    new_daily_count = increment_daily_request_count(user.id)
+
+    # Beta mode allows unlimited AI requests without reservation (but daily limit still applies)
     if is_beta_mode():
-        return True, 'Beta mode - unlimited access'
+        return True, f'Beta mode - unlimited access (daily: {new_daily_count})'
+
+    # If credit pack enforcement is disabled, allow access but we've already tracked
+    if not is_credit_pack_enforcement_enabled():
+        return True, f'Enforcement disabled - unlimited access (daily: {new_daily_count})'
 
     try:
         with transaction.atomic():
@@ -451,6 +623,11 @@ def get_subscription_status(user) -> dict:
     subscription = get_user_subscription(user)
     token_balance = get_or_create_token_balance(user)
 
+    # Get daily request limits and current usage
+    daily_soft_limit, daily_hard_limit = get_daily_request_limits()
+    daily_requests_used = get_user_daily_request_count(user.id)
+    daily_requests_remaining = max(0, daily_hard_limit - daily_requests_used) if daily_hard_limit > 0 else None
+
     # In beta mode, return full access even without subscription
     if not subscription:
         if beta_mode:
@@ -461,10 +638,15 @@ def get_subscription_status(user) -> dict:
                 'beta_mode': True,
                 'is_active': True,  # Considered active in beta
                 'ai_requests': {
-                    'limit': 0,  # 0 = unlimited
+                    'limit': 0,  # 0 = unlimited monthly
                     'used': 0,
-                    'remaining': None,  # None = unlimited
+                    'remaining': None,  # None = unlimited monthly
                     'reset_date': None,
+                },
+                'daily_requests': {
+                    'limit': daily_hard_limit,
+                    'used': daily_requests_used,
+                    'remaining': daily_requests_remaining,
                 },
                 'tokens': {
                     'balance': token_balance.balance,
@@ -543,6 +725,11 @@ def get_subscription_status(user) -> dict:
             'used': subscription.ai_requests_used_this_month,
             'remaining': None if beta_mode else ai_requests_remaining,  # None = unlimited in beta
             'reset_date': subscription.ai_requests_reset_date,
+        },
+        'daily_requests': {
+            'limit': daily_hard_limit,
+            'used': daily_requests_used,
+            'remaining': daily_requests_remaining,
         },
         'tokens': {
             'balance': token_balance.balance,

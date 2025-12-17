@@ -17,11 +17,14 @@ from rest_framework.response import Response
 
 from core.logging_utils import StructuredLogger
 
-from .models import SubscriptionTier, TokenPackage, WebhookEvent
+from .models import CreditPack, SubscriptionTier, TokenPackage, WebhookEvent
 from .serializers import (
     CancelSubscriptionSerializer,
+    ChangeCreditPackSerializer,
     CreateSubscriptionSerializer,
     CreateTokenPurchaseSerializer,
+    CreditPackSerializer,
+    SubscribeCreditPackSerializer,
     SubscriptionChangeSerializer,
     TokenPackageSerializer,
     TokenPurchaseSerializer,
@@ -78,31 +81,50 @@ def stripe_webhook(request):
         )
 
         # Check if we've already processed this event (idempotency)
-        webhook_event, created = WebhookEvent.objects.get_or_create(
-            stripe_event_id=event_id,
-            defaults={
-                'event_type': event_type,
-                'payload': event,
-                'processed': False,
-            },
-        )
+        # Use atomic transaction with select_for_update to prevent concurrent processing
+        from django.db import transaction
 
-        # If event already exists and was processed, return success without reprocessing
-        if not created:
+        with transaction.atomic():
+            webhook_event, created = WebhookEvent.objects.get_or_create(
+                stripe_event_id=event_id,
+                defaults={
+                    'event_type': event_type,
+                    'payload': event,
+                    'processed': False,
+                },
+            )
+
+            # Lock the webhook event to prevent concurrent processing
+            webhook_event = WebhookEvent.objects.select_for_update().get(pk=webhook_event.pk)
+
+            # If event already processed, return success without reprocessing
             if webhook_event.processed:
                 logger.info(f'Webhook event {event_id} already processed, skipping')  # Info level ok
                 return HttpResponse('Webhook already processed', status=200)
-            else:
-                StructuredLogger.log_service_operation(
-                    service_name='StripeWebhook',
-                    operation='reprocess',
-                    success=True,
-                    metadata={'event_id': event_id, 'reason': 'previous_incomplete'},
-                    logger_instance=logger,
-                )
 
-        # Mark processing started
-        webhook_event.mark_processing_started()
+            # If event is currently being processed by another worker, skip
+            if webhook_event.processing_started_at and not created:
+                # Check if processing started recently (within last 5 minutes)
+                # If so, another worker is handling it
+                from datetime import timedelta
+
+                from django.utils import timezone as tz
+
+                if webhook_event.processing_started_at > tz.now() - timedelta(minutes=5):
+                    logger.info(f'Webhook event {event_id} is being processed by another worker, skipping')
+                    return HttpResponse('Webhook being processed', status=200)
+                else:
+                    # Previous processing timed out, allow retry
+                    StructuredLogger.log_service_operation(
+                        service_name='StripeWebhook',
+                        operation='reprocess',
+                        success=True,
+                        metadata={'event_id': event_id, 'reason': 'previous_processing_timeout'},
+                        logger_instance=logger,
+                    )
+
+            # Mark processing started (within the locked transaction)
+            webhook_event.mark_processing_started()
 
         # Handle different event types
         event_data = event['data']
@@ -156,9 +178,124 @@ def stripe_webhook(request):
                     logger_instance=logger,
                 )
 
-            # Invoice events
+            # Invoice events - handle credit pack grants
             elif event_type == 'invoice.payment_succeeded':
-                logger.info(f'Invoice payment succeeded: {event_data["object"]["id"]}')  # Info level ok
+                invoice = event_data['object']
+                subscription_id = invoice.get('subscription')
+
+                if subscription_id:
+                    # Check if this is a credit pack subscription
+                    import stripe
+
+                    try:
+                        subscription = stripe.Subscription.retrieve(subscription_id)
+                        metadata = subscription.get('metadata', {})
+
+                        if metadata.get('type') == 'credit_pack':
+                            # This is a credit pack invoice - grant monthly credits
+                            from django.contrib.auth import get_user_model
+                            from django.db import transaction
+
+                            from .credit_pack_service import CreditPackService
+                            from .models import CreditPack, UserCreditPackSubscription
+
+                            User = get_user_model()
+                            user_id = metadata.get('user_id')
+                            credit_pack_id = metadata.get('credit_pack_id')
+
+                            if user_id and credit_pack_id:
+                                try:
+                                    user = User.objects.get(id=user_id)
+                                except User.DoesNotExist:
+                                    StructuredLogger.log_error(
+                                        message='Credit pack invoice webhook: user not found',
+                                        error=None,
+                                        extra={
+                                            'user_id': user_id,
+                                            'subscription_id': subscription_id,
+                                            'invoice_id': invoice['id'],
+                                        },
+                                        logger_instance=logger,
+                                    )
+                                    webhook_event.mark_processing_failed(f'User {user_id} not found')
+                                    return HttpResponse('User not found', status=200)
+
+                                try:
+                                    credit_pack = CreditPack.objects.get(id=credit_pack_id)
+                                except CreditPack.DoesNotExist:
+                                    StructuredLogger.log_error(
+                                        message='Credit pack invoice webhook: credit pack not found',
+                                        error=None,
+                                        extra={
+                                            'credit_pack_id': credit_pack_id,
+                                            'user_id': user_id,
+                                            'subscription_id': subscription_id,
+                                            'invoice_id': invoice['id'],
+                                        },
+                                        logger_instance=logger,
+                                    )
+                                    webhook_event.mark_processing_failed(f'Credit pack {credit_pack_id} not found')
+                                    return HttpResponse('Credit pack not found', status=200)
+
+                                # Verify subscription ownership to prevent metadata manipulation
+                                existing_sub = UserCreditPackSubscription.objects.filter(
+                                    user=user,
+                                    stripe_subscription_id=subscription_id,
+                                ).first()
+
+                                # For renewal invoices, verify subscription exists and matches
+                                # For initial invoices (no existing sub), we allow creation
+                                if existing_sub and existing_sub.credit_pack_id != int(credit_pack_id):
+                                    StructuredLogger.log_error(
+                                        message='Credit pack invoice webhook: metadata mismatch',
+                                        error=None,
+                                        extra={
+                                            'expected_credit_pack_id': existing_sub.credit_pack_id,
+                                            'received_credit_pack_id': credit_pack_id,
+                                            'subscription_id': subscription_id,
+                                        },
+                                        logger_instance=logger,
+                                    )
+                                    webhook_event.mark_processing_failed('Credit pack metadata mismatch')
+                                    return HttpResponse('Metadata mismatch', status=200)
+
+                                # Use atomic transaction for credit grant + subscription update
+                                with transaction.atomic():
+                                    # Grant monthly credits
+                                    CreditPackService.grant_monthly_credits(user, credit_pack)
+
+                                    # Update subscription period
+                                    from datetime import UTC
+
+                                    from django.utils import timezone
+
+                                    sub, _ = UserCreditPackSubscription.objects.select_for_update().get_or_create(
+                                        user=user,
+                                        defaults={'credit_pack': credit_pack, 'status': 'active'},
+                                    )
+                                    sub.credit_pack = credit_pack
+                                    sub.stripe_subscription_id = subscription_id
+                                    sub.status = subscription.get('status', 'active')
+                                    if subscription.get('current_period_start'):
+                                        sub.current_period_start = timezone.datetime.fromtimestamp(
+                                            subscription['current_period_start'], tz=UTC
+                                        )
+                                    if subscription.get('current_period_end'):
+                                        sub.current_period_end = timezone.datetime.fromtimestamp(
+                                            subscription['current_period_end'], tz=UTC
+                                        )
+                                    sub.credits_this_period = credit_pack.credits_per_month
+                                    sub.save()
+
+                                logger.info(
+                                    f'Granted {credit_pack.credits_per_month} credits to user {user_id} '
+                                    f'from credit pack {credit_pack.name}'
+                                )
+                    except stripe.error.StripeError as e:
+                        # Log Stripe API errors but don't fail - might not be a credit pack subscription
+                        logger.warning(f'Stripe API error checking subscription {subscription_id}: {e}')
+
+                logger.info(f'Invoice payment succeeded: {invoice["id"]}')  # Info level ok
 
             elif event_type == 'invoice.payment_failed':
                 StructuredLogger.log_service_operation(
@@ -312,7 +449,8 @@ def create_checkout_session_view(request):
         "tier_slug": "community-pro",
         "billing_interval": "monthly" | "annual" (required),
         "success_url": "{FRONTEND_URL}/pricing/success",
-        "cancel_url": "{FRONTEND_URL}/pricing"
+        "cancel_url": "{FRONTEND_URL}/pricing",
+        "credit_pack_id": 2  // optional - adds credit pack to checkout
     }
 
     Returns:
@@ -336,7 +474,18 @@ def create_checkout_session_view(request):
         success_url = request.data.get('success_url', f'{settings.FRONTEND_URL}/pricing/success')
         cancel_url = request.data.get('cancel_url', f'{settings.FRONTEND_URL}/pricing')
 
-        result = StripeService.create_checkout_session(request.user, tier, billing_interval, success_url, cancel_url)
+        # Get optional credit pack
+        credit_pack = None
+        credit_pack_id = request.data.get('credit_pack_id')
+        if credit_pack_id:
+            try:
+                credit_pack = CreditPack.objects.get(id=credit_pack_id, is_active=True)
+            except CreditPack.DoesNotExist:
+                return Response({'error': 'Credit pack not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        result = StripeService.create_checkout_session(
+            request.user, tier, billing_interval, success_url, cancel_url, credit_pack
+        )
 
         return Response(result, status=status.HTTP_201_CREATED)
 
@@ -636,3 +785,181 @@ def list_invoices_view(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except ValueError:
         return Response({'error': 'Invalid limit parameter'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ===== Credit Pack Endpoints =====
+
+
+@api_view(['GET'])
+def list_credit_packs_view(request):
+    """
+    List all available credit packs.
+
+    GET /api/v1/billing/credit-packs/
+    """
+    packs = CreditPack.objects.filter(is_active=True).order_by('sort_order')
+    serializer = CreditPackSerializer(packs, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_credit_pack_status_view(request):
+    """
+    Get user's credit pack subscription status.
+
+    GET /api/v1/billing/credit-pack/status/
+
+    Returns:
+    {
+        "has_credit_pack": true,
+        "credit_pack": {
+            "id": 1,
+            "name": "1,250 credits",
+            "credits_per_month": 1250,
+            "price_cents": 4000
+        },
+        "status": "active",
+        "credit_pack_balance": 850,
+        "current_period_start": "2024-01-01T00:00:00Z",
+        "current_period_end": "2024-02-01T00:00:00Z",
+        "credits_this_period": 1250
+    }
+    """
+    from .credit_pack_service import CreditPackService
+
+    status_data = CreditPackService.get_user_credit_pack_status(request.user)
+    return Response(status_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subscribe_credit_pack_view(request):
+    """
+    Subscribe to a credit pack.
+
+    POST /api/v1/billing/credit-pack/subscribe/
+
+    Body:
+    {
+        "credit_pack_id": 2
+    }
+
+    Returns:
+    {
+        "success": true,
+        "subscription_id": "sub_xxx"
+    }
+    """
+    serializer = SubscribeCreditPackSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        from .credit_pack_service import CreditPackService
+
+        pack = CreditPack.objects.get(id=serializer.validated_data['credit_pack_id'])
+        subscription = CreditPackService.subscribe(request.user, pack)
+
+        return Response(
+            {
+                'success': True,
+                'subscription_id': subscription.id,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except CreditPack.DoesNotExist:
+        return Response({'error': 'Credit pack not found'}, status=status.HTTP_404_NOT_FOUND)
+    except StripeServiceError as e:
+        StructuredLogger.log_error(
+            message='Failed to subscribe to credit pack',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_credit_pack_view(request):
+    """
+    Change to a different credit pack.
+
+    POST /api/v1/billing/credit-pack/change/
+
+    Body:
+    {
+        "credit_pack_id": 3
+    }
+
+    Returns:
+    {
+        "success": true
+    }
+    """
+    serializer = ChangeCreditPackSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        from .credit_pack_service import CreditPackService
+
+        pack = CreditPack.objects.get(id=serializer.validated_data['credit_pack_id'])
+        CreditPackService.change_pack(request.user, pack)
+
+        return Response({'success': True})
+
+    except CreditPack.DoesNotExist:
+        return Response({'error': 'Credit pack not found'}, status=status.HTTP_404_NOT_FOUND)
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except StripeServiceError as e:
+        StructuredLogger.log_error(
+            message='Failed to change credit pack',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_credit_pack_view(request):
+    """
+    Cancel credit pack subscription.
+
+    POST /api/v1/billing/credit-pack/cancel/
+
+    Returns:
+    {
+        "success": true,
+        "message": "Credit pack subscription cancelled. Remaining credits have been forfeited."
+    }
+    """
+    try:
+        from .credit_pack_service import CreditPackService
+
+        CreditPackService.cancel(request.user)
+
+        return Response(
+            {
+                'success': True,
+                'message': 'Credit pack subscription cancelled. Remaining credits have been forfeited.',
+            }
+        )
+
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except StripeServiceError as e:
+        StructuredLogger.log_error(
+            message='Failed to cancel credit pack',
+            error=e,
+            user=request.user,
+            logger_instance=logger,
+        )
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

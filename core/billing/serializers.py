@@ -5,11 +5,13 @@ Billing API Serializers
 from rest_framework import serializers
 
 from .models import (
+    CreditPack,
     SubscriptionChange,
     SubscriptionTier,
     TokenPackage,
     TokenPurchase,
     TokenTransaction,
+    UserCreditPackSubscription,
     UserSubscription,
     UserTokenBalance,
 )
@@ -234,3 +236,85 @@ class SubscriptionStatusSerializer(serializers.Serializer):
     ai_requests = serializers.DictField(required=False)
     tokens = serializers.DictField(required=False)
     features = serializers.DictField(required=False)
+
+
+# ===== Credit Pack Serializers =====
+
+
+class CreditPackSerializer(serializers.ModelSerializer):
+    """Serializer for credit pack information."""
+
+    price_dollars = serializers.ReadOnlyField()
+
+    class Meta:
+        model = CreditPack
+        fields = [
+            'id',
+            'name',
+            'credits_per_month',
+            'price_cents',
+            'price_dollars',
+            'is_active',
+            'sort_order',
+        ]
+        read_only_fields = fields
+
+
+class UserCreditPackSubscriptionSerializer(serializers.ModelSerializer):
+    """Serializer for user credit pack subscription."""
+
+    credit_pack = CreditPackSerializer(read_only=True)
+
+    class Meta:
+        model = UserCreditPackSubscription
+        fields = [
+            'id',
+            'credit_pack',
+            'status',
+            'current_period_start',
+            'current_period_end',
+            'credits_this_period',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+
+class CreditPackStatusSerializer(serializers.Serializer):
+    """Serializer for credit pack status response."""
+
+    has_credit_pack = serializers.BooleanField()
+    credit_pack = serializers.DictField(required=False, allow_null=True)
+    status = serializers.CharField()
+    credit_pack_balance = serializers.IntegerField()
+    current_period_start = serializers.DateTimeField(required=False, allow_null=True)
+    current_period_end = serializers.DateTimeField(required=False, allow_null=True)
+    credits_this_period = serializers.IntegerField()
+
+
+class SubscribeCreditPackSerializer(serializers.Serializer):
+    """Serializer for subscribing to a credit pack."""
+
+    credit_pack_id = serializers.IntegerField()
+
+    def validate_credit_pack_id(self, value):
+        """Validate that the credit pack exists and is active."""
+        try:
+            CreditPack.objects.get(id=value, is_active=True)
+            return value
+        except CreditPack.DoesNotExist as e:
+            raise serializers.ValidationError('Invalid or inactive credit pack') from e
+
+
+class ChangeCreditPackSerializer(serializers.Serializer):
+    """Serializer for changing credit pack."""
+
+    credit_pack_id = serializers.IntegerField()
+
+    def validate_credit_pack_id(self, value):
+        """Validate that the credit pack exists and is active."""
+        try:
+            CreditPack.objects.get(id=value, is_active=True)
+            return value
+        except CreditPack.DoesNotExist as e:
+            raise serializers.ValidationError('Invalid or inactive credit pack') from e

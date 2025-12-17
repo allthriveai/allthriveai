@@ -43,6 +43,26 @@ def _log_completion(action_type, user_id, completed):
         logger.info(f'{action_type} triggered quest completion for user {user_id}: {completed}')
 
 
+# Idempotency helpers to prevent double-tracking when views call tracking directly
+def _get_tracking_cache_key(action: str, user_id: int, item_id: str) -> str:
+    """Generate cache key for tracking idempotency."""
+    return f'quest_track_{action}_{user_id}_{item_id}'
+
+
+def _is_already_tracked(action: str, user_id: int, item_id: str) -> bool:
+    """Check if action was recently tracked (within 60 seconds)."""
+    from django.core.cache import cache
+
+    return cache.get(_get_tracking_cache_key(action, user_id, item_id)) is not None
+
+
+def _mark_as_tracked(action: str, user_id: int, item_id: str):
+    """Mark action as tracked for idempotency (60 second window)."""
+    from django.core.cache import cache
+
+    cache.set(_get_tracking_cache_key(action, user_id, item_id), True, timeout=60)
+
+
 @receiver(post_save, sender=ProjectComment)
 def track_comment_created(sender, instance, created, **kwargs):
     """Track when a user creates a comment on a project."""
@@ -53,6 +73,11 @@ def track_comment_created(sender, instance, created, **kwargs):
     # Don't track comments on own projects
     if instance.project.user == user:
         return
+
+    # Idempotency check - prevent double-tracking if view already tracked
+    if _is_already_tracked('comment_created', user.id, str(instance.id)):
+        return
+    _mark_as_tracked('comment_created', user.id, str(instance.id))
 
     # Award points for commenting on others' projects
     user.add_points(
@@ -79,6 +104,11 @@ def track_project_created(sender, instance, created, **kwargs):
     user = _validate_signal_preconditions(instance, created)
     if not user:
         return
+
+    # Idempotency check - prevent double-tracking if view already tracked
+    if _is_already_tracked('project_created', user.id, str(instance.id)):
+        return
+    _mark_as_tracked('project_created', user.id, str(instance.id))
 
     # Award points for creating a project
     user.add_points(
@@ -110,6 +140,11 @@ def track_project_liked(sender, instance, created, **kwargs):
     if instance.project.user == user:
         return
 
+    # Idempotency check - prevent double-tracking if view already tracked
+    if _is_already_tracked('project_liked', user.id, str(instance.id)):
+        return
+    _mark_as_tracked('project_liked', user.id, str(instance.id))
+
     # Award points for liking others' projects
     user.add_points(
         amount=2,
@@ -139,16 +174,10 @@ def track_quiz_completed(sender, instance, created, **kwargs):
     if not user:
         return
 
-    # IDEMPOTENCY: Only track on first completion (when completed_at is newly set)
-    # Check if this is an update where completed_at was just set
-    if not created:
-        # Use a cache key to prevent duplicate processing
-        from django.core.cache import cache
-
-        cache_key = f'quiz_tracked_{instance.pk}'
-        if cache.get(cache_key):
-            return  # Already tracked
-        cache.set(cache_key, True, timeout=60)  # Prevent duplicate tracking for 60 seconds
+    # Idempotency check - prevent double-tracking if view already tracked
+    if _is_already_tracked('quiz_completed', user.id, str(instance.pk)):
+        return
+    _mark_as_tracked('quiz_completed', user.id, str(instance.pk))
 
     # Calculate score
     score = instance.percentage_score if hasattr(instance, 'percentage_score') else 0
@@ -188,6 +217,11 @@ def track_image_generated(sender, instance, created, **kwargs):
     user = _validate_signal_preconditions(instance, created, check_created=False)
     if not user:
         return
+
+    # Idempotency check - prevent double-tracking if view already tracked
+    if _is_already_tracked('image_generated', user.id, str(instance.id)):
+        return
+    _mark_as_tracked('image_generated', user.id, str(instance.id))
 
     completed = track_quest_action(
         user,

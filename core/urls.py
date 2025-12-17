@@ -154,6 +154,7 @@ from .users.views import (
     reset_profile_sections,
     toggle_follow,
     toggle_project_in_showcase,
+    track_onboarding_path,
     update_profile_sections,
 )
 from .views import ai_analytics_views, csp_report, db_health
@@ -220,6 +221,33 @@ urlpatterns = [
         'admin/analytics/guest-battles/',
         admin_analytics_views.dashboard_guest_battles,
         name='admin_dashboard_guest_battles',
+    ),
+    # Engagement analytics endpoints
+    path(
+        'admin/analytics/engagement/overview/',
+        admin_analytics_views.dashboard_engagement_overview,
+        name='admin_dashboard_engagement_overview',
+    ),
+    path(
+        'admin/analytics/engagement/heatmap/',
+        admin_analytics_views.dashboard_engagement_heatmap,
+        name='admin_dashboard_engagement_heatmap',
+    ),
+    path(
+        'admin/analytics/engagement/features/',
+        admin_analytics_views.dashboard_engagement_features,
+        name='admin_dashboard_engagement_features',
+    ),
+    path(
+        'admin/analytics/engagement/retention/',
+        admin_analytics_views.dashboard_engagement_retention,
+        name='admin_dashboard_engagement_retention',
+    ),
+    # Onboarding analytics
+    path(
+        'admin/analytics/onboarding/',
+        admin_analytics_views.dashboard_onboarding_stats,
+        name='admin_dashboard_onboarding_stats',
     ),
     # Admin Invitation Management endpoints (admin-only)
     path('admin/invitations/', list_invitations, name='admin_list_invitations'),
@@ -330,6 +358,7 @@ urlpatterns = [
     path('me/personalization/export/', export_personalization_data, name='export_personalization_data'),
     path('me/personalization/delete/', delete_personalization_data, name='delete_personalization_data'),
     path('me/onboarding-progress/', onboarding_progress, name='onboarding_progress'),
+    path('me/onboarding-path/', track_onboarding_path, name='track_onboarding_path'),
     path('me/interactions/', track_interaction, name='track_interaction'),
     path('me/account/deactivate/', deactivate_account, name='deactivate_account'),
     path('me/account/delete/', delete_account, name='delete_account'),

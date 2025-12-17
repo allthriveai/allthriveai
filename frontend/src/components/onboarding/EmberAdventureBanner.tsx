@@ -28,7 +28,7 @@ interface Adventure {
 const adventures: Adventure[] = [
   {
     id: 'battle_pip',
-    title: 'Battle Pip',
+    title: 'Prompt Battle',
     shortTitle: 'Battle',
     icon: faGamepad,
     gradient: 'from-violet-500 to-purple-600',
@@ -83,7 +83,6 @@ export function EmberAdventureBanner({
   );
 
   const allComplete = remainingAdventures.length === 0;
-  const completedCount = completedAdventures.length;
 
   const handleAdventureClick = (adventure: Adventure) => {
     onAdventureClick(adventure.id);
@@ -98,6 +97,8 @@ export function EmberAdventureBanner({
       // Navigate to user's profile and open the AI profile generator tray
       localStorage.setItem('ember_open_profile_generator', 'true');
       const profilePath = user?.username ? `/${user.username}` : '/dashboard';
+      // Dispatch event for when already on profile page
+      window.dispatchEvent(new CustomEvent('ember-open-profile-generator'));
       navigate(profilePath);
     } else {
       navigate(adventure.path);
@@ -162,34 +163,40 @@ export function EmberAdventureBanner({
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20, height: 0 }}
-          className="bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100 dark:from-slate-800/80 dark:via-slate-800/60 dark:to-slate-800/80 border-b border-slate-300 dark:border-slate-700/50 backdrop-blur-sm"
+          className="relative overflow-hidden border-b border-amber-700/30 dark:border-amber-800/40"
         >
-          <div className="max-w-[1920px] mx-auto px-4 sm:pl-8 sm:pr-6 py-2 sm:py-3">
+          {/* Animated muted burnt orange gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-amber-700/80 via-orange-700/70 to-amber-800/80 dark:from-amber-800/70 dark:via-orange-800/60 dark:to-amber-900/70 animate-gradient-shift bg-[length:200%_100%]" />
+          {/* Subtle overlay for depth */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent dark:from-black/10" />
+          <div className="relative max-w-[1920px] mx-auto px-4 sm:pl-8 sm:pr-6 py-2 sm:py-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
               {/* Ember avatar and message */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0">
-                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-orange-500 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]" />
+                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-orange-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
                 </div>
-                <span className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                  <span className="text-orange-600 dark:text-orange-400 font-medium">Ember:</span>{' '}
-                  <span className="hidden sm:inline">
-                    {completedCount === 0
-                      ? 'Continue onboarding'
-                      : completedCount === 1
-                      ? 'Great start! Try another path:'
-                      : 'One more to go!'}
-                  </span>
-                  <span className="sm:hidden">Continue onboarding</span>
+                <span className="text-orange-300 text-xs sm:text-sm">
+                  <span className="text-orange-300 font-semibold">Ember:</span>{' '}
+                  <a
+                    href="/onboarding"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate('/onboarding');
+                    }}
+                    className="hover:text-orange-200 hover:underline transition-colors"
+                  >
+                    Continue onboarding
+                  </a>
                 </span>
 
                 {/* Dismiss button - mobile only, at end of message row */}
                 <button
                   onClick={onDismiss}
-                  className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors ml-auto sm:hidden"
+                  className="p-1 hover:bg-white/20 rounded-lg transition-colors ml-auto sm:hidden"
                   aria-label="Dismiss banner"
                 >
-                  <XMarkIcon className="w-4 h-4 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white" />
+                  <XMarkIcon className="w-4 h-4 text-white/70 hover:text-white" />
                 </button>
               </div>
 
@@ -198,16 +205,18 @@ export function EmberAdventureBanner({
                 {remainingAdventures.map((adventure) => (
                   <motion.button
                     key={adventure.id}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => handleAdventureClick(adventure)}
-                    className={`
-                      flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg
-                      bg-gradient-to-r ${adventure.gradient}
-                      text-white text-xs sm:text-sm font-medium
-                      shadow-lg hover:shadow-xl transition-shadow
+                    className="
+                      flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg
+                      bg-white/10 hover:bg-orange-900/80
+                      backdrop-blur-md border border-orange-400/60 hover:border-orange-600
+                      text-orange-300 hover:text-orange-100 text-xs sm:text-sm font-medium
+                      shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_12px_rgba(194,65,12,0.4)]
+                      transition-all duration-200
                       whitespace-nowrap flex-shrink-0
-                    `}
+                    "
                   >
                     <FontAwesomeIcon icon={adventure.icon} className="text-xs" />
                     <span className="hidden sm:inline">{adventure.title}</span>
@@ -222,11 +231,11 @@ export function EmberAdventureBanner({
                   return (
                     <div
                       key={id}
-                      className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 text-sm flex-shrink-0"
+                      className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white/60 text-sm flex-shrink-0"
                       title={`${adventure.title} - Complete!`}
                     >
                       <FontAwesomeIcon icon={adventure.icon} className="text-xs" />
-                      <CheckCircleIcon className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                      <CheckCircleIcon className="w-4 h-4 text-white" />
                     </div>
                   );
                 })}
@@ -234,10 +243,10 @@ export function EmberAdventureBanner({
                 {/* Dismiss button - desktop only */}
                 <button
                   onClick={onDismiss}
-                  className="hidden sm:block p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors ml-1 flex-shrink-0"
+                  className="hidden sm:block p-1.5 hover:bg-white/20 rounded-lg transition-colors ml-1 flex-shrink-0"
                   aria-label="Dismiss banner"
                 >
-                  <XMarkIcon className="w-5 h-5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white" />
+                  <XMarkIcon className="w-5 h-5 text-white/70 hover:text-white" />
                 </button>
               </div>
             </div>

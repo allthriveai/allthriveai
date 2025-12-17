@@ -29,4 +29,10 @@ urlpatterns = [
     # Customer Portal & Invoices (authenticated)
     path('portal/', views.create_portal_session_view, name='customer-portal'),
     path('invoices/', views.list_invoices_view, name='list-invoices'),
+    # Credit Pack management (authenticated)
+    path('credit-packs/', views.list_credit_packs_view, name='list-credit-packs'),
+    path('credit-pack/status/', views.get_credit_pack_status_view, name='credit-pack-status'),
+    path('credit-pack/subscribe/', views.subscribe_credit_pack_view, name='subscribe-credit-pack'),
+    path('credit-pack/change/', views.change_credit_pack_view, name='change-credit-pack'),
+    path('credit-pack/cancel/', views.cancel_credit_pack_view, name='cancel-credit-pack'),
 ]

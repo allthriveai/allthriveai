@@ -38,9 +38,10 @@ Unlike time-bound implementation docs (which go in `/docs/archived/`), these doc
 | [09-PROMPT-BATTLES.md](./09-PROMPT-BATTLES.md) | ✅ Complete | Prompt Battles system, challenge templates, AI judging |
 | [10-CICD-PIPELINE.md](./10-CICD-PIPELINE.md) | ✅ Complete | CI/CD pipeline, GitHub Actions, deployment |
 | [11-E2E-USER-JOURNEY-TESTS.md](./11-E2E-USER-JOURNEY-TESTS.md) | ✅ Complete | E2E TDD tests for user journey workflows |
-| 12-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
-| 13-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
-| 14-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
+| [12-BILLING-ARCHITECTURE.md](./12-BILLING-ARCHITECTURE.md) | ✅ Complete | Billing, pricing, tokens, credit packs, AI guardrails |
+| 13-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
+| 14-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
+| 15-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
 
 ### Design & UX
 

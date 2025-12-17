@@ -5,7 +5,7 @@ import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recapt
 import { SEO } from '@/components/common/SEO';
 import { Footer } from '@/components/landing/Footer';
 import { Modal } from '@/components/ui/Modal';
-import { getSubscriptionTiers, getSubscriptionStatus, createCheckoutSession } from '@/services/billing';
+import { getSubscriptionTiers, getSubscriptionStatus, getCreditPacks } from '@/services/billing';
 import type { SubscriptionTier } from '@/services/billing';
 import { api } from '@/services/api';
 import { CheckIcon } from '@heroicons/react/24/solid';
@@ -202,6 +202,7 @@ function PricingPageContent() {
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
+  const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [creatorFormState, setCreatorFormState] = useState<FormState>('idle');
   const [creatorErrorMessage, setCreatorErrorMessage] = useState('');
   const [creatorFormData, setCreatorFormData] = useState({
@@ -210,6 +211,8 @@ function PricingPageContent() {
     reason: '',
     sellType: '',
   });
+  // Track selected credit pack per tier (tierSlug -> creditPackId)
+  const [selectedCreditPacks, setSelectedCreditPacks] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     analytics.pricingPageViewed();
@@ -244,8 +247,8 @@ function PricingPageContent() {
       answer: 'When you cancel, you keep full access until the end of your current billing period. After that, your account will be downgraded to the free tier.',
     },
     {
-      question: 'Can I buy more AI tokens if I run out?',
-      answer: 'Yes! You can purchase token packs anytime from your account settings. Token packs are available in various sizes to fit your needs, never expire, and are used only after your monthly quota is depleted. This gives you flexibility to handle busy months without upgrading your plan.',
+      question: 'What are Credit Packs?',
+      answer: 'Credit packs are optional monthly add-ons that give you extra AI credits beyond your subscription. They\'re available in 4 tiers (625, 1,250, 2,500, or 5,000 credits) starting at $20/month. Credits roll over while subscribed, but are forfeited if you cancel. Add a credit pack from your billing settings after signing up.',
     },
     {
       question: 'Can I use my own API keys (BYOK)?',
@@ -364,15 +367,36 @@ function PricingPageContent() {
     queryFn: getSubscriptionStatus,
   });
 
+  // Fetch credit packs
+  const { data: creditPacks } = useQuery({
+    queryKey: ['credit-packs'],
+    queryFn: getCreditPacks,
+  });
+
+  // Debug: log credit packs data
+  useEffect(() => {
+    if (creditPacks) {
+      console.log('Credit packs data:', creditPacks);
+    }
+  }, [creditPacks]);
+
   const handleSelectPlan = async (tierSlug: string, tierType?: string) => {
     // Find the tier to get details for analytics
     const tier = (tiers || fallbackTiers).find(t => t.slug === tierSlug);
     const tierName = tier?.name || tierSlug;
     const priceAnnual = tier?.priceAnnual ?? 0;
     const priceMonthly = tier?.priceMonthly ?? 0;
-    const price = billingCycle === 'annual'
+
+    // Get selected credit pack for this tier
+    const selectedPackId = selectedCreditPacks[tierSlug] || null;
+    const selectedPack = selectedPackId ? creditPacks?.find(p => p.id === selectedPackId) : null;
+    const creditPackPrice = selectedPack?.priceDollars ?? 0;
+
+    // Calculate total price including credit pack
+    const basePrice = billingCycle === 'annual'
       ? (typeof priceAnnual === 'number' ? priceAnnual : parseFloat(priceAnnual))
       : (typeof priceMonthly === 'number' ? priceMonthly : parseFloat(priceMonthly));
+    const price = basePrice + (billingCycle === 'annual' ? creditPackPrice * 12 : creditPackPrice);
 
     // Track plan selection
     analytics.pricingPlanSelected(tierName, billingCycle, price);
@@ -388,28 +412,8 @@ function PricingPageContent() {
       return;
     }
 
-    try {
-      // Track checkout start
-      analytics.checkoutStarted(tierName, billingCycle, price);
-
-      // Create checkout session and redirect to Stripe
-      const successUrl = `${window.location.origin}/checkout/success`;
-      const cancelUrl = `${window.location.origin}/pricing`;
-
-      const { url } = await createCheckoutSession(
-        tierSlug,
-        billingCycle === 'annual' ? 'annual' : 'monthly',
-        successUrl,
-        cancelUrl
-      );
-
-      // Redirect to Stripe Checkout
-      window.location.href = url;
-    } catch (error) {
-      console.error('Failed to create checkout session:', error);
-      // Optionally show an error message to the user
-      alert('Failed to start checkout. Please try again.');
-    }
+    // For all paid tiers, show "coming soon" modal
+    setIsComingSoonModalOpen(true);
   };
 
   const currentTierSlug = subscriptionStatus?.tierSlug;
@@ -515,14 +519,14 @@ function PricingPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] relative overflow-hidden">
+    <div className="min-h-screen bg-[#020617] relative">
       <SEO
         title="Pricing - All Thrive AI"
         description="Choose the perfect plan for your AI learning journey"
       />
 
       {/* Ambient Background Effects */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-cyan-500/5 to-transparent rounded-full" />
@@ -566,7 +570,7 @@ function PricingPageContent() {
           <div className="text-center mb-12">
             <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
               Choose Your{' '}
-              <span className="text-gradient-cyan">Plan</span>
+              <span className="text-gradient-cyan">Membership Plan</span>
             </h1>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
               Start free, upgrade as you grow. All plans include core AI features.
@@ -612,13 +616,22 @@ function PricingPageContent() {
 
               const priceAnnual = typeof tier.priceAnnual === 'number' ? tier.priceAnnual : parseFloat(tier.priceAnnual);
               const priceMonthly = typeof tier.priceMonthly === 'number' ? tier.priceMonthly : parseFloat(tier.priceMonthly);
-              const pricePerMonth = billingCycle === 'annual'
-                ? (priceAnnual / 12).toFixed(2)
-                : priceMonthly.toFixed(2);
 
+              // Get selected credit pack price for this tier
+              const selectedPackId = selectedCreditPacks[tier.slug];
+              const selectedPack = selectedPackId ? creditPacks?.find(p => p.id === selectedPackId) : null;
+              const creditPackMonthlyPrice = selectedPack?.priceDollars ?? 0;
+
+              // Calculate total price including credit pack
+              const basePricePerMonth = billingCycle === 'annual'
+                ? (priceAnnual / 12)
+                : priceMonthly;
+              const pricePerMonth = (basePricePerMonth + creditPackMonthlyPrice).toFixed(2);
+
+              const baseTotalPrice = billingCycle === 'annual' ? priceAnnual : priceMonthly;
               const totalPrice = billingCycle === 'annual'
-                ? priceAnnual.toFixed(2)
-                : priceMonthly.toFixed(2);
+                ? (baseTotalPrice + (creditPackMonthlyPrice * 12)).toFixed(2)
+                : (baseTotalPrice + creditPackMonthlyPrice).toFixed(2);
 
               return (
                 <div
@@ -678,7 +691,7 @@ function PricingPageContent() {
                   <button
                     onClick={() => handleSelectPlan(tier.slug, tier.tierType)}
                     disabled={isCurrentPlan}
-                    className={`w-full mb-6 ${
+                    className={`w-full mb-4 ${
                       isCurrentPlan
                         ? 'px-6 py-3 rounded-xl bg-gray-800 text-gray-500 cursor-not-allowed'
                         : isPopular
@@ -702,6 +715,30 @@ function PricingPageContent() {
                       </span>
                     )}
                   </button>
+
+                  {/* Credit Pack Dropdown - only for paid tiers */}
+                  {tier.tierType !== 'free' && tier.tierType !== 'creator_mentor' && creditPacks && creditPacks.length > 0 && (
+                    <div className="mb-6">
+                      <div className="relative">
+                        <select
+                          value={selectedCreditPacks[tier.slug] || ''}
+                          onChange={(e) => setSelectedCreditPacks(prev => ({
+                            ...prev,
+                            [tier.slug]: e.target.value ? Number(e.target.value) : null
+                          }))}
+                          className="w-full appearance-none px-3 py-2.5 bg-slate-800/50 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 cursor-pointer pr-8"
+                        >
+                          <option value="">{tier.monthlyAiRequests.toLocaleString()} credits / month</option>
+                          {creditPacks.map((pack) => (
+                            <option key={pack.id} value={pack.id}>
+                              {(tier.monthlyAiRequests + pack.creditsPerMonth).toLocaleString()} credits / month (+${pack.priceDollars})
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Features List */}
                   <ul className="space-y-3 flex-1">
@@ -733,8 +770,9 @@ function PricingPageContent() {
               {faqs.map((faq, index) => (
                 <div key={index} className="glass-card overflow-hidden">
                   <button
+                    type="button"
                     onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                    className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-white/5 transition-colors focus:outline-none"
                   >
                     <h3 className="text-base font-medium text-white pr-4">
                       {faq.question}
@@ -832,6 +870,31 @@ function PricingPageContent() {
             setFormData={setCreatorFormData}
           />
         )}
+      </Modal>
+
+      {/* Membership Coming Soon Modal */}
+      <Modal
+        isOpen={isComingSoonModalOpen}
+        onClose={() => setIsComingSoonModalOpen(false)}
+        title="Coming Soon"
+      >
+        <div className="text-center py-6">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center">
+            <SparklesIcon className="w-8 h-8 text-white" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">
+            Membership Coming Soon
+          </h3>
+          <p className="text-gray-400 mb-6">
+            We're working hard to bring you paid memberships. In the meantime, enjoy our free tier!
+          </p>
+          <button
+            onClick={() => setIsComingSoonModalOpen(false)}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 text-[#020617] font-semibold hover:shadow-neon transition-all duration-300"
+          >
+            Got it
+          </button>
+        </div>
       </Modal>
     </div>
   );

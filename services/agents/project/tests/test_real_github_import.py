@@ -545,3 +545,97 @@ class TestEdgeCases:
             pass  # Expected - duplicate external_url
 
         logger.info('Duplicate import correctly prevented')
+
+    @pytest.mark.django_db
+    def test_clip_github_repo_user_does_not_own(self):
+        """
+        Test that users can CLIP any public GitHub repo they don't own.
+
+        SCENARIO: User wants to clip https://github.com/jlowin/fastmcp as a clipping
+        EXPECTED: Success - creates a clipped project without requiring GitHub OAuth
+        PREVIOUS BUG: Would fail with "repository does not appear to be associated with your GitHub account"
+        """
+        import uuid
+
+        from core.projects.models import Project
+        from services.agents.project.tools import scrape_webpage_for_project
+
+        # Create a user WITHOUT GitHub OAuth connected
+        unique_suffix = str(uuid.uuid4())[:8]
+        user_no_github = User.objects.create_user(
+            username=f'clipper_{unique_suffix}',
+            email=f'clipper_{unique_suffix}@example.com',
+            password='testpass123',
+        )
+
+        # The repo to clip - user does NOT own this
+        clip_url = 'https://github.com/jlowin/fastmcp'
+
+        try:
+            # Clean up any existing project
+            Project.objects.filter(user=user_no_github, external_url=clip_url).delete()
+
+            # Use scrape_webpage_for_project with is_owned=False (clipping)
+            result = scrape_webpage_for_project.func(
+                url=clip_url,
+                is_showcase=False,  # Clippings typically not showcased
+                is_private=False,
+                is_owned=False,  # This is a CLIPPING, not their own work
+                state={
+                    'user_id': user_no_github.id,
+                    'username': user_no_github.username,
+                },
+            )
+
+            # Should succeed - no GitHub OAuth needed for clipping
+            assert result['success'] is True, f'Clipping should succeed, got error: {result.get("error")}'
+            assert 'project_id' in result
+            assert 'url' in result
+
+            # Verify the project was created correctly
+            project = Project.objects.get(id=result['project_id'])
+            assert project.type == 'clipped', f'Project type should be "clipped", got: {project.type}'
+            assert project.external_url == clip_url
+            assert project.user == user_no_github
+
+            logger.info('=' * 60)
+            logger.info('CLIPPING TEST PASSED')
+            logger.info(f'  User WITHOUT GitHub OAuth successfully clipped: {clip_url}')
+            logger.info(f'  Project type: {project.type}')
+            logger.info(f'  Project title: {project.title}')
+            logger.info('=' * 60)
+
+        finally:
+            # Cleanup
+            Project.objects.filter(user=user_no_github).delete()
+            user_no_github.delete()
+
+    def test_import_github_as_owned_requires_verification(self, github_user, has_github_token):
+        """
+        Test that importing a GitHub repo as OWNED (for playground/showcase) requires verification.
+
+        SCENARIO: User claims they own https://github.com/torvalds/linux
+        EXPECTED: Fails - ownership verification rejects it
+        """
+        from services.agents.project.tools import import_github_project
+
+        # Try to import a famous repo claiming ownership
+        result = import_github_project.func(
+            url='https://github.com/torvalds/linux',
+            is_showcase=True,
+            is_private=False,
+            is_owned=True,  # Claiming ownership!
+            state={
+                'user_id': github_user.id,
+                'username': github_user.username,
+            },
+        )
+
+        # Should fail with ownership error
+        assert result['success'] is False
+        error_msg = result.get('error', '').lower()
+        assert (
+            'own or have contributed to' in error_msg or 'not appear to be associated' in error_msg
+        ), f'Expected ownership error, got: {result.get("error")}'
+
+        logger.info(f'Ownership verification correctly rejected: {result.get("error")}')

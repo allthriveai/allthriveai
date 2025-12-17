@@ -5,16 +5,23 @@
  * Users can choose to battle Pip (AI) or find an active opponent.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useMatchmaking, type MatchFoundData } from '@/hooks/useMatchmaking';
 import { MatchmakingScreen } from '@/components/battles';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { logError } from '@/utils/errorHandler';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 
 export function BattlesLobbyPage() {
   const navigate = useNavigate();
+
+  // Quest tracking for page visit
+  const { trackPage } = useQuestTracking();
+  useEffect(() => {
+    trackPage('/battles', 'Prompt Battles');
+  }, [trackPage]);
 
   const handleError = useCallback((error: string) => {
     logError('Matchmaking error', new Error(error), {

@@ -16,9 +16,9 @@ from core.battles.models import (
     BattlePhase,
     BattleStatus,
     BattleSubmission,
-    ChallengeType,
     MatchSource,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from core.battles.services import BattleService
 from core.users.models import User, UserRole
@@ -50,13 +50,17 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
             password='testpass123',
         )
 
-        # Create challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Test challenge: {style}'],
-            variables={'style': ['simple', 'complex']},
+        # Create curated prompts
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Original challenge text',
+            difficulty='medium',
+            is_active=True,
+        )
+
+        self.prompt2 = PromptChallengePrompt.objects.create(
+            prompt_text='Second challenge prompt',
+            difficulty='medium',
+            is_active=True,
         )
 
         # Create Pip battle (user vs Pip)
@@ -64,7 +68,7 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
             challenger=self.user1,
             opponent=self.pip_user,
             challenge_text='Original challenge text',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             match_source=MatchSource.AI_OPPONENT,
             phase=BattlePhase.WAITING,
             status=BattleStatus.PENDING,
@@ -75,7 +79,7 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Human battle challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             phase=BattlePhase.WAITING,
             status=BattleStatus.PENDING,
         )
@@ -83,33 +87,20 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
         self.service = BattleService()
 
     def test_refresh_challenge_success_for_pip_battle(self):
-        """Test that refresh_challenge successfully refreshes prompt and challenge type for Pip battles."""
-        # Create a second challenge type so we can verify it changes
-        second_challenge_type = ChallengeType.objects.create(
-            key='pip_second_challenge',
-            name='Pip Second Challenge',
-            description='A second challenge for pip',
-            templates=['Pip second: {color}'],
-            variables={'color': ['red', 'blue']},
-        )
-
-        original_challenge_type_id = self.pip_battle.challenge_type_id
+        """Test that refresh_challenge successfully refreshes prompt for Pip battles."""
+        original_prompt_id = self.pip_battle.prompt_id
 
         # Test when user hasn't submitted yet
         new_challenge = self.service.refresh_challenge(self.pip_battle, self.user1)
 
         self.assertIsNotNone(new_challenge)
-        self.assertNotEqual(new_challenge, 'Original challenge text')
 
         # Verify battle was updated
         self.pip_battle.refresh_from_db()
         self.assertEqual(self.pip_battle.challenge_text, new_challenge)
 
-        # Verify challenge type was changed (should pick a different one)
-        self.assertNotEqual(self.pip_battle.challenge_type_id, original_challenge_type_id)
-
-        # Clean up
-        second_challenge_type.delete()
+        # Verify prompt was changed (should pick a different one since we have 2 prompts)
+        self.assertNotEqual(self.pip_battle.prompt_id, original_prompt_id)
 
     def test_refresh_challenge_returns_none_for_non_pip_battle(self):
         """Test that refresh_challenge returns None for non-Pip battles."""
@@ -195,42 +186,33 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
 
         self.assertIsNone(new_challenge)
 
-    def test_refresh_challenge_assigns_challenge_type_if_none(self):
-        """Test that refresh_challenge assigns a random challenge type if battle has none."""
-        self.pip_battle.challenge_type = None
+    def test_refresh_challenge_assigns_prompt_if_none(self):
+        """Test that refresh_challenge assigns a random prompt if battle has none."""
+        self.pip_battle.prompt = None
         self.pip_battle.save()
 
         new_challenge = self.service.refresh_challenge(self.pip_battle, self.user1)
 
-        # Should pick a random challenge type and generate a challenge
+        # Should pick a random prompt
         self.assertIsNotNone(new_challenge)
 
-        # Verify battle now has a challenge type
+        # Verify battle now has a prompt
         self.pip_battle.refresh_from_db()
-        self.assertIsNotNone(self.pip_battle.challenge_type)
+        self.assertIsNotNone(self.pip_battle.prompt)
 
     def test_refresh_challenge_success_for_pending_invitation_battle(self):
         """Test that refresh_challenge works for invitation battles before opponent joins."""
-        # Create a second challenge type so we can verify it changes
-        second_challenge_type = ChallengeType.objects.create(
-            key='second_challenge',
-            name='Second Challenge',
-            description='A second challenge',
-            templates=['Second challenge: {mood}'],
-            variables={'mood': ['happy', 'sad']},
-        )
-
         # Create invitation battle with no opponent yet
         invitation_battle = PromptBattle.objects.create(
             challenger=self.user1,
             opponent=None,  # Opponent hasn't joined yet
             challenge_text='Original invitation challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             match_source=MatchSource.INVITATION,
             status=BattleStatus.PENDING,
         )
 
-        original_challenge_type_id = invitation_battle.challenge_type_id
+        original_prompt_id = invitation_battle.prompt_id
 
         new_challenge = self.service.refresh_challenge(invitation_battle, self.user1)
 
@@ -241,11 +223,8 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
         invitation_battle.refresh_from_db()
         self.assertEqual(invitation_battle.challenge_text, new_challenge)
 
-        # Verify challenge type was changed (should pick the other one)
-        self.assertNotEqual(invitation_battle.challenge_type_id, original_challenge_type_id)
-
-        # Clean up
-        second_challenge_type.delete()
+        # Verify prompt was changed (should pick the other one since we have 2 prompts)
+        self.assertNotEqual(invitation_battle.prompt_id, original_prompt_id)
 
     def test_refresh_challenge_returns_none_for_non_challenger_invitation(self):
         """Test that only the challenger can refresh invitation battles."""
@@ -254,7 +233,7 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
             challenger=self.user1,
             opponent=None,
             challenge_text='Original invitation challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             match_source=MatchSource.INVITATION,
             status=BattleStatus.PENDING,
         )
@@ -275,7 +254,7 @@ class BattleServiceRefreshChallengeTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,  # Opponent has joined
             challenge_text='Original invitation challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             match_source=MatchSource.INVITATION,
             status=BattleStatus.ACTIVE,
         )
@@ -487,17 +466,17 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
+            is_active=True,
         )
 
         self.battle = PromptBattle.objects.create(
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             phase=BattlePhase.JUDGING,
             status=BattleStatus.ACTIVE,
         )
@@ -696,12 +675,10 @@ class BattleServiceJudgeBattleTiebreakerTestCase(TransactionTestCase):
         mock_shuffle.assert_called_once()
 
 
-class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
-    """Test cases for judge_battle with custom challenge type criteria.
+class BattleServiceJudgeBattleDefaultCriteriaTestCase(TransactionTestCase):
+    """Test cases for judge_battle with default criteria.
 
-    This tests the scenario where a ChallengeType has custom judging criteria
-    with names that differ from the default (e.g., "Challenge Relevance" instead
-    of "Relevance"). The AI must use the exact criterion names for proper scoring.
+    Since ChallengeType was removed, battles now use default judging criteria.
     """
 
     def setUp(self):
@@ -718,24 +695,18 @@ class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
             password='testpass123',
         )
 
-        # Create challenge type with CUSTOM criteria names
-        self.challenge_type = ChallengeType.objects.create(
-            key='dreamscape_design',
-            name='Dreamscape Design',
-            description='Create a dreamlike scene',
-            judging_criteria=[
-                {'name': 'Creative Vision', 'weight': 30, 'description': 'How original?'},
-                {'name': 'Visual Impact', 'weight': 25, 'description': 'How striking?'},
-                {'name': 'Challenge Relevance', 'weight': 25, 'description': 'How relevant?'},
-                {'name': 'Artistic Cohesion', 'weight': 20, 'description': 'How cohesive?'},
-            ],
+        # Create curated prompt
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Create a dream world',
+            difficulty='medium',
+            is_active=True,
         )
 
         self.battle = PromptBattle.objects.create(
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Create a dream world',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             phase=BattlePhase.JUDGING,
             status=BattleStatus.ACTIVE,
         )
@@ -760,41 +731,42 @@ class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
 
     @patch('core.battles.models.BattleVote.objects.create')
     @patch('services.ai.provider.AIProvider')
-    def test_judge_battle_uses_custom_criteria_names(self, mock_ai_provider_class, mock_vote_create):
-        """Test that judge_battle uses custom criteria names from challenge type.
+    def test_judge_battle_uses_default_criteria(self, mock_ai_provider_class, mock_vote_create):
+        """Test that judge_battle uses default criteria names.
 
-        This is a regression test for a bug where the judging prompt hardcoded
-        criterion names, causing mismatches when ChallengeType had custom names
-        like 'Challenge Relevance' vs 'Relevance'.
+        Default criteria: Prompt Craft (30%), Creativity (25%), Visual Impact (20%),
+        Relevance (15%), Execution (10%)
         """
 
-        # Mock responses using the CUSTOM criteria names
+        # Mock responses using default criteria names
         def mock_complete_with_image(prompt, image_url, model, **kwargs):
-            # Verify the prompt contains the custom criteria names
-            assert 'Creative Vision' in prompt, 'Prompt should contain custom criterion name "Creative Vision"'
-            assert 'Challenge Relevance' in prompt, 'Prompt should contain custom criterion name "Challenge Relevance"'
-            assert 'Artistic Cohesion' in prompt, 'Prompt should contain custom criterion name "Artistic Cohesion"'
+            # Verify the prompt contains the default criteria names
+            assert 'Prompt Craft' in prompt, 'Prompt should contain "Prompt Craft"'
+            assert 'Creativity' in prompt, 'Prompt should contain "Creativity"'
+            assert 'Visual Impact' in prompt, 'Prompt should contain "Visual Impact"'
 
             if 'image1' in image_url:
                 return """
                 {
                     "scores": {
-                        "Creative Vision": 90,
-                        "Visual Impact": 85,
-                        "Challenge Relevance": 88,
-                        "Artistic Cohesion": 82
+                        "Prompt Craft": 90,
+                        "Creativity": 85,
+                        "Visual Impact": 88,
+                        "Relevance": 82,
+                        "Execution": 80
                     },
-                    "feedback": "Excellent creative vision!"
+                    "feedback": "Excellent prompt craft!"
                 }
                 """
             else:
                 return """
                 {
                     "scores": {
-                        "Creative Vision": 70,
-                        "Visual Impact": 75,
-                        "Challenge Relevance": 72,
-                        "Artistic Cohesion": 68
+                        "Prompt Craft": 70,
+                        "Creativity": 75,
+                        "Visual Impact": 72,
+                        "Relevance": 68,
+                        "Execution": 65
                     },
                     "feedback": "Good effort."
                 }
@@ -810,47 +782,43 @@ class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
         # User1 should win with higher scores
         self.assertEqual(result['winner_id'], self.user1.id)
 
-        # Verify scores were calculated correctly using custom criteria weights
-        # User1: (90*30 + 85*25 + 88*25 + 82*20) / 100 = 86.65
-        # User2: (70*30 + 75*25 + 72*25 + 68*20) / 100 = 71.35
         self.submission1.refresh_from_db()
         self.submission2.refresh_from_db()
 
-        # Scores should NOT be the same (the bug caused both to be 50 + some fraction)
+        # Scores should NOT be the same
         self.assertNotEqual(self.submission1.score, self.submission2.score)
         # User1 should have higher score
         self.assertGreater(self.submission1.score, self.submission2.score)
-        # Verify scores are in expected range (not defaulting to 50)
-        self.assertGreater(self.submission1.score, 80)  # Should be ~86.65
-        self.assertGreater(self.submission2.score, 65)  # Should be ~71.35
 
     @patch('core.battles.models.BattleVote.objects.create')
     @patch('services.ai.provider.AIProvider')
-    def test_judge_battle_tiebreaker_uses_custom_criteria(self, mock_ai_provider_class, mock_vote_create):
-        """Test that tiebreaker logic uses custom criteria names correctly."""
+    def test_judge_battle_tiebreaker_uses_prompt_craft(self, mock_ai_provider_class, mock_vote_create):
+        """Test that tiebreaker uses Prompt Craft (highest weight) when scores are tied."""
 
-        # Mock responses with tied total scores but different "Creative Vision"
+        # Mock responses with tied total scores but different "Prompt Craft"
         def mock_complete_with_image(prompt, image_url, model, **kwargs):
             if 'image1' in image_url:
                 return """
                 {
                     "scores": {
-                        "Creative Vision": 90,
+                        "Prompt Craft": 90,
+                        "Creativity": 70,
                         "Visual Impact": 70,
-                        "Challenge Relevance": 70,
-                        "Artistic Cohesion": 70
+                        "Relevance": 70,
+                        "Execution": 70
                     },
-                    "feedback": "High creativity!"
+                    "feedback": "High prompt craft!"
                 }
                 """
             else:
                 return """
                 {
                     "scores": {
-                        "Creative Vision": 70,
-                        "Visual Impact": 80,
-                        "Challenge Relevance": 75,
-                        "Artistic Cohesion": 75
+                        "Prompt Craft": 70,
+                        "Creativity": 80,
+                        "Visual Impact": 75,
+                        "Relevance": 75,
+                        "Execution": 70
                     },
                     "feedback": "Balanced approach!"
                 }
@@ -863,7 +831,7 @@ class BattleServiceJudgeBattleCustomCriteriaTestCase(TransactionTestCase):
 
         result = self.service.judge_battle(self.battle)
 
-        # User1 should win due to higher "Creative Vision" (highest weighted criterion)
+        # User1 should win due to higher "Prompt Craft" (highest weighted criterion at 30%)
         self.assertEqual(result['winner_id'], self.user1.id)
 
 
@@ -884,19 +852,17 @@ class BattleServiceAwardPointsTestCase(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            winner_points=100,
-            participation_points=25,
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
+            is_active=True,
         )
 
         self.battle = PromptBattle.objects.create(
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             phase=BattlePhase.REVEAL,
             status=BattleStatus.ACTIVE,
             winner=self.user1,
@@ -926,22 +892,22 @@ class BattleServiceAwardPointsTestCase(TestCase):
         self.service = BattleService()
 
     def test_complete_battle_awards_winner_points(self):
-        """Test that complete_battle awards correct points to winner."""
+        """Test that complete_battle awards correct points to winner (default 50)."""
         initial_points = self.user1.total_points
 
         self.service.complete_battle(self.battle)
 
         self.user1.refresh_from_db()
-        self.assertEqual(self.user1.total_points, initial_points + 100)
+        self.assertEqual(self.user1.total_points, initial_points + 50)
 
     def test_complete_battle_awards_participation_points(self):
-        """Test that complete_battle awards participation points to loser."""
+        """Test that complete_battle awards participation points to loser (default 10)."""
         initial_points = self.user2.total_points
 
         self.service.complete_battle(self.battle)
 
         self.user2.refresh_from_db()
-        self.assertEqual(self.user2.total_points, initial_points + 25)
+        self.assertEqual(self.user2.total_points, initial_points + 10)
 
     def test_complete_battle_updates_battle_status(self):
         """Test that complete_battle updates battle phase and status."""
@@ -979,28 +945,28 @@ class BattleServiceAwardPointsTestCase(TestCase):
         call_args = mock_track_event.call_args
         self.assertEqual(call_args.kwargs['user'], self.user2)
 
-    def test_complete_battle_uses_default_points_without_challenge_type(self):
-        """Test that complete_battle uses default points when no challenge_type."""
-        # Create battle without challenge_type
-        battle_no_type = PromptBattle.objects.create(
+    def test_complete_battle_uses_default_points_without_prompt(self):
+        """Test that complete_battle uses default points when no prompt linked."""
+        # Create battle without prompt
+        battle_no_prompt = PromptBattle.objects.create(
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Test challenge',
-            challenge_type=None,
+            prompt=None,
             phase=BattlePhase.REVEAL,
             status=BattleStatus.ACTIVE,
             winner=self.user1,
         )
 
         BattleSubmission.objects.create(
-            battle=battle_no_type,
+            battle=battle_no_prompt,
             user=self.user1,
             prompt_text='User 1 prompt',
             submission_type='image',
         )
 
         BattleSubmission.objects.create(
-            battle=battle_no_type,
+            battle=battle_no_prompt,
             user=self.user2,
             prompt_text='User 2 prompt',
             submission_type='image',
@@ -1009,7 +975,7 @@ class BattleServiceAwardPointsTestCase(TestCase):
         initial_points_user1 = self.user1.total_points
         initial_points_user2 = self.user2.total_points
 
-        self.service.complete_battle(battle_no_type)
+        self.service.complete_battle(battle_no_prompt)
 
         self.user1.refresh_from_db()
         self.user2.refresh_from_db()

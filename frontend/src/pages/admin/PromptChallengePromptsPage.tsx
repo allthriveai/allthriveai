@@ -174,7 +174,8 @@ export default function PromptChallengePromptsPage() {
     try {
       const response = await api.get('/battles/admin/prompt-challenge-prompts/stats/');
       setStats(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      // Non-critical - show warning but don't block the page
       console.error('Failed to fetch stats:', err);
     }
   }, []);
@@ -183,7 +184,8 @@ export default function PromptChallengePromptsPage() {
     try {
       const response = await api.get('/battles/admin/prompt-challenge-prompts/categories/');
       setCategories(response.data.categories);
-    } catch (err) {
+    } catch (err: any) {
+      // Non-critical - show warning but don't block the page
       console.error('Failed to fetch categories:', err);
     }
   }, []);
@@ -260,7 +262,7 @@ export default function PromptChallengePromptsPage() {
     setActionLoading(prompt.id);
     try {
       await api.put(`/battles/admin/prompt-challenge-prompts/${prompt.id}/`, {
-        is_active: !prompt.isActive,
+        isActive: !prompt.isActive,
       });
       await Promise.all([fetchPrompts(), fetchStats()]);
     } catch (err: any) {

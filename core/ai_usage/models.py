@@ -411,3 +411,62 @@ class PlatformDailyStats(models.Model):
         if self.active_users_today > 0:
             return (self.ai_users_today / self.active_users_today) * 100
         return 0.0
+
+
+class EngagementDailyStats(models.Model):
+    """
+    Pre-aggregated daily engagement metrics for admin dashboard.
+    Populated by Celery task, queried by engagement dashboard APIs.
+    """
+
+    date = models.DateField(unique=True, db_index=True, help_text='Date of this summary')
+
+    # Activity Heatmap (24 hours)
+    hourly_activity = models.JSONField(
+        default=dict,
+        help_text='Activity count by hour: {"0": 10, "1": 5, ...}',
+    )
+    day_of_week = models.IntegerField(default=0, help_text='Day of week (0=Monday in Python)')
+    total_actions = models.IntegerField(default=0, help_text='Total PointActivity actions this day')
+    peak_hour = models.IntegerField(default=0, help_text='Hour with most activity (0-23)')
+
+    # Feature Adoption
+    feature_usage = models.JSONField(
+        default=dict,
+        help_text='Usage by activity type: {"quiz_complete": {"users": 10, "actions": 50}, ...}',
+    )
+    unique_active_users = models.IntegerField(default=0, help_text='Unique users who took action today')
+
+    # Retention Checkpoints
+    signups_today = models.IntegerField(default=0, help_text='New user signups on this day')
+    d1_cohort_size = models.IntegerField(default=0, help_text='Users who signed up 1 day ago')
+    d1_retained = models.IntegerField(default=0, help_text='D1 cohort users active today')
+    d7_cohort_size = models.IntegerField(default=0, help_text='Users who signed up 7 days ago')
+    d7_retained = models.IntegerField(default=0, help_text='D7 cohort users active today')
+    d30_cohort_size = models.IntegerField(default=0, help_text='Users who signed up 30 days ago')
+    d30_retained = models.IntegerField(default=0, help_text='D30 cohort users active today')
+
+    # Funnel Checkpoints
+    first_action_count = models.IntegerField(default=0, help_text='New users who took their first action today')
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Engagement Daily Stats'
+        verbose_name_plural = 'Engagement Daily Stats'
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['-date']),
+        ]
+
+    def __str__(self):
+        return f'{self.date} - {self.total_actions} actions, {self.unique_active_users} users'
+
+    @property
+    def d7_retention_rate(self):
+        """Calculate D7 retention rate as percentage."""
+        if self.d7_cohort_size > 0:
+            return (self.d7_retained / self.d7_cohort_size) * 100
+        return 0.0

@@ -7,14 +7,11 @@
  */
 
 import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import {
   MapPinIcon,
   CalendarIcon,
-  PencilSquareIcon,
   CheckIcon,
   XMarkIcon,
-  EyeIcon,
   PhotoIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -46,7 +43,6 @@ interface ProfileHeaderProps {
   onShowFollowers: () => void;
   onShowFollowing: () => void;
   isEditing?: boolean;
-  onEditToggle?: () => void;
   onExitEdit?: () => void;
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   currentTemplate?: ProfileTemplate;
@@ -80,7 +76,6 @@ export function ProfileHeader({
   onShowFollowers,
   onShowFollowing,
   isEditing,
-  onEditToggle,
   onExitEdit,
   saveStatus = 'idle',
   currentTemplate,
@@ -316,25 +311,7 @@ export function ProfileHeader({
                 </>
               )}
 
-              {/* Edit Button (not in edit mode) */}
-              {isOwnProfile && !isEditing && onEditToggle && (
-                <>
-                  <Link
-                    to={`/${user?.username}?preview=public`}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <EyeIcon className="w-4 h-4" />
-                    See Public Profile
-                  </Link>
-                  <button
-                    onClick={onEditToggle}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 border border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                  >
-                    <PencilSquareIcon className="w-4 h-4" />
-                    Edit Profile
-                  </button>
-                </>
-              )}
+              {/* Edit buttons moved to More menu in ProfilePage */}
 
               {/* Follow Button */}
               {!isOwnProfile && isAuthenticated && (

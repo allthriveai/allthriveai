@@ -47,6 +47,7 @@ import OnboardingPage from '@/pages/OnboardingPage';
 import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
+import AdminPromptChallengePromptsPage from '@/pages/admin/PromptChallengePromptsPage';
 import AdminImpersonatePage from '@/pages/admin/ImpersonatePage';
 import AdminCircleManagementPage from '@/pages/admin/CircleManagementPage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
@@ -271,6 +272,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminInvitationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/prompt-challenge-prompts"
+        element={
+          <ProtectedRoute>
+            <AdminPromptChallengePromptsPage />
           </ProtectedRoute>
         }
       />

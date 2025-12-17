@@ -40,18 +40,19 @@ export function Modal({
       document.body.style.right = '0';
 
       window.addEventListener('keydown', handleEscape);
-    }
 
-    return () => {
-      // Restore scroll position and body styles
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      window.scrollTo(0, scrollPositionRef.current);
-      window.removeEventListener('keydown', handleEscape);
-    };
+      // Cleanup only runs when modal was actually open
+      return () => {
+        // Restore scroll position and body styles
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        window.scrollTo(0, scrollPositionRef.current);
+        window.removeEventListener('keydown', handleEscape);
+      };
+    }
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;

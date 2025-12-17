@@ -141,3 +141,37 @@ def get_next_tier_xp(current_tier):
         'evergreen': None,  # Max tier
     }
     return tier_thresholds.get(current_tier)
+
+
+def format_completed_quests(user, completed_quest_ids: list) -> list[dict]:
+    """
+    Format completed quest IDs into API response data for frontend celebration.
+
+    Args:
+        user: The user who completed quests
+        completed_quest_ids: List of SideQuest IDs (strings)
+
+    Returns:
+        List of dicts with quest celebration data matching frontend CompletedQuestInfo type
+    """
+    if not completed_quest_ids:
+        return []
+
+    from .models import UserSideQuest
+
+    completed_user_quests = UserSideQuest.objects.filter(
+        user=user,
+        side_quest_id__in=completed_quest_ids,
+        is_completed=True,
+    ).select_related('side_quest', 'side_quest__category')
+
+    return [
+        {
+            'id': str(uq.side_quest.id),
+            'title': uq.side_quest.title,
+            'description': uq.side_quest.description or '',
+            'pointsAwarded': uq.points_awarded or uq.side_quest.points_reward,
+            'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
+        }
+        for uq in completed_user_quests
+    ]

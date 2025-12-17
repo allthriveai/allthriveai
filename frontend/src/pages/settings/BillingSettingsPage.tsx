@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { Modal } from '@/components/ui/Modal';
-import { BuyTokensModal } from '@/components/billing';
+import { BuyTokensModal, CreditPackCard } from '@/components/billing';
 import {
   getSubscriptionStatus,
   getTokenBalance,
@@ -10,8 +10,13 @@ import {
   cancelSubscription,
   reactivateSubscription,
   createPortalSession,
+  getCreditPacks,
+  getCreditPackStatus,
+  subscribeToCreditPack,
+  changeCreditPack,
+  cancelCreditPack,
 } from '@/services/billing';
-import type { SubscriptionStatus, TokenBalance, Invoice } from '@/services/billing';
+import type { SubscriptionStatus, TokenBalance, Invoice, CreditPack, CreditPackStatus } from '@/services/billing';
 import type { ApiError } from '@/types/api';
 
 // Status badge component
@@ -427,8 +432,11 @@ export default function BillingSettingsPage() {
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [tokenBalance, setTokenBalance] = useState<TokenBalance | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [creditPacks, setCreditPacks] = useState<CreditPack[]>([]);
+  const [creditPackStatus, setCreditPackStatus] = useState<CreditPackStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [creditPackLoading, setCreditPackLoading] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [buyTokensModalOpen, setBuyTokensModalOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -440,12 +448,16 @@ export default function BillingSettingsPage() {
     try {
       setLoading(true);
       setError(null);
-      const [statusData, balanceData] = await Promise.all([
+      const [statusData, balanceData, packsData, packStatusData] = await Promise.all([
         getSubscriptionStatus(),
         getTokenBalance(),
+        getCreditPacks(),
+        getCreditPackStatus(),
       ]);
       setSubscription(statusData);
       setTokenBalance(balanceData);
+      setCreditPacks(packsData);
+      setCreditPackStatus(packStatusData);
     } catch (err) {
       console.error('Failed to load billing data:', err);
       setError('Failed to load billing information. Please try again.');
@@ -528,6 +540,52 @@ export default function BillingSettingsPage() {
     await loadData();
   };
 
+  // Credit pack handlers
+  const handleSubscribeCreditPack = async (packId: number) => {
+    try {
+      setCreditPackLoading(true);
+      setError(null);
+      await subscribeToCreditPack(packId);
+      await loadData(); // Refresh data
+    } catch (err) {
+      const errorMessage = (err as ApiError)?.error || 'Failed to subscribe to credit pack. Please try again.';
+      console.error('Failed to subscribe to credit pack:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setCreditPackLoading(false);
+    }
+  };
+
+  const handleChangeCreditPack = async (packId: number) => {
+    try {
+      setCreditPackLoading(true);
+      setError(null);
+      await changeCreditPack(packId);
+      await loadData(); // Refresh data
+    } catch (err) {
+      const errorMessage = (err as ApiError)?.error || 'Failed to change credit pack. Please try again.';
+      console.error('Failed to change credit pack:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setCreditPackLoading(false);
+    }
+  };
+
+  const handleCancelCreditPack = async () => {
+    try {
+      setCreditPackLoading(true);
+      setError(null);
+      await cancelCreditPack();
+      await loadData(); // Refresh data
+    } catch (err) {
+      const errorMessage = (err as ApiError)?.error || 'Failed to cancel credit pack. Please try again.';
+      console.error('Failed to cancel credit pack:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setCreditPackLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <SettingsLayout>
@@ -566,6 +624,16 @@ export default function BillingSettingsPage() {
                   onReactivateClick={handleReactivateSubscription}
                   isReactivating={reactivateLoading}
                   isManagingPayment={portalLoading}
+                />
+
+                {/* Credit Pack Section */}
+                <CreditPackCard
+                  creditPacks={creditPacks}
+                  creditPackStatus={creditPackStatus}
+                  onSubscribe={handleSubscribeCreditPack}
+                  onChangePack={handleChangeCreditPack}
+                  onCancel={handleCancelCreditPack}
+                  isLoading={creditPackLoading}
                 />
 
                 <TokenBalanceCard balance={tokenBalance} onBuyTokens={handleBuyTokens} />

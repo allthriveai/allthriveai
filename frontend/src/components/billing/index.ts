@@ -8,3 +8,4 @@ export { SubscribeModal } from './SubscribeModal';
 export { SubscribeModalProvider } from './SubscribeModalProvider';
 export { StripePaymentForm } from './StripePaymentForm';
 export { BuyTokensModal } from './BuyTokensModal';
+export { CreditPackCard } from './CreditPackCard';

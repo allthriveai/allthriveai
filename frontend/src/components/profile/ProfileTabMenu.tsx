@@ -63,7 +63,12 @@ interface ProfileTabMenuProps {
   availableTabs: ProfileTabId[];
   isOwnProfile: boolean;
   isCreator?: boolean;
+  pinnedTabs?: ProfileTabId[]; // External pinned tabs state (controlled mode)
 }
+
+// Export tab metadata for use in external "More" menu
+export { ALL_TABS, ALWAYS_PINNED, MAX_PINNED };
+export { loadPinnedTabs, savePinnedTabs };
 
 // Get default pinned tabs based on context
 function getDefaultPinnedTabs(availableTabs: ProfileTabId[], isCreator: boolean): ProfileTabId[] {
@@ -113,9 +118,10 @@ export function ProfileTabMenu({
   availableTabs,
   isOwnProfile,
   isCreator = false,
+  pinnedTabs: externalPinnedTabs,
 }: ProfileTabMenuProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [pinnedTabs, setPinnedTabs] = useState<ProfileTabId[]>(() => {
+  const [internalPinnedTabs, setInternalPinnedTabs] = useState<ProfileTabId[]>(() => {
     const stored = loadPinnedTabs();
     // Always ensure showcase and playground are first (in that order) if available
     const alwaysPinned = ALWAYS_PINNED.filter((tab) => availableTabs.includes(tab));
@@ -131,6 +137,10 @@ export function ProfileTabMenu({
     }
     return getDefaultPinnedTabs(availableTabs, isCreator);
   });
+
+  // Use external pinned tabs if provided, otherwise use internal state
+  const pinnedTabs = externalPinnedTabs ?? internalPinnedTabs;
+  const setPinnedTabs = setInternalPinnedTabs;
 
   // Drag and drop state
   const [draggedTab, setDraggedTab] = useState<ProfileTabId | null>(null);
@@ -151,9 +161,9 @@ export function ProfileTabMenu({
   // Custom pinned tabs (excluding always-pinned tabs like showcase/playground)
   const customPinnedTabs = pinnedTabs.filter((id) => !ALWAYS_PINNED.includes(id));
 
-  // Should show the "+" menu?
-  // Show if user owns the profile AND (there are unpinned tabs OR there are more than 1 pinned tab to manage)
-  const showPlusMenu = isOwnProfile && (unpinnedTabs.length > 0 || pinnedTabs.length > 1);
+  // The "+" menu is now consolidated into the "More" menu in ProfilePage
+  // This component only renders the pinned tabs
+  const showPlusMenu = false;
 
   // Handle clicking outside to close dropdown
   useEffect(() => {

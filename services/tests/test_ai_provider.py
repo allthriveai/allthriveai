@@ -392,3 +392,203 @@ class OpenAIReasoningModelHandlingTestCase(TestCase):
             ai.complete('Test prompt', model='gpt-4-turbo', purpose='reasoning')
             call_args = mock_client_instance.chat.completions.create.call_args
             self.assertEqual(call_args.kwargs['model'], 'gpt-4-turbo')
+
+
+class TokenLimitTestCase(TestCase):
+    """Test cases for token limit safeguards."""
+
+    def test_estimate_token_count_empty(self):
+        """Test token estimation for empty string."""
+        from services.ai.provider import estimate_token_count
+
+        self.assertEqual(estimate_token_count(''), 0)
+        self.assertEqual(estimate_token_count(None), 0)
+
+    def test_estimate_token_count_short_text(self):
+        """Test token estimation for short text."""
+        from services.ai.provider import estimate_token_count
+
+        # "Hello" = 5 chars, should be ~2 tokens (5 // 3 = 1, max(1, 1) = 1)
+        self.assertGreaterEqual(estimate_token_count('Hello'), 1)
+        # Minimum is 1 token for non-empty text
+        self.assertEqual(estimate_token_count('Hi'), 1)
+
+    def test_estimate_token_count_longer_text(self):
+        """Test token estimation for longer text."""
+        from services.ai.provider import estimate_token_count
+
+        # 300 chars should be ~100 tokens (300 // 3 = 100)
+        text = 'a' * 300
+        self.assertEqual(estimate_token_count(text), 100)
+
+    def test_get_token_limits_defaults(self):
+        """Test get_token_limits returns defaults when settings not configured."""
+        from services.ai.provider import (
+            get_token_limits,
+        )
+
+        soft, hard, output = get_token_limits()
+        # Should return configured values or defaults
+        self.assertGreater(soft, 0)
+        self.assertGreater(hard, 0)
+        self.assertGreater(output, 0)
+        self.assertGreaterEqual(hard, soft)  # Hard limit should be >= soft limit
+
+    def test_get_token_limits_from_settings(self):
+        """Test get_token_limits respects settings."""
+        from services.ai.provider import get_token_limits
+
+        with patch.object(settings, 'AI_TOKEN_SOFT_LIMIT', 5000):
+            with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 20000):
+                with patch.object(settings, 'AI_OUTPUT_TOKEN_LIMIT', 2048):
+                    soft, hard, output = get_token_limits()
+                    self.assertEqual(soft, 5000)
+                    self.assertEqual(hard, 20000)
+                    self.assertEqual(output, 2048)
+
+    def test_check_token_limits_within_limits(self):
+        """Test check_token_limits passes for normal requests."""
+        from services.ai.provider import check_token_limits
+
+        with patch.object(settings, 'AI_TOKEN_SOFT_LIMIT', 8000):
+            with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 32000):
+                # Short prompt should pass
+                allowed, tokens = check_token_limits('Hello world')
+                self.assertTrue(allowed)
+                self.assertGreater(tokens, 0)
+
+    def test_check_token_limits_with_system_message(self):
+        """Test check_token_limits includes system message in count."""
+        from services.ai.provider import check_token_limits
+
+        with patch.object(settings, 'AI_TOKEN_SOFT_LIMIT', 8000):
+            with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 32000):
+                # Both prompt and system message should be counted
+                _, tokens_without_system = check_token_limits('Hello')
+                _, tokens_with_system = check_token_limits('Hello', system_message='You are helpful.')
+
+                self.assertGreater(tokens_with_system, tokens_without_system)
+
+    def test_check_token_limits_soft_limit_warns(self):
+        """Test check_token_limits warns but allows requests above soft limit."""
+        from services.ai.provider import check_token_limits
+
+        # Set soft limit very low, hard limit high
+        with patch.object(settings, 'AI_TOKEN_SOFT_LIMIT', 10):
+            with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 100000):
+                # 100 char text = ~33 tokens, above soft limit but below hard limit
+                text = 'a' * 100
+                with self.assertLogs('services.ai.provider', level='WARNING') as logs:
+                    allowed, tokens = check_token_limits(text)
+
+                self.assertTrue(allowed)  # Should still be allowed
+                self.assertTrue(any('approaching token limit' in log for log in logs.output))
+
+    def test_check_token_limits_hard_limit_raises(self):
+        """Test check_token_limits raises error for requests above hard limit."""
+        from services.ai.provider import TokenLimitExceededError, check_token_limits
+
+        # Set hard limit very low
+        with patch.object(settings, 'AI_TOKEN_SOFT_LIMIT', 5):
+            with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 10):
+                # 100 char text = ~33 tokens, above hard limit
+                text = 'a' * 100
+                with self.assertRaises(TokenLimitExceededError) as context:
+                    check_token_limits(text)
+
+                self.assertGreater(context.exception.estimated_tokens, 10)
+                self.assertEqual(context.exception.limit, 10)
+                self.assertIn('too large', context.exception.message)
+
+    def test_token_limit_exceeded_error_attributes(self):
+        """Test TokenLimitExceededError has correct attributes."""
+        from services.ai.provider import TokenLimitExceededError
+
+        error = TokenLimitExceededError(estimated_tokens=50000, limit=32000)
+        self.assertEqual(error.estimated_tokens, 50000)
+        self.assertEqual(error.limit, 32000)
+        # Default message includes the numbers
+        self.assertIn('50000', error.message)
+        self.assertIn('32000', error.message)
+
+    def test_token_limit_exceeded_error_custom_message(self):
+        """Test TokenLimitExceededError accepts custom message."""
+        from services.ai.provider import TokenLimitExceededError
+
+        error = TokenLimitExceededError(estimated_tokens=50000, limit=32000, message='Custom error message')
+        self.assertEqual(error.message, 'Custom error message')
+
+    @patch('openai.OpenAI')
+    def test_complete_checks_token_limits(self, mock_openai_client):
+        """Test that complete() method checks token limits before API call."""
+        from services.ai.provider import TokenLimitExceededError
+
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 10):
+                ai = AIProvider(provider='openai')
+
+                # Large prompt should be rejected before API call
+                large_prompt = 'a' * 100  # ~33 tokens
+                with self.assertRaises(TokenLimitExceededError):
+                    ai.complete(large_prompt)
+
+                # API should NOT have been called
+                mock_client_instance.chat.completions.create.assert_not_called()
+
+    @patch('openai.OpenAI')
+    def test_complete_allows_within_limits(self, mock_openai_client):
+        """Test that complete() allows requests within token limits."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = 'Test response'
+        mock_response.usage = Mock()
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+        mock_response.usage.total_tokens = 30
+
+        mock_client_instance = Mock()
+        mock_client_instance.chat.completions.create.return_value = mock_response
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            with patch.object(settings, 'AI_TOKEN_SOFT_LIMIT', 8000):
+                with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 32000):
+                    ai = AIProvider(provider='openai')
+                    response = ai.complete('Short prompt')
+
+                    self.assertEqual(response, 'Test response')
+                    # API should have been called
+                    mock_client_instance.chat.completions.create.assert_called_once()
+
+    @patch('openai.OpenAI')
+    def test_stream_complete_checks_token_limits(self, mock_openai_client):
+        """Test that stream_complete() method checks token limits before API call."""
+        from services.ai.provider import TokenLimitExceededError
+
+        mock_client_instance = Mock()
+        mock_openai_client.return_value = mock_client_instance
+
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-key'):
+            with patch.object(settings, 'AI_TOKEN_HARD_LIMIT', 10):
+                ai = AIProvider(provider='openai')
+
+                # Large prompt should be rejected before API call
+                large_prompt = 'a' * 100  # ~33 tokens
+                with self.assertRaises(TokenLimitExceededError):
+                    # Need to iterate the generator to trigger the check
+                    list(ai.stream_complete(large_prompt))
+
+                # API should NOT have been called
+                mock_client_instance.chat.completions.create.assert_not_called()

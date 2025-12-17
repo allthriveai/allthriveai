@@ -89,18 +89,13 @@ class InvitationStatus(models.TextChoices):
     EXPIRED = 'expired', 'Expired'
 
 
-class ChallengeType(models.Model):
-    """Database-driven challenge type configuration.
+class PromptChallengePrompt(models.Model):
+    """A curated prompt for prompt battles.
 
-    Allows adding new challenge types without code changes.
-    Each challenge type defines templates, variables, and judging criteria.
+    Simple, flat structure for easy admin management.
     """
 
-    key = models.CharField(
-        max_length=50, unique=True, help_text="Unique identifier (e.g., 'dreamscape', 'movie_poster')"
-    )
-    name = models.CharField(max_length=100, help_text='Display name for the challenge type')
-    description = models.TextField(help_text='Description of what this challenge type is about')
+    prompt_text = models.TextField(help_text='The full prompt text shown to battle participants')
 
     category = models.ForeignKey(
         'core.Taxonomy',
@@ -108,83 +103,36 @@ class ChallengeType(models.Model):
         null=True,
         blank=True,
         limit_choices_to={'taxonomy_type': 'category'},
-        related_name='challenge_types',
-        help_text='Category this challenge type belongs to',
+        related_name='prompt_challenges',
+        help_text='Category for organization (e.g., Dreamscape, Movie Poster)',
     )
 
-    # Challenge templates with variable placeholders
-    templates = models.JSONField(
-        default=list,
-        help_text='List of challenge templates with {variable} placeholders',
-    )
-
-    # Variables for template substitution
-    variables = models.JSONField(
-        default=dict,
-        help_text='Variable options for template substitution: {"style": ["surreal", "cosmic"]}',
-    )
-
-    # Judging criteria (weights should sum to 100)
-    judging_criteria = models.JSONField(
-        default=list,
-        help_text='List of criteria: [{"name": "creativity", "weight": 30, "description": "..."}]',
-    )
-
-    # AI judging prompt (optional - uses default if empty)
-    ai_judge_prompt = models.TextField(
-        blank=True,
-        help_text='Custom AI judging prompt (uses default if empty)',
-    )
-
-    # Configuration
-    default_duration_minutes = models.IntegerField(default=3, help_text='Default battle duration in minutes')
-    min_submission_length = models.IntegerField(default=10, help_text='Minimum prompt length in characters')
-    max_submission_length = models.IntegerField(default=2000, help_text='Maximum prompt length in characters')
-
-    # Points configuration
-    winner_points = models.IntegerField(default=50, help_text='Points awarded to winner')
-    participation_points = models.IntegerField(default=10, help_text='Points for participation')
-
-    # Status
-    is_active = models.BooleanField(default=True, help_text='Whether this challenge type is available')
     difficulty = models.CharField(
         max_length=20,
         choices=[('easy', 'Easy'), ('medium', 'Medium'), ('hard', 'Hard')],
         default='medium',
     )
 
-    # Ordering
-    order = models.IntegerField(default=0, help_text='Display order (lower = first)')
+    is_active = models.BooleanField(default=True, help_text='Whether this prompt is available for selection')
+
+    weight = models.FloatField(default=1.0, help_text='Selection weight (higher = more likely to be selected)')
+
+    times_used = models.IntegerField(default=0, help_text='How many times this prompt has been used in battles')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'core_challengetype'
-        ordering = ['order', 'name']
+        db_table = 'core_promptchallengeprompt'
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['is_active', 'order']),
-            models.Index(fields=['category', 'is_active']),
+            models.Index(fields=['is_active', 'category']),
+            models.Index(fields=['is_active', 'difficulty']),
+            models.Index(fields=['times_used']),
         ]
 
     def __str__(self):
-        return self.name
-
-    def generate_challenge(self) -> str:
-        """Generate a random challenge from templates and variables."""
-        import random
-
-        if not self.templates:
-            return self.description
-
-        template = random.choice(self.templates)  # noqa: S311 - game randomization
-
-        for var_name, var_options in self.variables.items():
-            placeholder = '{' + var_name + '}'
-            if placeholder in template and var_options:
-                template = template.replace(placeholder, random.choice(var_options))  # noqa: S311
-
-        return template
+        return self.prompt_text[:50] + ('...' if len(self.prompt_text) > 50 else '')
 
 
 class PromptBattle(models.Model):
@@ -272,14 +220,14 @@ class PromptBattle(models.Model):
     challenger_connected = models.BooleanField(default=False, help_text='Is challenger connected via WebSocket')
     opponent_connected = models.BooleanField(default=False, help_text='Is opponent connected via WebSocket')
 
-    # Link to challenge type configuration
-    challenge_type = models.ForeignKey(
-        ChallengeType,
+    # Link to curated prompt from the prompt library
+    prompt = models.ForeignKey(
+        PromptChallengePrompt,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='battles',
-        help_text='The challenge type configuration used for this battle',
+        help_text='The curated prompt used for this battle',
     )
 
     # Track which users have hidden this battle from their view
@@ -1142,14 +1090,6 @@ class BattleMatchmakingQueue(models.Model):
         choices=MatchType.choices,
         default=MatchType.RANDOM,
         help_text='Type of match requested',
-    )
-
-    challenge_type = models.ForeignKey(
-        ChallengeType,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        help_text='Preferred challenge type (null = any)',
     )
 
     queued_at = models.DateTimeField(auto_now_add=True, help_text='When user joined queue')

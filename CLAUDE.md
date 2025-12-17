@@ -57,7 +57,29 @@ make frontend        # Run frontend locally (or cd frontend && npm run dev -- --
 | `make recreate-pip` | Delete and recreate Pip with latest data |
 | `make seed-quizzes` | Seed initial quiz data |
 | `make seed-all` | Seed all initial data |
+| `make create-youtube-agent` | Create YouTube feed agent (see below) |
 | `make reset-db` | DANGER: Flush database and reseed |
+
+#### Creating YouTube Feed Agents
+Create automated agents that sync videos from YouTube channels:
+
+```bash
+# Basic usage (required params)
+make create-youtube-agent \
+  CHANNEL_URL="https://www.youtube.com/@ChannelName" \
+  SOURCE_NAME="Channel Name"
+
+# With optional social links and avatar
+make create-youtube-agent \
+  CHANNEL_URL="https://www.youtube.com/@AIDailyBrief" \
+  SOURCE_NAME="AI Daily Brief" \
+  AVATAR="https://example.com/avatar.jpg" \
+  WEBSITE="https://aidailybrief.com" \
+  TWITTER="https://twitter.com/aidailybrief" \
+  INSTAGRAM="https://instagram.com/aidailybrief"
+```
+
+Optional parameters: `AVATAR`, `WEBSITE`, `TWITTER`, `INSTAGRAM`, `LINKEDIN`, `GITHUB`
 
 ### Testing
 | Command | Description |

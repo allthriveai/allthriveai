@@ -18,10 +18,10 @@ from core.battles.models import (
     BattlePhase,
     BattleStatus,
     BattleSubmission,
-    ChallengeType,
     InvitationStatus,
     InvitationType,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from core.users.models import User
 
@@ -50,13 +50,11 @@ class PendingBattlesEndpointTestCase(TestCase):
             password='testpass123',
         )
 
-        # Create challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge for unit tests',
-            templates=['Test challenge: {style}'],
-            variables={'style': ['simple', 'complex']},
+        # Create curated prompt
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
+            is_active=True,
         )
 
         self.url = reverse('pending_battles')
@@ -88,7 +86,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=None,  # No opponent yet
             challenge_text='Pending invitation battle',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.PENDING,
             phase=BattlePhase.WAITING,
         )
@@ -120,7 +118,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Your turn battle',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             current_turn_user=self.user1,
@@ -143,7 +141,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Their turn battle',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             current_turn_user=self.user2,
@@ -173,7 +171,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Judging battle',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.JUDGING,
         )
@@ -194,7 +192,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Completed battle',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.COMPLETED,
             phase=BattlePhase.REVEAL,
             winner=self.user1,
@@ -216,7 +214,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Old completed battle',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.COMPLETED,
             phase=BattlePhase.REVEAL,
             winner=self.user1,
@@ -237,7 +235,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user2,
             opponent=self.user3,
             challenge_text='Other users battle',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
         )
@@ -258,7 +256,7 @@ class PendingBattlesEndpointTestCase(TestCase):
                 challenger=self.user1,
                 opponent=None,
                 challenge_text=f'Pending invitation {i}',
-                challenge_type=self.challenge_type,
+                prompt=self.prompt,
                 status=BattleStatus.PENDING,
                 phase=BattlePhase.WAITING,
             )
@@ -269,7 +267,7 @@ class PendingBattlesEndpointTestCase(TestCase):
                 challenger=self.user1,
                 opponent=self.user2,
                 challenge_text=f'Your turn {i}',
-                challenge_type=self.challenge_type,
+                prompt=self.prompt,
                 status=BattleStatus.ACTIVE,
                 phase=BattlePhase.ACTIVE,
                 current_turn_user=self.user1,
@@ -280,7 +278,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Their turn',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             current_turn_user=self.user2,
@@ -296,7 +294,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Judging',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.JUDGING,
         )
@@ -318,7 +316,7 @@ class PendingBattlesEndpointTestCase(TestCase):
             challenger=self.user1,
             opponent=self.user2,
             challenge_text='Battle with opponent info',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             current_turn_user=self.user1,
@@ -333,15 +331,15 @@ class PendingBattlesEndpointTestCase(TestCase):
         self.assertIn('opponent', battle_data)
         self.assertEqual(battle_data['opponent']['username'], 'testuser2')
 
-    def test_response_includes_challenge_type_info(self):
-        """Test that battle response includes challenge type information."""
+    def test_response_includes_category_info(self):
+        """Test that battle response includes category information when available."""
         self.client.force_authenticate(user=self.user1)
 
         battle = PromptBattle.objects.create(
             challenger=self.user1,
             opponent=self.user2,
-            challenge_text='Battle with challenge type',
-            challenge_type=self.challenge_type,
+            challenge_text='Battle with category',
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             current_turn_user=self.user1,
@@ -351,6 +349,7 @@ class PendingBattlesEndpointTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         battle_data = response.data['your_turn'][0]
-        self.assertIn('challenge_type', battle_data)
-        self.assertEqual(battle_data['challenge_type']['key'], 'test_challenge')
-        self.assertEqual(battle_data['challenge_type']['name'], 'Test Challenge')
+        # Category is only present if the prompt has a category
+        # Since our test prompt doesn't have a category, it should be None
+        self.assertIn('category', battle_data)
+        self.assertIsNone(battle_data['category'])

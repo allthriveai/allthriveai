@@ -229,6 +229,25 @@ class User(AbstractUser):
         help_text='Unique token for guest user session authentication',
     )
 
+    # Onboarding tracking
+    ONBOARDING_PATH_CHOICES = [
+        ('battle_pip', 'Prompt Battle'),
+        ('add_project', 'Add Your First Project'),
+        ('explore', 'Explore'),
+    ]
+    onboarding_path = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=ONBOARDING_PATH_CHOICES,
+        db_index=True,
+        help_text='Path selected during onboarding (Prompt Battle, Add Project, or Explore)',
+    )
+    onboarding_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the user completed onboarding by selecting a path',
+    )
+
     class Meta:
         ordering = ['-date_joined']
         indexes = [

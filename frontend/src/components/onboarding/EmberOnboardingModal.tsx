@@ -13,6 +13,8 @@ import { XMarkIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDragon, faGamepad, faRocket, faCompass } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
+import { analytics } from '@/utils/analytics';
+import { api } from '@/services/api';
 
 interface Adventure {
   id: 'battle_pip' | 'add_project' | 'explore';
@@ -115,6 +117,14 @@ export function EmberOnboardingModal({
   const handleSelectAdventure = (adventure: Adventure) => {
     setSelectedAdventure(adventure.id);
     onSelectAdventure(adventure.id);
+
+    // Track which onboarding path the user selected (PostHog)
+    analytics.onboardingPathSelected(adventure.id, adventure.title);
+
+    // Track in backend database for admin analytics
+    api.post('/me/onboarding-path/', { path_id: adventure.id }).catch((err) => {
+      console.error('Failed to track onboarding path:', err);
+    });
 
     setTimeout(() => {
       onClose();

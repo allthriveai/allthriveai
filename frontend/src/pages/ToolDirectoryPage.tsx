@@ -6,12 +6,19 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { getTools, getToolCategories, getToolCompanies, prefetchTool } from '@/services/tools';
 import { ToolSearchBar, type ToolFilters } from '@/components/tools/ToolSearchBar';
 import { ToolRequestTray } from '@/components/tools/ToolRequestTray';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 import type { Tool } from '@/types/models';
 import { SparklesIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 
 function ToolDirectoryPageContent() {
+  // Quest tracking for page visit
+  const { trackPage } = useQuestTracking();
+  useEffect(() => {
+    trackPage('/tools', 'Tools');
+  }, [trackPage]);
+
   const [tools, setTools] = useState<Tool[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<ToolFilters>({});

@@ -13,58 +13,48 @@ from .models import (
     BattleMatchmakingQueue,
     BattleSubmission,
     BattleVote,
-    ChallengeType,
     PromptBattle,
+    PromptChallengePrompt,
 )
 
 
-@admin.register(ChallengeType)
-class ChallengeTypeAdmin(admin.ModelAdmin):
-    """Admin for challenge types."""
+@admin.register(PromptChallengePrompt)
+class PromptChallengePromptAdmin(admin.ModelAdmin):
+    """Admin for curated prompt challenges."""
 
     list_display = [
-        'name',
-        'key',
-        'is_active',
+        'prompt_preview',
+        'category',
         'difficulty',
-        'default_duration_minutes',
-        'winner_points',
+        'is_active',
+        'weight',
+        'times_used',
         'created_at',
     ]
-    list_filter = ['is_active', 'difficulty']
-    search_fields = ['name', 'key', 'description']
+    list_filter = ['is_active', 'difficulty', 'category']
+    search_fields = ['prompt_text']
     ordering = ['-created_at']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['times_used', 'created_at', 'updated_at']
+    list_editable = ['is_active', 'weight']
 
     fieldsets = (
-        (None, {'fields': ('name', 'key', 'description', 'is_active')}),
+        (None, {'fields': ('prompt_text', 'category', 'is_active')}),
+        ('Configuration', {'fields': ('difficulty', 'weight')}),
         (
-            'Configuration',
+            'Stats',
             {
-                'fields': (
-                    'difficulty',
-                    'default_duration_minutes',
-                    'min_submission_length',
-                    'max_submission_length',
-                )
-            },
-        ),
-        ('Points', {'fields': ('winner_points', 'participation_points')}),
-        (
-            'Templates',
-            {
-                'fields': ('templates', 'variables', 'judging_criteria'),
-                'classes': ('collapse',),
-            },
-        ),
-        (
-            'Timestamps',
-            {
-                'fields': ('created_at', 'updated_at'),
+                'fields': ('times_used', 'created_at', 'updated_at'),
                 'classes': ('collapse',),
             },
         ),
     )
+
+    @admin.display(description='Prompt')
+    def prompt_preview(self, obj):
+        """Show truncated prompt text."""
+        if obj.prompt_text:
+            return obj.prompt_text[:80] + '...' if len(obj.prompt_text) > 80 else obj.prompt_text
+        return '-'
 
 
 class BattleSubmissionInline(admin.TabularInline):
@@ -124,10 +114,10 @@ class PromptBattleAdmin(admin.ModelAdmin):
         'status',
         'phase',
         'winner',
-        'challenge_type',
+        'prompt',
         'created_at',
     ]
-    list_filter = ['status', 'phase', 'match_source', 'challenge_type']
+    list_filter = ['status', 'phase', 'match_source']
     search_fields = [
         'challenger__username',
         'opponent__username',
@@ -140,7 +130,7 @@ class PromptBattleAdmin(admin.ModelAdmin):
         'completed_at',
         'expires_at',
     ]
-    raw_id_fields = ['challenger', 'opponent', 'winner', 'challenge_type']
+    raw_id_fields = ['challenger', 'opponent', 'winner', 'prompt']
     inlines = [BattleSubmissionInline]
 
     fieldsets = (
@@ -150,7 +140,7 @@ class PromptBattleAdmin(admin.ModelAdmin):
                 'fields': (
                     'challenger',
                     'opponent',
-                    'challenge_type',
+                    'prompt',
                     'challenge_text',
                 )
             },
@@ -311,16 +301,15 @@ class BattleMatchmakingQueueAdmin(admin.ModelAdmin):
     list_display = [
         'user',
         'match_type',
-        'challenge_type',
         'queued_at',
         'expires_at',
         'is_expired_display',
     ]
-    list_filter = ['match_type', 'challenge_type']
+    list_filter = ['match_type']
     search_fields = ['user__username']
     ordering = ['queued_at']
     readonly_fields = ['queued_at']
-    raw_id_fields = ['user', 'challenge_type']
+    raw_id_fields = ['user']
 
     actions = ['clear_expired']
 

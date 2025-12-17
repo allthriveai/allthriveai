@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from django.conf import settings
+from django.db import models as db_models
 from django.utils import timezone
 
 from core.ai_usage.tracker import AIUsageTracker
@@ -23,9 +24,9 @@ from core.battles.models import (
     BattleStatus,
     BattleSubmission,
     BattleVote,
-    ChallengeType,
     MatchSource,
     PromptBattle,
+    PromptChallengePrompt,
     VoteSource,
 )
 from core.battles.utils import wrap_user_prompt_for_ai
@@ -58,7 +59,7 @@ class BattleService:
         self,
         challenger: User,
         opponent: User,
-        challenge_type: ChallengeType | None = None,
+        prompt: PromptChallengePrompt | None = None,
         match_source: str = MatchSource.DIRECT,
     ) -> PromptBattle:
         """
@@ -67,19 +68,18 @@ class BattleService:
         Args:
             challenger: User initiating the battle
             opponent: User being challenged
-            challenge_type: Optional challenge type (random if not specified)
+            prompt: Optional curated prompt (random weighted selection if not specified)
             match_source: How the match was created
 
         Returns:
             Created PromptBattle instance
         """
-        if not challenge_type:
-            challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
+        if not prompt:
+            # Weighted random selection from active prompts
+            prompt = self._select_weighted_random_prompt()
 
-        if not challenge_type:
-            raise ValueError('No active challenge types available')
-
-        challenge_text = challenge_type.generate_challenge()
+        if not prompt:
+            raise ValueError('No active prompts available')
 
         # Get the default image generation tool (Nano Banana)
         default_tool = Tool.objects.filter(slug='nano-banana').first()
@@ -87,14 +87,17 @@ class BattleService:
         battle = PromptBattle.objects.create(
             challenger=challenger,
             opponent=opponent,
-            challenge_text=challenge_text,
-            challenge_type=challenge_type,
+            challenge_text=prompt.prompt_text,
+            prompt=prompt,
             match_source=match_source,
-            duration_minutes=challenge_type.default_duration_minutes,
+            duration_minutes=3,  # Default duration
             status=BattleStatus.PENDING,
             phase=BattlePhase.WAITING,
             tool=default_tool,
         )
+
+        # Increment usage counter for the prompt
+        PromptChallengePrompt.objects.filter(id=prompt.id).update(times_used=db_models.F('times_used') + 1)
 
         logger.info(
             f'Battle created: {battle.id}',
@@ -102,11 +105,40 @@ class BattleService:
                 'battle_id': battle.id,
                 'challenger_id': challenger.id,
                 'opponent_id': opponent.id,
-                'challenge_type': challenge_type.key,
+                'prompt_id': prompt.id,
             },
         )
 
         return battle
+
+    def _select_weighted_random_prompt(self) -> PromptChallengePrompt | None:
+        """Select a random prompt using weighted selection.
+
+        Prompts with higher weight values are more likely to be selected.
+        """
+        import random
+
+        prompts = list(PromptChallengePrompt.objects.filter(is_active=True).values('id', 'weight'))
+
+        if not prompts:
+            return None
+
+        # Weighted random selection
+        total_weight = sum(p['weight'] for p in prompts)
+        if total_weight <= 0:
+            # Fallback to uniform random if all weights are 0
+            selected = random.choice(prompts)  # noqa: S311
+        else:
+            r = random.uniform(0, total_weight)  # noqa: S311
+            cumulative = 0
+            selected = prompts[0]
+            for p in prompts:
+                cumulative += p['weight']
+                if r <= cumulative:
+                    selected = p
+                    break
+
+        return PromptChallengePrompt.objects.get(id=selected['id'])
 
     def refresh_challenge(self, battle: PromptBattle, user: User) -> str | None:
         """
@@ -161,28 +193,30 @@ class BattleService:
             logger.warning(f'Refresh attempted on battle {battle.id} in phase {battle.phase}')
             return None
 
-        # Pick a new random challenge type (different from current if possible)
-        new_challenge_type = (
-            ChallengeType.objects.filter(is_active=True)
-            .exclude(id=battle.challenge_type_id if battle.challenge_type else None)
+        # Pick a new random prompt (different from current if possible)
+        new_prompt = (
+            PromptChallengePrompt.objects.filter(is_active=True)
+            .exclude(id=battle.prompt_id if battle.prompt else None)
             .order_by('?')
             .first()
         )
-        # Fall back to any active challenge type if exclusion left none
-        if not new_challenge_type:
-            new_challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
+        # Fall back to any active prompt if exclusion left none
+        if not new_prompt:
+            new_prompt = PromptChallengePrompt.objects.filter(is_active=True).order_by('?').first()
 
-        if not new_challenge_type:
+        if not new_prompt:
             return None
 
-        new_challenge = new_challenge_type.generate_challenge()
-        battle.challenge_type = new_challenge_type
+        battle.prompt = new_prompt
 
-        # Update battle with new challenge, challenge type, and reset timer
-        battle.challenge_text = new_challenge
+        # Increment usage counter for the new prompt
+        PromptChallengePrompt.objects.filter(id=new_prompt.id).update(times_used=db_models.F('times_used') + 1)
+
+        # Update battle with new challenge and reset timer
+        battle.challenge_text = new_prompt.prompt_text
         battle.started_at = timezone.now()
         battle.expires_at = battle.started_at + timezone.timedelta(minutes=battle.duration_minutes)
-        battle.save(update_fields=['challenge_text', 'challenge_type', 'started_at', 'expires_at'])
+        battle.save(update_fields=['challenge_text', 'prompt', 'started_at', 'expires_at'])
 
         logger.info(
             f'Challenge refreshed for battle {battle.id}, timer reset to {battle.duration_minutes} minutes',
@@ -193,13 +227,13 @@ class BattleService:
         # Pip starts when the user begins typing (first keystroke).
         # This allows users to refresh the challenge without wasting tokens.
 
-        return new_challenge
+        return battle.challenge_text
 
     def get_battle(self, battle_id: int) -> PromptBattle | None:
         """Get a battle by ID with related data prefetched."""
         try:
             return (
-                PromptBattle.objects.select_related('challenger', 'opponent', 'challenge_type', 'winner')
+                PromptBattle.objects.select_related('challenger', 'opponent', 'prompt', 'winner')
                 .prefetch_related('submissions')
                 .get(id=battle_id)
             )
@@ -437,12 +471,8 @@ Focus on visual impact and artistic interpretation."""
             },
         ]
 
-        # Use challenge type criteria if available and non-empty, otherwise use defaults
-        criteria = (
-            battle.challenge_type.judging_criteria
-            if battle.challenge_type and battle.challenge_type.judging_criteria
-            else default_criteria
-        )
+        # Use default judging criteria (ChallengeType was removed in favor of PromptChallengePrompt)
+        criteria = default_criteria
 
         logger.debug(f'Using judging criteria for battle {battle.id}: {criteria}')
 
@@ -703,13 +733,9 @@ Return ONLY the JSON, no other text.
         battle.completed_at = timezone.now()
         battle.save(update_fields=['phase', 'phase_changed_at', 'status', 'completed_at'])
 
-        # Award points
+        # Award points (fixed values after ChallengeType removal)
         winner_points = 50
         participation_points = 10
-
-        if battle.challenge_type:
-            winner_points = battle.challenge_type.winner_points
-            participation_points = battle.challenge_type.participation_points
 
         for submission in battle.submissions.all():
             is_winner = submission.user_id == battle.winner_id
@@ -841,11 +867,12 @@ Return ONLY the JSON, no other text.
                     'feedback': opponent_submission.evaluation_feedback,
                 }
 
-            # Add challenge type info
-            if battle.challenge_type:
-                battle_result['challenge_type'] = {
-                    'key': battle.challenge_type.key,
-                    'name': battle.challenge_type.name,
+            # Add prompt category info if available
+            if battle.prompt and battle.prompt.category:
+                battle_result['category'] = {
+                    'id': battle.prompt.category.id,
+                    'name': battle.prompt.category.name,
+                    'slug': battle.prompt.category.slug,
                 }
 
             # Truncate challenge text for title
@@ -855,8 +882,8 @@ Return ONLY the JSON, no other text.
 
             # Generate tags
             tags = ['AI Image Generation', 'Prompt Battle']
-            if battle.challenge_type:
-                tags.append(battle.challenge_type.name)
+            if battle.prompt and battle.prompt.category:
+                tags.append(battle.prompt.category.name)
             if won:
                 tags.append('Winner')
             elif is_tie:

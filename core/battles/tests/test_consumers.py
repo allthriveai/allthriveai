@@ -18,8 +18,8 @@ from core.battles.models import (
     BattleMode,
     BattlePhase,
     BattleStatus,
-    ChallengeType,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from core.users.models import User
 
@@ -45,11 +45,9 @@ class BattleConsumerConnectionTestCase(TransactionTestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_ws',
-            name='Test WS Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -57,7 +55,7 @@ class BattleConsumerConnectionTestCase(TransactionTestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             duration_minutes=10,
@@ -138,11 +136,9 @@ class BattleConsumerSubmissionTestCase(TransactionTestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_sub',
-            name='Test Sub Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -150,7 +146,7 @@ class BattleConsumerSubmissionTestCase(TransactionTestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             duration_minutes=10,
@@ -215,11 +211,9 @@ class BattleConsumerAsyncTurnTestCase(TransactionTestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_async_ws',
-            name='Test Async WS Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test async challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -228,7 +222,7 @@ class BattleConsumerAsyncTurnTestCase(TransactionTestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test async challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.CHALLENGER_TURN,
             battle_mode=BattleMode.ASYNC,
@@ -309,11 +303,9 @@ class BattleConsumerTypingIndicatorTestCase(TransactionTestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_typing',
-            name='Test Typing Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -321,7 +313,7 @@ class BattleConsumerTypingIndicatorTestCase(TransactionTestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             duration_minutes=10,
@@ -384,11 +376,9 @@ class BattleConsumerPingTestCase(TransactionTestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_ping',
-            name='Test Ping Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -396,7 +386,7 @@ class BattleConsumerPingTestCase(TransactionTestCase):
             challenger=self.user,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             duration_minutes=10,

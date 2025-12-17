@@ -62,6 +62,37 @@ class Command(BaseCommand):
             ),
             help='Attribution text displayed on video projects',
         )
+        parser.add_argument(
+            '--avatar',
+            type=str,
+            default='/youtube-icon.svg',
+            help='Avatar URL for the agent user (default: /youtube-icon.svg)',
+        )
+        parser.add_argument(
+            '--website',
+            type=str,
+            help='Website URL for the agent',
+        )
+        parser.add_argument(
+            '--twitter',
+            type=str,
+            help='Twitter/X URL for the agent',
+        )
+        parser.add_argument(
+            '--instagram',
+            type=str,
+            help='Instagram URL for the agent',
+        )
+        parser.add_argument(
+            '--linkedin',
+            type=str,
+            help='LinkedIn URL for the agent',
+        )
+        parser.add_argument(
+            '--github',
+            type=str,
+            help='GitHub URL for the agent',
+        )
 
     def handle(self, *args, **options):
         channel_url = options.get('channel_url')
@@ -70,6 +101,12 @@ class Command(BaseCommand):
         run_sync = options['sync']
         max_videos = options['max_videos']
         attribution = options['attribution']
+        avatar_url = options['avatar']
+        website_url = options.get('website')
+        twitter_url = options.get('twitter')
+        instagram_url = options.get('instagram')
+        linkedin_url = options.get('linkedin')
+        github_url = options.get('github')
 
         if not channel_url and not channel_id:
             self.stdout.write(self.style.ERROR('Either --channel-url or --channel-id is required'))
@@ -137,7 +174,13 @@ class Command(BaseCommand):
                         role=UserRole.AGENT,
                         tier='curation',  # Curation tier hides points/achievements on profile
                         bio=f'Automated curation agent for {source_name} YouTube channel. {attribution}',
-                        avatar_url='/youtube-icon.svg',
+                        avatar_url=avatar_url,
+                        youtube_url=channel_url,  # Always set the YouTube channel URL
+                        website_url=website_url,
+                        twitter_url=twitter_url,
+                        instagram_url=instagram_url,
+                        linkedin_url=linkedin_url,
+                        github_url=github_url,
                         is_active=True,
                     )
                     # Agents don't need passwords

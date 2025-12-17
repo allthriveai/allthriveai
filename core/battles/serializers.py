@@ -9,7 +9,6 @@ from .models import (
     BattleInvitation,
     BattleSubmission,
     BattleType,
-    ChallengeType,
     MatchSource,
     PromptBattle,
 )
@@ -79,13 +78,12 @@ class BattleSubmissionSerializer(serializers.ModelSerializer):
         return value
 
 
-class ChallengeTypeSerializer(serializers.ModelSerializer):
-    """Serializer for challenge type."""
+class CategorySerializer(serializers.Serializer):
+    """Serializer for prompt category."""
 
-    class Meta:
-        model = ChallengeType
-        fields = ['key', 'name', 'description']
-        read_only_fields = ['key', 'name', 'description']
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    slug = serializers.CharField(read_only=True)
 
 
 class PromptBattleSerializer(serializers.ModelSerializer):
@@ -95,7 +93,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     opponent_data = BattleUserSerializer(source='opponent', read_only=True)
     winner_data = BattleUserSerializer(source='winner', read_only=True)
     submissions = BattleSubmissionSerializer(many=True, read_only=True)
-    challenge_type = ChallengeTypeSerializer(read_only=True)
+    category = serializers.SerializerMethodField()
     tool_data = BattleToolSerializer(source='tool', read_only=True)
 
     time_remaining = serializers.SerializerMethodField()
@@ -114,7 +112,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'opponent',
             'opponent_data',
             'challenge_text',
-            'challenge_type',
+            'category',
             'tool',
             'tool_data',
             'status',
@@ -140,7 +138,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'challenger_data',
             'opponent_data',
             'winner_data',
-            'challenge_type',
+            'category',
             'tool_data',
             'match_source',
             'created_at',
@@ -152,6 +150,12 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'time_remaining',
             'is_expired',
         ]
+
+    def get_category(self, obj):
+        """Get category from the prompt."""
+        if obj.prompt and obj.prompt.category:
+            return CategorySerializer(obj.prompt.category).data
+        return None
 
     def get_time_remaining(self, obj):
         """Get time remaining in seconds."""

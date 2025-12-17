@@ -372,3 +372,24 @@ export async function trackPageVisit(pagePath: string, pageName?: string): Promi
   });
   return response.data as TrackPageVisitResponse;
 }
+
+export interface TrackProfileViewResponse {
+  tracked: boolean;
+  completedQuests: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    pointsAwarded: number;
+    categoryName: string | null;
+  }>;
+}
+
+/**
+ * Track viewing another user's profile for quest progress
+ */
+export async function trackProfileView(username: string): Promise<TrackProfileViewResponse> {
+  const response = await api.post('/me/side-quests/track-profile-view/', {
+    username,
+  });
+  return response.data as TrackProfileViewResponse;
+}

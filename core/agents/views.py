@@ -405,18 +405,52 @@ class CreateProjectFromImageView(APIView):
 
             logger.info(f'Created project {project.id} from image session {session_id}')
 
-            return Response(
+            # Track quest completion for both image generation and project creation
+            from core.thrive_circle.quest_tracker import track_quest_action
+            from core.thrive_circle.signals import _mark_as_tracked
+            from core.thrive_circle.utils import format_completed_quests
+
+            completed_ids = []
+
+            # Track image generation quest (mark as tracked to prevent double from signal)
+            _mark_as_tracked('image_generated', request.user.id, str(session.id))
+            iteration_count = getattr(session, 'iteration_count', None) or len(iterations)
+            image_ids = track_quest_action(
+                request.user,
+                'image_generated',
                 {
-                    'success': True,
-                    'project': {
-                        'id': project.id,
-                        'slug': project.slug,
-                        'title': project.title,
-                        'url': f'/{project.user.username}/{project.slug}',
-                    },
+                    'session_id': session.id,
+                    'iteration_count': iteration_count,
                 },
-                status=status.HTTP_201_CREATED,
             )
+            completed_ids.extend(image_ids)
+
+            # Track project creation quest (mark as tracked to prevent double from signal)
+            _mark_as_tracked('project_created', request.user.id, str(project.id))
+            project_ids = track_quest_action(
+                request.user,
+                'project_created',
+                {
+                    'project_id': project.id,
+                    'project_type': project.type,
+                },
+            )
+            completed_ids.extend(project_ids)
+
+            response_data = {
+                'success': True,
+                'project': {
+                    'id': project.id,
+                    'slug': project.slug,
+                    'title': project.title,
+                    'url': f'/{project.user.username}/{project.slug}',
+                },
+            }
+
+            if completed_ids:
+                response_data['completed_quests'] = format_completed_quests(request.user, completed_ids)
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f'Failed to create project from image session: {e}', exc_info=True)

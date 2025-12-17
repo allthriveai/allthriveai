@@ -253,6 +253,13 @@ export const analytics = {
     track('onboarding_completed');
   },
 
+  onboardingPathSelected: (pathId: string, pathTitle: string) => {
+    track('onboarding_path_selected', {
+      path_id: pathId,
+      path_title: pathTitle,
+    });
+  },
+
   // ============================================================================
   // Feature Discovery
   // ============================================================================

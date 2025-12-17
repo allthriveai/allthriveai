@@ -17,7 +17,6 @@ from rest_framework.throttling import UserRateThrottle
 from core.logging_utils import StructuredLogger
 from core.projects.comment_serializers import CommentCreateSerializer, ProjectCommentSerializer
 from core.projects.models import CommentVote, Project, ProjectComment
-from core.thrive_circle.models import UserSideQuest
 
 logger = logging.getLogger(__name__)
 
@@ -196,31 +195,32 @@ class ProjectCommentViewSet(viewsets.ModelViewSet):
                 logger_instance=logger,
             )
 
-            # Check for completed quests (completed within last 5 seconds)
-            from django.utils import timezone as tz
-
-            recent_completed_quests = UserSideQuest.objects.filter(
-                user=request.user,
-                status='completed',
-                completed_at__gte=tz.now() - tz.timedelta(seconds=5),
-            ).select_related('side_quest', 'side_quest__category')
-
-            completed_quests_data = [
-                {
-                    'id': str(uq.side_quest.id),
-                    'title': uq.side_quest.title,
-                    'description': uq.side_quest.description,
-                    'pointsAwarded': uq.points_awarded or uq.side_quest.points_reward,
-                    'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
-                }
-                for uq in recent_completed_quests
-            ]
-
             # Return full comment data with completed quests
             output_serializer = ProjectCommentSerializer(comment, context={'request': request})
             response_data = output_serializer.data
-            if completed_quests_data:
-                response_data['completedQuests'] = completed_quests_data
+
+            # Track quest completion only for comments on OTHER users' projects
+            if project.user != request.user:
+                from core.thrive_circle.quest_tracker import track_quest_action
+                from core.thrive_circle.signals import _mark_as_tracked
+                from core.thrive_circle.utils import format_completed_quests
+
+                # Mark as tracked to prevent double-tracking from signal
+                _mark_as_tracked('comment_created', request.user.id, str(comment.id))
+
+                # Explicitly track the action and get completed quest IDs
+                completed_ids = track_quest_action(
+                    request.user,
+                    'comment_created',
+                    {
+                        'project_id': project.id,
+                        'comment_id': comment.id,
+                    },
+                )
+
+                if completed_ids:
+                    response_data['completed_quests'] = format_completed_quests(request.user, completed_ids)
+
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as error:
