@@ -133,6 +133,61 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+  # EFS File System for Weaviate persistent storage
+  WeaviateEFSFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      Encrypted: true
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-weaviate-efs
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # EFS Mount Target in Private Subnet 1
+  WeaviateEFSMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref WeaviateEFSFileSystem
+      SubnetId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-PrivateSubnet1Id
+      SecurityGroups:
+        - !ImportValue
+          Fn::Sub: ${EnvironmentName}-EFSSecurityGroupId
+
+  # EFS Mount Target in Private Subnet 2
+  WeaviateEFSMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref WeaviateEFSFileSystem
+      SubnetId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-PrivateSubnet2Id
+      SecurityGroups:
+        - !ImportValue
+          Fn::Sub: ${EnvironmentName}-EFSSecurityGroupId
+
+  # EFS Access Point for Weaviate
+  WeaviateEFSAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref WeaviateEFSFileSystem
+      PosixUser:
+        Uid: '0'
+        Gid: '0'
+      RootDirectory:
+        Path: /weaviate-data
+        CreationInfo:
+          OwnerUid: '0'
+          OwnerGid: '0'
+          Permissions: '755'
+      AccessPointTags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-weaviate-ap
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
   # Web Task Definition (Django + Daphne)
   WebTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -703,6 +758,9 @@ Resources:
   # Weaviate Task Definition
   WeaviateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
+    DependsOn:
+      - WeaviateEFSMountTarget1
+      - WeaviateEFSMountTarget2
     Properties:
       Family: !Sub ${EnvironmentName}-allthrive-weaviate
       NetworkMode: awsvpc
@@ -714,6 +772,15 @@ Resources:
         Fn::Sub: ${EnvironmentName}-ECSTaskExecutionRoleArn
       TaskRoleArn: !ImportValue
         Fn::Sub: ${EnvironmentName}-ECSWeaviateTaskRoleArn
+      Volumes:
+        - Name: weaviate-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref WeaviateEFSFileSystem
+            RootDirectory: /
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref WeaviateEFSAccessPoint
+              IAM: ENABLED
       ContainerDefinitions:
         - Name: weaviate
           Image: cr.weaviate.io/semitechnologies/weaviate:1.27.0
@@ -723,6 +790,10 @@ Resources:
               Protocol: tcp
             - ContainerPort: 50051
               Protocol: tcp
+          MountPoints:
+            - SourceVolume: weaviate-data
+              ContainerPath: /var/lib/weaviate
+              ReadOnly: false
           Environment:
             - Name: QUERY_DEFAULTS_LIMIT
               Value: '25'
@@ -1136,3 +1207,15 @@ Outputs:
     Value: !Ref ServiceDiscoveryNamespace
     Export:
       Name: !Sub ${EnvironmentName}-ServiceDiscoveryNamespaceId
+
+  WeaviateEFSFileSystemId:
+    Description: Weaviate EFS File System ID
+    Value: !Ref WeaviateEFSFileSystem
+    Export:
+      Name: !Sub ${EnvironmentName}-WeaviateEFSFileSystemId
+
+  WeaviateEFSAccessPointId:
+    Description: Weaviate EFS Access Point ID
+    Value: !Ref WeaviateEFSAccessPoint
+    Export:
+      Name: !Sub ${EnvironmentName}-WeaviateEFSAccessPointId

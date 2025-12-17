@@ -142,6 +142,30 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+  # EFS Security Group (for Weaviate persistent storage)
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-allthrive-efs-sg
+      GroupDescription: Security group for EFS (Weaviate persistent storage)
+      VpcId: !ImportValue
+        Fn::Sub: ${EnvironmentName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref WeaviateSecurityGroup
+          Description: NFS from Weaviate tasks
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-allthrive-efs-sg
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
   # VPC Endpoints Security Group (for private access to AWS services)
   VPCEndpointsSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -211,3 +235,9 @@ Outputs:
     Value: !Ref VPCEndpointsSecurityGroup
     Export:
       Name: !Sub ${EnvironmentName}-VPCEndpointsSecurityGroupId
+
+  EFSSecurityGroupId:
+    Description: EFS Security Group ID
+    Value: !Ref EFSSecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-EFSSecurityGroupId
