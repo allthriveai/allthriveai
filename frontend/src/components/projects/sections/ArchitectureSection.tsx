@@ -2,12 +2,15 @@
  * ArchitectureSection - System architecture diagram with Mermaid
  *
  * Supports inline editing when isEditing=true for owners.
+ * Includes a regenerate button for project owners to update the diagram via AI chat.
  */
 
 import { useCallback } from 'react';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import type { ArchitectureSectionContent } from '@/types/sections';
 import { MermaidDiagram } from '../shared/MermaidDiagram';
 import { InlineEditableTitle, InlineEditableText } from '../shared/InlineEditable';
+import { useProjectContext } from '@/context/ProjectContext';
 
 interface ArchitectureSectionProps {
   content: ArchitectureSectionContent;
@@ -17,6 +20,28 @@ interface ArchitectureSectionProps {
 
 export function ArchitectureSection({ content, isEditing, onUpdate }: ArchitectureSectionProps) {
   const { diagram, description, title } = content;
+
+  // Get project context for ownership check and regenerate functionality
+  // This hook must be called unconditionally - use optional chaining for safety
+  const projectContext = useProjectContext();
+
+  const isOwner = projectContext?.isOwner ?? false;
+  const project = projectContext?.project;
+
+  // Handle regenerate button click - opens chat with architecture context
+  const handleRegenerateClick = useCallback(() => {
+    if (!project) return;
+
+    // Dispatch custom event to open chat with architecture regeneration context
+    const event = new CustomEvent('openArchitectureRegenerate', {
+      detail: {
+        projectId: project.id,
+        projectTitle: project.title,
+        projectSlug: project.slug,
+      },
+    });
+    window.dispatchEvent(event);
+  }, [project]);
 
   const handleTitleChange = useCallback(
     async (newTitle: string) => {
@@ -69,6 +94,16 @@ export function ArchitectureSection({ content, isEditing, onUpdate }: Architectu
           </h2>
         )}
         <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+        {/* Regenerate Button - shown to owners when not editing */}
+        {isOwner && !isEditing && (
+          <button
+            onClick={handleRegenerateClick}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all group"
+            title="Regenerate architecture diagram with AI"
+          >
+            <ArrowPathIcon className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
+          </button>
+        )}
       </div>
 
       {/* Diagram Container */}

@@ -33,6 +33,7 @@ TOOLS_NEEDING_STATE = {
     'import_github_project',
     'import_video_project',
     'scrape_webpage_for_project',
+    'regenerate_architecture_diagram',  # Regenerate architecture diagrams
 }
 TOOLS_BY_NAME = {tool.name: tool for tool in PROJECT_TOOLS}
 

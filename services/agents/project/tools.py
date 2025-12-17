@@ -1549,6 +1549,193 @@ def import_from_url(
     return result
 
 
+# =============================================================================
+# Architecture Diagram Regeneration Tool
+# =============================================================================
+@tool(args_schema=RegenerateArchitectureDiagramInput)
+def regenerate_architecture_diagram(
+    project_id: int,
+    architecture_description: str,
+    state: dict | None = None,
+) -> dict:
+    """
+    Regenerate the architecture diagram for a project based on user's description.
+
+    Use this tool when the user wants to fix or regenerate their project's architecture
+    diagram. The user will describe their system architecture in plain English, and
+    this tool will generate a new Mermaid diagram and update the project.
+
+    IMPORTANT: Only the project owner can regenerate their diagram.
+
+    Example user descriptions:
+    - "Frontend connects to API, API connects to database and Redis cache"
+    - "User uploads images to S3, Lambda processes them, results stored in DynamoDB"
+    - "React frontend, Django backend with PostgreSQL and Celery workers"
+
+    Returns:
+        Dictionary with success status, the new diagram code, and project URL
+    """
+    import uuid
+
+    from django.contrib.auth import get_user_model
+
+    from core.projects.models import Project
+    from services.ai.provider import AIProvider
+
+    User = get_user_model()
+
+    # Validate state / user context
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # Get the project
+    try:
+        project = Project.objects.get(id=project_id)
+    except Project.DoesNotExist:
+        return {'success': False, 'error': 'Project not found'}
+
+    # Verify ownership
+    if project.user_id != user_id:
+        return {'success': False, 'error': 'You can only regenerate diagrams for your own projects'}
+
+    logger.info(f'Regenerating architecture diagram for project {project_id} by user {user.username}')
+
+    # Build prompt for AI to generate Mermaid diagram from description
+    prompt = f"""Generate a Mermaid architecture diagram based on this description.
+
+Project: {project.title}
+User's Description: {architecture_description}
+
+IMPORTANT SYNTAX RULES:
+1. Start with EXACTLY "graph TB" (top-to-bottom)
+2. Use simple node IDs (A, B, C, D) without special characters
+3. Use square brackets for labels: A[Label Text]
+4. NO line breaks inside labels
+5. Use --> for arrows
+6. Keep it simple: 3-8 nodes maximum
+7. Group related components logically
+
+CORRECT Example:
+graph TB
+    A[User Interface] --> B[API Gateway]
+    B --> C[Application Server]
+    C --> D[Database]
+    C --> E[Cache]
+
+INCORRECT (DO NOT DO THIS):
+- graph TB A[Multi
+  Line Label]  ❌ NO line breaks in labels
+- graph TB node-1[Test] ❌ NO hyphens in node IDs
+- A[Label] -> B[Label] ❌ Use --> not ->
+
+Return ONLY the Mermaid code starting with "graph TB". No explanation."""
+
+    try:
+        ai = AIProvider()
+        diagram_code = ai.complete(
+            prompt=prompt,
+            model=None,
+            temperature=0.7,
+            max_tokens=500,
+        )
+
+        # Clean up response (remove markdown fences if present)
+        diagram_code = diagram_code.strip()
+        if diagram_code.startswith('```mermaid'):
+            diagram_code = diagram_code.replace('```mermaid', '').replace('```', '').strip()
+        elif diagram_code.startswith('```'):
+            diagram_code = diagram_code.replace('```', '').strip()
+
+        # Sanitize and validate using BaseParser methods
+        from core.integrations.base.parser import BaseParser
+
+        diagram_code = BaseParser._sanitize_mermaid_diagram(diagram_code)
+        is_valid, error_msg = BaseParser._validate_mermaid_syntax(diagram_code)
+
+        if not is_valid:
+            logger.warning(f'Generated invalid diagram: {error_msg}')
+            # Try once more with higher temperature
+            diagram_code = ai.complete(
+                prompt=prompt + '\n\nPrevious attempt was invalid. Please try again with simpler syntax.',
+                model=None,
+                temperature=0.9,
+                max_tokens=500,
+            )
+            diagram_code = diagram_code.strip()
+            if diagram_code.startswith('```mermaid'):
+                diagram_code = diagram_code.replace('```mermaid', '').replace('```', '').strip()
+            elif diagram_code.startswith('```'):
+                diagram_code = diagram_code.replace('```', '').strip()
+            diagram_code = BaseParser._sanitize_mermaid_diagram(diagram_code)
+            is_valid, error_msg = BaseParser._validate_mermaid_syntax(diagram_code)
+
+            if not is_valid:
+                return {
+                    'success': False,
+                    'error': 'Could not generate a valid diagram. Please try describing your architecture differently.',
+                }
+
+        # Update the project's architecture section
+        content = project.content or {}
+        sections = content.get('sections', [])
+
+        # Find and update the architecture section, or create one if it doesn't exist
+        architecture_section_found = False
+        for section in sections:
+            if section.get('type') == 'architecture':
+                section['content'] = section.get('content', {})
+                section['content']['diagram'] = diagram_code
+                section['content']['description'] = architecture_description
+                section['enabled'] = True
+                architecture_section_found = True
+                break
+
+        if not architecture_section_found:
+            # Create a new architecture section
+            new_section = {
+                'id': str(uuid.uuid4()),
+                'type': 'architecture',
+                'enabled': True,
+                'order': len(sections),
+                'content': {
+                    'title': 'System Architecture',
+                    'diagram': diagram_code,
+                    'description': architecture_description,
+                },
+            }
+            sections.append(new_section)
+
+        content['sections'] = sections
+        project.content = content
+        project.save(update_fields=['content', 'updated_at'])
+
+        logger.info(f'Successfully regenerated architecture diagram for project {project_id}')
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'url': f'/{user.username}/{project.slug}',
+            'diagram': diagram_code,
+            'message': (
+                f"I've updated your architecture diagram! Here's what I generated:\n\n"
+                f'```mermaid\n{diagram_code}\n```\n\n'
+                f'You can view it on your project page: [{project.title}](/{user.username}/{project.slug})'
+            ),
+        }
+
+    except Exception as e:
+        logger.exception(f'Error regenerating architecture diagram: {e}')
+        return {'success': False, 'error': f'Failed to regenerate diagram: {str(e)}'}
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
@@ -1560,4 +1747,5 @@ PROJECT_TOOLS = [
     import_video_project,
     scrape_webpage_for_project,  # Keep for backwards compatibility
     create_product,
+    regenerate_architecture_diagram,  # Regenerate architecture diagrams from user descriptions
 ]
