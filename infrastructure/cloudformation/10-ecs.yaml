@@ -246,7 +246,7 @@ Resources:
             - Name: ADMIN_EMAIL
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
-              Value: 'allie@allthrive.ai,imnet4all@gmail.com'
+              Value: 'allie@allthrive.ai,imnet@allthrive.ai'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
           Secrets:
@@ -447,7 +447,7 @@ Resources:
             - Name: ADMIN_EMAIL
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
-              Value: 'allie@allthrive.ai,imnet4all@gmail.com'
+              Value: 'allie@allthrive.ai,imnet@allthrive.ai'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
             - Name: FRONTEND_URL
@@ -615,7 +615,7 @@ Resources:
             - Name: ADMIN_EMAIL
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
-              Value: 'allie@allthrive.ai,imnet4all@gmail.com'
+              Value: 'allie@allthrive.ai,imnet@allthrive.ai'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
             - Name: FRONTEND_URL
