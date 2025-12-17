@@ -41,7 +41,7 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
     { label: 'Explore', path: '/explore', section: menuSections[0] },
     { label: 'Play', section: menuSections[1] },
     { label: 'Learn', section: menuSections[2] },
-    { label: 'Membership', section: menuSections[3] },
+    { label: 'Community', section: menuSections[3] },
     { label: 'Support', section: menuSections[4] },
   ];
 
