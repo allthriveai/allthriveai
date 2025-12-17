@@ -243,14 +243,18 @@ test.describe('AI URL Import Tests', () => {
 ## 6. IMAGE GENERATION (NANO BANANA)
 
 ### 6.1 Image Generation Workflow
-| Test | Description | Priority |
-|------|-------------|----------|
-| Create image from prompt | Click "Create Image" > Describe > Image generated | High |
-| Generated image displays in chat | Generate image > Image visible in chat | High |
-| "Use as Featured Image" option | Generate > Click option > Image saved | Medium |
-| "Create Project from Image" option | Generate > Click option > Project creation starts | Medium |
-| Regenerate with modifications | Request changes > New image generated | Medium |
-| Multiple iterations supported | Generate 3 variations > All work | Low |
+| Test | Description | Priority | Status |
+|------|-------------|----------|--------|
+| Create image from prompt | Click "Create Image" > Describe > Image generated | High | ✅ DONE |
+| Generated image displays in chat | Generate image > Image visible in chat | High | ✅ DONE |
+| Detailed prompt handling | Complex description > Image generated | High | ✅ DONE |
+| Vague request handling | "Make something cool" > Handled gracefully | Medium | ✅ DONE |
+| Non-image request routing | Ask question > No image generated | High | ✅ DONE |
+| Sequential image requests | Multiple requests > All handled | Medium | ✅ DONE |
+| "Use as Featured Image" option | Generate > Click option > Image saved | Medium | - |
+| "Create Project from Image" option | Generate > Click option > Project creation starts | Medium | - |
+| Regenerate with modifications | Request changes > New image generated | Medium | - |
+| Multiple iterations supported | Generate 3 variations > All work | Low | - |
 
 ---
 
@@ -398,19 +402,23 @@ test.describe('AI URL Import Tests', () => {
 ## 12. SECURITY TESTS
 
 ### 12.1 Prompt Injection Prevention
-| Test | Description | Priority |
-|------|-------------|----------|
-| "Ignore previous instructions" blocked | Send injection > Blocked/handled safely | Critical |
-| "You are now..." injection blocked | Send injection > Normal response | Critical |
-| System prompt extraction blocked | Try to extract > Refused | High |
-| Jailbreak attempts handled | DAN, sudo mode > Refused | High |
+| Test | Description | Priority | Status |
+|------|-------------|----------|--------|
+| "Ignore previous instructions" blocked | Send injection > Blocked/handled safely | Critical | ✅ DONE |
+| "You are now..." injection blocked | Send injection > Normal response | Critical | ✅ DONE |
+| System prompt extraction blocked | Try to extract > Refused | High | ✅ DONE |
+| System prompt via code block tricks | Try code block trick > Refused | High | ✅ DONE |
+| Jailbreak attempts handled | DAN, sudo mode > Refused | High | ✅ DONE |
+| Developer mode jailbreak blocked | Request dev mode > Refused | High | ✅ DONE |
 
 ### 12.2 Input Validation
-| Test | Description | Priority |
-|------|-------------|----------|
-| XSS in message prevented | Send `<script>` > Not executed | Critical |
-| HTML sanitized in display | Send HTML > Sanitized | Critical |
-| Special characters escaped | Send special chars > Displayed safely | High |
+| Test | Description | Priority | Status |
+|------|-------------|----------|--------|
+| XSS in message prevented | Send `<script>` > Not executed | Critical | ✅ DONE |
+| IMG onerror XSS prevented | Send `<img onerror>` > Not executed | Critical | ✅ DONE |
+| Event handler XSS prevented | Send `<div onmouseover>` > Not executed | Critical | ✅ DONE |
+| HTML sanitized in display | Send HTML > Sanitized | Critical | ✅ DONE |
+| Special characters escaped | Send special chars > Displayed safely | High | - |
 
 ### 12.3 File Security
 | Test | Description | Priority |
@@ -538,14 +546,14 @@ test.describe('AI URL Import Tests', () => {
 - [x] Multi-agent routing - Nano Banana (image generation)
 - [x] Multi-agent routing - Support agent (help questions)
 - [x] Multi-agent routing - Workflow continuation (response stays with asking agent)
+- [x] Prompt injection prevention tests (6 tests)
+- [x] XSS prevention tests (3 tests)
+- [x] Image generation workflow tests (6 tests)
 
 ### High Priority - To Implement
-- [ ] Prompt injection prevention tests
-- [ ] XSS prevention tests
 - [ ] Rate limiting behavior tests
 - [ ] Full user journey tests
 - [ ] Figma/GitLab integration tests
-- [ ] Image generation workflow tests
 - [ ] Document upload tests
 - [ ] Authorization tests
 
