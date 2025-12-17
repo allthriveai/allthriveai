@@ -61,7 +61,7 @@ export function WhatIsAllThrive() {
           </h2>
 
           <p className="text-xl sm:text-2xl text-gray-400 leading-relaxed max-w-3xl mx-auto">
-            Want to share and get feedback on your latest AI creation or ready to move beyond the basics? All Thrive gives you a place to share, learn, and grow alongside other creators.
+            Want to share and get feedback on your latest AI creation? Ready to move beyond the basics? All Thrive gives you a place to share, learn, and grow alongside other creators.
           </p>
         </motion.div>
       </div>
