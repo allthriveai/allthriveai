@@ -425,7 +425,7 @@ class WeaviateClient:
         query: str,
         vector: list[float] | None = None,
         alpha: float = 0.7,
-        limit: int = 20,
+        limit: int = 1000,
         filters: dict | None = None,
         return_properties: list[str] | None = None,
         enforce_visibility: bool = True,

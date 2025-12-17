@@ -90,7 +90,7 @@ export async function semanticSearch(query: string, filters?: SemanticSearchFilt
     meta: any;
   }>('/search/semantic/', {
     query,
-    filters
+    filters,
   });
   // Extract projects array from the nested results
   return response.data.results?.projects || [];

@@ -1376,7 +1376,7 @@ def semantic_search(request):
     valid_types = {'projects', 'tools', 'quizzes', 'users'}
     types_to_search = [t for t in requested_types if t in valid_types]
 
-    limit = min(int(request.data.get('limit', 10)), 50)
+    limit = int(request.data.get('limit', 1000))  # High default to return all relevant results
     alpha = float(request.data.get('alpha', 0.7))
 
     results = {
