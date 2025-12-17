@@ -530,7 +530,7 @@ prize_pool: decimal
 ### Performance Indexes
 
 **Browse/explore pages**:
-- Project: `(is_published, -published_at)`
+- Project: `(is_private, -created_at)`
 - Project: `(is_showcase, is_archived, -created_at)`
 - PointActivity: `(user, -created_at)`
 

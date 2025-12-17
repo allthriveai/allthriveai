@@ -80,8 +80,9 @@ export function EmberOnboardingProvider({ children }: EmberOnboardingProviderPro
     markModalSeen();
   }, [markModalSeen]);
 
-  // Determine if banner should show (either in progress or celebration)
-  const showBanner = shouldShowBanner || (allAdventuresComplete && !isDismissed);
+  // Determine if banner should show
+  // Once all 4 adventures are complete, banner never shows again (no celebration mode)
+  const showBanner = shouldShowBanner && !allAdventuresComplete;
 
   const contextValue: EmberOnboardingContextValue = {
     isLoaded,

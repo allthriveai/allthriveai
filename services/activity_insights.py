@@ -157,15 +157,32 @@ class ActivityInsightsService:
 
     def get_topic_interests(self):
         """
-        Aggregate topic interests from quizzes and projects.
+        Aggregate topic interests from all user engagement:
+        - Quizzes completed
+        - Projects created (non-clipped)
+        - Projects clipped/saved (type='clipped')
+        - Projects liked
+        - Prompt battles participated in
         Returns topics sorted by engagement level.
         """
-        from core.projects.models import Project
+        from django.db.models import Q
+
+        from core.battles.models import PromptBattle
+        from core.projects.models import Project, ProjectLike
         from core.quizzes.models import QuizAttempt
 
-        topic_scores = defaultdict(lambda: {'quiz_count': 0, 'project_count': 0, 'points': 0})
+        topic_scores = defaultdict(
+            lambda: {
+                'quiz_count': 0,
+                'project_count': 0,
+                'clipped_count': 0,
+                'liked_count': 0,
+                'battle_count': 0,
+                'points': 0,
+            }
+        )
 
-        # Get quiz topics
+        # 1. Quiz topics - highest weight (active learning)
         quiz_attempts = QuizAttempt.objects.filter(
             user=self.user,
             completed_at__isnull=False,
@@ -178,28 +195,76 @@ class ActivityInsightsService:
                 # Weight by score
                 topic_scores[topic]['points'] += attempt.percentage_score
 
-        # Get project topics
+        # 2. User's own created projects (non-clipped)
         user_projects = Project.objects.filter(
             user=self.user,
             is_archived=False,
-        )
+        ).exclude(type='clipped')
 
         for project in user_projects:
-            # Use topics from project
             for topic in project.topics or []:
                 topic_scores[topic]['project_count'] += 1
-                topic_scores[topic]['points'] += 10  # Base points for having a project
+                topic_scores[topic]['points'] += 10
 
-        # Calculate engagement scores
+        # 3. Clipped/saved projects - shows interest in learning
+        clipped_projects = Project.objects.filter(
+            user=self.user,
+            type='clipped',
+            is_archived=False,
+        )
+
+        for project in clipped_projects:
+            for topic in project.topics or []:
+                topic_scores[topic]['clipped_count'] += 1
+                topic_scores[topic]['points'] += 8  # Strong interest signal
+
+        # 4. Liked projects - shows appreciation/interest
+        liked_projects = ProjectLike.objects.filter(
+            user=self.user,
+        ).select_related('project')
+
+        for like in liked_projects:
+            if like.project:
+                for topic in like.project.topics or []:
+                    topic_scores[topic]['liked_count'] += 1
+                    topic_scores[topic]['points'] += 3  # Lighter engagement signal
+
+        # 5. Prompt battles participated in - count the tool's category if available
+        battles = PromptBattle.objects.filter(
+            Q(challenger=self.user) | Q(opponent=self.user),
+            status='completed',
+        ).select_related('tool')
+
+        for battle in battles:
+            # Count the tool's category as a topic if available
+            if battle.tool and battle.tool.category:
+                topic_scores[battle.tool.category]['battle_count'] += 1
+                topic_scores[battle.tool.category]['points'] += 15  # Active participation
+
+        # Calculate engagement scores with weighted factors
         result = []
         for topic, data in topic_scores.items():
-            engagement_score = data['quiz_count'] * 5 + data['project_count'] * 10 + data['points'] / 10
+            # Weighted scoring:
+            # - Quizzes: 5 points (active learning)
+            # - Own projects: 10 points (creation)
+            # - Clipped: 8 points (strong interest)
+            # - Liked: 3 points (casual interest)
+            # - Battles: 15 points (active participation)
+            # - Plus accumulated points / 10
+            engagement_score = (
+                data['quiz_count'] * 5
+                + data['project_count'] * 10
+                + data['clipped_count'] * 8
+                + data['liked_count'] * 3
+                + data['battle_count'] * 15
+                + data['points'] / 10
+            )
             result.append(
                 {
                     'topic': topic,
                     'topic_display': self._format_topic_display(topic),
                     'quiz_count': data['quiz_count'],
-                    'project_count': data['project_count'],
+                    'project_count': data['project_count'] + data['clipped_count'] + data['liked_count'],
                     'engagement_score': round(engagement_score, 1),
                 }
             )

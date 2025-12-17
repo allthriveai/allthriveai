@@ -44,6 +44,13 @@ from .battles.views import (
     BattleInvitationViewSet,
     PromptBattleViewSet,
     accept_invitation_by_token,
+    admin_prompt_bulk_delete,
+    admin_prompt_bulk_update,
+    admin_prompt_categories,
+    admin_prompt_create,
+    admin_prompt_detail,
+    admin_prompt_list,
+    admin_prompt_stats,
     battle_leaderboard,
     battle_stats,
     expire_battles,
@@ -147,6 +154,7 @@ from .users.views import (
     reset_profile_sections,
     toggle_follow,
     toggle_project_in_showcase,
+    track_onboarding_path,
     update_profile_sections,
 )
 from .views import ai_analytics_views, csp_report, db_health
@@ -213,6 +221,33 @@ urlpatterns = [
         'admin/analytics/guest-battles/',
         admin_analytics_views.dashboard_guest_battles,
         name='admin_dashboard_guest_battles',
+    ),
+    # Engagement analytics endpoints
+    path(
+        'admin/analytics/engagement/overview/',
+        admin_analytics_views.dashboard_engagement_overview,
+        name='admin_dashboard_engagement_overview',
+    ),
+    path(
+        'admin/analytics/engagement/heatmap/',
+        admin_analytics_views.dashboard_engagement_heatmap,
+        name='admin_dashboard_engagement_heatmap',
+    ),
+    path(
+        'admin/analytics/engagement/features/',
+        admin_analytics_views.dashboard_engagement_features,
+        name='admin_dashboard_engagement_features',
+    ),
+    path(
+        'admin/analytics/engagement/retention/',
+        admin_analytics_views.dashboard_engagement_retention,
+        name='admin_dashboard_engagement_retention',
+    ),
+    # Onboarding analytics
+    path(
+        'admin/analytics/onboarding/',
+        admin_analytics_views.dashboard_onboarding_stats,
+        name='admin_dashboard_onboarding_stats',
     ),
     # Admin Invitation Management endpoints (admin-only)
     path('admin/invitations/', list_invitations, name='admin_list_invitations'),
@@ -323,6 +358,7 @@ urlpatterns = [
     path('me/personalization/export/', export_personalization_data, name='export_personalization_data'),
     path('me/personalization/delete/', delete_personalization_data, name='delete_personalization_data'),
     path('me/onboarding-progress/', onboarding_progress, name='onboarding_progress'),
+    path('me/onboarding-path/', track_onboarding_path, name='track_onboarding_path'),
     path('me/interactions/', track_interaction, name='track_interaction'),
     path('me/account/deactivate/', deactivate_account, name='deactivate_account'),
     path('me/account/delete/', delete_account, name='delete_account'),
@@ -422,6 +458,18 @@ urlpatterns = [
     # Bulk battle management endpoints
     path('battles/bulk-delete/', PromptBattleViewSet.as_view({'post': 'bulk_delete'}), name='battles_bulk_delete'),
     path('battles/my-history/', PromptBattleViewSet.as_view({'get': 'my_history'}), name='battles_my_history'),
+    # Admin - Prompt Challenge Prompts Management
+    path('battles/admin/prompt-challenge-prompts/', admin_prompt_list, name='admin_prompt_list'),
+    path('battles/admin/prompt-challenge-prompts/create/', admin_prompt_create, name='admin_prompt_create'),
+    path('battles/admin/prompt-challenge-prompts/stats/', admin_prompt_stats, name='admin_prompt_stats'),
+    path('battles/admin/prompt-challenge-prompts/categories/', admin_prompt_categories, name='admin_prompt_categories'),
+    path(
+        'battles/admin/prompt-challenge-prompts/bulk-update/', admin_prompt_bulk_update, name='admin_prompt_bulk_update'
+    ),
+    path(
+        'battles/admin/prompt-challenge-prompts/bulk-delete/', admin_prompt_bulk_delete, name='admin_prompt_bulk_delete'
+    ),
+    path('battles/admin/prompt-challenge-prompts/<int:pk>/', admin_prompt_detail, name='admin_prompt_detail'),
     # Weekly challenges endpoints
     path('', include('core.challenges.urls')),
     # Email notification endpoints

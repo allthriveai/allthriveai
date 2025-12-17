@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { logError } from '@/utils/errorHandler';
 import {
@@ -61,6 +62,12 @@ const PRIZE_COLORS: Record<string, string> = {
 export default function ChallengePage() {
   const { slug } = useParams<{ slug?: string }>();
   const { isAuthenticated } = useAuth();
+
+  // Quest tracking for page visit
+  const { trackPage } = useQuestTracking();
+  useEffect(() => {
+    trackPage('/challenges', 'Challenges');
+  }, [trackPage]);
 
   // State
   const [challenge, setChallenge] = useState<WeeklyChallenge | null>(null);

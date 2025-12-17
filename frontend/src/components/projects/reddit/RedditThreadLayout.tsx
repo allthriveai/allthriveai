@@ -302,7 +302,7 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-primary-900">
       {/* Navigation Bar with Glassmorphism */}
-      <div className="sticky top-0 z-50 backdrop-blur-xl bg-gray-900/70 border-b border-white/10">
+      <div className="sticky top-0 z-30 backdrop-blur-xl bg-gray-900/70 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

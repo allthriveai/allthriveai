@@ -945,3 +945,70 @@ def toggle_project_in_showcase(request):
             'projectIds': project_ids,
         }
     )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def track_onboarding_path(request):
+    """Track which onboarding path the user selected.
+
+    POST body:
+    {
+        "path_id": "battle_pip" | "add_project" | "explore"
+    }
+
+    Only records the first selection (won't overwrite existing).
+    """
+    from django.utils import timezone
+
+    path_id = request.data.get('path_id')
+    valid_paths = ['battle_pip', 'add_project', 'explore']
+
+    if not path_id:
+        return Response(
+            {'error': 'path_id is required'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if path_id not in valid_paths:
+        return Response(
+            {'error': f'Invalid path_id. Must be one of: {", ".join(valid_paths)}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = request.user
+
+    # Only record if not already set (first selection only)
+    if not user.onboarding_path:
+        user.onboarding_path = path_id
+        user.onboarding_completed_at = timezone.now()
+        user.save(update_fields=['onboarding_path', 'onboarding_completed_at'])
+
+        StructuredLogger.log_service_operation(
+            service_name='Onboarding',
+            operation='path_selected',
+            success=True,
+            metadata={
+                'user_id': user.id,
+                'path_id': path_id,
+            },
+            logger_instance=logger,
+        )
+
+        return Response(
+            {
+                'success': True,
+                'path_id': path_id,
+                'message': 'Onboarding path recorded',
+            }
+        )
+
+    # Already recorded - return success but indicate it was already set
+    return Response(
+        {
+            'success': True,
+            'path_id': user.onboarding_path,
+            'message': 'Onboarding path was already recorded',
+            'already_set': True,
+        }
+    )

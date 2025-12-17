@@ -37,14 +37,24 @@ class TopicDefinition(models.Model):
 class Taxonomy(models.Model):
     """Unified taxonomy for the system.
 
-    Taxonomy supports two types:
-    - 'tool'     -> represents a Tool entry (1:1 with core.tools.Tool)
-    - 'category' -> represents a predefined category for filtering projects
+    Taxonomy supports multiple types:
+    - 'tool'     -> represents a Tool entry (1:1 with core.tools.Tool) - structured
+    - 'category' -> represents a predefined category for filtering projects - structured
+    - 'topic'    -> free-flowing topics that AI/quizzes/curation agents can add dynamically
+    - 'goal'     -> user goals (e.g., "Learn New Skills", "Start a Business")
+    - 'industry' -> industry verticals (e.g., "Healthcare", "Finance")
+    - 'interest' -> user interests (e.g., "AI & Machine Learning", "Design")
+    - 'skill'    -> technical skills (e.g., "Python", "React")
     """
 
     class TaxonomyType(models.TextChoices):
         TOOL = 'tool', 'Tool'
         CATEGORY = 'category', 'Category'
+        TOPIC = 'topic', 'Topic'
+        GOAL = 'goal', 'Goal'
+        INDUSTRY = 'industry', 'Industry'
+        INTEREST = 'interest', 'Interest'
+        SKILL = 'skill', 'Skill'
 
     taxonomy_type = models.CharField(
         max_length=10, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True

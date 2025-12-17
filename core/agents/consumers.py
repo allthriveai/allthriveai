@@ -76,9 +76,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # For project-{id} conversations, verify the user owns the project
         # Note: Frontend uses Date.now() for temp conversation IDs (13+ digits)
         # Actual project IDs are much smaller (typically < 1 billion)
+        # Supports patterns: project-{id} and project-{id}-{context} (e.g., project-123-architecture)
         if self.conversation_id.startswith('project-'):
             try:
-                project_id = int(self.conversation_id.replace('project-', ''))
+                # Extract project ID from conversation ID
+                # Handles: project-123, project-123-architecture, etc.
+                parts = self.conversation_id.replace('project-', '').split('-')
+                project_id = int(parts[0])
                 # Only check authorization for reasonable project IDs
                 # Date.now() produces 13-digit numbers (> 1 trillion), skip those
                 if project_id < 1_000_000_000:  # Less than 1 billion = real project ID

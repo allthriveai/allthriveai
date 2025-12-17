@@ -11,12 +11,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.taxonomy.models import UserInteraction
-from core.thrive_circle.models import UserSideQuest
 from core.thrive_circle.signals import track_search_used
 from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, PublicProjectsThrottle
 from core.users.models import User
 
-from .constants import MIN_RESPONSE_TIME_SECONDS, PROMOTION_DURATION_DAYS
+from .constants import MIN_RESPONSE_TIME_SECONDS
 from .models import Project, ProjectLike
 from .serializers import ProjectCardSerializer, ProjectSerializer
 
@@ -56,7 +55,6 @@ def build_paginated_response(
     page_size: int,
     tab: str,
     metadata_key: str = 'personalization',
-    promoted_projects: list | None = None,
 ) -> dict:
     """Build a standard paginated response for explore endpoint.
 
@@ -67,7 +65,6 @@ def build_paginated_response(
         page_size: Items per page
         tab: Tab name for URL building (e.g., 'for-you', 'trending')
         metadata_key: Key name for metadata in response (default: 'personalization')
-        promoted_projects: Optional list of promoted projects to prepend on page 1
 
     Uses ProjectCardSerializer (lightweight) instead of ProjectSerializer
     to reduce payload size by ~90% (excludes heavy content field).
@@ -75,16 +72,8 @@ def build_paginated_response(
     serializer = ProjectCardSerializer(projects, many=True)
     results = serializer.data
 
-    # Prepend promoted projects on page 1
-    if page_num == 1 and promoted_projects:
-        promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
-        results = promoted_serializer.data + results
-
     # Handle different metadata count keys
     total_count = metadata.get('total_candidates', metadata.get('total_trending', len(projects)))
-    # Add promoted count to total
-    if promoted_projects:
-        total_count += len(promoted_projects)
     next_url, previous_url = build_pagination_urls(tab, page_num, page_size, total_count)
 
     return {
@@ -131,13 +120,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
             queryset.select_related('user').prefetch_related('tools', 'likes', 'reddit_thread').order_by('-created_at')
         )
 
-    def perform_create(self, serializer):
-        # Bind project to the authenticated user and let the model handle slug
-        # generation / uniqueness on save.
-        project = serializer.save(user=self.request.user)
+    def create(self, request, *args, **kwargs):
+        """Create a new project and return completedQuests if any quests were completed."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Bind project to the authenticated user
+        project = serializer.save(user=request.user)
 
         # Auto-assign category if project doesn't have one
-        # This runs in-band for immediate feedback (categories are important for display)
         if not project.categories.exists():
             try:
                 from core.taxonomy.services import auto_assign_category_to_project
@@ -150,7 +141,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 logger.warning(f'Failed to auto-assign category to project {project.id}: {e}')
 
         # Invalidate user projects cache
-        self._invalidate_user_cache(self.request.user)
+        self._invalidate_user_cache(request.user)
+
+        # Track quest progress and get completed quests
+        from core.thrive_circle.quest_tracker import track_quest_action
+        from core.thrive_circle.signals import _mark_as_tracked
+        from core.thrive_circle.utils import format_completed_quests
+
+        # Mark as tracked to prevent signal from double-tracking
+        _mark_as_tracked('project_created', request.user.id, str(project.id))
+
+        completed_ids = track_quest_action(
+            request.user,
+            'project_created',
+            {'project_id': project.id, 'project_type': project.type},
+        )
+
+        # Build response
+        headers = self.get_success_headers(serializer.data)
+        response_data = self.get_serializer(project).data
+
+        if completed_ids:
+            response_data['completed_quests'] = format_completed_quests(request.user, completed_ids)
+
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=True, methods=['post'], url_path='toggle-like', throttle_classes=[ProjectLikeThrottle])
     def toggle_like(self, request, pk=None):
@@ -172,9 +186,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Unlike - remove the like
             existing_like.delete()
             liked = False
+            like_obj = None
         else:
             # Like - create new like
-            ProjectLike.objects.create(user=user, project=project)
+            like_obj = ProjectLike.objects.create(user=user, project=project)
             liked = True
 
             # Track interaction in activity feed
@@ -199,27 +214,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'heart_count': fresh_heart_count,
         }
 
-        # Check for completed quests only when liking (not unliking)
-        if liked:
-            from django.utils import timezone
+        # Track quest completion when liking (not unliking)
+        # Only track likes on other users' projects (signal already filters this)
+        if liked and like_obj and project.user != user:
+            from core.thrive_circle.quest_tracker import track_quest_action
+            from core.thrive_circle.signals import _mark_as_tracked
+            from core.thrive_circle.utils import format_completed_quests
 
-            recent_completed_quests = UserSideQuest.objects.filter(
-                user=user,
-                status='completed',
-                completed_at__gte=timezone.now() - timezone.timedelta(seconds=5),
-            ).select_related('side_quest', 'side_quest__category')
+            # Mark as tracked to prevent double-tracking from signal
+            _mark_as_tracked('project_liked', user.id, str(like_obj.id))
 
-            if recent_completed_quests.exists():
-                response_data['completedQuests'] = [
-                    {
-                        'id': str(uq.side_quest.id),
-                        'title': uq.side_quest.title,
-                        'description': uq.side_quest.description,
-                        'pointsAwarded': uq.points_awarded or uq.side_quest.points_reward,
-                        'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
-                    }
-                    for uq in recent_completed_quests
-                ]
+            # Explicitly track the action and get completed quest IDs
+            completed_ids = track_quest_action(
+                user,
+                'project_liked',
+                {'project_id': project.id},
+            )
+
+            if completed_ids:
+                response_data['completed_quests'] = format_completed_quests(user, completed_ids)
 
         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -981,37 +994,12 @@ def explore_projects(request):
         user_like_subquery = ProjectLike.objects.filter(project=OuterRef('pk'), user=request.user)
         queryset = queryset.annotate(_is_liked_by_user_annotation=Exists(user_like_subquery))
 
-    # Get promoted projects for page 1 (shown at top of feed regardless of tab)
-    # Only include promotions that haven't expired (within PROMOTION_DURATION_DAYS)
-    # Skip promoted projects when user is filtering (search, tools, categories, topics)
-    page_num_check = int(request.GET.get('page', 1))
-    promoted_projects = []
-    promoted_ids = []
-
-    # Check if user is filtering
-    search_query = request.GET.get('search', '')
-    tools_list = request.GET.getlist('tools')
-    categories_list = request.GET.getlist('categories')
-    topics_list = request.GET.getlist('topics')
-    is_filtering = bool(search_query or any(tools_list) or any(categories_list) or any(topics_list))
-
-    if page_num_check == 1 and not is_filtering:
-        from datetime import timedelta
-
-        from django.utils import timezone
-
-        promotion_cutoff = timezone.now() - timedelta(days=PROMOTION_DURATION_DAYS)
-        promoted_qs = queryset.filter(
-            is_promoted=True,
-            promoted_at__gte=promotion_cutoff,  # Only promotions within the time limit
-        ).order_by('-promoted_at')
-        promoted_projects = list(promoted_qs)
-        promoted_ids = [p.id for p in promoted_projects]
-        # Exclude promoted from main queryset to avoid duplicates
-        if promoted_ids:
-            queryset = queryset.exclude(id__in=promoted_ids)
+    # Note: Promoted projects are weighted higher via promotion_score in the
+    # personalization engine (8% weight) rather than pinned to the top.
+    # This keeps the feed feeling authentic while still boosting promoted content.
 
     # Apply search filter with fuzzy matching (trigram similarity)
+    search_query = request.GET.get('search', '')
     # This handles slight misspellings like "javascrpt" -> "javascript"
     search_similarity_applied = False
     if search_query:
@@ -1145,7 +1133,6 @@ def explore_projects(request):
                             page_num,
                             page_size,
                             'for-you',
-                            promoted_projects=promoted_projects,
                         )
                     )
                 except Exception as e:
@@ -1168,7 +1155,6 @@ def explore_projects(request):
                     page_num,
                     page_size,
                     'for-you',
-                    promoted_projects=promoted_projects,
                 )
             )
         else:
@@ -1189,7 +1175,6 @@ def explore_projects(request):
                     page_num,
                     page_size,
                     'for-you',
-                    promoted_projects=promoted_projects,
                 )
             )
 
@@ -1219,7 +1204,6 @@ def explore_projects(request):
                     page_size,
                     'trending',
                     'trending',
-                    promoted_projects=promoted_projects,
                 )
             )
         except Exception as e:
@@ -1269,15 +1253,7 @@ def explore_projects(request):
                 [p.id for p in page],
             )
 
-        # Prepend promoted projects on page 1
-        if page_num == 1 and promoted_projects:
-            promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
-            results = promoted_serializer.data + results
-
         response = paginator.get_paginated_response(results)
-        # Adjust count to include promoted projects
-        if promoted_projects:
-            response.data['count'] = response.data.get('count', 0) + len(promoted_projects)
         # Include seed in response so frontend can use it for subsequent pages
         response.data['seed'] = seed
         response.data['freshness_token'] = freshness_token
@@ -1334,13 +1310,8 @@ def explore_projects(request):
         serializer = ProjectCardSerializer(diverse_projects, many=True)
         results = serializer.data
 
-        # Prepend promoted projects on page 1
-        if page_num == 1 and promoted_projects:
-            promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
-            results = promoted_serializer.data + results
-
         # Build paginated response manually
-        total_count = queryset.count() + len(promoted_projects)
+        total_count = queryset.count()
         has_next = start_idx + page_size < total_count
         next_url = f'?page={page_num + 1}&page_size={page_size}' if has_next else None
         prev_url = f'?page={page_num - 1}&page_size={page_size}' if page_num > 1 else None
@@ -1361,15 +1332,7 @@ def explore_projects(request):
     serializer = ProjectCardSerializer(page, many=True)
     results = serializer.data
 
-    # Prepend promoted projects on page 1
-    if page_num == 1 and promoted_projects:
-        promoted_serializer = ProjectCardSerializer(promoted_projects, many=True)
-        results = promoted_serializer.data + results
-
     response = paginator.get_paginated_response(results)
-    # Adjust count to include promoted projects
-    if promoted_projects:
-        response.data['count'] = response.data.get('count', 0) + len(promoted_projects)
     return response
 
 
@@ -1402,8 +1365,9 @@ def semantic_search(request):
         return Response({'error': 'Query is required'}, status=400)
 
     # Track search usage for quest progress (only for authenticated users)
+    search_completed_quest_ids = []
     if request.user.is_authenticated:
-        track_search_used(request.user, query)
+        search_completed_quest_ids = track_search_used(request.user, query) or []
 
     # Get search parameters
     requested_types = request.data.get('types', ['projects', 'tools', 'quizzes', 'users'])
@@ -1625,18 +1589,24 @@ def semantic_search(request):
         # Calculate total results
         total_results = sum(len(v) for v in results.values())
 
-        return Response(
-            {
-                'query': query,
-                'search_type': search_type,
-                'results': results,
-                'meta': {
-                    'total_results': total_results,
-                    'weaviate_available': weaviate_available,
-                    'alpha': alpha,
-                },
-            }
-        )
+        response_data = {
+            'query': query,
+            'search_type': search_type,
+            'results': results,
+            'meta': {
+                'total_results': total_results,
+                'weaviate_available': weaviate_available,
+                'alpha': alpha,
+            },
+        }
+
+        # Add completed quests if any
+        if search_completed_quest_ids:
+            from core.thrive_circle.utils import format_completed_quests
+
+            response_data['completed_quests'] = format_completed_quests(request.user, search_completed_quest_ids)
+
+        return Response(response_data)
 
     except Exception as e:
         logger.error(f'Semantic search error: {e}', exc_info=True)

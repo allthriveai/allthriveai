@@ -7,11 +7,13 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from .models import (
+    CreditPack,
     SubscriptionChange,
     SubscriptionTier,
     TokenPackage,
     TokenPurchase,
     TokenTransaction,
+    UserCreditPackSubscription,
     UserSubscription,
     UserTokenBalance,
 )
@@ -404,3 +406,103 @@ class SubscriptionChangeAdmin(admin.ModelAdmin):
         if obj.from_tier:
             return format_html('{} → {}', obj.from_tier.name, obj.to_tier.name)
         return obj.to_tier.name
+
+
+@admin.register(CreditPack)
+class CreditPackAdmin(admin.ModelAdmin):
+    list_display = [
+        'name',
+        'credits_display',
+        'price_display',
+        'is_active',
+        'sort_order',
+    ]
+    list_filter = ['is_active']
+    search_fields = ['name']
+    ordering = ['sort_order', 'credits_per_month']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Basic Information', {'fields': ('name', 'is_active', 'sort_order')}),
+        ('Pack Details', {'fields': ('credits_per_month', 'price_cents')}),
+        ('Stripe Integration', {'fields': ('stripe_product_id', 'stripe_price_id'), 'classes': ('collapse',)}),
+        ('Metadata', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+
+    @admin.display(description='Credits/Month')
+    def credits_display(self, obj):
+        """Display formatted credits."""
+        return f'{obj.credits_per_month:,}'
+
+    @admin.display(description='Price')
+    def price_display(self, obj):
+        """Display formatted price."""
+        return f'${obj.price_cents / 100:.0f}/mo'
+
+
+@admin.register(UserCreditPackSubscription)
+class UserCreditPackSubscriptionAdmin(admin.ModelAdmin):
+    list_display = [
+        'user_email',
+        'credit_pack',
+        'status_badge',
+        'credit_balance_display',
+        'current_period_end',
+        'created_at',
+    ]
+    list_filter = ['status', 'credit_pack', 'created_at']
+    search_fields = ['user__email', 'user__username', 'stripe_subscription_id']
+    readonly_fields = [
+        'stripe_subscription_id',
+        'created_at',
+        'updated_at',
+    ]
+    raw_id_fields = ['user']
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('User & Pack', {'fields': ('user', 'credit_pack', 'status')}),
+        ('Stripe Integration', {'fields': ('stripe_subscription_id',), 'classes': ('collapse',)}),
+        (
+            'Billing Period',
+            {
+                'fields': (
+                    'current_period_start',
+                    'current_period_end',
+                    'credits_this_period',
+                )
+            },
+        ),
+        ('Metadata', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+
+    @admin.display(description='User')
+    def user_email(self, obj):
+        """Display user email with link."""
+        url = reverse('admin:auth_user_change', args=[obj.user.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.user.email)
+
+    @admin.display(description='Status')
+    def status_badge(self, obj):
+        """Display status with color coding."""
+        colors = {
+            'active': '#28a745',
+            'past_due': '#ffc107',
+            'canceled': '#dc3545',
+            'inactive': '#6c757d',
+        }
+        color = colors.get(obj.status, '#6c757d')
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 10px; border-radius: 3px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    @admin.display(description='Credit Balance')
+    def credit_balance_display(self, obj):
+        """Display user's credit pack balance."""
+        try:
+            balance = obj.user.token_balance.credit_pack_balance
+            return f'{balance:,}'
+        except UserTokenBalance.DoesNotExist:
+            return '0'

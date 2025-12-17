@@ -4,8 +4,10 @@
  * Supports both light and dark themes with neon glass aesthetic
  */
 
+import { useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 import {
   faStore,
   faGraduationCap,
@@ -51,6 +53,12 @@ const PRODUCT_TYPES = [
 ];
 
 export default function MarketplacePage() {
+  // Quest tracking for page visit
+  const { trackPage } = useQuestTracking();
+  useEffect(() => {
+    trackPage('/marketplace', 'Marketplace');
+  }, [trackPage]);
+
   return (
     <DashboardLayout>
       {() => (

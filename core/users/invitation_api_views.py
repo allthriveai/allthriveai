@@ -2,6 +2,7 @@
 
 import logging
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.utils import timezone
 from rest_framework import status
@@ -11,6 +12,8 @@ from rest_framework.response import Response
 from core.permissions import IsAdminRole
 from core.users.invitation_models import InvitationRequest
 from core.users.invitation_views import send_approval_email
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +67,17 @@ def list_invitations(request):
     offset = (page - 1) * page_size
     invitations = queryset[offset : offset + page_size]
 
+    # Look up users by email for approved invitations to get login info
+    invitation_emails = [inv.email for inv in invitations if inv.status == 'approved']
+    users_by_email = {}
+    if invitation_emails:
+        users = User.objects.filter(email__in=invitation_emails).values('email', 'last_login', 'date_joined')
+        users_by_email = {u['email']: u for u in users}
+
     # Serialize
-    data = [
-        {
+    data = []
+    for inv in invitations:
+        inv_data = {
             'id': inv.id,
             'email': inv.email,
             'name': inv.name,
@@ -80,8 +91,19 @@ def list_invitations(request):
             'reviewNotes': inv.review_notes,
             'approvalEmailSentAt': inv.approval_email_sent_at.isoformat() if inv.approval_email_sent_at else None,
         }
-        for inv in invitations
-    ]
+
+        # Add user signup/login info for approved invitations
+        if inv.status == 'approved' and inv.email in users_by_email:
+            user_info = users_by_email[inv.email]
+            inv_data['userSignedUp'] = True
+            inv_data['userJoinedAt'] = user_info['date_joined'].isoformat() if user_info['date_joined'] else None
+            inv_data['userLastLogin'] = user_info['last_login'].isoformat() if user_info['last_login'] else None
+        elif inv.status == 'approved':
+            inv_data['userSignedUp'] = False
+            inv_data['userJoinedAt'] = None
+            inv_data['userLastLogin'] = None
+
+        data.append(inv_data)
 
     return Response(
         {

@@ -231,9 +231,9 @@ class CheckAndReserveAiRequestTestCase(TestCase):
         self.tier.monthly_ai_requests = 20
         self.tier.save()
 
-    @override_settings(BETA_MODE=False)
+    @override_settings(BETA_MODE=False, CREDIT_PACK_ENFORCEMENT_ENABLED=True)
     def test_reserve_increments_counter(self):
-        """Test that reserving increments the counter (non-beta mode)."""
+        """Test that reserving increments the counter (enforcement enabled)."""
         self.subscription.ai_requests_used_this_month = 0
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -244,9 +244,9 @@ class CheckAndReserveAiRequestTestCase(TestCase):
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.ai_requests_used_this_month, 1)
 
-    @override_settings(BETA_MODE=False)
+    @override_settings(BETA_MODE=False, CREDIT_PACK_ENFORCEMENT_ENABLED=True)
     def test_reserve_fails_at_limit(self):
-        """Test that reserve fails when at limit without tokens (non-beta mode)."""
+        """Test that reserve fails when at limit without tokens (enforcement enabled)."""
         self.subscription.ai_requests_used_this_month = 20
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -261,9 +261,9 @@ class CheckAndReserveAiRequestTestCase(TestCase):
         self.assertFalse(success)
         self.assertIn('exceeded', message.lower())
 
-    @override_settings(BETA_MODE=False)
+    @override_settings(BETA_MODE=False, CREDIT_PACK_ENFORCEMENT_ENABLED=True)
     def test_reserve_succeeds_with_tokens(self):
-        """Test that reserve succeeds at limit with tokens (non-beta mode)."""
+        """Test that reserve succeeds at limit with tokens (enforcement enabled)."""
         self.subscription.ai_requests_used_this_month = 20
         self.subscription.ai_requests_reset_date = timezone.now().date()
         self.subscription.save()
@@ -293,6 +293,25 @@ class CheckAndReserveAiRequestTestCase(TestCase):
         self.assertTrue(success)
         self.assertIn('beta', message.lower())
         # Counter should NOT be incremented in beta mode
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.ai_requests_used_this_month, 20)
+
+    @override_settings(BETA_MODE=False, CREDIT_PACK_ENFORCEMENT_ENABLED=False)
+    def test_reserve_succeeds_when_enforcement_disabled(self):
+        """Test that reserve succeeds when enforcement is disabled (tracking only)."""
+        self.subscription.ai_requests_used_this_month = 20
+        self.subscription.ai_requests_reset_date = timezone.now().date()
+        self.subscription.save()
+
+        token_balance = UserTokenBalance.objects.get(user=self.user)
+        token_balance.balance = 0
+        token_balance.save()
+
+        success, message = check_and_reserve_ai_request(self.user)
+
+        self.assertTrue(success)
+        self.assertIn('enforcement disabled', message.lower())
+        # Counter should NOT be incremented when enforcement disabled
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.ai_requests_used_this_month, 20)
 
@@ -538,3 +557,201 @@ class GetAvailableTiersTestCase(TestCase):
         self.assertIsNotNone(pro_tier_data)
         self.assertTrue(pro_tier_data['features']['marketplace'])
         self.assertTrue(pro_tier_data['features']['analytics'])
+
+
+class DailyRequestLimitTestCase(TestCase):
+    """Test daily AI request limit functions."""
+
+    def setUp(self):
+        """Set up test data."""
+        from django.core.cache import cache
+
+        self.user = User.objects.create_user(
+            username='daily_limit_user', email='daily_limit@example.com', password='testpass123'
+        )
+        # Clear cache between tests
+        cache.clear()
+
+    def tearDown(self):
+        """Clean up after each test."""
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def test_get_daily_request_limits_defaults(self):
+        """Test getting daily request limits returns configured values."""
+        from core.billing.utils import get_daily_request_limits
+
+        soft, hard = get_daily_request_limits()
+
+        self.assertGreater(soft, 0)
+        self.assertGreater(hard, 0)
+        self.assertGreaterEqual(hard, soft)
+
+    @override_settings(AI_DAILY_REQUEST_SOFT_LIMIT=100, AI_DAILY_REQUEST_HARD_LIMIT=200)
+    def test_get_daily_request_limits_from_settings(self):
+        """Test getting daily request limits respects settings."""
+        from core.billing.utils import get_daily_request_limits
+
+        soft, hard = get_daily_request_limits()
+
+        self.assertEqual(soft, 100)
+        self.assertEqual(hard, 200)
+
+    def test_get_user_daily_request_count_zero(self):
+        """Test getting count for user with no requests returns 0."""
+        from core.billing.utils import get_user_daily_request_count
+
+        count = get_user_daily_request_count(self.user.id)
+
+        self.assertEqual(count, 0)
+
+    def test_increment_daily_request_count(self):
+        """Test incrementing daily request count."""
+        from core.billing.utils import get_user_daily_request_count, increment_daily_request_count
+
+        # First increment
+        new_count = increment_daily_request_count(self.user.id)
+        self.assertEqual(new_count, 1)
+
+        # Second increment
+        new_count = increment_daily_request_count(self.user.id)
+        self.assertEqual(new_count, 2)
+
+        # Verify via get function
+        count = get_user_daily_request_count(self.user.id)
+        self.assertEqual(count, 2)
+
+    @override_settings(AI_DAILY_REQUEST_SOFT_LIMIT=100, AI_DAILY_REQUEST_HARD_LIMIT=200)
+    def test_check_daily_request_limit_within_limits(self):
+        """Test check_daily_request_limit passes when within limits."""
+        from core.billing.utils import check_daily_request_limit
+
+        allowed, count = check_daily_request_limit(self.user.id)
+
+        self.assertTrue(allowed)
+        self.assertEqual(count, 0)
+
+    @override_settings(AI_DAILY_REQUEST_SOFT_LIMIT=5, AI_DAILY_REQUEST_HARD_LIMIT=100)
+    def test_check_daily_request_limit_soft_limit_warns(self):
+        """Test check_daily_request_limit warns at soft limit but allows."""
+        from core.billing.utils import check_daily_request_limit, increment_daily_request_count
+
+        # Simulate reaching soft limit
+        for _ in range(6):
+            increment_daily_request_count(self.user.id)
+
+        with self.assertLogs('core.billing.utils', level='WARNING') as logs:
+            allowed, count = check_daily_request_limit(self.user.id)
+
+        self.assertTrue(allowed)  # Should still be allowed
+        self.assertEqual(count, 6)
+        self.assertTrue(any('approaching daily request limit' in log for log in logs.output))
+
+    @override_settings(AI_DAILY_REQUEST_SOFT_LIMIT=5, AI_DAILY_REQUEST_HARD_LIMIT=10)
+    def test_check_daily_request_limit_hard_limit_raises(self):
+        """Test check_daily_request_limit raises error at hard limit."""
+        from core.billing.utils import (
+            DailyRequestLimitExceededError,
+            check_daily_request_limit,
+            increment_daily_request_count,
+        )
+
+        # Simulate reaching hard limit
+        for _ in range(10):
+            increment_daily_request_count(self.user.id)
+
+        with self.assertRaises(DailyRequestLimitExceededError) as context:
+            check_daily_request_limit(self.user.id)
+
+        self.assertEqual(context.exception.request_count, 10)
+        self.assertEqual(context.exception.limit, 10)
+        self.assertIn('daily limit', context.exception.message.lower())
+
+    @override_settings(AI_DAILY_REQUEST_HARD_LIMIT=0)
+    def test_check_daily_request_limit_unlimited(self):
+        """Test check_daily_request_limit allows unlimited when hard_limit=0."""
+        from core.billing.utils import check_daily_request_limit, increment_daily_request_count
+
+        # Simulate many requests
+        for _ in range(1000):
+            increment_daily_request_count(self.user.id)
+
+        # Should still be allowed (hard_limit=0 means unlimited)
+        allowed, count = check_daily_request_limit(self.user.id)
+
+        self.assertTrue(allowed)
+        self.assertEqual(count, 1000)
+
+    def test_daily_request_limit_exceeded_error_attributes(self):
+        """Test DailyRequestLimitExceededError has correct attributes."""
+        from core.billing.utils import DailyRequestLimitExceededError
+
+        error = DailyRequestLimitExceededError(
+            user_id=123,
+            request_count=500,
+            limit=500,
+        )
+
+        self.assertEqual(error.user_id, 123)
+        self.assertEqual(error.request_count, 500)
+        self.assertEqual(error.limit, 500)
+        self.assertIn('500', error.message)
+
+    @override_settings(BETA_MODE=True, AI_DAILY_REQUEST_SOFT_LIMIT=5, AI_DAILY_REQUEST_HARD_LIMIT=10)
+    def test_beta_mode_still_enforces_daily_limit(self):
+        """Test that daily limit is enforced even in beta mode."""
+        from core.billing.utils import (
+            DailyRequestLimitExceededError,
+            check_and_reserve_ai_request,
+            increment_daily_request_count,
+        )
+
+        # Simulate reaching hard limit
+        for _ in range(10):
+            increment_daily_request_count(self.user.id)
+
+        # In beta mode, should STILL raise error for daily limit
+        with self.assertRaises(DailyRequestLimitExceededError):
+            check_and_reserve_ai_request(self.user)
+
+    @override_settings(BETA_MODE=True, AI_DAILY_REQUEST_SOFT_LIMIT=100, AI_DAILY_REQUEST_HARD_LIMIT=200)
+    def test_beta_mode_allows_within_daily_limit(self):
+        """Test that beta mode allows requests within daily limit."""
+        from core.billing.utils import check_and_reserve_ai_request
+
+        success, message = check_and_reserve_ai_request(self.user)
+
+        self.assertTrue(success)
+        self.assertIn('beta', message.lower())
+        self.assertIn('daily', message.lower())
+
+    @override_settings(BETA_MODE=False, AI_DAILY_REQUEST_SOFT_LIMIT=5, AI_DAILY_REQUEST_HARD_LIMIT=10)
+    def test_can_make_ai_request_respects_daily_limit(self):
+        """Test that can_make_ai_request checks daily limit."""
+        from core.billing.utils import can_make_ai_request, increment_daily_request_count
+
+        # Simulate reaching hard limit
+        for _ in range(10):
+            increment_daily_request_count(self.user.id)
+
+        can_request, reason = can_make_ai_request(self.user)
+
+        self.assertFalse(can_request)
+        self.assertIn('daily', reason.lower())
+
+    @override_settings(BETA_MODE=True, AI_DAILY_REQUEST_SOFT_LIMIT=100, AI_DAILY_REQUEST_HARD_LIMIT=200)
+    def test_get_subscription_status_includes_daily_requests(self):
+        """Test that subscription status includes daily request info."""
+        from core.billing.utils import get_subscription_status, increment_daily_request_count
+
+        # Simulate some requests
+        for _ in range(5):
+            increment_daily_request_count(self.user.id)
+
+        status = get_subscription_status(self.user)
+
+        self.assertIn('daily_requests', status)
+        self.assertEqual(status['daily_requests']['used'], 5)
+        self.assertEqual(status['daily_requests']['limit'], 200)
+        self.assertEqual(status['daily_requests']['remaining'], 195)

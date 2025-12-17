@@ -203,6 +203,13 @@ app.conf.beat_schedule = {
             'expires': 7200,  # Expires after 2 hours
         },
     },
+    'analytics-aggregate-engagement-stats': {
+        'task': 'core.ai_usage.tasks.aggregate_engagement_daily_stats',
+        'schedule': crontab(hour=2, minute=0),  # Daily at 2:00 AM (after platform stats)
+        'options': {
+            'expires': 7200,  # Expires after 2 hours
+        },
+    },
     # Thrive Circle weekly tasks
     'thrive-circle-create-weekly-goals': {
         'task': 'core.thrive_circle.tasks.create_weekly_goals',

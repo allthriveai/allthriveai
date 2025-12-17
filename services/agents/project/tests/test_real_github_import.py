@@ -465,13 +465,17 @@ class TestEdgeCases:
         logger.info(f'Ownership check correctly rejected: {result.get("error")}')
 
     @pytest.mark.django_db
-    def test_import_fails_without_github_token(self):
+    def test_import_auto_clips_without_github_token(self):
         """
-        Test that import fails gracefully when user has no GitHub token.
+        Test that import auto-clips when user has no GitHub token.
+
+        NEW BEHAVIOR: Instead of failing, the tool now auto-clips the repo
+        and returns a friendly message explaining what happened.
         """
         # Create a unique test user without GitHub OAuth
         import uuid
 
+        from core.projects.models import Project
         from services.agents.project.tools import import_github_project
 
         unique_suffix = str(uuid.uuid4())[:8]
@@ -481,10 +485,15 @@ class TestEdgeCases:
             password='testpass123',
         )
 
+        # Use a public repo that exists
+        clip_url = 'https://github.com/jlowin/fastmcp'
+
         try:
+            Project.objects.filter(user=user_no_github, external_url=clip_url).delete()
+
             # Call tool function directly with state
             result = import_github_project.func(
-                url=TEST_REPO_URL,
+                url=clip_url,
                 is_showcase=True,
                 is_private=False,
                 state={
@@ -493,14 +502,19 @@ class TestEdgeCases:
                 },
             )
 
-            assert result['success'] is False
-            error_lower = result.get('error', '').lower()
-            # Should mention GitHub not connected
-            assert 'github' in error_lower, f'Expected GitHub error, got: {result.get("error")}'
+            # Should succeed via auto-clipping
+            assert result['success'] is True, f'Should auto-clip, got error: {result.get("error")}'
+            assert result.get('auto_clipped') is True, 'Should be marked as auto_clipped'
+            assert 'message' in result, 'Should have a message explaining auto-clipping'
 
-            logger.info(f'No token check correctly rejected: {result.get("error")}')
+            # Verify project was created as clipped
+            project = Project.objects.get(id=result['project_id'])
+            assert project.type == 'clipped'
+
+            logger.info(f'Auto-clip message: {result.get("message")}')
         finally:
             # Cleanup
+            Project.objects.filter(user=user_no_github).delete()
             user_no_github.delete()
 
     def test_duplicate_import_fails(self, github_user, has_github_token):
@@ -545,3 +559,154 @@ class TestEdgeCases:
             pass  # Expected - duplicate external_url
 
         logger.info('Duplicate import correctly prevented')
+
+    @pytest.mark.django_db
+    def test_clip_github_repo_user_does_not_own(self):
+        """
+        Test that users can CLIP any public GitHub repo they don't own.
+
+        SCENARIO: User wants to clip https://github.com/jlowin/fastmcp as a clipping
+        EXPECTED: Success - creates a clipped project without requiring GitHub OAuth
+        PREVIOUS BUG: Would fail with "repository does not appear to be associated with your GitHub account"
+        """
+        import uuid
+
+        from core.projects.models import Project
+        from services.agents.project.tools import scrape_webpage_for_project
+
+        # Create a user WITHOUT GitHub OAuth connected
+        unique_suffix = str(uuid.uuid4())[:8]
+        user_no_github = User.objects.create_user(
+            username=f'clipper_{unique_suffix}',
+            email=f'clipper_{unique_suffix}@example.com',
+            password='testpass123',
+        )
+
+        # The repo to clip - user does NOT own this
+        clip_url = 'https://github.com/jlowin/fastmcp'
+
+        try:
+            # Clean up any existing project
+            Project.objects.filter(user=user_no_github, external_url=clip_url).delete()
+
+            # Use scrape_webpage_for_project with is_owned=False (clipping)
+            result = scrape_webpage_for_project.func(
+                url=clip_url,
+                is_showcase=False,  # Clippings typically not showcased
+                is_private=False,
+                is_owned=False,  # This is a CLIPPING, not their own work
+                state={
+                    'user_id': user_no_github.id,
+                    'username': user_no_github.username,
+                },
+            )
+
+            # Should succeed - no GitHub OAuth needed for clipping
+            assert result['success'] is True, f'Clipping should succeed, got error: {result.get("error")}'
+            assert 'project_id' in result
+            assert 'url' in result
+
+            # Verify the project was created correctly
+            project = Project.objects.get(id=result['project_id'])
+            assert project.type == 'clipped', f'Project type should be "clipped", got: {project.type}'
+            assert project.external_url == clip_url
+            assert project.user == user_no_github
+
+            logger.info('=' * 60)
+            logger.info('CLIPPING TEST PASSED')
+            logger.info(f'  User WITHOUT GitHub OAuth successfully clipped: {clip_url}')
+            logger.info(f'  Project type: {project.type}')
+            logger.info(f'  Project title: {project.title}')
+            logger.info('=' * 60)
+
+        finally:
+            # Cleanup
+            Project.objects.filter(user=user_no_github).delete()
+            user_no_github.delete()
+
+    def test_import_github_as_owned_requires_verification(self, github_user, has_github_token):
+        """
+        Test that importing a GitHub repo as OWNED (for playground/showcase) requires verification.
+
+        SCENARIO: User claims they own https://github.com/torvalds/linux
+        EXPECTED: Fails - ownership verification rejects it
+        """
+        from services.agents.project.tools import import_github_project
+
+        # Try to import a famous repo claiming ownership
+        result = import_github_project.func(
+            url='https://github.com/torvalds/linux',
+            is_showcase=True,
+            is_private=False,
+            is_owned=True,  # Claiming ownership!
+            state={
+                'user_id': github_user.id,
+                'username': github_user.username,
+            },
+        )
+
+        # Should fail with ownership error
+        assert result['success'] is False
+        error_msg = result.get('error', '').lower()
+        assert (
+            'own or have contributed to' in error_msg or 'not appear to be associated' in error_msg
+        ), f'Expected ownership error, got: {result.get("error")}'
+
+        logger.info(f'Ownership verification correctly rejected: {result.get("error")}')
+
+    @pytest.mark.django_db
+    def test_import_github_project_delegates_to_scraper_for_clipping(self):
+        """
+        Test that import_github_project delegates to scrape_webpage_for_project
+        when is_owned=False.
+
+        This is the key fix: even if the LLM calls import_github_project for a
+        clipping, it should still work by delegating to the scraper.
+        """
+        import uuid
+
+        from core.projects.models import Project
+        from services.agents.project.tools import import_github_project
+
+        # Create a user WITHOUT GitHub OAuth connected
+        unique_suffix = str(uuid.uuid4())[:8]
+        user_no_github = User.objects.create_user(
+            username=f'clipper2_{unique_suffix}',
+            email=f'clipper2_{unique_suffix}@example.com',
+            password='testpass123',
+        )
+
+        clip_url = 'https://github.com/jlowin/fastmcp'
+
+        try:
+            Project.objects.filter(user=user_no_github, external_url=clip_url).delete()
+
+            # Call import_github_project with is_owned=False
+            # This should delegate to scrape_webpage_for_project
+            result = import_github_project.func(
+                url=clip_url,
+                is_showcase=False,
+                is_private=False,
+                is_owned=False,  # CLIPPING - should delegate to scraper
+                state={
+                    'user_id': user_no_github.id,
+                    'username': user_no_github.username,
+                },
+            )
+
+            # Should succeed via delegation
+            assert result['success'] is True, f'Delegation should succeed, got: {result.get("error")}'
+            assert 'project_id' in result
+
+            project = Project.objects.get(id=result['project_id'])
+            assert project.type == 'clipped'
+
+            logger.info('=' * 60)
+            logger.info('DELEGATION TEST PASSED')
+            logger.info('  import_github_project delegated to scraper for clipping')
+            logger.info(f'  Project type: {project.type}')
+            logger.info('=' * 60)
+
+        finally:
+            Project.objects.filter(user=user_no_github).delete()
+            user_no_github.delete()

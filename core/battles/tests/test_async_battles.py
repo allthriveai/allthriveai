@@ -18,8 +18,8 @@ from core.battles.models import (
     BattlePhase,
     BattleStatus,
     BattleSubmission,
-    ChallengeType,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from core.battles.phase_utils import can_submit_prompt, is_users_turn
 from core.battles.state_machine import is_valid_transition
@@ -42,13 +42,10 @@ class AsyncBattleTurnValidationTestCase(TestCase):
             password='testpass123',
         )
 
-        # Create challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_async',
-            name='Test Async Challenge',
-            description='Test challenge type',
-            templates=['Test prompt {subject}'],
-            variables={'subject': ['item1', 'item2']},
+        # Create curated prompt
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -57,7 +54,7 @@ class AsyncBattleTurnValidationTestCase(TestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.CHALLENGER_TURN,
             battle_mode=BattleMode.ASYNC,
@@ -190,11 +187,9 @@ class AsyncBattleTimeRemainingTestCase(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_time',
-            name='Test Time Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -202,7 +197,7 @@ class AsyncBattleTimeRemainingTestCase(TestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.CHALLENGER_TURN,
             battle_mode=BattleMode.ASYNC,
@@ -274,11 +269,9 @@ class AsyncBattleSubmissionFlowTestCase(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_flow',
-            name='Test Flow Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -286,7 +279,7 @@ class AsyncBattleSubmissionFlowTestCase(TestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.CHALLENGER_TURN,
             battle_mode=BattleMode.ASYNC,
@@ -360,11 +353,9 @@ class AsyncBattleDeadlineTestCase(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_deadline',
-            name='Test Deadline Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -372,7 +363,7 @@ class AsyncBattleDeadlineTestCase(TestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.CHALLENGER_TURN,
             battle_mode=BattleMode.ASYNC,
@@ -449,11 +440,9 @@ class AsyncBattleSerializerTestCase(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_serial',
-            name='Test Serial Challenge',
-            description='Test challenge type',
-            templates=['Test prompt'],
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -461,7 +450,7 @@ class AsyncBattleSerializerTestCase(TestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Test challenge',
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.CHALLENGER_TURN,
             battle_mode=BattleMode.ASYNC,

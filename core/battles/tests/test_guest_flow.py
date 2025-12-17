@@ -21,11 +21,11 @@ from core.battles.models import (
     BattleInvitation,
     BattlePhase,
     BattleStatus,
-    ChallengeType,
     InvitationStatus,
     InvitationType,
     MatchSource,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from core.users.models import User
 from services.auth import GuestUserService
@@ -190,19 +190,17 @@ class GuestBattleInvitationAcceptanceTestCase(TestCase):
             password='testpass123',
         )
 
-        # Create challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Test challenge prompt'],
-            variables={},
+        # Create curated prompt
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Test challenge',
+            difficulty='medium',
+            is_active=True,
         )
 
         # Create battle
         self.battle = PromptBattle.objects.create(
             challenger=self.sender,
-            challenge_type=self.challenge_type,
+            prompt=self.prompt,
             challenge_text='Test challenge',
             status=BattleStatus.PENDING,
             phase=BattlePhase.WAITING,
@@ -520,13 +518,10 @@ class LinkInvitationE2ETestCase(TestCase):
             password='testpass123',
         )
 
-        # Create challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='link_test_challenge',
-            name='Link Test Challenge',
-            description='A test challenge for link invitations',
-            templates=['Create something amazing: {topic}'],
-            variables={'topic': ['AI', 'Space', 'Nature']},
+        # Create curated prompt
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Create something amazing for link invitations',
+            difficulty='medium',
             is_active=True,
         )
 
@@ -536,12 +531,7 @@ class LinkInvitationE2ETestCase(TestCase):
         self.client.force_authenticate(user=self.challenger)
         generate_url = reverse('generate_battle_link')
 
-        response = self.client.post(
-            generate_url,
-            {
-                'challenge_type_key': 'link_test_challenge',
-            },
-        )
+        response = self.client.post(generate_url)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('invite_url', response.data)
@@ -763,37 +753,54 @@ class LinkInvitationE2ETestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_generate_link_with_specific_challenge_type(self):
-        """Test generating link with a specific challenge type."""
+    def test_generate_link_with_specific_category(self):
+        """Test generating link with a specific category filters prompts."""
+        from core.taxonomy.models import Taxonomy
+
+        # Create a category taxonomy and a prompt with that category
+        category = Taxonomy.objects.create(
+            name='Test Category',
+            slug='test-category',
+            taxonomy_type='category',
+        )
+        categorized_prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Categorized challenge prompt',
+            difficulty='medium',
+            is_active=True,
+            category=category,
+        )
+
         self.client.force_authenticate(user=self.challenger)
         generate_url = reverse('generate_battle_link')
 
         response = self.client.post(
             generate_url,
             {
-                'challenge_type_key': 'link_test_challenge',
+                'category_id': category.id,
             },
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         invitation = BattleInvitation.objects.get(invite_token=response.data['invite_token'])
-        self.assertEqual(invitation.battle.challenge_type.key, 'link_test_challenge')
+        # The battle should have a prompt from that category
+        self.assertEqual(invitation.battle.prompt.category, category)
 
-    def test_generate_link_with_invalid_challenge_type(self):
-        """Test generating link with invalid challenge type fails."""
+    def test_generate_link_with_invalid_category(self):
+        """Test generating link with invalid category ID fails with no prompts."""
         self.client.force_authenticate(user=self.challenger)
         generate_url = reverse('generate_battle_link')
 
         response = self.client.post(
             generate_url,
             {
-                'challenge_type_key': 'nonexistent_challenge',
+                'category_id': 99999,  # Non-existent category
             },
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('not found', response.data['error'])
+        # When category doesn't exist, no prompts will match and we get this error
+        self.assertIn('No prompts available', response.data['error'])
 
     def test_guest_display_name_sanitized_in_link_flow(self):
         """Test that XSS in display name is sanitized during link acceptance."""

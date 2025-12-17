@@ -2,12 +2,15 @@
  * ArchitectureSection - System architecture diagram with Mermaid
  *
  * Supports inline editing when isEditing=true for owners.
+ * Includes a regenerate button for project owners to update the diagram via AI chat.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import type { ArchitectureSectionContent } from '@/types/sections';
 import { MermaidDiagram } from '../shared/MermaidDiagram';
 import { InlineEditableTitle, InlineEditableText } from '../shared/InlineEditable';
+import { useProjectContext } from '@/context/ProjectContext';
 
 interface ArchitectureSectionProps {
   content: ArchitectureSectionContent;
@@ -17,6 +20,29 @@ interface ArchitectureSectionProps {
 
 export function ArchitectureSection({ content, isEditing, onUpdate }: ArchitectureSectionProps) {
   const { diagram, description, title } = content;
+  const [isDiagramHovered, setIsDiagramHovered] = useState(false);
+
+  // Get project context for ownership check and regenerate functionality
+  // This hook must be called unconditionally - use optional chaining for safety
+  const projectContext = useProjectContext();
+
+  const isOwner = projectContext?.isOwner ?? false;
+  const project = projectContext?.project;
+
+  // Handle regenerate button click - opens chat with architecture context
+  const handleRegenerateClick = useCallback(() => {
+    if (!project) return;
+
+    // Dispatch custom event to open chat with architecture regeneration context
+    const event = new CustomEvent('openArchitectureRegenerate', {
+      detail: {
+        projectId: project.id,
+        projectTitle: project.title,
+        projectSlug: project.slug,
+      },
+    });
+    window.dispatchEvent(event);
+  }, [project]);
 
   const handleTitleChange = useCallback(
     async (newTitle: string) => {
@@ -73,8 +99,12 @@ export function ArchitectureSection({ content, isEditing, onUpdate }: Architectu
 
       {/* Diagram Container */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {/* Diagram */}
-        <div className="p-6 md:p-8 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900">
+        {/* Diagram with hover overlay for regenerate button in edit mode only */}
+        <div
+          className="relative p-6 md:p-8 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900"
+          onMouseEnter={() => isEditing && setIsDiagramHovered(true)}
+          onMouseLeave={() => setIsDiagramHovered(false)}
+        >
           {diagram ? (
             <MermaidDiagram code={diagram} />
           ) : isEditing ? (
@@ -82,6 +112,24 @@ export function ArchitectureSection({ content, isEditing, onUpdate }: Architectu
               Add a Mermaid diagram below
             </div>
           ) : null}
+
+          {/* Regenerate Button Overlay - shown on hover in edit mode */}
+          {isOwner && isEditing && diagram && (
+            <div
+              className={`absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity duration-200 ${
+                isDiagramHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              <button
+                onClick={handleRegenerateClick}
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-all group"
+                title="Regenerate architecture diagram with AI"
+              >
+                <ArrowPathIcon className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
+                <span className="font-medium">Regenerate with AI</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mermaid Code Editor (editing mode only) */}

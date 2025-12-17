@@ -18,6 +18,116 @@ logger = logging.getLogger(__name__)
 # Default timeout for AI API calls (in seconds)
 DEFAULT_AI_TIMEOUT = 60
 
+# Token limit defaults (can be overridden in settings)
+DEFAULT_TOKEN_SOFT_LIMIT = 8000  # Warn above this
+DEFAULT_TOKEN_HARD_LIMIT = 32000  # Block above this
+DEFAULT_OUTPUT_TOKEN_LIMIT = 4096  # Max output tokens per request
+
+
+class TokenLimitExceededError(Exception):
+    """Raised when a request exceeds the hard token limit."""
+
+    def __init__(self, estimated_tokens: int, limit: int, message: str = None):
+        self.estimated_tokens = estimated_tokens
+        self.limit = limit
+        self.message = message or f'Request exceeds token limit: {estimated_tokens} > {limit}'
+        super().__init__(self.message)
+
+
+def estimate_token_count(text: str) -> int:
+    """
+    Estimate token count for a text string.
+
+    Uses a simple heuristic: ~4 characters per token for English text.
+    This is conservative (tends to overestimate) which is safer for limits.
+
+    For more accurate counting, use tiktoken, but this is fast and sufficient
+    for limit checking.
+
+    Args:
+        text: The text to estimate tokens for
+
+    Returns:
+        Estimated token count
+    """
+    if not text:
+        return 0
+    # Conservative estimate: ~3.5 chars per token (rounds up)
+    return max(1, len(text) // 3)
+
+
+def get_token_limits() -> tuple[int, int, int]:
+    """
+    Get token limits from settings with fallbacks.
+
+    Returns:
+        Tuple of (soft_limit, hard_limit, output_limit)
+    """
+    soft_limit = getattr(settings, 'AI_TOKEN_SOFT_LIMIT', DEFAULT_TOKEN_SOFT_LIMIT)
+    hard_limit = getattr(settings, 'AI_TOKEN_HARD_LIMIT', DEFAULT_TOKEN_HARD_LIMIT)
+    output_limit = getattr(settings, 'AI_OUTPUT_TOKEN_LIMIT', DEFAULT_OUTPUT_TOKEN_LIMIT)
+    return soft_limit, hard_limit, output_limit
+
+
+def check_token_limits(prompt: str, system_message: str = None, user_id: int = None) -> tuple[bool, int]:
+    """
+    Check if a request is within token limits.
+
+    Args:
+        prompt: The user prompt
+        system_message: Optional system message
+        user_id: User ID for logging
+
+    Returns:
+        Tuple of (is_allowed, estimated_tokens)
+
+    Raises:
+        TokenLimitExceededError: If request exceeds hard limit
+    """
+    soft_limit, hard_limit, _ = get_token_limits()
+
+    # Estimate total input tokens
+    estimated_tokens = estimate_token_count(prompt)
+    if system_message:
+        estimated_tokens += estimate_token_count(system_message)
+
+    # Check hard limit - block request entirely
+    if estimated_tokens > hard_limit:
+        StructuredLogger.log_service_operation(
+            service_name='AIProvider',
+            operation='token_limit_exceeded',
+            success=False,
+            metadata={
+                'estimated_tokens': estimated_tokens,
+                'hard_limit': hard_limit,
+                'user_id': user_id,
+            },
+            logger_instance=logger,
+        )
+        raise TokenLimitExceededError(
+            estimated_tokens=estimated_tokens,
+            limit=hard_limit,
+            message=(
+                f'Request too large: approximately {estimated_tokens:,} tokens exceeds '
+                f'the {hard_limit:,} token limit. '
+                f'Please shorten your message or break it into smaller parts.'
+            ),
+        )
+
+    # Check soft limit - warn but allow (for beta)
+    if estimated_tokens > soft_limit:
+        logger.warning(
+            f'Request approaching token limit: {estimated_tokens} tokens (soft limit: {soft_limit})',
+            extra={
+                'estimated_tokens': estimated_tokens,
+                'soft_limit': soft_limit,
+                'user_id': user_id,
+            },
+        )
+
+    return True, estimated_tokens
+
+
 # Nano Banana system prompt for image generation
 NANO_BANANA_SYSTEM_PROMPT = """You are Nano Banana, an image generation assistant.
 IMPORTANT: Always generate and return an actual image in your response.
@@ -296,11 +406,15 @@ class AIProvider:
             Generated text response
 
         Raises:
+            TokenLimitExceededError: If the request exceeds the hard token limit
             TimeoutError: If the request times out
             Exception: If the API call fails
         """
         timeout = timeout or DEFAULT_AI_TIMEOUT
         start_time = time.time()
+
+        # Check token limits before making API call
+        _, estimated_tokens = check_token_limits(prompt, system_message, self.user_id)
 
         # Resolve model from purpose if not explicitly provided
         if model is None:
@@ -316,6 +430,7 @@ class AIProvider:
                 'user_id': self.user_id,
                 'prompt_length': len(prompt),
                 'has_system_message': bool(system_message),
+                'estimated_input_tokens': estimated_tokens,
             },
         )
 
@@ -557,8 +672,14 @@ class AIProvider:
 
         Yields:
             Text chunks as they are generated
+
+        Raises:
+            TokenLimitExceededError: If the request exceeds the hard token limit
         """
         start_time = time.time()
+
+        # Check token limits before making API call
+        _, estimated_tokens = check_token_limits(prompt, system_message, self.user_id)
 
         # Resolve model from purpose if not explicitly provided
         if model is None:
@@ -573,6 +694,7 @@ class AIProvider:
                 'user_id': self.user_id,
                 'prompt_length': len(prompt),
                 'streaming': True,
+                'estimated_input_tokens': estimated_tokens,
             },
         )
 

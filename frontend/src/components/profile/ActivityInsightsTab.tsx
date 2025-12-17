@@ -155,7 +155,16 @@ export function ActivityInsightsTab({ username, isOwnProfile }: ActivityInsights
       {/* Tool Engagement & Topic Interests - Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ToolEngagementSection tools={insights.toolEngagement} onToolClick={(slug) => navigate(`/tools/${slug}`)} />
-        <TopicInterestsSection topics={insights.topicInterests} />
+        <TopicInterestsSection topics={insights.topicInterests.filter(t => {
+          // Filter out non-topic tags (status tags, battle types, generic terms)
+          const excludedTags = [
+            'winner', 'loser', 'featured', 'trending', 'new',
+            'prompt battle', 'text prompt', 'image prompt', 'vs ai', 'vs pip',
+            'image', 'text', 'battle', 'prompt', 'ai',
+            'showcase', 'playground', 'clipped', 'product', 'reddit', 'other'
+          ];
+          return !excludedTags.includes(t.topic.toLowerCase());
+        })} />
       </div>
 
       {/* Activity Trends */}

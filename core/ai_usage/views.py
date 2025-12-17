@@ -18,6 +18,10 @@ from core.permissions import IsAdminRole
 
 from .cache_service import (
     get_ai_breakdown,
+    get_engagement_features,
+    get_engagement_heatmap,
+    get_engagement_overview,
+    get_engagement_retention,
     get_overview_kpis,
     get_timeseries_data,
     get_user_growth_metrics,
@@ -469,5 +473,294 @@ def dashboard_guest_battles(request):
         )
         return Response(
             {'error': 'Failed to fetch guest battle metrics'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# =============================================================================
+# ENGAGEMENT DASHBOARD ENDPOINTS
+# =============================================================================
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminRole])
+def dashboard_engagement_overview(request):
+    """
+    GET /api/admin/analytics/engagement/overview/
+
+    Returns engagement overview KPIs.
+
+    Query params:
+        - days: Number of days to aggregate (default: 30)
+
+    Response:
+        {
+            "totalActions": 12345,
+            "uniqueActiveUsers": 456,
+            "peakHour": 14,
+            "d7RetentionRate": 35.5
+        }
+    """
+    try:
+        days = int(request.GET.get('days', 30))
+        data = get_engagement_overview(days=days)
+        return Response(data)
+    except Exception as e:
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_engagement_overview',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
+        return Response(
+            {'error': 'Failed to fetch engagement overview'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminRole])
+def dashboard_engagement_heatmap(request):
+    """
+    GET /api/admin/analytics/engagement/heatmap/
+
+    Returns activity heatmap and daily trends.
+
+    Query params:
+        - days: Number of days to aggregate (default: 30)
+
+    Response:
+        {
+            "heatmap": [[...], [...], ...],  // 7x24 matrix
+            "dailyActions": [{"date": "2024-01-01", "count": 123}, ...],
+            "peakHour": 14,
+            "peakDay": "Tuesday",
+            "totalActions": 12345
+        }
+    """
+    try:
+        days = int(request.GET.get('days', 30))
+        data = get_engagement_heatmap(days=days)
+        return Response(data)
+    except Exception as e:
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_engagement_heatmap',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
+        return Response(
+            {'error': 'Failed to fetch engagement heatmap'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminRole])
+def dashboard_engagement_features(request):
+    """
+    GET /api/admin/analytics/engagement/features/
+
+    Returns feature adoption metrics.
+
+    Query params:
+        - days: Number of days to aggregate (default: 30)
+
+    Response:
+        {
+            "features": [
+                {"name": "Quizzes", "activityType": "quiz_complete", ...},
+                ...
+            ],
+            "topFeature": "Quizzes",
+            "totalUniqueUsers": 456
+        }
+    """
+    try:
+        days = int(request.GET.get('days', 30))
+        data = get_engagement_features(days=days)
+        return Response(data)
+    except Exception as e:
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_engagement_features',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
+        return Response(
+            {'error': 'Failed to fetch engagement features'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminRole])
+def dashboard_engagement_retention(request):
+    """
+    GET /api/admin/analytics/engagement/retention/
+
+    Returns retention cohorts and conversion funnel.
+
+    Query params:
+        - days: Number of days to aggregate (default: 30)
+
+    Response:
+        {
+            "funnel": {"signedUp": 100, "hadFirstAction": 75, "returnedDay7": 40, "returnedDay30": 25},
+            "funnelRates": {"signupToAction": 75.0, "actionToDay7": 53.3, "day7ToDay30": 62.5},
+            "retentionCohorts": [
+                {"cohortWeek": "2024-01-01", "size": 50, "week0": 100, "week1": 45.0, "week4": 30.0},
+                ...
+            ]
+        }
+    """
+    try:
+        days = int(request.GET.get('days', 30))
+        data = get_engagement_retention(days=days)
+        return Response(data)
+    except Exception as e:
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_engagement_retention',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
+        return Response(
+            {'error': 'Failed to fetch engagement retention'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminRole])
+def dashboard_onboarding_stats(request):
+    """
+    GET /api/admin/analytics/onboarding/
+
+    Returns onboarding path selection statistics.
+
+    Query params:
+        - days: Number of days to aggregate (default: 30)
+
+    Response:
+        {
+            "total_completed": 123,
+            "paths": {
+                "battle_pip": {"count": 45, "percentage": 36.6},
+                "add_project": {"count": 38, "percentage": 30.9},
+                "explore": {"count": 40, "percentage": 32.5}
+            },
+            "recent": [
+                {"username": "user1", "path": "battle_pip", "completed_at": "2024-01-15T10:30:00Z"},
+                ...
+            ],
+            "timeseries": [
+                {"date": "2024-01-01", "battle_pip": 5, "add_project": 3, "explore": 4},
+                ...
+            ]
+        }
+    """
+    from django.db.models import Count
+    from django.db.models.functions import TruncDate
+
+    from core.users.models import User
+
+    try:
+        days = int(request.GET.get('days', 30))
+        start_date = timezone.now() - timedelta(days=days)
+
+        # Get users who completed onboarding in the period
+        completed_users = User.objects.filter(
+            onboarding_path__isnull=False,
+            onboarding_completed_at__gte=start_date,
+        ).exclude(onboarding_path='')
+
+        total_completed = completed_users.count()
+
+        # Get counts by path
+        path_counts = completed_users.values('onboarding_path').annotate(count=Count('id')).order_by('-count')
+
+        paths = {}
+        path_labels = {
+            'battle_pip': 'Prompt Battle',
+            'add_project': 'Add Your First Project',
+            'explore': 'Explore',
+        }
+        for item in path_counts:
+            path_id = item['onboarding_path']
+            count = item['count']
+            percentage = round((count / total_completed * 100), 1) if total_completed > 0 else 0
+            paths[path_id] = {
+                'count': count,
+                'percentage': percentage,
+                'label': path_labels.get(path_id, path_id),
+            }
+
+        # Get recent completions
+        recent = list(
+            completed_users.order_by('-onboarding_completed_at')[:10].values(
+                'username', 'onboarding_path', 'onboarding_completed_at'
+            )
+        )
+        recent_formatted = [
+            {
+                'username': r['username'],
+                'path': r['onboarding_path'],
+                'path_label': path_labels.get(r['onboarding_path'], r['onboarding_path']),
+                'completed_at': r['onboarding_completed_at'].isoformat() if r['onboarding_completed_at'] else None,
+            }
+            for r in recent
+        ]
+
+        # Get timeseries by date and path
+        timeseries_raw = (
+            completed_users.annotate(date=TruncDate('onboarding_completed_at'))
+            .values('date', 'onboarding_path')
+            .annotate(count=Count('id'))
+            .order_by('date')
+        )
+
+        # Aggregate into per-day records
+        timeseries_dict = {}
+        for item in timeseries_raw:
+            date_str = item['date'].strftime('%Y-%m-%d')
+            if date_str not in timeseries_dict:
+                timeseries_dict[date_str] = {'date': date_str, 'battle_pip': 0, 'add_project': 0, 'explore': 0}
+            timeseries_dict[date_str][item['onboarding_path']] = item['count']
+
+        timeseries = sorted(timeseries_dict.values(), key=lambda x: x['date'])
+
+        return Response(
+            {
+                'total_completed': total_completed,
+                'paths': paths,
+                'recent': recent_formatted,
+                'timeseries': timeseries,
+            }
+        )
+    except Exception as e:
+        StructuredLogger.log_service_operation(
+            service_name='AdminAnalytics',
+            operation='fetch_onboarding_stats',
+            user=request.user,
+            success=False,
+            metadata={'days': days if 'days' in locals() else None},
+            error=e,
+            logger_instance=logger,
+        )
+        return Response(
+            {'error': 'Failed to fetch onboarding stats'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

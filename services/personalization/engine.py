@@ -404,6 +404,7 @@ class PersonalizationEngine:
                         'engagement_velocity',
                         'like_count',
                         'owner_id',
+                        'promotion_score',
                     ],
                     enforce_visibility=True,  # Explicit for clarity
                 )
@@ -511,9 +512,9 @@ class PersonalizationEngine:
         # Convert to dict for O(1) lookup: {owner_id: like_count}
         owner_like_map = {item['project__user_id']: item['like_count'] for item in owner_like_counts}
 
-        # Calculate max values for normalization
-        max_like_count = max((c.get('like_count', 0) for c in candidates), default=1) or 1
-        max_velocity = max((c.get('engagement_velocity', 0) for c in candidates), default=1) or 1
+        # Calculate max values for normalization (treat None as 0)
+        max_like_count = max((c.get('like_count') or 0 for c in candidates), default=1) or 1
+        max_velocity = max((c.get('engagement_velocity') or 0 for c in candidates), default=1) or 1
 
         scored_projects = []
 
@@ -564,14 +565,24 @@ class PersonalizationEngine:
             collaborative_score = collaborative_scores.get(project_id, 0.0)
 
             # 5. Popularity score
-            like_count = candidate.get('like_count', 0)
-            velocity = candidate.get('engagement_velocity', 0)
+            like_count = candidate.get('like_count')
+            velocity = candidate.get('engagement_velocity')
+
+            if like_count is None:
+                logger.warning(f'Missing like_count for project {project_id}, defaulting to 0')
+                like_count = 0
+            if velocity is None:
+                logger.warning(f'Missing engagement_velocity for project {project_id}, defaulting to 0')
+                velocity = 0
 
             popularity_score = (like_count / max_like_count) * 0.5 + (velocity / max_velocity) * 0.5
 
             # 6. Promotion score (quality signal from admin-promoted content)
             # This helps train the algorithm on what good content looks like
-            promotion_score = candidate.get('promotion_score', 0.0)
+            promotion_score = candidate.get('promotion_score')
+            if promotion_score is None:
+                logger.warning(f'Missing promotion_score for project {project_id}, defaulting to 0.0')
+                promotion_score = 0.0
 
             # Combine with settings-adjusted weights
             total_score = (

@@ -8,6 +8,7 @@ Run explicitly with: RUN_E2E_TESTS=1 pytest core/tests/e2e/test_prompt_battles.p
 """
 
 import os
+import unittest
 
 import pytest
 from django.test import TestCase
@@ -18,7 +19,6 @@ from core.battles.models import (
     BattleInvitation,
     BattlePhase,
     BattleStatus,
-    ChallengeType,
     InvitationType,
     PromptBattle,
 )
@@ -27,6 +27,9 @@ from core.users.models import User
 # Skip these tests unless explicitly enabled
 SKIP_E2E = os.environ.get('RUN_E2E_TESTS', '').lower() not in ('1', 'true', 'yes')
 SKIP_REASON = 'E2E tests skipped by default. Set RUN_E2E_TESTS=1 to run.'
+
+# Use both decorators for compatibility with both test runners
+skip_e2e = unittest.skipIf(SKIP_E2E, SKIP_REASON)
 
 
 def setUpModule():
@@ -40,6 +43,7 @@ def setUpModule():
     print()
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class BattleShareLinkTest(TestCase):
     """
@@ -52,7 +56,7 @@ class BattleShareLinkTest(TestCase):
     """
 
     def setUp(self):
-        """Create test user and challenge type."""
+        """Create test user."""
         self.client = APIClient()
 
         # Create test user
@@ -60,16 +64,6 @@ class BattleShareLinkTest(TestCase):
             username='testuser',
             email='test@example.com',
             password='testpass123',
-        )
-
-        # Create a challenge type for battles
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge for battles',
-            templates=['Create an image of {subject}'],
-            variables={'subject': ['a cat', 'a dog', 'a bird']},
-            is_active=True,
         )
 
     def test_share_link_generates_valid_url(self):
@@ -183,6 +177,7 @@ class BattleShareLinkTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class BattleEntryTest(TestCase):
     """
@@ -212,22 +207,11 @@ class BattleEntryTest(TestCase):
             password='testpass123',
         )
 
-        # Create a challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image of {subject}'],
-            variables={'subject': ['a sunset']},
-            is_active=True,
-        )
-
         # Create battle and invitation
         self.battle = PromptBattle.objects.create(
             challenger=self.challenger,
             opponent=None,  # Will be set when opponent accepts
             challenge_text='Create an image of a sunset',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -356,6 +340,7 @@ class BattleEntryTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class BattleSubmitTest(TestCase):
     """
@@ -384,15 +369,6 @@ class BattleSubmitTest(TestCase):
             password='testpass123',
         )
 
-        # Create challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image'],
-            is_active=True,
-        )
-
         # Create an ACTIVE battle (already started)
         from django.utils import timezone
 
@@ -401,7 +377,6 @@ class BattleSubmitTest(TestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Create an amazing AI-generated image',
-            challenge_type=self.challenge_type,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
             duration_minutes=3,
@@ -549,6 +524,7 @@ class BattleSubmitTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class GuestUserBattleTest(TestCase):
     """
@@ -570,22 +546,11 @@ class GuestUserBattleTest(TestCase):
             password='testpass123',
         )
 
-        # Create a challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image of {subject}'],
-            variables={'subject': ['a sunset']},
-            is_active=True,
-        )
-
         # Create battle and invitation for guest flow
         self.battle = PromptBattle.objects.create(
             challenger=self.challenger,
             opponent=None,  # Will be set when guest accepts
             challenge_text='Create an amazing sunset image',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -721,6 +686,7 @@ class GuestUserBattleTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class BattleShareResultsTest(TestCase):
     """
@@ -748,15 +714,6 @@ class BattleShareResultsTest(TestCase):
             password='testpass123',
         )
 
-        # Create challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image'],
-            is_active=True,
-        )
-
         # Create a COMPLETED battle
         from django.utils import timezone
 
@@ -765,7 +722,6 @@ class BattleShareResultsTest(TestCase):
             challenger=self.challenger,
             opponent=self.opponent,
             challenge_text='Create a stunning mountain landscape at sunset',
-            challenge_type=self.challenge_type,
             status=BattleStatus.COMPLETED,
             phase=BattlePhase.COMPLETE,
             duration_minutes=3,
@@ -918,6 +874,7 @@ class BattleShareResultsTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class GuestReturnToBattleTest(TestCase):
     """
@@ -940,22 +897,11 @@ class GuestReturnToBattleTest(TestCase):
             password='testpass123',
         )
 
-        # Create a challenge type
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image of {subject}'],
-            variables={'subject': ['a sunset']},
-            is_active=True,
-        )
-
         # Create battle and invitation
         self.battle = PromptBattle.objects.create(
             challenger=self.challenger,
             opponent=None,
             challenge_text='Create an amazing sunset image',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -1104,6 +1050,7 @@ class GuestReturnToBattleTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class AsyncBattleAcceptanceTest(TestCase):
     """
@@ -1124,20 +1071,11 @@ class AsyncBattleAcceptanceTest(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image'],
-            is_active=True,
-        )
-
         # Create pending battle with invitation
         self.battle = PromptBattle.objects.create(
             challenger=self.challenger,
             opponent=None,
             challenge_text='Create something amazing',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -1276,6 +1214,7 @@ class AsyncBattleAcceptanceTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class JoinActiveBattleTest(TestCase):
     """
@@ -1297,19 +1236,10 @@ class JoinActiveBattleTest(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image'],
-            is_active=True,
-        )
-
         self.battle = PromptBattle.objects.create(
             challenger=self.challenger,
             opponent=None,
             challenge_text='Create something amazing',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -1468,6 +1398,7 @@ class JoinActiveBattleTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class ChallengerNotificationTest(TestCase):
     """
@@ -1488,14 +1419,6 @@ class ChallengerNotificationTest(TestCase):
             password='testpass123',
         )
 
-        self.challenge_type = ChallengeType.objects.create(
-            key='test_challenge',
-            name='Test Challenge',
-            description='A test challenge',
-            templates=['Create an image'],
-            is_active=True,
-        )
-
     def test_battle_completion_visible_to_challenger(self):
         """
         CRITICAL: Challenger MUST be able to see when async battle completes.
@@ -1512,7 +1435,6 @@ class ChallengerNotificationTest(TestCase):
             challenger=self.challenger,
             opponent=None,
             challenge_text='Create something amazing',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -1595,7 +1517,6 @@ class ChallengerNotificationTest(TestCase):
             challenger=self.challenger,
             opponent=None,
             challenge_text='Create something amazing',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -1652,7 +1573,6 @@ class ChallengerNotificationTest(TestCase):
             challenger=self.challenger,
             opponent=None,
             challenge_text='Create something amazing',
-            challenge_type=self.challenge_type,
             status=BattleStatus.PENDING,
             duration_minutes=3,
         )
@@ -1699,6 +1619,7 @@ class ChallengerNotificationTest(TestCase):
         )
 
 
+@skip_e2e
 @pytest.mark.skipif(SKIP_E2E, reason=SKIP_REASON)
 class PipBattleChallengeRefreshTest(TestCase):
     """
@@ -1710,7 +1631,7 @@ class PipBattleChallengeRefreshTest(TestCase):
     """
 
     def setUp(self):
-        """Create test user, Pip agent, and challenge type."""
+        """Create test user and Pip agent."""
         from core.users.models import UserRole
 
         self.client = APIClient()
@@ -1730,25 +1651,6 @@ class PipBattleChallengeRefreshTest(TestCase):
             role=UserRole.AGENT,
         )
 
-        # Create challenge types
-        self.challenge_type_1 = ChallengeType.objects.create(
-            key='animals',
-            name='Animal Challenge',
-            description='Create images of animals',
-            templates=['Create an image of a {animal}'],
-            variables={'animal': ['cat', 'dog', 'elephant']},
-            is_active=True,
-        )
-
-        self.challenge_type_2 = ChallengeType.objects.create(
-            key='landscapes',
-            name='Landscape Challenge',
-            description='Create images of landscapes',
-            templates=['Create an image of a {landscape}'],
-            variables={'landscape': ['mountain', 'beach', 'forest']},
-            is_active=True,
-        )
-
     def test_pip_does_not_generate_before_user_starts_typing(self):
         """
         CRITICAL: Pip MUST NOT generate an image before user starts typing.
@@ -1764,7 +1666,6 @@ class PipBattleChallengeRefreshTest(TestCase):
             challenger=self.user,
             opponent=self.pip_user,
             challenge_text='Create an image of a cat',
-            challenge_type=self.challenge_type_1,
             match_source=MatchSource.AI_OPPONENT,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
@@ -1799,7 +1700,6 @@ class PipBattleChallengeRefreshTest(TestCase):
             challenger=self.user,
             opponent=self.pip_user,
             challenge_text='Create an image of a cat',
-            challenge_type=self.challenge_type_1,
             match_source=MatchSource.AI_OPPONENT,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
@@ -1861,7 +1761,6 @@ class PipBattleChallengeRefreshTest(TestCase):
             challenger=self.user,
             opponent=self.pip_user,
             challenge_text='Create an image of a cat',
-            challenge_type=self.challenge_type_1,
             match_source=MatchSource.AI_OPPONENT,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
@@ -1921,7 +1820,6 @@ class PipBattleChallengeRefreshTest(TestCase):
             challenger=self.user,
             opponent=self.pip_user,
             challenge_text='Create an image of a cat',
-            challenge_type=self.challenge_type_1,
             match_source=MatchSource.AI_OPPONENT,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
@@ -1979,7 +1877,6 @@ class PipBattleChallengeRefreshTest(TestCase):
             challenger=self.user,
             opponent=self.pip_user,
             challenge_text='Create an image of a cat playing piano',
-            challenge_type=self.challenge_type_1,
             match_source=MatchSource.AI_OPPONENT,
             status=BattleStatus.ACTIVE,
             phase=BattlePhase.ACTIVE,
@@ -1991,7 +1888,6 @@ class PipBattleChallengeRefreshTest(TestCase):
 
         # Force the refresh to give us a landscape challenge
         battle.challenge_text = 'Create an image of a majestic mountain at sunset'
-        battle.challenge_type = self.challenge_type_2
         battle.save()
 
         # Now simulate Pip being triggered (after user starts typing)

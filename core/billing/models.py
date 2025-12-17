@@ -251,6 +251,11 @@ class UserTokenBalance(models.Model):
     # Current balance
     balance = models.IntegerField(default=0, validators=[MinValueValidator(0)], help_text='Current token balance')
 
+    # Credit pack balance (separate from one-time token purchases)
+    credit_pack_balance = models.IntegerField(
+        default=0, validators=[MinValueValidator(0)], help_text='Credits from active credit pack subscription'
+    )
+
     # Lifetime stats
     total_purchased = models.IntegerField(default=0, help_text='Total tokens ever purchased')
     total_used = models.IntegerField(default=0, help_text='Total tokens ever used')
@@ -343,18 +348,45 @@ class TokenPurchase(models.Model):
     def __str__(self):
         return f'{self.user.email} - {self.package.name} ({self.status})'
 
-    def mark_completed(self):
-        """Mark purchase as completed and add tokens to user balance."""
+    def mark_completed(self, stripe_charge_id: str = None):
+        """
+        Mark purchase as completed and add tokens to user balance.
+
+        Uses atomic transaction to ensure purchase status and token addition
+        happen together - if token addition fails, the purchase status is rolled back.
+
+        Args:
+            stripe_charge_id: Optional Stripe charge ID to store with the purchase
+        """
+        from django.db import transaction
+
         if self.status == 'completed':
             return
 
-        self.status = 'completed'
-        self.completed_at = timezone.now()
-        self.save()
+        with transaction.atomic():
+            # Lock this purchase record to prevent concurrent completion
+            locked_purchase = TokenPurchase.objects.select_for_update().get(pk=self.pk)
 
-        # Add tokens to user's balance
-        balance, _ = UserTokenBalance.objects.get_or_create(user=self.user)
-        balance.add_tokens(self.token_amount, source='purchase')
+            # Double-check after acquiring lock
+            if locked_purchase.status == 'completed':
+                return
+
+            locked_purchase.status = 'completed'
+            locked_purchase.completed_at = timezone.now()
+            if stripe_charge_id:
+                locked_purchase.stripe_charge_id = stripe_charge_id
+            locked_purchase.save()
+
+            # Add tokens to user's balance (within same transaction)
+            # Use select_for_update to prevent concurrent balance modifications
+            balance, _ = UserTokenBalance.objects.select_for_update().get_or_create(user=self.user)
+            balance.add_tokens(self.token_amount, source='purchase')
+
+            # Update self to reflect new status
+            self.status = locked_purchase.status
+            self.completed_at = locked_purchase.completed_at
+            if stripe_charge_id:
+                self.stripe_charge_id = stripe_charge_id
 
 
 class TokenTransaction(models.Model):
@@ -370,12 +402,17 @@ class TokenTransaction(models.Model):
         ('refund', 'Refund'),
         ('bonus', 'Bonus'),
         ('adjustment', 'Adjustment'),
+        # Credit pack transaction types
+        ('credit_pack_grant', 'Credit Pack Monthly Grant'),
+        ('credit_pack_forfeit', 'Credit Pack Forfeited'),
+        ('credit_pack_usage', 'Credit Pack Usage'),
+        ('credit_pack_usage_tracked', 'Credit Pack Usage Tracked'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='token_transactions')
 
     # Transaction details
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES, db_index=True)
+    transaction_type = models.CharField(max_length=30, choices=TRANSACTION_TYPES, db_index=True)
     amount = models.IntegerField(help_text='Positive for additions, negative for usage')
     balance_after = models.IntegerField(help_text='Balance after this transaction')
 
@@ -514,3 +551,106 @@ class WebhookEvent(models.Model):
         """Mark that processing this event failed."""
         self.processing_error = error_message
         self.save(update_fields=['processing_error', 'updated_at'])
+
+
+class CreditPack(models.Model):
+    """
+    Defines available recurring credit pack subscriptions.
+
+    Credit packs are optional add-ons that users can purchase separately
+    from their subscription tier. They provide monthly credits that roll
+    over while subscribed but are forfeited when cancelled.
+
+    Packs:
+    - 625 credits for $20/month
+    - 1,250 credits for $40/month
+    - 2,500 credits for $80/month
+    - 5,000 credits for $160/month
+    """
+
+    name = models.CharField(max_length=100, help_text='Display name, e.g., "625 credits"')
+    credits_per_month = models.IntegerField(
+        validators=[MinValueValidator(1)], help_text='Number of credits granted each billing period'
+    )
+    price_cents = models.IntegerField(validators=[MinValueValidator(1)], help_text='Price in cents (2000 = $20)')
+
+    # Stripe Integration
+    stripe_product_id = models.CharField(max_length=255, blank=True, help_text='Stripe Product ID')
+    stripe_price_id = models.CharField(max_length=255, blank=True, help_text='Stripe Price ID for monthly recurring')
+
+    # Metadata
+    is_active = models.BooleanField(default=True, help_text='Whether this pack is available for purchase')
+    sort_order = models.IntegerField(default=0, help_text='Order to display in selector (lower = first)')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'credits_per_month']
+        verbose_name = 'Credit Pack'
+        verbose_name_plural = 'Credit Packs'
+        indexes = [
+            models.Index(fields=['is_active', 'sort_order']),
+        ]
+
+    def __str__(self):
+        return f'{self.name} - {self.credits_per_month:,} credits/mo (${self.price_cents / 100:.0f})'
+
+    @property
+    def price_dollars(self):
+        """Return price in dollars."""
+        return self.price_cents / 100
+
+
+class UserCreditPackSubscription(models.Model):
+    """
+    Tracks a user's active credit pack subscription.
+
+    This is separate from the tier subscription (UserSubscription).
+    Users can have any tier + any credit pack (or no credit pack).
+    """
+
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('past_due', 'Past Due'),
+        ('canceled', 'Canceled'),
+        ('inactive', 'Inactive'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='credit_pack_subscription')
+    credit_pack = models.ForeignKey(
+        CreditPack, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscriptions'
+    )
+
+    # Stripe Integration
+    stripe_subscription_id = models.CharField(max_length=255, blank=True, help_text='Stripe Subscription ID')
+
+    # Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='inactive', db_index=True)
+
+    # Billing period
+    current_period_start = models.DateTimeField(null=True, blank=True)
+    current_period_end = models.DateTimeField(null=True, blank=True)
+    credits_this_period = models.IntegerField(default=0, help_text='Credits granted this billing period')
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'User Credit Pack Subscription'
+        verbose_name_plural = 'User Credit Pack Subscriptions'
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['stripe_subscription_id']),
+        ]
+
+    def __str__(self):
+        if self.credit_pack:
+            return f'{self.user.email} - {self.credit_pack.name} ({self.status})'
+        return f'{self.user.email} - No credit pack ({self.status})'
+
+    @property
+    def is_active(self):
+        """Check if credit pack subscription is currently active."""
+        return self.status == 'active' and self.credit_pack is not None

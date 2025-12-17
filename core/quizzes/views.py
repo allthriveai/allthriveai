@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from core.thrive_circle.models import PointActivity, UserSideQuest
+from core.thrive_circle.models import PointActivity
 from core.thrive_circle.services import PointsService
 
 from .models import Quiz, QuizAttempt, QuizQuestion
@@ -288,24 +288,42 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
                     extra={'user_id': request.user.id, 'quiz_attempt_id': str(attempt.id)},
                 )
 
-        # Get quests that were completed by this action (completed in last 5 seconds)
-        # The signal track_quiz_completed runs when attempt.save() is called above
-        recent_completed_quests = UserSideQuest.objects.filter(
-            user=request.user,
-            status='completed',
-            completed_at__gte=timezone.now() - timezone.timedelta(seconds=5),
-        ).select_related('side_quest')
+        # Track quest completion explicitly (don't rely on signal timing)
+        from core.thrive_circle.quest_tracker import track_quest_action
+        from core.thrive_circle.signals import _mark_as_tracked
+        from core.thrive_circle.utils import format_completed_quests
 
-        completed_quests_data = [
+        # Mark as tracked to prevent double-tracking from signal
+        _mark_as_tracked('quiz_completed', request.user.id, str(attempt.pk))
+
+        # Calculate score for tracking
+        score = attempt.percentage_score if hasattr(attempt, 'percentage_score') else 0
+
+        # Track basic quiz completion
+        completed_ids = track_quest_action(
+            request.user,
+            'quiz_completed',
             {
-                'id': str(uq.side_quest.id),
-                'title': uq.side_quest.title,
-                'description': uq.side_quest.description,
-                'pointsAwarded': uq.points_awarded or uq.side_quest.points_reward,
-                'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
-            }
-            for uq in recent_completed_quests
-        ]
+                'quiz_id': attempt.quiz.id,
+                'score': score,
+                'topic': attempt.quiz.topic if hasattr(attempt.quiz, 'topic') else None,
+            },
+        )
+
+        # Track perfect score separately if applicable
+        if score >= 100:
+            perfect_ids = track_quest_action(
+                request.user,
+                'quiz_perfect',
+                {
+                    'quiz_id': attempt.quiz.id,
+                    'score': score,
+                },
+            )
+            completed_ids.extend(perfect_ids)
+
+        # Format completed quests for response
+        completed_quests_data = format_completed_quests(request.user, completed_ids) if completed_ids else []
 
         serializer = self.get_serializer(attempt)
         return Response(

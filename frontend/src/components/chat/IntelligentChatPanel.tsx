@@ -29,6 +29,11 @@ import {
 } from '@/services/figma';
 import { uploadFile, uploadImage } from '@/services/upload';
 
+interface ArchitectureRegenerateContext {
+  projectId: number;
+  projectTitle: string;
+}
+
 interface IntelligentChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,6 +41,7 @@ interface IntelligentChatPanelProps {
   welcomeMode?: boolean; // Show onboarding welcome message for new users
   supportMode?: boolean; // Start with help questions panel visible
   productCreationMode?: boolean; // Start in product creation context
+  architectureRegenerateContext?: ArchitectureRegenerateContext | null; // Context for architecture diagram regeneration
 }
 
 /**
@@ -54,12 +60,14 @@ export function IntelligentChatPanel({
   conversationId = 'default-conversation',
   supportMode = false,
   productCreationMode = false,
+  architectureRegenerateContext = null,
 }: IntelligentChatPanelProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState<string | undefined>();
-  const [hasInteracted, setHasInteracted] = useState(supportMode); // If support mode, mark as interacted
+  const [hasInteracted, setHasInteracted] = useState(supportMode || !!architectureRegenerateContext); // If support mode or architecture mode, mark as interacted
   const [quotaExceeded, setQuotaExceeded] = useState<QuotaExceededInfo | null>(null);
+  const [architectureInitialMessageSent, setArchitectureInitialMessageSent] = useState(false);
 
   // GitHub integration state
   const [githubStep, setGithubStep] = useState<'idle' | 'loading' | 'connect' | 'repos' | 'importing'>('idle');
@@ -123,12 +131,29 @@ export function IntelligentChatPanel({
     setQuotaExceeded(info);
   }, []);
 
-  const { messages, isConnected, isConnecting, isLoading, sendMessage, clearMessages, cancelProcessing } = useIntelligentChat({
+  const { messages, isConnected, isConnecting, isLoading, currentTool, sendMessage, clearMessages, cancelProcessing } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
     onProjectCreated: handleProjectCreated,
     onQuotaExceeded: handleQuotaExceeded,
   });
+
+  // Send initial message for architecture regeneration mode
+  useEffect(() => {
+    if (
+      architectureRegenerateContext &&
+      isConnected &&
+      !architectureInitialMessageSent &&
+      !isLoading &&
+      messages.length === 0
+    ) {
+      // Send an initial message to trigger the AI to ask for architecture description
+      // Include project ID so the AI can use it when calling regenerate_architecture_diagram
+      const initialMessage = `The architecture diagram on my project "${architectureRegenerateContext.projectTitle}" (ID: ${architectureRegenerateContext.projectId}) is wrong, can you help me fix it?`;
+      sendMessage(initialMessage);
+      setArchitectureInitialMessageSent(true);
+    }
+  }, [architectureRegenerateContext, isConnected, architectureInitialMessageSent, isLoading, messages.length, sendMessage]);
 
   // State for file upload progress
   const [isUploading, setIsUploading] = useState(false);
@@ -1366,6 +1391,7 @@ export function IntelligentChatPanel({
       onSendMessage={handleSendMessage}
       messages={messages as any}
       isLoading={isLoading || isUploading}
+      currentTool={currentTool}
       error={error}
       customMessageRenderer={renderMessage}
       customInputPrefix={

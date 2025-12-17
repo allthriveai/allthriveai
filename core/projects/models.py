@@ -100,16 +100,17 @@ class Project(models.Model):
         db_index=True,
         help_text='Whether this project is a sellable digital product',
     )
-    # Admin promotion fields - for featuring projects at top of feeds
+    # Admin promotion fields - gives projects higher weight in personalization scoring
+    # (8% promotion_score boost in feed algorithm, not pinned to top)
     is_promoted = models.BooleanField(
         default=False,
         db_index=True,
-        help_text='Admin promoted - appears at top of explore feeds',
+        help_text='Admin promoted - weighted higher in explore feeds (not pinned)',
     )
     promoted_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text='When this project was promoted (for ordering)',
+        help_text='When this project was promoted (used for score decay)',
     )
     promoted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -529,21 +530,31 @@ def auto_tag_project_on_save(sender, instance, created, **kwargs):
     1. Extract tools mentioned in the project
     2. Create/update UserTags with confidence scores
     3. Link detected tools to the project
+    4. Ensure project topics exist in the Topic taxonomy
 
     Only runs when the project has a user (not during migrations).
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     # Only auto-tag if project has a user
     if not instance.user:
         return
 
     # Import here to avoid circular imports
     from core.taxonomy.services import auto_tag_project
+    from core.taxonomy.topic_service import ensure_topics_in_taxonomy
 
     try:
         auto_tag_project(instance)
     except Exception as e:
         # Log error but don't fail the save operation
-        import logging
-
-        logger = logging.getLogger(__name__)
         logger.error(f"Error auto-tagging project '{instance.title}': {e}", exc_info=True)
+
+    # Ensure project topics are tracked in the taxonomy
+    if instance.topics:
+        try:
+            ensure_topics_in_taxonomy(instance.topics)
+        except Exception as e:
+            logger.error(f"Error syncing topics to taxonomy for '{instance.title}': {e}", exc_info=True)

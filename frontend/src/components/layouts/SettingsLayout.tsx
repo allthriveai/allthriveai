@@ -66,6 +66,7 @@ const settingsNavItems: SettingsSidebarItem[] = [
     label: 'Billing',
     path: '/account/settings/billing',
     icon: CreditCardIcon,
+    comingSoon: true,
   },
   {
     label: 'Creator',

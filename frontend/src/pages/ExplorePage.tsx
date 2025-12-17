@@ -24,9 +24,15 @@ import { getQuizzes } from '@/services/quiz';
 import { useAuth } from '@/hooks/useAuth';
 import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 import { useFreshnessToken } from '@/hooks/useFreshnessToken';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 
 
 export function ExplorePage() {
+  // Quest tracking for page visit
+  const { trackPage } = useQuestTracking();
+  useEffect(() => {
+    trackPage('/explore', 'Explore');
+  }, [trackPage]);
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
@@ -384,7 +390,7 @@ export function ExplorePage() {
     trackProjectClick(projectId, source, position);
   }, [activeTab, projectPositionMap]);
 
-  // Intersection observer for infinite scroll
+  // Intersection observer for infinite scroll - triggers when approaching end of content
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -403,7 +409,9 @@ export function ExplorePage() {
       {
         root: null, // Use viewport
         threshold: 0,
-        rootMargin: '400px' // Load when within 400px of viewport
+        // Large rootMargin ensures we start loading well before user reaches the bottom
+        // This prevents gaps in the feed by preloading content early
+        rootMargin: '1500px'
       }
     );
 
@@ -418,6 +426,24 @@ export function ExplorePage() {
       }
     };
   }, [activeTab, hasNextPage, hasNextProfiles, isFetchingNextPage, isFetchingNextProfiles, fetchNextPage, fetchNextProfiles]);
+
+  // Proactive preloading: fetch next page when we have rendered content but more is available
+  // This ensures content is ready before user scrolls to it
+  useEffect(() => {
+    if (activeTab === 'profiles') {
+      // For profiles: preload if we have less than 2 pages worth and more available
+      const totalProfiles = allProfiles.length;
+      if (totalProfiles > 0 && totalProfiles < 60 && hasNextProfiles && !isFetchingNextProfiles) {
+        fetchNextProfiles();
+      }
+    } else {
+      // For projects: preload if we have less than 2 pages worth and more available
+      const totalProjects = allProjects.length;
+      if (totalProjects > 0 && totalProjects < 60 && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    }
+  }, [activeTab, allProfiles.length, allProjects.length, hasNextPage, hasNextProfiles, isFetchingNextPage, isFetchingNextProfiles, fetchNextPage, fetchNextProfiles]);
 
   // Show filters on all content tabs except profiles
   const showFilters = activeTab !== 'profiles';

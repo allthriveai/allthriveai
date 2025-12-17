@@ -29,9 +29,11 @@ logger = logging.getLogger(__name__)
 TOOLS_NEEDING_STATE = {
     'create_project',
     'create_product',
+    'import_from_url',  # NEW: Unified URL import tool
     'import_github_project',
     'import_video_project',
     'scrape_webpage_for_project',
+    'regenerate_architecture_diagram',  # Regenerate architecture diagrams
 }
 TOOLS_BY_NAME = {tool.name: tool for tool in PROJECT_TOOLS}
 

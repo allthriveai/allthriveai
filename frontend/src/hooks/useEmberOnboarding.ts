@@ -64,7 +64,8 @@ export function useEmberOnboarding() {
 
   // Check if user is on a public/landing page - don't show onboarding on these pages
   // even if the user is authenticated (e.g., PWA with inherited cookies)
-  const publicPages = ['/', '/about', '/explore', '/tools', '/login', '/signup', '/privacy', '/terms'];
+  // Note: /explore is NOT included here - authenticated users should see the banner there
+  const publicPages = ['/', '/about', '/tools', '/login', '/signup', '/privacy', '/terms'];
   const isOnPublicPage = publicPages.includes(location.pathname) ||
     location.pathname.startsWith('/@') || // Profile pages
     location.pathname.startsWith('/battles/') || // Battle share pages
@@ -102,20 +103,21 @@ export function useEmberOnboarding() {
     !isOnBattleInvitePage &&
     !isOnPublicPage;
 
-  // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all)
+  // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all 4 adventures)
   // Also skip for guest users, battle invite pages, and public pages
+  // Once all 4 adventures are complete, banner never shows again
   const shouldShowBanner =
     isAuthenticated &&
     isLoaded &&
     state.hasSeenModal &&
     !state.isDismissed &&
-    state.completedAdventures.length < 3 &&
+    state.completedAdventures.length < 4 &&
     !user?.isGuest &&
     !isOnBattleInvitePage &&
     !isOnPublicPage;
 
-  // All adventures completed
-  const allAdventuresComplete = state.completedAdventures.length === 3;
+  // All 4 adventures completed (battle_pip, add_project, explore, personalize)
+  const allAdventuresComplete = state.completedAdventures.length >= 4;
 
   // Mark modal as seen
   const markModalSeen = useCallback(() => {

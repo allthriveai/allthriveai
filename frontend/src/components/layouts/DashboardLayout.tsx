@@ -72,6 +72,12 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
 
+  // Architecture regeneration state
+  const [architectureRegenerateContext, setArchitectureRegenerateContext] = useState<{
+    projectId: number;
+    projectTitle: string;
+  } | null>(null);
+
   // Track if component has mounted to avoid closing panels on initial render
   const hasMounted = useRef(false);
 
@@ -171,6 +177,25 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     return () => window.removeEventListener('openAddProject', handleOpenAddProjectEvent);
   }, []);
 
+  // Listen for architecture regeneration event (from ArchitectureSection)
+  useEffect(() => {
+    const handleArchitectureRegenerateEvent = (event: CustomEvent<{
+      projectId: number;
+      projectTitle: string;
+      projectSlug: string;
+    }>) => {
+      const { projectId, projectTitle } = event.detail;
+      setArchitectureRegenerateContext({ projectId, projectTitle });
+      setAddProjectOpen(true);
+      setAddProjectWelcomeMode(false);
+      setChatSupportMode(false);
+      setAboutOpen(false);
+      setEventsOpen(false);
+    };
+    window.addEventListener('openArchitectureRegenerate', handleArchitectureRegenerateEvent as EventListener);
+    return () => window.removeEventListener('openArchitectureRegenerate', handleArchitectureRegenerateEvent as EventListener);
+  }, []);
+
   const handleMenuClick = useCallback((menuItem: string) => {
     if (menuItem === 'About Us') {
       setAboutOpen((wasOpen) => {
@@ -228,6 +253,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setAddProjectOpen(false);
     setAddProjectWelcomeMode(false);
     setChatSupportMode(false);
+    setArchitectureRegenerateContext(null);
   };
 
   const handleOpenCommentPanel = useCallback((project: Project) => {
@@ -302,9 +328,14 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           <IntelligentChatPanel
             isOpen={addProjectOpen}
             onClose={handleCloseAddProject}
-            conversationId={conversationId}
+            conversationId={
+              architectureRegenerateContext
+                ? `project-${architectureRegenerateContext.projectId}-architecture`
+                : conversationId
+            }
             welcomeMode={addProjectWelcomeMode}
             supportMode={chatSupportMode}
+            architectureRegenerateContext={architectureRegenerateContext}
           />
         )}
 

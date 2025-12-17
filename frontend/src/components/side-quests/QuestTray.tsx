@@ -75,14 +75,10 @@ const getQuestIntroMessages = (quest: SideQuest) => {
   // Show quest steps/objective
   if (quest.isGuided && quest.steps && quest.steps.length > 0) {
     messages.push('Your mission:');
-    // Show first 3 steps as preview
-    const previewSteps = quest.steps.slice(0, 3);
-    previewSteps.forEach((step, index) => {
+    // Show all steps so user knows the full scope
+    quest.steps.forEach((step, index) => {
       messages.push(`${index + 1}. ${step.title}`);
     });
-    if (quest.steps.length > 3) {
-      messages.push(`...and ${quest.steps.length - 3} more steps`);
-    }
   } else if (quest.description) {
     // For non-guided quests, show description as mission
     messages.push('Your mission:');

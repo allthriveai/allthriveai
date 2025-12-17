@@ -1,7 +1,7 @@
 """
 Management command to set up test data for e2e tests.
 
-Creates a test user and a test project specifically for Playwright e2e tests.
+Creates a test user, admin user, and a test project specifically for Playwright e2e tests.
 """
 
 from django.conf import settings
@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from core.projects.models import Project
+from core.users.models import UserRole
 
 User = get_user_model()
 
@@ -32,8 +33,26 @@ class Command(BaseCommand):
         parser.add_argument(
             '--password',
             type=str,
-            default='e2eTestPass123!',
+            default='e2eTestPassword123',
             help='Password for test user',
+        )
+        parser.add_argument(
+            '--admin-username',
+            type=str,
+            default='e2e-admin-user',
+            help='Username for admin test user',
+        )
+        parser.add_argument(
+            '--admin-email',
+            type=str,
+            default='e2e-admin@example.com',
+            help='Email for admin test user',
+        )
+        parser.add_argument(
+            '--admin-password',
+            type=str,
+            default='e2eAdminPassword123',
+            help='Password for admin test user',
         )
         parser.add_argument(
             '--project-slug',
@@ -51,6 +70,9 @@ class Command(BaseCommand):
         username = options['username']
         email = options['email']
         password = options['password']
+        admin_username = options['admin_username']
+        admin_email = options['admin_email']
+        admin_password = options['admin_password']
         project_slug = options['project_slug']
         reset = options['reset']
 
@@ -61,7 +83,9 @@ class Command(BaseCommand):
         if reset:
             self.stdout.write('🗑️  Resetting existing test data...')
             User.objects.filter(username=username).delete()
+            User.objects.filter(username=admin_username).delete()
             self.stdout.write(self.style.WARNING(f'  Deleted user: {username}'))
+            self.stdout.write(self.style.WARNING(f'  Deleted admin user: {admin_username}'))
 
         # Create or get test user
         user, created = User.objects.get_or_create(
@@ -87,6 +111,34 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f'ℹ️  Test user already exists: {username}'))
             self.stdout.write(f'   Password updated to: {password}')
 
+        # Create or get admin test user
+        admin_user, admin_created = User.objects.get_or_create(
+            username=admin_username,
+            defaults={
+                'email': admin_email,
+                'first_name': 'E2E',
+                'last_name': 'Admin User',
+                'is_active': True,
+                'role': UserRole.ADMIN,
+            },
+        )
+
+        if admin_created:
+            admin_user.set_password(admin_password)
+            admin_user.save()
+            self.stdout.write(self.style.SUCCESS(f'✅ Created admin user: {admin_username}'))
+            self.stdout.write(f'   Email: {admin_email}')
+            self.stdout.write(f'   Password: {admin_password}')
+            self.stdout.write('   Role: admin')
+        else:
+            # Update password and ensure role is admin
+            admin_user.set_password(admin_password)
+            admin_user.role = UserRole.ADMIN
+            admin_user.save()
+            self.stdout.write(self.style.WARNING(f'ℹ️  Admin user already exists: {admin_username}'))
+            self.stdout.write(f'   Password updated to: {admin_password}')
+            self.stdout.write('   Role ensured: admin')
+
         # Delete existing test project if reset
         if reset:
             Project.objects.filter(user=user, slug=project_slug).delete()
@@ -106,6 +158,7 @@ class Command(BaseCommand):
                 'featured_image_url': 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=600&fit=crop',
                 'external_url': 'https://example.com',
                 'content': {
+                    'templateVersion': 2,
                     'heroDisplayMode': 'image',
                     'blocks': [
                         {
@@ -119,6 +172,27 @@ class Command(BaseCommand):
                             'content': 'This is a test project for e2e testing. It should have editable content.',
                         },
                     ],
+                    'sections': [
+                        {
+                            'id': 'architecture-1',
+                            'type': 'architecture',
+                            'enabled': True,
+                            'order': 1,
+                            'content': {
+                                'title': 'System Architecture',
+                                'diagram': (
+                                    'graph TD\n'
+                                    '    A[Frontend] --> B[API Gateway]\n'
+                                    '    B --> C[Backend Service]\n'
+                                    '    C --> D[(Database)]\n'
+                                    '    C --> E[Cache]'
+                                ),
+                                'description': (
+                                    'This is a sample architecture diagram ' 'for testing the regeneration feature.'
+                                ),
+                            },
+                        },
+                    ],
                 },
             },
         )
@@ -127,7 +201,50 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'✅ Created test project: {project_slug}'))
             self.stdout.write(f'   URL: {settings.FRONTEND_URL}/{username}/{project_slug}')
         else:
-            self.stdout.write(self.style.WARNING(f'ℹ️  Test project already exists: {project_slug}'))
+            # Update project content to ensure architecture section exists with correct format
+            content = project.content or {}
+            sections = content.get('sections', [])
+
+            # Check if architecture section exists (sections should be an array now)
+            has_architecture = False
+            if isinstance(sections, list):
+                has_architecture = any(s.get('type') == 'architecture' for s in sections)
+
+            if not has_architecture:
+                # Ensure sections is a list
+                if not isinstance(sections, list):
+                    sections = []
+
+                sections.append(
+                    {
+                        'id': 'architecture-1',
+                        'type': 'architecture',
+                        'enabled': True,
+                        'order': 1,
+                        'content': {
+                            'title': 'System Architecture',
+                            'diagram': (
+                                'graph TD\n'
+                                '    A[Frontend] --> B[API Gateway]\n'
+                                '    B --> C[Backend Service]\n'
+                                '    C --> D[(Database)]\n'
+                                '    C --> E[Cache]'
+                            ),
+                            'description': (
+                                'This is a sample architecture diagram ' 'for testing the regeneration feature.'
+                            ),
+                        },
+                    }
+                )
+                content['sections'] = sections
+                content['templateVersion'] = 2
+                project.content = content
+                project.save()
+                self.stdout.write(
+                    self.style.SUCCESS(f'✅ Updated test project with architecture section: {project_slug}')
+                )
+            else:
+                self.stdout.write(self.style.WARNING(f'ℹ️  Test project already exists: {project_slug}'))
             self.stdout.write(f'   URL: {settings.FRONTEND_URL}/{username}/{project_slug}')
 
         self.stdout.write('')
@@ -141,6 +258,11 @@ class Command(BaseCommand):
         self.stdout.write(f'TEST_USER_PASSWORD={password}')
         self.stdout.write(f'TEST_USER_USERNAME={username}')
         self.stdout.write(f'TEST_PROJECT_SLUG={project_slug}')
+        self.stdout.write('')
+        self.stdout.write('# Admin user for admin-only tests')
+        self.stdout.write(f'ADMIN_USER_EMAIL={admin_email}')
+        self.stdout.write(f'ADMIN_USER_PASSWORD={admin_password}')
+        self.stdout.write(f'ADMIN_USER_USERNAME={admin_username}')
         self.stdout.write('')
         self.stdout.write('🧪 Run e2e tests with:')
         self.stdout.write('   cd frontend && npm run test:e2e')

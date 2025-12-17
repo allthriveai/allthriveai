@@ -50,9 +50,13 @@ class StripeService:
     # ===== Customer Management =====
 
     @staticmethod
+    @transaction.atomic
     def get_or_create_customer(user) -> str:
         """
         Get or create a Stripe customer for a user.
+
+        Uses database-level locking to prevent race conditions that could
+        create duplicate Stripe customers.
 
         Args:
             user: Django User instance
@@ -64,8 +68,11 @@ class StripeService:
             StripeServiceError: If customer creation fails
         """
         try:
-            # Check if user already has a subscription with Stripe customer
-            subscription = UserSubscription.objects.filter(user=user).first()
+            # Use select_for_update to prevent concurrent customer creation
+            # This locks the row until the transaction completes
+            subscription = UserSubscription.objects.select_for_update().filter(user=user).first()
+
+            # Double-check after acquiring lock
             if subscription and subscription.stripe_customer_id:
                 return subscription.stripe_customer_id
 
@@ -478,7 +485,7 @@ class StripeService:
     @staticmethod
     @transaction.atomic
     def create_checkout_session(
-        user, tier: SubscriptionTier, billing_interval: str, success_url: str, cancel_url: str
+        user, tier: SubscriptionTier, billing_interval: str, success_url: str, cancel_url: str, credit_pack=None
     ) -> dict[str, Any]:
         """
         Create a Stripe Checkout Session for subscription.
@@ -489,6 +496,7 @@ class StripeService:
             billing_interval: 'monthly' or 'annual' (required)
             success_url: URL to redirect to after successful payment
             cancel_url: URL to redirect to if payment is cancelled
+            credit_pack: Optional CreditPack instance to add as second subscription
 
         Returns:
             Dict with checkout session details including url
@@ -537,27 +545,48 @@ class StripeService:
                     'or use the update subscription endpoint to change tiers.'
                 )
 
+            # Build line items - tier subscription + optional credit pack
+            line_items = [
+                {
+                    'price': stripe_price_id,
+                    'quantity': 1,
+                }
+            ]
+
+            # Add credit pack as second line item if provided
+            credit_pack_id = None
+            if credit_pack:
+                if not credit_pack.stripe_price_id:
+                    raise StripeServiceError(
+                        f"Credit pack {credit_pack.name} doesn't have a Stripe price configured. "
+                        'Run: python manage.py seed_credit_packs --with-stripe'
+                    )
+                line_items.append(
+                    {
+                        'price': credit_pack.stripe_price_id,
+                        'quantity': 1,
+                    }
+                )
+                credit_pack_id = credit_pack.id
+
+            # Build metadata
+            metadata = {
+                'user_id': user.id,
+                'tier_slug': tier.slug,
+            }
+            if credit_pack_id:
+                metadata['credit_pack_id'] = credit_pack_id
+
             # Create Stripe Checkout Session
             session_params = {
                 'customer': customer_id,
                 'mode': 'subscription',
-                'line_items': [
-                    {
-                        'price': stripe_price_id,
-                        'quantity': 1,
-                    }
-                ],
+                'line_items': line_items,
                 'success_url': success_url,
                 'cancel_url': cancel_url,
-                'metadata': {
-                    'user_id': user.id,
-                    'tier_slug': tier.slug,
-                },
+                'metadata': metadata,
                 'subscription_data': {
-                    'metadata': {
-                        'user_id': user.id,
-                        'tier_slug': tier.slug,
-                    }
+                    'metadata': metadata,
                 },
             }
 
@@ -567,12 +596,15 @@ class StripeService:
 
             checkout_session = stripe.checkout.Session.create(**session_params)
 
+            log_metadata = {'checkout_session_id': checkout_session.id, 'tier_slug': tier.slug}
+            if credit_pack_id:
+                log_metadata['credit_pack_id'] = credit_pack_id
             StructuredLogger.log_service_operation(
                 service_name='StripeService',
                 operation='create_checkout_session',
                 user=user,
                 success=True,
-                metadata={'checkout_session_id': checkout_session.id, 'tier_slug': tier.slug},
+                metadata=log_metadata,
                 logger_instance=logger,
             )
 
@@ -1037,9 +1069,12 @@ class StripeService:
         try:
             purchase = TokenPurchase.objects.get(stripe_payment_intent_id=payment_intent_id)
 
-            # Mark purchase as completed (this adds tokens via signal)
-            purchase.stripe_charge_id = payment_intent.get('latest_charge')
-            purchase.mark_completed()
+            # Store charge ID for reference
+            charge_id = payment_intent.get('latest_charge')
+
+            # Mark purchase as completed (this adds tokens atomically)
+            # The mark_completed method handles locking and transaction
+            purchase.mark_completed(stripe_charge_id=charge_id)
 
             StructuredLogger.log_service_operation(
                 service_name='StripeService',
@@ -1116,6 +1151,7 @@ class StripeService:
         Handle checkout.session.completed webhook event.
 
         Updates local subscription when checkout is completed.
+        Also handles credit pack if included in the checkout.
         """
         session = event_data['object']
         session_id = session['id']
@@ -1139,6 +1175,7 @@ class StripeService:
             # Get user ID from metadata
             user_id = session['metadata'].get('user_id')
             tier_slug = session['metadata'].get('tier_slug')
+            credit_pack_id = session['metadata'].get('credit_pack_id')
 
             if not user_id or not tier_slug:
                 StructuredLogger.log_service_operation(
@@ -1202,12 +1239,95 @@ class StripeService:
                 reason=f'User subscribed to {tier.name} via Checkout',
             )
 
+            # Handle credit pack if included in checkout
+            if credit_pack_id:
+                from .credit_pack_service import CreditPackService
+                from .models import CreditPack, UserCreditPackSubscription
+
+                try:
+                    credit_pack = CreditPack.objects.get(id=credit_pack_id)
+
+                    # Check if credits were already granted for this subscription
+                    # This prevents duplicate grants on webhook retries
+                    existing_sub = UserCreditPackSubscription.objects.filter(
+                        user=user,
+                        stripe_subscription_id=stripe_subscription.id,
+                    ).first()
+
+                    credits_already_granted = existing_sub is not None
+
+                    # Create or update credit pack subscription record
+                    # Use select_for_update to prevent race conditions
+                    credit_pack_sub, created = UserCreditPackSubscription.objects.select_for_update().update_or_create(
+                        user=user,
+                        defaults={
+                            'credit_pack': credit_pack,
+                            'stripe_subscription_id': stripe_subscription.id,
+                            'status': 'active',
+                            'credits_this_period': credit_pack.credits_per_month,
+                        },
+                    )
+
+                    # Set period dates on credit pack subscription
+                    if (
+                        hasattr(stripe_subscription, 'current_period_start')
+                        and stripe_subscription.current_period_start
+                    ):
+                        credit_pack_sub.current_period_start = timezone.datetime.fromtimestamp(
+                            stripe_subscription.current_period_start, tz=UTC
+                        )
+                    if hasattr(stripe_subscription, 'current_period_end') and stripe_subscription.current_period_end:
+                        credit_pack_sub.current_period_end = timezone.datetime.fromtimestamp(
+                            stripe_subscription.current_period_end, tz=UTC
+                        )
+                    credit_pack_sub.save()
+
+                    # Grant initial monthly credits only if this is a new subscription
+                    # Prevents duplicate grants on webhook retries
+                    if not credits_already_granted:
+                        CreditPackService.grant_monthly_credits(user, credit_pack)
+
+                        StructuredLogger.log_service_operation(
+                            service_name='StripeService',
+                            operation='handle_checkout_credit_pack',
+                            user=user,
+                            success=True,
+                            metadata={
+                                'credit_pack_id': credit_pack_id,
+                                'credits_granted': credit_pack.credits_per_month,
+                            },
+                            logger_instance=logger,
+                        )
+                    else:
+                        StructuredLogger.log_service_operation(
+                            service_name='StripeService',
+                            operation='handle_checkout_credit_pack',
+                            user=user,
+                            success=True,
+                            metadata={
+                                'credit_pack_id': credit_pack_id,
+                                'credits_granted': 0,
+                                'reason': 'already_granted',
+                            },
+                            logger_instance=logger,
+                        )
+                except CreditPack.DoesNotExist:
+                    StructuredLogger.log_error(
+                        message='Credit pack not found during checkout completion',
+                        error=None,
+                        extra={'credit_pack_id': credit_pack_id, 'session_id': session_id},
+                        logger_instance=logger,
+                    )
+
+            log_metadata = {'checkout_session_id': session_id, 'tier_slug': tier.slug}
+            if credit_pack_id:
+                log_metadata['credit_pack_id'] = credit_pack_id
             StructuredLogger.log_service_operation(
                 service_name='StripeService',
                 operation='handle_checkout_session_completed',
                 user=user,
                 success=True,
-                metadata={'checkout_session_id': session_id, 'tier_slug': tier.slug},
+                metadata=log_metadata,
                 logger_instance=logger,
             )
 
@@ -1218,3 +1338,224 @@ class StripeService:
                 extra={'checkout_session_id': session_id},
                 logger_instance=logger,
             )
+
+    # ===== Credit Pack Subscription Management =====
+
+    def create_credit_pack_subscription(self, user, credit_pack) -> stripe.Subscription:
+        """
+        Create a new credit pack subscription for user.
+
+        Credit pack subscriptions are separate from tier subscriptions.
+
+        Args:
+            user: Django User instance
+            credit_pack: CreditPack instance
+
+        Returns:
+            Stripe Subscription object
+
+        Raises:
+            StripeServiceError: If subscription creation fails
+        """
+        try:
+            if not credit_pack.stripe_price_id:
+                raise StripeServiceError(
+                    f"Credit pack {credit_pack.name} doesn't have a Stripe price configured. "
+                    'Run: python manage.py seed_credit_packs --with-stripe'
+                )
+
+            # Get or create Stripe customer
+            customer_id = self.get_or_create_customer(user)
+
+            # Create subscription for credit pack
+            subscription = stripe.Subscription.create(
+                customer=customer_id,
+                items=[{'price': credit_pack.stripe_price_id}],
+                metadata={
+                    'type': 'credit_pack',
+                    'user_id': str(user.id),
+                    'credit_pack_id': str(credit_pack.id),
+                },
+                proration_behavior='always_invoice',
+            )
+
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='create_credit_pack_subscription',
+                user=user,
+                success=True,
+                metadata={
+                    'stripe_subscription_id': subscription.id,
+                    'credit_pack_name': credit_pack.name,
+                },
+                logger_instance=logger,
+            )
+
+            return subscription
+
+        except stripe.error.StripeError as e:
+            StructuredLogger.log_error(
+                message='Failed to create credit pack subscription',
+                error=e,
+                user=user,
+                extra={'credit_pack_id': credit_pack.id},
+                logger_instance=logger,
+            )
+            raise StripeServiceError(f'Failed to create credit pack subscription: {str(e)}') from e
+
+    def update_credit_pack_subscription(self, subscription_id: str, new_credit_pack) -> None:
+        """
+        Update existing credit pack subscription to a different pack.
+
+        Proration is handled automatically by Stripe.
+
+        Args:
+            subscription_id: Stripe subscription ID
+            new_credit_pack: New CreditPack instance
+
+        Raises:
+            StripeServiceError: If update fails
+        """
+        try:
+            if not new_credit_pack.stripe_price_id:
+                raise StripeServiceError(f"Credit pack {new_credit_pack.name} doesn't have a Stripe price configured.")
+
+            # Retrieve current subscription
+            subscription = stripe.Subscription.retrieve(subscription_id)
+
+            # Update the subscription item to new price
+            stripe.Subscription.modify(
+                subscription_id,
+                items=[
+                    {
+                        'id': subscription['items']['data'][0].id,
+                        'price': new_credit_pack.stripe_price_id,
+                    }
+                ],
+                proration_behavior='always_invoice',
+                metadata={
+                    'credit_pack_id': str(new_credit_pack.id),
+                },
+            )
+
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='update_credit_pack_subscription',
+                success=True,
+                metadata={
+                    'stripe_subscription_id': subscription_id,
+                    'new_credit_pack_name': new_credit_pack.name,
+                },
+                logger_instance=logger,
+            )
+
+        except stripe.error.StripeError as e:
+            StructuredLogger.log_error(
+                message='Failed to update credit pack subscription',
+                error=e,
+                extra={'subscription_id': subscription_id, 'new_credit_pack_id': new_credit_pack.id},
+                logger_instance=logger,
+            )
+            raise StripeServiceError(f'Failed to update credit pack subscription: {str(e)}') from e
+
+    def cancel_credit_pack_subscription(self, subscription_id: str) -> None:
+        """
+        Cancel credit pack subscription immediately.
+
+        Args:
+            subscription_id: Stripe subscription ID
+
+        Raises:
+            StripeServiceError: If cancellation fails
+        """
+        try:
+            stripe.Subscription.cancel(subscription_id)
+
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='cancel_credit_pack_subscription',
+                success=True,
+                metadata={'stripe_subscription_id': subscription_id},
+                logger_instance=logger,
+            )
+
+        except stripe.error.StripeError as e:
+            StructuredLogger.log_error(
+                message='Failed to cancel credit pack subscription',
+                error=e,
+                extra={'subscription_id': subscription_id},
+                logger_instance=logger,
+            )
+            raise StripeServiceError(f'Failed to cancel credit pack subscription: {str(e)}') from e
+
+    @staticmethod
+    def sync_credit_pack_to_stripe(credit_pack) -> None:
+        """
+        Create or update a Stripe product and price for a credit pack.
+
+        Args:
+            credit_pack: CreditPack instance
+
+        Raises:
+            StripeServiceError: If sync fails
+        """
+        try:
+            # Create or update product
+            if credit_pack.stripe_product_id:
+                # Update existing product
+                product = stripe.Product.modify(
+                    credit_pack.stripe_product_id,
+                    name=f'Credit Pack - {credit_pack.name}',
+                    description=f'{credit_pack.credits_per_month:,} credits per month',
+                    metadata={
+                        'type': 'credit_pack',
+                        'credits_per_month': str(credit_pack.credits_per_month),
+                    },
+                )
+            else:
+                # Create new product
+                product = stripe.Product.create(
+                    name=f'Credit Pack - {credit_pack.name}',
+                    description=f'{credit_pack.credits_per_month:,} credits per month',
+                    metadata={
+                        'type': 'credit_pack',
+                        'credits_per_month': str(credit_pack.credits_per_month),
+                    },
+                )
+                credit_pack.stripe_product_id = product.id
+
+            # Create monthly recurring price
+            price = stripe.Price.create(
+                product=product.id,
+                unit_amount=credit_pack.price_cents,
+                currency='usd',
+                recurring={'interval': 'month'},
+                metadata={
+                    'type': 'credit_pack',
+                    'credits_per_month': str(credit_pack.credits_per_month),
+                },
+            )
+            credit_pack.stripe_price_id = price.id
+
+            credit_pack.save()
+
+            StructuredLogger.log_service_operation(
+                service_name='StripeService',
+                operation='sync_credit_pack',
+                success=True,
+                metadata={
+                    'credit_pack_name': credit_pack.name,
+                    'stripe_product_id': product.id,
+                    'stripe_price_id': price.id,
+                },
+                logger_instance=logger,
+            )
+
+        except stripe.error.StripeError as e:
+            StructuredLogger.log_error(
+                message='Failed to sync credit pack to Stripe',
+                error=e,
+                extra={'credit_pack_id': credit_pack.id},
+                logger_instance=logger,
+            )
+            raise StripeServiceError(f'Failed to sync credit pack to Stripe: {str(e)}') from e

@@ -258,3 +258,163 @@ def aggregate_platform_daily_stats(self, date_str=None):
     except Exception as e:
         logger.error(f'[PLATFORM_STATS] Failed to aggregate stats for {target_date}: {e}', exc_info=True)
         raise
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={'max_retries': 3, 'countdown': 300},
+    retry_backoff=True,
+)
+def aggregate_engagement_daily_stats(self, date_str=None):
+    """
+    Aggregate engagement metrics for a given date.
+
+    Runs once per day (typically at 2 AM) to aggregate all engagement metrics.
+    Can also be run manually for historical dates (backfill).
+
+    Args:
+        date_str: Date in YYYY-MM-DD format. If None, uses yesterday.
+    """
+    from datetime import datetime
+
+    from django.db.models import Count
+    from django.db.models.functions import ExtractHour
+
+    from core.ai_usage.models import EngagementDailyStats
+    from core.thrive_circle.models import PointActivity
+
+    try:
+        # Determine date to aggregate
+        if date_str:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        else:
+            # Default to yesterday (since today is incomplete)
+            target_date = (timezone.now() - timedelta(days=1)).date()
+
+        logger.info(f'[ENGAGEMENT_STATS] Starting aggregation for {target_date}')
+
+        # =================================================================
+        # FILTER OUT INTERNAL USERS AND ADMINS
+        # =================================================================
+
+        real_users = (
+            User.objects.exclude(tier='curation')
+            .exclude(email__icontains='allthrive.ai')
+            .exclude(is_guest=True)
+            .exclude(role='admin')
+            .exclude(is_superuser=True)
+        )
+
+        # =================================================================
+        # ACTIVITY METRICS
+        # =================================================================
+
+        activities = PointActivity.objects.filter(
+            created_at__date=target_date,
+            user__in=real_users,
+        )
+
+        # Hourly distribution
+        hourly_qs = activities.annotate(hour=ExtractHour('created_at')).values('hour').annotate(count=Count('id'))
+        hourly_activity = {str(h['hour']): h['count'] for h in hourly_qs}
+
+        # Total actions
+        total_actions = activities.count()
+
+        # Peak hour
+        peak_hour = 0
+        if hourly_activity:
+            peak_hour = int(max(hourly_activity.items(), key=lambda x: x[1])[0])
+
+        # Unique active users
+        unique_active_users = activities.values('user').distinct().count()
+
+        # =================================================================
+        # FEATURE USAGE
+        # =================================================================
+
+        feature_stats = activities.values('activity_type').annotate(
+            users=Count('user', distinct=True),
+            actions=Count('id'),
+        )
+        feature_usage = {f['activity_type']: {'users': f['users'], 'actions': f['actions']} for f in feature_stats}
+
+        # =================================================================
+        # RETENTION METRICS
+        # =================================================================
+
+        def compute_retention(days_ago):
+            """Compute cohort size and retention for users who signed up N days ago."""
+            signup_date = target_date - timedelta(days=days_ago)
+            cohort = real_users.filter(date_joined__date=signup_date)
+            cohort_size = cohort.count()
+            if cohort_size == 0:
+                return 0, 0
+            # Users from cohort who were active today
+            retained = (
+                PointActivity.objects.filter(
+                    created_at__date=target_date,
+                    user__in=cohort,
+                )
+                .values('user')
+                .distinct()
+                .count()
+            )
+            return cohort_size, retained
+
+        d1_cohort_size, d1_retained = compute_retention(1)
+        d7_cohort_size, d7_retained = compute_retention(7)
+        d30_cohort_size, d30_retained = compute_retention(30)
+
+        # =================================================================
+        # FUNNEL METRICS
+        # =================================================================
+
+        # Signups today
+        signups_today = real_users.filter(date_joined__date=target_date).count()
+
+        # New users who took their first action today
+        new_user_ids = list(real_users.filter(date_joined__date=target_date).values_list('id', flat=True))
+        first_action_count = activities.filter(user_id__in=new_user_ids).values('user').distinct().count()
+
+        # =================================================================
+        # SAVE OR UPDATE
+        # =================================================================
+
+        stats, created = EngagementDailyStats.objects.update_or_create(
+            date=target_date,
+            defaults={
+                'hourly_activity': hourly_activity,
+                'day_of_week': target_date.weekday(),  # 0=Monday in Python
+                'total_actions': total_actions,
+                'peak_hour': peak_hour,
+                'feature_usage': feature_usage,
+                'unique_active_users': unique_active_users,
+                'signups_today': signups_today,
+                'd1_cohort_size': d1_cohort_size,
+                'd1_retained': d1_retained,
+                'd7_cohort_size': d7_cohort_size,
+                'd7_retained': d7_retained,
+                'd30_cohort_size': d30_cohort_size,
+                'd30_retained': d30_retained,
+                'first_action_count': first_action_count,
+            },
+        )
+
+        action = 'Created' if created else 'Updated'
+        logger.info(
+            f'[ENGAGEMENT_STATS] {action} stats for {target_date}: '
+            f'{total_actions} actions, {unique_active_users} users, D7 retention: {d7_retained}/{d7_cohort_size}'
+        )
+
+        return {
+            'date': str(target_date),
+            'action': action.lower(),
+            'total_actions': total_actions,
+            'unique_active_users': unique_active_users,
+        }
+
+    except Exception as e:
+        logger.error(f'[ENGAGEMENT_STATS] Failed to aggregate stats for {target_date}: {e}', exc_info=True)
+        raise

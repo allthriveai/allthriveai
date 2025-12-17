@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -6,7 +7,7 @@ import {
   faBolt,
   faUserGraduate,
 } from '@fortawesome/free-solid-svg-icons';
-import { useState } from 'react';
+import { useQuestTracking } from '@/hooks/useQuestTracking';
 
 // Constants
 const SECTION_HEADING_STYLE = 'text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2';
@@ -74,6 +75,12 @@ function LearnCard({ title, description, icon, onClick, comingSoon }: LearnCardP
 export default function LearnPage() {
   const navigate = useNavigate();
   const [showComingSoon, setShowComingSoon] = useState(false);
+
+  // Quest tracking for page visit
+  const { trackPage } = useQuestTracking();
+  useEffect(() => {
+    trackPage('/learn', 'Learn');
+  }, [trackPage]);
 
   const handleComingSoon = () => {
     setShowComingSoon(true);

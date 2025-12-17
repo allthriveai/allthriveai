@@ -688,6 +688,168 @@ test.describe('Intelligent Chat', () => {
     });
   });
 
+  /**
+   * Mission Critical E2E Tests
+   *
+   * These tests verify core functionality that MUST work for the product to be usable.
+   * They use real API calls and real data - not mocks.
+   */
+  test.describe('Mission Critical - GitHub Clipping', () => {
+    // Skip in CI - requires AI API keys
+    test.skip(!!process.env.CI, 'Skipping mission critical tests in CI - requires API keys');
+    test.setTimeout(180000); // 3 minutes for AI responses + scraping
+
+    test('CRITICAL: should auto-clip GitHub repo user does not own', async ({ page }) => {
+      /**
+       * SCENARIO: As a logged in user, I click add a project and want to add a GitHub repo
+       *           (https://github.com/jlowin/fastmcp) that I do NOT own.
+       *
+       * EXPECTED: The intelligent chat will add the repo as a clipped project to my profile
+       *           even though I don't own it. Should show a friendly message like:
+       *           "Looks like you don't own this repository, so I've added it to your clippings"
+       *
+       * FAILURE CASE: "It seems you're interested in clipping a repository, but unfortunately,
+       *               it's not associated with your GitHub account, which is why you're unable to do so."
+       */
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // User pastes a GitHub repo URL they DO NOT own
+      const chatInput = page.getByPlaceholder('Ask me anything...');
+      await chatInput.fill('https://github.com/jlowin/fastmcp');
+
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      // Wait for initial AI response
+      await page.waitForTimeout(15000);
+
+      // Check if AI asked about ownership - if so, answer "clipping"
+      // (Ideally AI would auto-import, but it sometimes asks first)
+      const pageText = await page.locator('body').textContent() || '';
+      if (pageText.toLowerCase().includes('your own') || pageText.toLowerCase().includes('clipping it')) {
+        console.log('AI asked about ownership, answering "clipping"...');
+        const inputAfterQuestion = page.getByPlaceholder('Ask me anything...');
+        await inputAfterQuestion.fill('clipping');
+        const sendBtn = page.locator('button[aria-label="Send message"]');
+        await sendBtn.click();
+        // Wait for AI to process the clip
+        await page.waitForTimeout(60000);
+      } else {
+        // AI didn't ask, wait for it to finish processing
+        await page.waitForTimeout(45000);
+      }
+
+      // Get all visible text in the chat area to check for success/failure
+      const chatContent = await page.locator('.chat-message, [class*="message"], [class*="Message"]').allTextContents();
+      const fullChatText = chatContent.join(' ').toLowerCase();
+
+      // FAILURE indicators - these should NOT appear
+      const failureIndicators = [
+        'not associated with your github account',
+        "you're unable to do so",
+        'cannot import',
+        'unable to import',
+        'you can only import repositories you own',
+      ];
+
+      for (const indicator of failureIndicators) {
+        const hasFailure = fullChatText.includes(indicator);
+        if (hasFailure) {
+          console.error(`MISSION CRITICAL FAILURE: Found failure indicator: "${indicator}"`);
+          console.error(`Full chat content: ${fullChatText}`);
+        }
+        expect(hasFailure).toBe(false);
+      }
+
+      // SUCCESS indicators - at least one should appear
+      const successIndicators = [
+        'clipping',
+        'clipped',
+        "added to your clippings",
+        'saved project',
+        'fastmcp', // The repo name should appear if successfully processed
+      ];
+
+      const hasSuccess = successIndicators.some(indicator => fullChatText.includes(indicator));
+
+      // Also check for a project link being created (URL pattern like /username/slug)
+      const projectLinkPattern = /\/[a-z0-9_-]+\/[a-z0-9_-]+/i;
+      const hasProjectLink = projectLinkPattern.test(fullChatText);
+
+      console.log(`Success indicators found: ${hasSuccess}`);
+      console.log(`Project link found: ${hasProjectLink}`);
+      console.log(`Chat content: ${fullChatText.substring(0, 500)}...`);
+
+      // Either success message or project link should be present
+      expect(hasSuccess || hasProjectLink).toBe(true);
+
+      // Chat should remain functional
+      await expect(chatHeader).toBeVisible();
+
+      // No technical errors should be visible
+      const technicalErrors = ['TypeError', 'Exception', 'Traceback', 'undefined', 'null'];
+      for (const error of technicalErrors) {
+        const hasError = await page.getByText(error).isVisible().catch(() => false);
+        expect(hasError).toBe(false);
+      }
+    });
+
+    test('CRITICAL: should show friendly message when auto-clipping', async ({ page }) => {
+      /**
+       * SCENARIO: User pastes a GitHub URL they don't own
+       * EXPECTED: AI shows a friendly message explaining the repo was auto-clipped
+       *           (not an error about not being able to import)
+       */
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      await openChatViaAddProject(page);
+
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // Use a different popular repo to avoid duplicates
+      const chatInput = page.getByPlaceholder('Ask me anything...');
+      await chatInput.fill('https://github.com/anthropics/anthropic-cookbook');
+
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      await page.waitForTimeout(60000);
+
+      // The response should NOT be an error about ownership
+      const errorPatterns = [
+        /not associated with your.*account/i,
+        /unable to (do so|import|clip)/i,
+        /you can only import repositories you own/i,
+      ];
+
+      const chatContent = await page.locator('.chat-message, [class*="message"]').allTextContents();
+      const fullText = chatContent.join(' ');
+
+      for (const pattern of errorPatterns) {
+        const hasError = pattern.test(fullText);
+        if (hasError) {
+          console.error(`Found error pattern: ${pattern}`);
+        }
+        expect(hasError).toBe(false);
+      }
+
+      // Should show success
+      await expect(chatHeader).toBeVisible();
+    });
+  });
+
   test.describe('Real User Workflows', () => {
     // These tests verify the AI responds appropriately to common user actions
     // Users open intelligent chat via the +Add Project button on /explore

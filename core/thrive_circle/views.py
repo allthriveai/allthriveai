@@ -801,29 +801,69 @@ class SideQuestViewSet(viewsets.ReadOnlyModelViewSet):
 
         completed = track_page_visited(user, page_path=page_path, page_name=page_name)
 
-        # Format completed quests for frontend celebration
-        completed_quests = []
-        if completed:
-            completed_user_quests = UserSideQuest.objects.filter(
-                user=user,
-                side_quest_id__in=completed,
-                is_completed=True,
-            ).select_related('side_quest', 'side_quest__category')
+        # Format completed quests for frontend celebration using helper
+        from core.thrive_circle.utils import format_completed_quests
 
-            for uq in completed_user_quests:
-                completed_quests.append(
-                    {
-                        'id': str(uq.side_quest.id),
-                        'title': uq.side_quest.title,
-                        'pointsAwarded': uq.points_awarded,
-                        'categoryName': uq.side_quest.category.name if uq.side_quest.category else None,
-                    }
-                )
+        completed_quests = format_completed_quests(user, completed) if completed else []
 
         return Response(
             {
                 'tracked': True,
-                'completedQuests': completed_quests,
+                'completed_quests': completed_quests,
+            }
+        )
+
+    @action(detail=False, methods=['post'], url_path='track-profile-view')
+    def track_profile_view(self, request):
+        """
+        Track when a user views another user's profile (for quests).
+
+        Request body:
+            {
+                "username": "otheruser"  # Username of the profile being viewed
+            }
+
+        Returns:
+            {
+                "tracked": true,
+                "completedQuests": [...]  # If any quests were completed
+            }
+        """
+        from core.thrive_circle.signals import track_profile_viewed
+        from core.thrive_circle.utils import format_completed_quests
+        from core.users.models import User
+
+        user = request.user
+        username = request.data.get('username', '')
+
+        if not username:
+            return Response(
+                {'error': 'username is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get the viewed user
+        try:
+            viewed_user = User.objects.get(username=username, is_active=True)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Don't track viewing own profile
+        if viewed_user == user:
+            return Response({'tracked': False, 'completed_quests': []})
+
+        completed = track_profile_viewed(user, viewed_user)
+
+        # Format completed quests for frontend celebration
+        completed_quests = format_completed_quests(user, completed) if completed else []
+
+        return Response(
+            {
+                'tracked': True,
+                'completed_quests': completed_quests,
             }
         )
 

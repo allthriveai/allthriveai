@@ -7,6 +7,7 @@ import {
   EnvelopeIcon,
   UserGroupIcon,
   UsersIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {
@@ -57,6 +58,11 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       label: 'Circles',
       path: '/admin/circles',
       icon: UsersIcon,
+    },
+    {
+      label: 'Prompt Library',
+      path: '/admin/prompt-challenge-prompts',
+      icon: SparklesIcon,
     },
     // Future admin sections can be added here:
     // {

@@ -23,10 +23,10 @@ from core.battles.models import (
     BattlePhase,
     BattleStatus,
     BattleSubmission,
-    ChallengeType,
     MatchSource,
     MatchType,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from core.battles.utils import sanitize_prompt, validate_prompt_for_battle
 from core.users.models import User
@@ -244,12 +244,9 @@ class BattleConsumer(AsyncWebsocketConsumer):
             await self._send_error(can_submit_result.error or 'Cannot submit')
             return
 
-        # Get validation config from challenge type
-        min_length = 10  # default
-        max_length = 2000  # default
-        if battle.challenge_type:
-            min_length = battle.challenge_type.min_submission_length
-            max_length = battle.challenge_type.max_submission_length
+        # Validation config - use standard defaults
+        min_length = 10
+        max_length = 2000
 
         # Sanitize and validate prompt
         sanitized_prompt = sanitize_prompt(prompt_text, max_length=max_length)
@@ -452,7 +449,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
     def _get_battle(self) -> PromptBattle | None:
         """Get the battle instance."""
         try:
-            return PromptBattle.objects.select_related('challenger', 'opponent', 'challenge_type').get(
+            return PromptBattle.objects.select_related('challenger', 'opponent', 'prompt', 'prompt__category').get(
                 id=self.battle_id
             )
         except PromptBattle.DoesNotExist:
@@ -700,11 +697,11 @@ class BattleConsumer(AsyncWebsocketConsumer):
             'phase': battle.phase,
             'status': battle.status,
             'challenge_text': battle.challenge_text,
-            'challenge_type': {
-                'key': battle.challenge_type.key,
-                'name': battle.challenge_type.name,
+            'category': {
+                'id': battle.prompt.category.id,
+                'name': battle.prompt.category.name,
             }
-            if battle.challenge_type
+            if battle.prompt and battle.prompt.category
             else None,
             'duration_minutes': battle.duration_minutes,
             'time_remaining': time_remaining,
@@ -814,8 +811,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
 
             elif message_type == 'join_queue':
                 match_type = data.get('match_type', 'random')
-                challenge_type_key = data.get('challenge_type')
-                await self._handle_join_queue(match_type, challenge_type_key)
+                await self._handle_join_queue(match_type)
 
             elif message_type == 'leave_queue':
                 await self._handle_leave_queue()
@@ -834,7 +830,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         client_event = {k: v for k, v in event.items() if k != 'type'}
         await self.send(text_data=json.dumps(client_event))
 
-    async def _handle_join_queue(self, match_type: str, challenge_type_key: str | None):
+    async def _handle_join_queue(self, match_type: str):
         """Handle user joining the matchmaking queue."""
         # Validate match type
         if match_type not in ['random', 'ai', 'active_user']:
@@ -843,7 +839,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
 
         # Handle active user matching - find someone who's online now
         if match_type == 'active_user':
-            result = await self._find_active_user_match(challenge_type_key)
+            result = await self._find_active_user_match()
             if result:
                 await self.send(
                     text_data=json.dumps(
@@ -870,7 +866,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
 
         # Handle AI opponent - instant match
         if match_type == 'ai':
-            battle = await self._create_pip_battle(challenge_type_key)
+            battle = await self._create_pip_battle()
             if battle:
                 await self.send(
                     text_data=json.dumps(
@@ -892,7 +888,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
 
         # Random matchmaking
         # First try to find an existing match
-        match = await self._find_match(challenge_type_key)
+        match = await self._find_match()
         if match:
             # Match found! Notify this user
             await self.send(
@@ -908,7 +904,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             return
 
         # No match found, add to queue
-        queue_entry = await self._join_queue(challenge_type_key)
+        queue_entry = await self._join_queue()
         if queue_entry:
             await self.send(
                 text_data=json.dumps(
@@ -962,20 +958,12 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             )
 
     @database_sync_to_async
-    def _join_queue(self, challenge_type_key: str | None) -> BattleMatchmakingQueue | None:
+    def _join_queue(self) -> BattleMatchmakingQueue | None:
         """Add user to the matchmaking queue."""
-        challenge_type = None
-        if challenge_type_key:
-            try:
-                challenge_type = ChallengeType.objects.get(key=challenge_type_key, is_active=True)
-            except ChallengeType.DoesNotExist:
-                pass
-
         queue_entry, created = BattleMatchmakingQueue.objects.update_or_create(
             user=self.user,
             defaults={
                 'match_type': MatchType.RANDOM,
-                'challenge_type': challenge_type,
                 'expires_at': timezone.now() + timedelta(minutes=5),
             },
         )
@@ -1011,14 +999,14 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             return 0
 
     @database_sync_to_async
-    def _find_match_in_db(self, challenge_type_key: str | None) -> dict | None:
+    def _find_match_in_db(self) -> dict | None:
         """
         Try to find a match in the queue (DB operations only).
 
         Uses select_for_update to prevent race conditions where multiple
         users could match with the same queue entry simultaneously.
         """
-        from django.db import transaction
+        from django.db import models, transaction
 
         try:
             with transaction.atomic():
@@ -1042,27 +1030,12 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
                 if not queue_entry:
                     return None
 
-                # Get or create a challenge type
-                challenge_type = None
-                if challenge_type_key:
-                    try:
-                        challenge_type = ChallengeType.objects.get(key=challenge_type_key, is_active=True)
-                    except ChallengeType.DoesNotExist:
-                        pass
+                # Get a random active prompt
+                prompt = PromptChallengePrompt.objects.filter(is_active=True).order_by('?').first()
 
-                if not challenge_type and queue_entry.challenge_type:
-                    challenge_type = queue_entry.challenge_type
-
-                if not challenge_type:
-                    # Get a random active challenge type
-                    challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
-
-                if not challenge_type:
-                    logger.warning('No active challenge types available for matchmaking')
+                if not prompt:
+                    logger.warning('No active prompts available for matchmaking')
                     return None
-
-                # Generate challenge text
-                challenge_text = challenge_type.generate_challenge()
 
                 # Store matched user info before deleting
                 matched_user_id = queue_entry.user.id
@@ -1076,13 +1049,16 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
                 battle = PromptBattle.objects.create(
                     challenger_id=matched_user_id,
                     opponent=self.user,
-                    challenge_text=challenge_text,
-                    challenge_type=challenge_type,
+                    challenge_text=prompt.prompt_text,
+                    prompt=prompt,
                     match_source=MatchSource.RANDOM,
-                    duration_minutes=challenge_type.default_duration_minutes,
+                    duration_minutes=3,  # Default duration
                     status=BattleStatus.PENDING,
                     phase=BattlePhase.WAITING,
                 )
+
+                # Increment usage counter
+                PromptChallengePrompt.objects.filter(id=prompt.id).update(times_used=models.F('times_used') + 1)
 
                 logger.info(
                     f'Match created: battle={battle.id}, challenger={matched_user_id}, opponent={self.user.id}',
@@ -1106,9 +1082,9 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             logger.error(f'Error in matchmaking: {e}', exc_info=True)
             return None
 
-    async def _find_match(self, challenge_type_key: str | None) -> dict | None:
+    async def _find_match(self) -> dict | None:
         """Try to find a match and notify the other user."""
-        result = await self._find_match_in_db(challenge_type_key)
+        result = await self._find_match_in_db()
 
         if result:
             # Notify the other user via their WebSocket (proper async call)
@@ -1130,8 +1106,10 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         return result
 
     @database_sync_to_async
-    def _create_pip_battle(self, challenge_type_key: str | None) -> PromptBattle | None:
+    def _create_pip_battle(self) -> PromptBattle | None:
         """Create an instant battle against Pip (AI opponent)."""
+        from django.db import models
+
         try:
             from core.users.models import UserRole
 
@@ -1140,41 +1118,33 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             logger.error('Pip user not found')
             return None
 
-        # Get challenge type
-        challenge_type = None
-        if challenge_type_key:
-            try:
-                challenge_type = ChallengeType.objects.get(key=challenge_type_key, is_active=True)
-            except ChallengeType.DoesNotExist:
-                pass
+        # Get a random active prompt
+        prompt = PromptChallengePrompt.objects.filter(is_active=True).order_by('?').first()
 
-        if not challenge_type:
-            challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
-
-        if not challenge_type:
-            logger.error('No active challenge types found')
+        if not prompt:
+            logger.error('No active prompts found')
             return None
-
-        # Generate challenge
-        challenge_text = challenge_type.generate_challenge()
 
         # Create battle
         battle = PromptBattle.objects.create(
             challenger=self.user,
             opponent=pip,
-            challenge_text=challenge_text,
-            challenge_type=challenge_type,
+            challenge_text=prompt.prompt_text,
+            prompt=prompt,
             match_source=MatchSource.AI_OPPONENT,
-            duration_minutes=challenge_type.default_duration_minutes,
+            duration_minutes=3,  # Default duration
             status=BattleStatus.PENDING,
             phase=BattlePhase.WAITING,
             opponent_connected=True,  # Pip is always "connected"
         )
 
+        # Increment usage counter
+        PromptChallengePrompt.objects.filter(id=prompt.id).update(times_used=models.F('times_used') + 1)
+
         return battle
 
     @database_sync_to_async
-    def _find_active_user_in_db(self, challenge_type_key: str | None) -> dict | None:
+    def _find_active_user_in_db(self) -> dict | None:
         """
         Find an active user to match with.
 
@@ -1184,6 +1154,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         - Not currently in an active battle
         - Not ourselves
         """
+        from django.db import models
         from django.db.models import Q
 
         from core.battles.models import BattleInvitation, InvitationType
@@ -1220,35 +1191,27 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
         active_list = list(active_users[:10])  # Limit to 10 candidates
         matched_user = secrets.choice(active_list)
 
-        # Get or create a challenge type
-        challenge_type = None
-        if challenge_type_key:
-            try:
-                challenge_type = ChallengeType.objects.get(key=challenge_type_key, is_active=True)
-            except ChallengeType.DoesNotExist:
-                pass
+        # Get a random active prompt
+        prompt = PromptChallengePrompt.objects.filter(is_active=True).order_by('?').first()
 
-        if not challenge_type:
-            challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
-
-        if not challenge_type:
-            logger.warning('No active challenge types available')
+        if not prompt:
+            logger.warning('No active prompts available')
             return None
-
-        # Generate challenge
-        challenge_text = challenge_type.generate_challenge()
 
         # Create the battle (opponent not set yet - will be set when they accept)
         battle = PromptBattle.objects.create(
             challenger=self.user,
             opponent=None,  # Set when invitation is accepted
-            challenge_text=challenge_text,
-            challenge_type=challenge_type,
+            challenge_text=prompt.prompt_text,
+            prompt=prompt,
             match_source=MatchSource.RANDOM,
-            duration_minutes=challenge_type.default_duration_minutes,
+            duration_minutes=3,  # Default duration
             status=BattleStatus.PENDING,
             phase=BattlePhase.WAITING,
         )
+
+        # Increment usage counter
+        PromptChallengePrompt.objects.filter(id=prompt.id).update(times_used=models.F('times_used') + 1)
 
         # Create invitation for the matched user to accept/decline
         invitation = BattleInvitation.objects.create(
@@ -1274,7 +1237,7 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             'battle_id': battle.id,
             'invitation_id': invitation.id,
             'matched_user_id': matched_user.id,
-            'challenge_preview': challenge_text[:100] if challenge_text else '',
+            'challenge_preview': battle.challenge_text[:100] if battle.challenge_text else '',
             'opponent': {
                 'id': matched_user.id,
                 'username': matched_user.username,
@@ -1282,9 +1245,9 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             },
         }
 
-    async def _find_active_user_match(self, challenge_type_key: str | None) -> dict | None:
+    async def _find_active_user_match(self) -> dict | None:
         """Find an active user and notify them of the match."""
-        result = await self._find_active_user_in_db(challenge_type_key)
+        result = await self._find_active_user_in_db()
 
         if result:
             # Notify the matched user via battle notification WebSocket

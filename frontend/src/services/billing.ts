@@ -167,22 +167,31 @@ export async function createSubscription(
 
 /**
  * Create a Stripe Checkout Session
+ * @param creditPackId - Optional credit pack ID to include in checkout
  */
 export async function createCheckoutSession(
   tierSlug: string,
   billingInterval: 'monthly' | 'annual',
   successUrl: string,
-  cancelUrl: string
+  cancelUrl: string,
+  creditPackId?: number | null
 ): Promise<{
   sessionId: string;
   url: string;
 }> {
-  const response = await api.post('/billing/checkout/create/', {
+  const payload: Record<string, unknown> = {
     tier_slug: tierSlug,
     billing_interval: billingInterval,
     success_url: successUrl,
     cancel_url: cancelUrl,
-  });
+  };
+
+  // Add credit pack if selected
+  if (creditPackId) {
+    payload.credit_pack_id = creditPackId;
+  }
+
+  const response = await api.post('/billing/checkout/create/', payload);
   return {
     sessionId: response.data.session_id,
     url: response.data.url,
@@ -290,5 +299,85 @@ export async function reactivateSubscription(): Promise<{
   // Reactivating is done by updating to the same tier with cancelAtPeriodEnd=false
   // We'll use the update endpoint which clears the cancellation
   const response = await api.post('/billing/subscriptions/update/', {});
+  return response.data;
+}
+
+
+// ===== Credit Pack Types and API Calls =====
+
+export interface CreditPack {
+  id: number;
+  name: string;
+  creditsPerMonth: number;
+  priceCents: number;
+  priceDollars: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface CreditPackStatus {
+  hasCreditPack: boolean;
+  creditPack: CreditPack | null;
+  status: string;
+  creditPackBalance: number;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  creditsThisPeriod: number;
+}
+
+/**
+ * Get all available credit packs
+ * Note: API client auto-transforms snake_case to camelCase
+ */
+export async function getCreditPacks(): Promise<CreditPack[]> {
+  const response = await api.get('/billing/credit-packs/');
+  return response.data;
+}
+
+/**
+ * Get user's credit pack subscription status
+ * Note: API client auto-transforms snake_case to camelCase
+ */
+export async function getCreditPackStatus(): Promise<CreditPackStatus> {
+  const response = await api.get('/billing/credit-pack/status/');
+  return response.data;
+}
+
+/**
+ * Subscribe to a credit pack
+ */
+export async function subscribeToCreditPack(creditPackId: number): Promise<{
+  success: boolean;
+  subscriptionId: string;
+}> {
+  const response = await api.post('/billing/credit-pack/subscribe/', {
+    credit_pack_id: creditPackId,
+  });
+  return {
+    success: response.data.success,
+    subscriptionId: response.data.subscription_id,
+  };
+}
+
+/**
+ * Change to a different credit pack
+ */
+export async function changeCreditPack(creditPackId: number): Promise<{
+  success: boolean;
+}> {
+  const response = await api.post('/billing/credit-pack/change/', {
+    credit_pack_id: creditPackId,
+  });
+  return response.data;
+}
+
+/**
+ * Cancel credit pack subscription
+ */
+export async function cancelCreditPack(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const response = await api.post('/billing/credit-pack/cancel/');
   return response.data;
 }

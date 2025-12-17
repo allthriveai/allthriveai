@@ -25,6 +25,12 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 # Set BETA_MODE=True in environment to enable unlimited access for all users
 BETA_MODE = config('BETA_MODE', default=False, cast=bool)
 
+# Credit Pack Enforcement: Controls whether credit packs block users when credits run out
+# When False: Track usage but don't block (useful during beta to see what users would use)
+# When True AND BETA_MODE=False: Actually enforce credit limits and block when depleted
+# Usage is ALWAYS tracked regardless of this setting for analytics purposes
+CREDIT_PACK_ENFORCEMENT_ENABLED = config('CREDIT_PACK_ENFORCEMENT_ENABLED', default=False, cast=bool)
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # AWS ECS/ALB health checks use container private IPs (10.x.x.x) in the Host header.
@@ -429,6 +435,21 @@ LANGSMITH_TRACING_ENABLED = config('LANGSMITH_TRACING_ENABLED', default=True, ca
 AI_COST_TRACKING_ENABLED = config('AI_COST_TRACKING_ENABLED', default=True, cast=bool)
 AI_MONTHLY_SPEND_LIMIT_USD = config('AI_MONTHLY_SPEND_LIMIT_USD', default=1000.0, cast=float)
 AI_USER_DAILY_SPEND_LIMIT_USD = config('AI_USER_DAILY_SPEND_LIMIT_USD', default=5.0, cast=float)
+
+# AI Token Limits (per request safeguards)
+# These prevent runaway costs from extremely large requests
+# Soft limit: warns but allows
+# Hard limit: blocks request entirely
+AI_TOKEN_SOFT_LIMIT = config('AI_TOKEN_SOFT_LIMIT', default=8000, cast=int)  # Warn above this
+AI_TOKEN_HARD_LIMIT = config('AI_TOKEN_HARD_LIMIT', default=32000, cast=int)  # Block above this
+AI_OUTPUT_TOKEN_LIMIT = config('AI_OUTPUT_TOKEN_LIMIT', default=4096, cast=int)  # Max output tokens
+
+# Daily AI Request Limits (abuse protection)
+# Maximum AI requests per user per day (0 = unlimited)
+# Soft limit: warns in logs when exceeded (for monitoring)
+# Hard limit: blocks requests when exceeded (abuse protection)
+AI_DAILY_REQUEST_SOFT_LIMIT = config('AI_DAILY_REQUEST_SOFT_LIMIT', default=200, cast=int)  # Warn above this
+AI_DAILY_REQUEST_HARD_LIMIT = config('AI_DAILY_REQUEST_HARD_LIMIT', default=500, cast=int)  # Block above this
 
 # RSS Agent Image Generation
 # Set to False in local development to save Gemini API token costs
