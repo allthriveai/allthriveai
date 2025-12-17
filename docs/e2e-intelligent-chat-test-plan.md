@@ -533,13 +533,16 @@ test.describe('AI URL Import Tests', () => {
 - [x] GitHub import without connection - ask to connect or clip
 - [x] GitHub import without connection - clip flow when user chooses "just clip it"
 - [x] GitHub import without connection - direct to Settings when user wants to connect
+- [x] Multi-agent routing - Discovery agent (find/search projects)
+- [x] Multi-agent routing - Project agent (GitHub URL import)
+- [x] Multi-agent routing - Nano Banana (image generation)
+- [x] Multi-agent routing - Support agent (help questions)
+- [x] Multi-agent routing - Workflow continuation (response stays with asking agent)
 
 ### High Priority - To Implement
-- [ ] All Critical priority tests above
 - [ ] Prompt injection prevention tests
 - [ ] XSS prevention tests
 - [ ] Rate limiting behavior tests
-- [ ] Multi-agent routing validation tests
 - [ ] Full user journey tests
 - [ ] Figma/GitLab integration tests
 - [ ] Image generation workflow tests
