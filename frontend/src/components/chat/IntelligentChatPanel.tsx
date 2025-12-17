@@ -123,7 +123,7 @@ export function IntelligentChatPanel({
     setQuotaExceeded(info);
   }, []);
 
-  const { messages, isConnected, isConnecting, isLoading, sendMessage, clearMessages, cancelProcessing } = useIntelligentChat({
+  const { messages, isConnected, isConnecting, isLoading, currentTool, sendMessage, clearMessages, cancelProcessing } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
     onProjectCreated: handleProjectCreated,
@@ -1366,6 +1366,7 @@ export function IntelligentChatPanel({
       onSendMessage={handleSendMessage}
       messages={messages as any}
       isLoading={isLoading || isUploading}
+      currentTool={currentTool}
       error={error}
       customMessageRenderer={renderMessage}
       customInputPrefix={

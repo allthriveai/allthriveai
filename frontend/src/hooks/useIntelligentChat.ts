@@ -116,6 +116,8 @@ export function useIntelligentChat({
   const [isConnecting, setIsConnecting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  // Track current tool being executed for UI feedback
+  const [currentTool, setCurrentTool] = useState<string | null>(null);
 
   // Constants
   const MAX_MESSAGES = 100; // Limit message history to prevent memory issues
@@ -364,13 +366,18 @@ export function useIntelligentChat({
               break;
 
             case 'tool_start':
-              // Tool execution started - could show a loading indicator
+              // Tool execution started - show which tool is running
+              if (data.tool) {
+                setCurrentTool(data.tool);
+              }
               break;
 
             case 'tool_end':
-              // Tool execution completed - check for project creation
-              // Handle both create_project and import_github_project
-              if ((data.tool === 'create_project' || data.tool === 'import_github_project') &&
+              // Tool execution completed - clear current tool
+              setCurrentTool(null);
+              // Check for project creation
+              // Handle create_project, import_github_project, and import_from_url
+              if ((data.tool === 'create_project' || data.tool === 'import_github_project' || data.tool === 'import_from_url') &&
                   data.output?.success && data.output?.url) {
                 // Project was created successfully - trigger callback
                 onProjectCreated?.(data.output.url, data.output.title || 'Project');
@@ -733,6 +740,7 @@ export function useIntelligentChat({
     isConnected,
     isConnecting,
     isLoading,
+    currentTool,
     reconnectAttempts,
     sendMessage,
     connect,

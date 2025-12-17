@@ -86,7 +86,20 @@ interface ChatInterfaceProps {
   isUploading?: boolean;
   /** Callback to cancel ongoing AI processing */
   onCancelProcessing?: () => void;
+  /** Current tool being executed (for enhanced loading indicator) */
+  currentTool?: string | null;
 }
+
+// Human-friendly tool names for the loading indicator
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  import_from_url: 'Importing from URL',
+  import_github_project: 'Importing from GitHub',
+  import_video_project: 'Processing video',
+  scrape_webpage_for_project: 'Scraping webpage',
+  create_project: 'Creating project',
+  create_product: 'Creating product',
+  extract_url_info: 'Analyzing URL',
+};
 
 export function ChatInterface({
   isOpen,
@@ -107,6 +120,7 @@ export function ChatInterface({
   onCancelUpload,
   isUploading = false,
   onCancelProcessing,
+  currentTool,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -382,8 +396,19 @@ export function ChatInterface({
                         <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                         <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
-                      <span className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">
-                        Thinking...
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {currentTool && TOOL_DISPLAY_NAMES[currentTool] ? (
+                          <span className="flex items-center gap-1">
+                            <span className="animate-pulse">{TOOL_DISPLAY_NAMES[currentTool]}</span>
+                            <span className="inline-flex">
+                              <span className="animate-[pulse_1.5s_ease-in-out_infinite]">.</span>
+                              <span className="animate-[pulse_1.5s_ease-in-out_0.2s_infinite]">.</span>
+                              <span className="animate-[pulse_1.5s_ease-in-out_0.4s_infinite]">.</span>
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="animate-pulse">Thinking...</span>
+                        )}
                       </span>
                       {onCancelProcessing && (
                         <button

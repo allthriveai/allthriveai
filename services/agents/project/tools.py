@@ -7,6 +7,7 @@ LangGraph's InjectedState issues with Pydantic args_schema.
 """
 
 import logging
+from urllib.parse import urlparse
 
 import requests
 from django.core.cache import cache
@@ -17,6 +18,33 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from services.projects import ProjectService
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Domain Detection Helper
+# =============================================================================
+def _detect_url_domain_type(url: str) -> str:
+    """
+    Detect the domain type of a URL for smart routing.
+
+    Returns: 'github', 'gitlab', 'youtube', 'figma', or 'generic'
+    """
+    try:
+        parsed = urlparse(url.lower())
+        domain = parsed.netloc.replace('www.', '')
+
+        if domain in ('github.com',):
+            return 'github'
+        elif domain in ('gitlab.com',):
+            return 'gitlab'
+        elif domain in ('youtube.com', 'youtu.be'):
+            return 'youtube'
+        elif domain in ('figma.com',):
+            return 'figma'
+        else:
+            return 'generic'
+    except Exception:
+        return 'generic'
 
 
 # Tool Input Schemas (state is injected by custom tool_node, not by LLM)
@@ -91,6 +119,34 @@ class ImportVideoProjectInput(BaseModel):
     tool_hint: str = Field(default='', description='Tool mentioned by user (e.g., "Runway", "Midjourney", "Pika")')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
     is_private: bool = Field(default=False, description='Whether to mark the project as private')
+
+
+class ImportFromURLInput(BaseModel):
+    """Input for import_from_url unified tool."""
+
+    url: str = Field(description='Any URL to import (GitHub, YouTube, Figma, or any webpage)')
+    is_owned: bool | None = Field(
+        default=None,
+        description=(
+            'Whether the user owns this content. '
+            'For GitHub/YouTube URLs, leave as None - ownership is auto-detected. '
+            'For other URLs, set True if user owns it, False if clipping.'
+        ),
+    )
+    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+
+
+class RegenerateArchitectureDiagramInput(BaseModel):
+    """Input for regenerate_architecture_diagram tool."""
+
+    project_id: int = Field(description='The ID of the project to update')
+    architecture_description: str = Field(
+        description=(
+            "User's plain English description of the system architecture. "
+            'Should describe the main components and how they connect to each other.'
+        )
+    )
 
 
 # Tools
@@ -362,41 +418,67 @@ def import_github_project(
     except ValueError as e:
         return {'success': False, 'error': str(e)}
 
-    # Get user's GitHub token
+    # If explicitly marked as clipping, delegate immediately
+    if not is_owned:
+        logger.info(f'Delegating GitHub clipping to scrape_webpage_for_project: {url}')
+        return scrape_webpage_for_project.func(
+            url=url,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            is_owned=False,
+            state=state,
+        )
+
+    # Try to import as owned - check if user has GitHub connected
     token = get_user_github_token(user)
     if not token:
-        return {
-            'success': False,
-            'error': 'GitHub account not connected. Please connect GitHub in settings.',
-        }
+        # No GitHub connected - auto-fallback to clipping
+        logger.info(f'No GitHub token, auto-clipping {owner}/{repo}')
+        result = scrape_webpage_for_project.func(
+            url=url,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            is_owned=False,
+            state=state,
+        )
+        if result.get('success'):
+            result['auto_clipped'] = True
+            result['message'] = (
+                "I noticed you don't have GitHub connected, so I've added this to your "
+                'clippings as a saved project. You can find it in your Clipped tab!'
+            )
+        return result
 
-    logger.info(f'Starting GitHub import for {owner}/{repo} by user {user.username}, is_owned={is_owned}')
+    logger.info(f'Starting GitHub import for {owner}/{repo} by user {user.username}')
 
     # Fetch repository files/structure via GitHub REST API
     github_service = GitHubService(token)
 
-    # Only verify ownership if user claims to own the repo
-    # For clippings (is_owned=False), skip verification - anyone can clip public repos
-    if is_owned:
-        try:
-            is_authorized = github_service.verify_repo_access_sync(owner, repo)
-            if not is_authorized:
-                return {
-                    'success': False,
-                    'error': (
-                        f'You can only import repositories you own or have contributed to. '
-                        f'The repository {owner}/{repo} does not appear to be associated '
-                        f'with your GitHub account. If you want to save this repo as a '
-                        f'clipping instead, just let me know!'
-                    ),
-                }
-            logger.info(f'Verified ownership for {owner}/{repo}: is_owned=True')
-        except Exception as e:
-            logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
-            # If verification fails, allow import but log warning
-            # This prevents blocking legitimate imports due to API issues
-    else:
-        logger.info(f'Skipping ownership verification for clipping: {owner}/{repo}')
+    # Verify ownership - auto-fallback to clipping if not owned
+    try:
+        is_authorized = github_service.verify_repo_access_sync(owner, repo)
+        if not is_authorized:
+            # Auto-fallback to clipping instead of failing
+            logger.info(f'User does not own {owner}/{repo}, auto-clipping instead')
+            result = scrape_webpage_for_project.func(
+                url=url,
+                is_showcase=is_showcase,
+                is_private=is_private,
+                is_owned=False,
+                state=state,
+            )
+            if result.get('success'):
+                result['auto_clipped'] = True
+                result['message'] = (
+                    "Looks like you don't own this repository, so I've added it to your "
+                    'clippings as a saved project instead. You can find it in your Clipped tab!'
+                )
+            return result
+        logger.info(f'Verified ownership for {owner}/{repo}: is_owned=True')
+    except Exception as e:
+        logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
+        # If verification fails, allow import but log warning
+        # This prevents blocking legitimate imports due to API issues
 
     repo_files = github_service.get_repository_info_sync(owner, repo)
 
@@ -912,14 +994,570 @@ def import_video_project(
     }
 
 
+# =============================================================================
+# Unified URL Import Handlers
+# =============================================================================
+def _handle_github_import(
+    url: str,
+    user,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """
+    Handle GitHub URL import with auto-ownership detection.
+
+    - If user has no GitHub OAuth: auto-clip
+    - If user doesn't own repo: auto-clip
+    - If user owns repo: full GitHub import with AI analysis
+    """
+    from core.integrations.github.helpers import get_user_github_token, parse_github_url
+    from core.integrations.github.service import GitHubService
+
+    # Parse the GitHub URL
+    try:
+        owner, repo = parse_github_url(url)
+    except ValueError as e:
+        return {'success': False, 'error': str(e)}
+
+    # Check if user has GitHub connected
+    token = get_user_github_token(user)
+    if not token:
+        # No GitHub connected - auto-fallback to clipping
+        logger.info(f'No GitHub token, auto-clipping {owner}/{repo}')
+        result = _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=False,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+        if result.get('success'):
+            result['auto_clipped'] = True
+            result['message'] = (
+                "I noticed you don't have GitHub connected, so I've added this to your clippings! "
+                'Connect GitHub to import your own repos with full AI analysis.'
+            )
+        return result
+
+    # Check if user owns the repo
+    github_service = GitHubService(token)
+    try:
+        is_owner = github_service.verify_repo_access_sync(owner, repo)
+    except Exception as e:
+        logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
+        is_owner = False
+
+    if not is_owner:
+        # User doesn't own this repo - auto-clip
+        logger.info(f'User does not own {owner}/{repo}, auto-clipping')
+        result = _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=False,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+        if result.get('success'):
+            result['auto_clipped'] = True
+            result['message'] = (
+                "Looks like you don't own this repository, so I've added it to your clippings! "
+                'You can find it in your Clipped tab.'
+            )
+        return result
+
+    # User owns the repo - do full import
+    logger.info(f'User owns {owner}/{repo}, performing full GitHub import')
+    return _full_github_import(
+        url=url,
+        owner=owner,
+        repo=repo,
+        user=user,
+        token=token,
+        is_showcase=is_showcase,
+        is_private=is_private,
+        state=state,
+    )
+
+
+def _full_github_import(
+    url: str,
+    owner: str,
+    repo: str,
+    user,
+    token: str,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """Perform full GitHub import with AI analysis for repos user owns."""
+    from core.integrations.github.ai_analyzer import analyze_github_repo_for_template
+    from core.integrations.github.helpers import apply_ai_metadata, normalize_github_repo_data
+    from core.integrations.github.service import GitHubService
+    from core.projects.models import Project
+
+    try:
+        github_service = GitHubService(token)
+        repo_files = github_service.get_repository_info_sync(owner, repo)
+    except Exception as e:
+        logger.error(f'Failed to fetch GitHub repo {owner}/{repo}: {e}')
+        # Fall back to generic import on GitHub API failure
+        return _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=True,  # User owns it, just API failed
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+
+    # Normalize GitHub output into the schema the AI analyzer expects
+    repo_summary = normalize_github_repo_data(owner, repo, url, repo_files)
+
+    # Run AI analysis with error handling
+    try:
+        logger.info(f'Running template-based AI analysis for {owner}/{repo}')
+        analysis = analyze_github_repo_for_template(
+            repo_data=repo_summary,
+            readme_content=repo_files.get('readme', ''),
+        )
+    except Exception as e:
+        logger.warning(f'AI analysis failed for {owner}/{repo}, using basic metadata: {e}')
+        # Use basic metadata without AI analysis
+        analysis = {
+            'templateVersion': 2,
+            'sections': [],
+            'description': repo_summary.get('description', ''),
+        }
+
+    # Get hero image
+    hero_image = analysis.get('hero_image', '')
+    if not hero_image:
+        hero_image = f'https://opengraph.githubassets.com/1/{owner}/{repo}'
+
+    # Build content
+    content = {
+        'templateVersion': analysis.get('templateVersion', 2),
+        'sections': analysis.get('sections', []),
+        'github': repo_summary,
+        'tech_stack': repo_files.get('tech_stack', {}),
+    }
+
+    try:
+        # Create project
+        project = Project.objects.create(
+            user=user,
+            title=repo_summary.get('name', repo),
+            description=analysis.get('description') or repo_summary.get('description', ''),
+            type=Project.ProjectType.GITHUB_REPO,
+            external_url=url,
+            featured_image_url=hero_image,
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+            tools_order=[],
+        )
+
+        apply_ai_metadata(project, analysis, content=content)
+
+        logger.info(f'Successfully imported {owner}/{repo} as project {project.id}')
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'url': f'/{user.username}/{project.slug}',
+            'project_type': 'github_repo',
+        }
+    except Exception as e:
+        logger.exception(f'Failed to create project for {owner}/{repo}: {e}')
+        return {'success': False, 'error': f'Failed to create project: {str(e)}'}
+
+
+def _handle_youtube_import(
+    url: str,
+    user,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """
+    Handle YouTube URL import.
+
+    For now, delegates to generic handler. Future: use YouTube Data API.
+    """
+    # TODO: Implement YouTube Data API integration
+    # For now, use generic scraper which handles YouTube well
+    logger.info(f'Handling YouTube import: {url}')
+    return _handle_generic_import(
+        url=url,
+        user=user,
+        is_owned=False,  # YouTube videos are always clips unless user owns channel
+        is_showcase=is_showcase,
+        is_private=is_private,
+        state=state,
+    )
+
+
+def _handle_gitlab_import(
+    url: str,
+    user,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """
+    Handle GitLab URL import with auto-ownership detection.
+
+    - If GitLab service not available: auto-clip
+    - If user has no GitLab OAuth: auto-clip
+    - If user doesn't own project: auto-clip
+    - If user owns project: imports as owned project
+    """
+    # Parse the GitLab URL to get namespace/project
+    try:
+        parsed = urlparse(url)
+        path_parts = parsed.path.strip('/').split('/')
+        if len(path_parts) < 2:
+            return {'success': False, 'error': 'Invalid GitLab URL format'}
+        namespace = '/'.join(path_parts[:-1])
+        project_name = path_parts[-1]
+    except Exception as e:
+        return {'success': False, 'error': f'Invalid GitLab URL: {str(e)}'}
+
+    # Try to import GitLab service - if not available, fall back to generic import
+    try:
+        from core.integrations.gitlab.service import GitLabService
+    except ImportError:
+        logger.info(f'GitLab service not available, using generic import for {namespace}/{project_name}')
+        result = _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=False,  # Default to clipping when service not available
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+        if result.get('success'):
+            result['message'] = 'Successfully imported this GitLab project!'
+        return result
+
+    # Check if user has GitLab connected
+    gitlab_service = GitLabService.for_user(user)
+    if not gitlab_service:
+        # No GitLab connected - auto-fallback to clipping
+        logger.info(f'No GitLab token, auto-clipping {namespace}/{project_name}')
+        result = _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=False,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+        if result.get('success'):
+            result['auto_clipped'] = True
+            result['message'] = (
+                "I noticed you don't have GitLab connected, so I've added this to your clippings! "
+                'Connect GitLab to import your own projects with full analysis.'
+            )
+        return result
+
+    # Check if user owns the project
+    try:
+        is_owner = gitlab_service.verify_project_access_sync(namespace, project_name)
+    except Exception as e:
+        logger.warning(f'Failed to verify GitLab project access for {namespace}/{project_name}: {e}')
+        is_owner = False
+
+    if not is_owner:
+        # User doesn't own this project - auto-clip
+        logger.info(f'User does not own {namespace}/{project_name}, auto-clipping')
+        result = _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=False,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+        if result.get('success'):
+            result['auto_clipped'] = True
+            result['message'] = (
+                "Looks like you don't own this GitLab project, so I've added it to your clippings! "
+                'You can find it in your Clipped tab.'
+            )
+        return result
+
+    # User owns the project - import as owned
+    logger.info(f'User owns {namespace}/{project_name}, importing as owned project')
+    result = _handle_generic_import(
+        url=url,
+        user=user,
+        is_owned=True,
+        is_showcase=is_showcase,
+        is_private=is_private,
+        state=state,
+    )
+    if result.get('success'):
+        result['message'] = 'Successfully imported your GitLab project!'
+    return result
+
+
+def _handle_figma_import(
+    url: str,
+    user,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """
+    Handle Figma URL import.
+
+    Figma links are always imported as owned designs since users only share
+    their own Figma files. Uses generic scraper for metadata extraction.
+    """
+    logger.info(f'Handling Figma import: {url}')
+    result = _handle_generic_import(
+        url=url,
+        user=user,
+        is_owned=True,  # Figma links are typically user's own designs
+        is_showcase=is_showcase,
+        is_private=is_private,
+        state=state,
+    )
+    if result.get('success'):
+        result['message'] = 'Successfully imported your Figma design!'
+    return result
+
+
+def _handle_generic_import(
+    url: str,
+    user,
+    is_owned: bool | None,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """
+    Handle generic URL import with scraping.
+
+    If is_owned is None, returns needs_ownership_confirmation=True
+    to prompt the LLM to ask the user.
+    """
+    from dataclasses import asdict
+
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.projects.models import Project
+    from services.url_import import (
+        URLScraperError,
+        analyze_webpage_for_template,
+        scrape_url_for_project,
+    )
+
+    # If ownership not specified, ask user
+    if is_owned is None:
+        return {
+            'success': False,
+            'needs_ownership_confirmation': True,
+            'message': 'Is this your own project, or are you clipping something you found?',
+        }
+
+    logger.info(f'Scraping webpage for project: {url} (user: {user.username}, is_owned: {is_owned})')
+
+    try:
+        # Scrape the webpage (already fetches HTML and extracts text internally)
+        extracted = scrape_url_for_project(url)
+
+        # Build extracted data dict for template analysis
+        # Note: scrape_url_for_project already does AI extraction, so we use its
+        # description directly rather than re-fetching and re-analyzing
+        extracted_dict = {
+            'title': extracted.title,
+            'description': extracted.description,
+            'topics': extracted.topics or [],
+            'features': extracted.features or [],
+            'organization': extracted.organization,
+            'source_url': url,
+            'image_url': extracted.image_url,
+            'images': extracted.images or [],
+            'videos': extracted.videos or [],
+            'links': extracted.links or {},
+            'published_date': extracted.published_date,
+        }
+
+        # Run template analysis to generate sections
+        # Pass empty text_content since scrape_url_for_project already extracted
+        # the relevant info via AI - no need to double-fetch the URL
+        analysis = analyze_webpage_for_template(
+            extracted_data=extracted_dict,
+            text_content='',  # Skip double-fetch - extracted data is sufficient
+            user=user,
+        )
+
+        hero_image = analysis.get('hero_image') or extracted.image_url or ''
+
+        # Build content
+        content = {
+            'templateVersion': analysis.get('templateVersion', 2),
+            'sections': analysis.get('sections', []),
+            'scraped_data': asdict(extracted),
+            'source_url': url,
+        }
+
+        if extracted.features:
+            content['features'] = extracted.features
+        if extracted.links:
+            content['links'] = extracted.links
+
+        # Determine project type
+        project_type = Project.ProjectType.OTHER if is_owned else Project.ProjectType.CLIPPED
+
+        # Create project
+        project = Project.objects.create(
+            user=user,
+            title=extracted.title or 'Imported Project',
+            description=analysis.get('description') or extracted.description or '',
+            type=project_type,
+            external_url=url,
+            featured_image_url=hero_image,
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+            tools_order=[],
+        )
+
+        apply_ai_metadata(project, analysis, content=content)
+
+        logger.info(f'Successfully imported {url} as project {project.id}')
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'url': f'/{user.username}/{project.slug}',
+            'project_type': 'clipped' if not is_owned else 'other',
+        }
+
+    except URLScraperError as e:
+        logger.error(f'Failed to scrape URL {url}: {e}')
+        return {'success': False, 'error': f'Could not import from URL: {str(e)}'}
+    except Exception as e:
+        logger.exception(f'Unexpected error importing from URL {url}: {e}')
+        return {'success': False, 'error': f'Failed to create project: {str(e)}'}
+
+
+# =============================================================================
+# Unified Import Tool
+# =============================================================================
+@tool(args_schema=ImportFromURLInput)
+def import_from_url(
+    url: str,
+    is_owned: bool | None = None,
+    is_showcase: bool = True,
+    is_private: bool = False,
+    state: dict | None = None,
+) -> dict:
+    """
+    Import any URL as a project with smart domain-specific handling.
+
+    This unified tool automatically routes URLs to the appropriate handler:
+    - **GitHub URLs**: Auto-detects ownership via OAuth, no questions needed
+    - **GitLab URLs**: Auto-detects ownership via OAuth, no questions needed
+    - **YouTube URLs**: Creates rich video projects
+    - **Figma URLs**: Imports as owned design (assumes user shares their own designs)
+    - **Other URLs**: May return needs_ownership_confirmation=True if is_owned not set
+
+    When the tool returns 'needs_ownership_confirmation': True, ask the user:
+    "Is this your own project, or are you clipping something you found?"
+
+    IMPORTANT: Always show the 'message' field from the response to the user!
+
+    Returns:
+        Dictionary with project details, or needs_ownership_confirmation flag
+    """
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+
+    # Validate state / user context
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # NOTE: We intentionally don't cache project creation results.
+    # Caching would return stale project_ids without creating new projects,
+    # confusing users who expect a new import each time.
+
+    # Detect domain type and route to appropriate handler
+    domain_type = _detect_url_domain_type(url)
+    logger.info(f'Importing URL {url} (domain_type: {domain_type})')
+
+    if domain_type == 'github':
+        result = _handle_github_import(
+            url=url,
+            user=user,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+    elif domain_type == 'gitlab':
+        result = _handle_gitlab_import(
+            url=url,
+            user=user,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+    elif domain_type == 'youtube':
+        result = _handle_youtube_import(
+            url=url,
+            user=user,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+    elif domain_type == 'figma':
+        result = _handle_figma_import(
+            url=url,
+            user=user,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+    else:
+        # Generic handler - needs ownership info for non-auto-detectable domains
+        result = _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=is_owned,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+
+    return result
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
 PROJECT_TOOLS = [
     create_project,
     extract_url_info,
-    import_github_project,
+    import_from_url,  # NEW: Unified URL import tool
+    import_github_project,  # Keep for backwards compatibility
     import_video_project,
-    scrape_webpage_for_project,
+    scrape_webpage_for_project,  # Keep for backwards compatibility
     create_product,
 ]
