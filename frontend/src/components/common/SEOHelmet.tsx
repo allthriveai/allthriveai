@@ -44,9 +44,9 @@ const getBaseUrl = (): string => {
  * Optimized for search engines, social media, and LLM discoverability
  */
 export function SEO({
-  title = 'All Thrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
-  description = 'The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
-  keywords = 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase, AI tools, deep learning, developer portfolio, coding challenges',
+  title = 'All Thrive - A Community for AI Creators',
+  description = 'Join our community of AI creators. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
+  keywords = 'AI community, AI creators, share AI work, prompt battles, AI challenges, learn AI, AI showcase, AI builders, level up',
   image = `${getBaseUrl()}/og-image.jpg`,
   url,
   type = 'website',
@@ -94,14 +94,14 @@ export function SEO({
 // Preset configurations for common pages
 export const SEOPresets = {
   home: {
-    title: 'All Thrive AI - AI Portfolio Platform with Gamified Learning & Discovery',
-    description: 'The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
-    keywords: 'AI portfolio, machine learning projects, AI learning platform, gamified learning, AI community, project showcase',
+    title: 'All Thrive - A Community for AI Creators',
+    description: 'Join our community of AI creators. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
+    keywords: 'AI community, AI creators, share AI work, prompt battles, AI challenges, learn AI, AI showcase, AI builders, level up',
   },
   about: {
-    title: 'About All Thrive AI',
-    description: 'Learn about All Thrive AI - the platform empowering AI practitioners, learners, and researchers to showcase projects, learn through gamification, and connect with the community.',
-    keywords: 'about allthrive, AI platform, AI learning, AI community, mission',
+    title: 'About All Thrive',
+    description: 'Join our community of AI creators. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
+    keywords: 'about allthrive, AI platform, AI creators, AI community, learn AI, prompt battles',
   },
   explore: {
     title: 'Explore AI Projects',

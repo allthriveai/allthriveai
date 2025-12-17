@@ -59,7 +59,7 @@ export function CTAVideoScene({ elapsed }: CTAVideoSceneProps) {
             animate={{ opacity: 1, y: 0 }}
             className="text-white/70 text-base mb-1"
           >
-            Create with AI anywhere
+            Creating with AI?
           </motion.div>
         )}
 
@@ -69,7 +69,7 @@ export function CTAVideoScene({ elapsed }: CTAVideoSceneProps) {
             animate={{ opacity: 1, y: 0 }}
             className="text-white/70 text-base mb-6"
           >
-            Consolidate here
+            You belong here
           </motion.div>
         )}
 

@@ -29,9 +29,9 @@ const getBaseUrl = (): string => {
  * Optimized for search engines and social media sharing
  */
 export function SEO({
-  title = 'All Thrive - Gamified AI Portfolio Platform',
-  description = 'The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.',
-  keywords = 'AI creations, AI portfolio, AI projects, Midjourney, Replit, Claude, AI showcase, AI community, AI builders, AI tools, cross-platform AI',
+  title = 'All Thrive - A Community for AI Creators',
+  description = 'Join our community of AI creators. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
+  keywords = 'AI community, AI creators, share AI work, prompt battles, AI challenges, learn AI, AI showcase, AI builders, level up',
   image,
   url,
   type = 'website',

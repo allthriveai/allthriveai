@@ -8,8 +8,8 @@ interface PortfolioSceneProps {
 
 // Timing breakpoints within the 8-second scene
 const TIMING = {
-  headline: 0,           // 0ms - "CONSOLIDATE YOUR" appears
-  aiProjects: 500,       // 0.5s - "AI PROJECTS" appears
+  headline: 0,           // 0ms - "CREATING WITH AI?" appears
+  aiProjects: 500,       // 0.5s - "YOU BELONG HERE" appears
   cardFrame: 1500,       // 1.5s - Card frame materializes
   avatar: 2000,          // 2s - Avatar appears
   name: 2500,            // 2.5s - Name appears
@@ -66,7 +66,7 @@ export function PortfolioScene({ elapsed }: PortfolioSceneProps) {
             transition={{ type: 'spring', stiffness: 400, damping: 15 }}
             className="text-xl font-bold text-white/80 tracking-tight"
           >
-            CONSOLIDATE YOUR
+            CREATING WITH AI?
           </motion.div>
         )}
         {showAiProjects && (
@@ -76,7 +76,7 @@ export function PortfolioScene({ elapsed }: PortfolioSceneProps) {
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="text-3xl font-black bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent"
           >
-            AI PROJECTS
+            YOU BELONG HERE
           </motion.div>
         )}
         <motion.div
@@ -85,7 +85,7 @@ export function PortfolioScene({ elapsed }: PortfolioSceneProps) {
           transition={{ delay: 0.3 }}
           className="text-sm text-white/60 mt-2"
         >
-          into one beautiful portfolio
+          Share your work. Level up your skills.
         </motion.div>
       </div>
 

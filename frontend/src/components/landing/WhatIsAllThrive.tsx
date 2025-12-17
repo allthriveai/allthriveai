@@ -54,14 +54,14 @@ export function WhatIsAllThrive() {
           <p className="text-cyan-400 font-medium mb-6 tracking-wide">What is All Thrive?</p>
 
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-8 leading-[1.15]">
-            The Gamified AI Portfolio Platform{' '}
+            A community for AI creators{' '}
             <span className="bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
-              For Creators
+              at any level.
             </span>
           </h2>
 
-          <p className="text-xl sm:text-2xl text-gray-400 leading-relaxed max-w-2xl mx-auto">
-            Automate your AI portfolio, compete in Prompt Battles, and level up your AI skills.
+          <p className="text-xl sm:text-2xl text-gray-400 leading-relaxed max-w-3xl mx-auto">
+            Share your work. Compete in prompt battles. Thrive together.
           </p>
         </motion.div>
       </div>

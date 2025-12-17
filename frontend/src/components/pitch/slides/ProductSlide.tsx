@@ -217,7 +217,7 @@ export function ProductSlide() {
           className="text-center mt-8"
         >
           <p className="text-xl text-gray-300">
-            Create with AI anywhere. Consolidate here. <GradientText>Thrive together.</GradientText>
+            Creating with AI? You belong here. <GradientText>Thrive together.</GradientText>
           </p>
         </motion.div>
       </div>

@@ -82,7 +82,7 @@ export function SolutionSlide() {
           className="text-center mt-12"
         >
           <p className="text-2xl text-white font-light">
-            Create with AI anywhere. <GradientText>Consolidate here.</GradientText> Thrive together.
+            Creating with AI? <GradientText>You belong here.</GradientText> Thrive together.
           </p>
         </motion.div>
       </div>
