@@ -5,6 +5,7 @@ Calculates trending scores based on:
 - Like velocity (rate of likes acceleration)
 - View velocity (rate of views acceleration)
 - Recency factor (newer projects get a boost)
+- Promotion boost for admin-spotlighted projects
 """
 
 import logging
@@ -22,6 +23,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Promotion boost settings (consistent with PersonalizationEngine)
+PROMOTION_DURATION_DAYS = 7
+PROMOTION_WEIGHT = 0.08  # 8% weight for promotion boost
+
 
 @dataclass
 class TrendingProject:
@@ -34,6 +39,7 @@ class TrendingProject:
     recency_factor: float = 1.0
     recent_likes: int = 0
     total_likes: int = 0
+    promotion_score: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -45,6 +51,7 @@ class TrendingProject:
                 'recency_factor': round(self.recency_factor, 4),
                 'recent_likes': self.recent_likes,
                 'total_likes': self.total_likes,
+                'promotion_score': round(self.promotion_score, 4),
             },
         }
 
@@ -85,6 +92,32 @@ class TrendingEngine:
 
             self._weaviate_client = get_weaviate_client()
         return self._weaviate_client
+
+    def _calculate_promotion_score(self, project) -> float:
+        """Calculate promotion score for a project with time decay.
+
+        Promoted projects get a boost that decays from 1.0 to 0.3 over 7 days.
+        After 7 days, maintains a 0.3 baseline for historically promoted content.
+
+        Args:
+            project: Project instance with is_promoted and promoted_at fields
+
+        Returns:
+            Promotion score between 0.0 and 1.0
+        """
+        if not project.is_promoted or not project.promoted_at:
+            return 0.0
+
+        now = timezone.now()
+        hours_since_promotion = (now - project.promoted_at).total_seconds() / 3600
+        max_hours = PROMOTION_DURATION_DAYS * 24  # 168 hours
+
+        if hours_since_promotion <= max_hours:
+            # Linear decay from 1.0 to 0.3 over promotion duration
+            return 1.0 - (0.7 * hours_since_promotion / max_hours)
+        else:
+            # Baseline for historically promoted content
+            return 0.3
 
     def get_trending_feed(
         self,
@@ -165,6 +198,19 @@ class TrendingEngine:
                 query = query.filter(topics__overlap=topic_names)
             matching_ids = set(query.distinct().values_list('id', flat=True))
             trending = [t for t in trending if t.get('project_id') in matching_ids]
+
+        # Apply promotion boost from Weaviate data
+        # promotion_score is pre-computed and stored in Weaviate
+        for t in trending:
+            base_velocity = t.get('engagement_velocity', 0)
+            promotion_score = t.get('promotion_score', 0)
+
+            # Combine: 92% trending + 8% promotion (consistent with PersonalizationEngine)
+            # This boosts promoted projects without pinning them to the top
+            t['engagement_velocity'] = (base_velocity * (1 - PROMOTION_WEIGHT)) + (promotion_score * PROMOTION_WEIGHT)
+
+        # Re-sort after applying promotion boost
+        trending.sort(key=lambda x: x.get('engagement_velocity', 0), reverse=True)
 
         # Apply freshness (exploration noise + deprioritization)
         if freshness_token:
@@ -377,7 +423,15 @@ class TrendingEngine:
             days_old = (now - project.created_at).days
             recency_factor = 1.0 / (1 + days_old * self.RECENCY_DECAY)
 
-            trending_score = velocity * recency_factor
+            # Calculate base trending score from engagement velocity
+            base_trending_score = velocity * recency_factor
+
+            # Calculate promotion score with time decay
+            promotion_score = self._calculate_promotion_score(project)
+
+            # Combine: 92% trending + 8% promotion (consistent with PersonalizationEngine)
+            # This boosts promoted projects without pinning them to the top
+            trending_score = (base_trending_score * (1 - PROMOTION_WEIGHT)) + (promotion_score * PROMOTION_WEIGHT)
 
             # Include ALL projects - those with engagement get their score,
             # those without get score of 0 and will be sorted by recency
@@ -390,6 +444,7 @@ class TrendingEngine:
                     recency_factor=recency_factor,
                     recent_likes=recent_likes,
                     total_likes=project.total_likes_count or 0,
+                    promotion_score=promotion_score,
                 )
             )
 
@@ -472,7 +527,8 @@ class TrendingEngine:
         """Fallback when realtime trending calculation fails.
 
         Shows liked projects first (by like count), then all remaining projects
-        by newest. Nothing is filtered out - all projects are included.
+        by newest. Admin-promoted projects get an 8% boost to appear more
+        frequently near the top. Nothing is filtered out - all projects are included.
         """
         from core.projects.models import Project
 
@@ -500,16 +556,29 @@ class TrendingEngine:
         # Get total count for pagination
         total_count = projects.count()
 
+        # Fetch more than needed to apply promotion boost
+        fetch_size = page_size * 3
         start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
+
+        # Fetch candidates and apply promotion boost
+        if page == 1:
+            candidates = list(projects[:fetch_size])
+        else:
+            candidates = list(projects[start_idx : start_idx + fetch_size])
+
+        # Apply promotion boost
+        boosted = self._apply_promotion_boost_to_list(candidates)
+
+        # Slice to page size
+        page_projects = boosted[:page_size]
 
         return {
-            'projects': list(projects[start_idx:end_idx]),
+            'projects': page_projects,
             'metadata': {
                 'page': page,
                 'page_size': page_size,
                 'total_trending': total_count,
-                'algorithm': 'popular_then_newest',
+                'algorithm': 'popular_then_newest_with_promotion',
                 'filters_applied': {
                     'tool_ids': tool_ids,
                     'category_ids': category_ids,
@@ -517,6 +586,42 @@ class TrendingEngine:
                 },
             },
         }
+
+    def _apply_promotion_boost_to_list(self, projects: list) -> list:
+        """Apply promotion boost to reorder projects.
+
+        Promoted projects get moved up in the list based on their promotion score.
+        This doesn't pin them to the top, but increases their likelihood of
+        appearing near the top of the feed.
+
+        Args:
+            projects: List of projects sorted by popularity
+
+        Returns:
+            Reordered list with promotion boost applied
+        """
+        if not projects:
+            return []
+
+        # Calculate combined score for each project
+        # Base score is position (earlier = higher), promotion adds boost
+        scored = []
+        for idx, project in enumerate(projects):
+            # Base score: 1.0 for first, decays for later positions
+            base_score = 1.0 - (idx / len(projects)) if len(projects) > 1 else 1.0
+
+            # Promotion score with time decay
+            promotion_score = self._calculate_promotion_score(project)
+
+            # Combined score: 92% base + 8% promotion (consistent with PersonalizationEngine)
+            combined_score = (base_score * (1 - PROMOTION_WEIGHT)) + (promotion_score * PROMOTION_WEIGHT)
+
+            scored.append((project, combined_score, idx))
+
+        # Sort by combined score (descending), then by original position for ties
+        scored.sort(key=lambda x: (-x[1], x[2]))
+
+        return [item[0] for item in scored]
 
     def calculate_velocity(
         self,

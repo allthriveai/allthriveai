@@ -5,12 +5,14 @@ Provides:
 - Detection of cold-start users
 - Onboarding quiz integration
 - Popular content fallback
+- Promotion boost for admin-spotlighted projects
 """
 
 import logging
 from typing import TYPE_CHECKING
 
 from django.db.models import Count
+from django.utils import timezone
 
 if TYPE_CHECKING:
     from django.contrib.auth import get_user_model
@@ -18,6 +20,10 @@ if TYPE_CHECKING:
     User = get_user_model()
 
 logger = logging.getLogger(__name__)
+
+# Promotion boost settings (consistent with PersonalizationEngine)
+PROMOTION_DURATION_DAYS = 7
+PROMOTION_WEIGHT = 0.08  # 8% weight for promotion boost
 
 
 class ColdStartService:
@@ -199,6 +205,32 @@ class ColdStartService:
         except ImportError:
             return self._get_popular_feed(page, page_size, tool_ids, category_ids, topic_names)
 
+    def _calculate_promotion_score(self, project) -> float:
+        """Calculate promotion score for a project with time decay.
+
+        Promoted projects get a boost that decays from 1.0 to 0.3 over 7 days.
+        After 7 days, maintains a 0.3 baseline for historically promoted content.
+
+        Args:
+            project: Project instance with is_promoted and promoted_at fields
+
+        Returns:
+            Promotion score between 0.0 and 1.0
+        """
+        if not project.is_promoted or not project.promoted_at:
+            return 0.0
+
+        now = timezone.now()
+        hours_since_promotion = (now - project.promoted_at).total_seconds() / 3600
+        max_hours = PROMOTION_DURATION_DAYS * 24  # 168 hours
+
+        if hours_since_promotion <= max_hours:
+            # Linear decay from 1.0 to 0.3 over promotion duration
+            return 1.0 - (0.7 * hours_since_promotion / max_hours)
+        else:
+            # Baseline for historically promoted content
+            return 0.3
+
     def _get_popular_feed(
         self,
         page: int,
@@ -212,7 +244,8 @@ class ColdStartService:
         Shows newest projects first with user diversity applied to prevent
         content from a single creator dominating the feed. Projects are
         fetched in chronological order, then reordered to spread out
-        content from the same user.
+        content from the same user. Admin-promoted projects get an 8% boost
+        to appear more frequently near the top.
         """
         from core.projects.models import Project
 
@@ -243,18 +276,22 @@ class ColdStartService:
         total_count = queryset.count()
 
         # Fetch more projects than needed to allow for diversity reordering
-        # We fetch 3x the page size to have enough variety to work with
+        # and promotion boost. We fetch 3x the page size to have enough variety.
         fetch_size = page_size * 3
         start_idx = (page - 1) * page_size
 
-        # For first page, fetch extra and apply diversity
+        # For first page, fetch extra and apply diversity + promotion boost
         # For later pages, use simple offset to avoid complexity
         if page == 1:
             candidates = list(queryset[:fetch_size])
+            # Apply promotion boost before diversity
+            candidates = self._apply_promotion_boost(candidates)
             diverse_projects = self._apply_user_diversity(candidates, page_size)
         else:
             # For pagination, apply diversity to the window we're showing
             candidates = list(queryset[start_idx : start_idx + fetch_size])
+            # Apply promotion boost before diversity
+            candidates = self._apply_promotion_boost(candidates)
             diverse_projects = self._apply_user_diversity(candidates, page_size)
 
         return {
@@ -263,7 +300,7 @@ class ColdStartService:
                 'page': page,
                 'page_size': page_size,
                 'total_candidates': total_count,
-                'algorithm': 'newest_first_diverse',
+                'algorithm': 'newest_first_diverse_with_promotion',
                 'filters_applied': {
                     'tool_ids': tool_ids,
                     'category_ids': category_ids,
@@ -271,6 +308,42 @@ class ColdStartService:
                 },
             },
         }
+
+    def _apply_promotion_boost(self, projects: list) -> list:
+        """Apply promotion boost to reorder projects.
+
+        Promoted projects get moved up in the list based on their promotion score.
+        This doesn't pin them to the top, but increases their likelihood of
+        appearing near the top of the feed.
+
+        Args:
+            projects: List of projects sorted by recency
+
+        Returns:
+            Reordered list with promotion boost applied
+        """
+        if not projects:
+            return []
+
+        # Calculate combined score for each project
+        # Base score is position (earlier = higher), promotion adds boost
+        scored = []
+        for idx, project in enumerate(projects):
+            # Base score: 1.0 for first, decays for later positions
+            base_score = 1.0 - (idx / len(projects)) if len(projects) > 1 else 1.0
+
+            # Promotion score with time decay
+            promotion_score = self._calculate_promotion_score(project)
+
+            # Combined score: 92% base + 8% promotion (consistent with PersonalizationEngine)
+            combined_score = (base_score * (1 - PROMOTION_WEIGHT)) + (promotion_score * PROMOTION_WEIGHT)
+
+            scored.append((project, combined_score, idx))
+
+        # Sort by combined score (descending), then by original position for ties
+        scored.sort(key=lambda x: (-x[1], x[2]))
+
+        return [item[0] for item in scored]
 
     def _apply_user_diversity(
         self,

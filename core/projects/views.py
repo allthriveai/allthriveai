@@ -1215,10 +1215,14 @@ def explore_projects(request):
         # Uses a seed to create deterministic pseudo-random order:
         # - Frontend passes freshness_token for fresh ordering each page visit
         # - Falls back to legacy 'seed' param or hourly seed
+        # Admin-promoted projects get an 8% boost to appear more frequently near the top
         import time
 
         from django.db.models import CharField, Value
         from django.db.models.functions import MD5, Cast, Concat
+        from django.utils import timezone
+
+        from services.personalization.cold_start import PROMOTION_DURATION_DAYS, PROMOTION_WEIGHT
 
         # Use freshness_token as seed for fresh ordering each visit
         # Fall back to legacy seed param or hourly seed
@@ -1237,27 +1241,68 @@ def explore_projects(request):
         page_num = int(request.GET.get('page', 1))
         page_size = min(int(request.GET.get('page_size', 30)), 100)
 
-        paginator = ProjectPagination()
-        paginator.page_size = page_size
-        page = paginator.paginate_queryset(queryset, request)
+        # Fetch more projects than needed to apply promotion boost
+        fetch_size = page_size * 3
+        start_idx = (page_num - 1) * page_size
 
-        serializer = ProjectCardSerializer(page, many=True)
+        if page_num == 1:
+            raw_projects = list(queryset[:fetch_size])
+        else:
+            raw_projects = list(queryset[start_idx : start_idx + fetch_size])
+
+        # Apply promotion boost - reorder to give promoted projects higher visibility
+        # without pinning them to the top
+        now = timezone.now()
+
+        def calculate_promotion_score(project):
+            """Calculate promotion score with time decay."""
+            if not project.is_promoted or not project.promoted_at:
+                return 0.0
+            hours_since = (now - project.promoted_at).total_seconds() / 3600
+            max_hours = PROMOTION_DURATION_DAYS * 24
+            if hours_since <= max_hours:
+                return 1.0 - (0.7 * hours_since / max_hours)
+            return 0.3
+
+        # Score each project: base random position + promotion boost
+        scored = []
+        for idx, project in enumerate(raw_projects):
+            base_score = 1.0 - (idx / len(raw_projects)) if len(raw_projects) > 1 else 1.0
+            promo_score = calculate_promotion_score(project)
+            combined = (base_score * (1 - PROMOTION_WEIGHT)) + (promo_score * PROMOTION_WEIGHT)
+            scored.append((project, combined, idx))
+
+        # Sort by combined score, then by original position for ties
+        scored.sort(key=lambda x: (-x[1], x[2]))
+        boosted_projects = [item[0] for item in scored][:page_size]
+
+        serializer = ProjectCardSerializer(boosted_projects, many=True)
         results = serializer.data
 
         # Record served projects for future deprioritization (new tab)
-        if freshness_token and request.user.is_authenticated and page:
+        if freshness_token and request.user.is_authenticated and boosted_projects:
             from services.personalization.freshness import FreshnessService
 
             FreshnessService.record_served_projects(
                 request.user.id,
-                [p.id for p in page],
+                [p.id for p in boosted_projects],
             )
 
-        response = paginator.get_paginated_response(results)
-        # Include seed in response so frontend can use it for subsequent pages
-        response.data['seed'] = seed
-        response.data['freshness_token'] = freshness_token
-        return response
+        # Build paginated response manually since we're not using the paginator
+        total_count = queryset.count()
+        has_next = (page_num * page_size) < total_count
+        has_previous = page_num > 1
+
+        return Response(
+            {
+                'count': total_count,
+                'next': has_next,
+                'previous': has_previous,
+                'results': results,
+                'seed': seed,
+                'freshness_token': freshness_token,
+            }
+        )
 
     # Default sorting for 'all' tab or fallback
     # If fuzzy search was applied, prioritize by similarity score
