@@ -41,7 +41,7 @@ help:
 	@echo "  make create-pip      - Create Pip bot user (if doesn't exist)"
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
 	@echo "  make seed-quizzes    - Seed initial quiz data"
-	@echo "  make seed-challenge-types - Seed battle challenge types"
+	@echo "  make seed-battle-prompts - Seed battle prompts for prompt battles"
 	@echo "  make seed-test-users - Create test users for admin impersonation"
 	@echo "  make seed-test-users-clean - Recreate test users (delete old ones first)"
 	@echo "  make seed-all        - Seed all initial data (topics, categories, tools, quizzes, challenges, billing, pip, test users)"
@@ -232,9 +232,12 @@ seed-quizzes:
 	@echo "Seeding quizzes..."
 	docker-compose exec web python manage.py seed_quizzes
 
-seed-challenge-types:
-	@echo "Seeding challenge types..."
-	docker-compose exec web python manage.py seed_challenge_types
+seed-battle-prompts:
+	@echo "Seeding battle prompts..."
+	docker-compose exec web python manage.py seed_battle_prompts
+
+# Legacy alias for seed-challenge-types (now uses seed_battle_prompts)
+seed-challenge-types: seed-battle-prompts
 
 seed-test-users:
 	@echo "Creating test users for impersonation..."
@@ -251,7 +254,7 @@ seed-all:
 	docker-compose exec web python manage.py seed_categories
 	docker-compose exec web python manage.py seed_tools
 	docker-compose exec web python manage.py seed_quizzes
-	docker-compose exec web python manage.py seed_challenge_types
+	docker-compose exec web python manage.py seed_battle_prompts
 	docker-compose exec web python manage.py seed_billing
 	docker-compose exec web python manage.py seed_ai_pricing
 	docker-compose exec web python manage.py create_pip
@@ -893,7 +896,7 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_categories"
 	@make aws-run-command CMD="seed_tools"
 	@make aws-run-command CMD="seed_quizzes"
-	@make aws-run-command CMD="seed_challenge_types"
+	@make aws-run-command CMD="seed_battle_prompts"
 	@make aws-run-command CMD="seed_billing"
 	@make aws-run-command CMD="seed_ai_pricing"
 	@make aws-run-command CMD="create_pip"
