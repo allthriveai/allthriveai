@@ -46,7 +46,7 @@ export function AutomatedProfile() {
             </span>
           </h2>
           <p className="text-lg text-gray-400 max-w-4xl mx-auto">
-            You've used ChatGPT, made images on Midjourney, built apps with coding agents—but where does it all live? Paste a link and All Thrive turns it into a shareable project portfolio.
+            Use ChatGPT today, Midjourney tomorrow, the next hot tool next week. All Thrive gives your AI creations a vendor-neutral home that grows with you.
           </p>
         </motion.div>
 
