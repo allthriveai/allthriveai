@@ -24,11 +24,11 @@ from .models import (
     BattleInvitation,
     BattleStatus,
     BattleSubmission,
-    ChallengeType,
     InvitationStatus,
     InvitationType,
     MatchSource,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from .serializers import (
     BattleInvitationSerializer,
@@ -181,11 +181,11 @@ class PromptBattleViewSet(viewsets.ReadOnlyModelViewSet):
             'message': 'Challenge refreshed!',
         }
 
-        # Include challenge type if it was updated
-        if battle.challenge_type:
-            response_data['challenge_type'] = {
-                'key': battle.challenge_type.key,
-                'name': battle.challenge_type.name,
+        # Include prompt category if available
+        if battle.prompt and battle.prompt.category:
+            response_data['category'] = {
+                'id': battle.prompt.category.id,
+                'name': battle.prompt.category.name,
             }
 
         return Response(response_data)
@@ -502,11 +502,11 @@ Focus on visual impact and artistic interpretation."""
         battle_result['my_submission']['criteria_scores'] = my_submission.criteria_scores
         battle_result['my_submission']['feedback'] = my_submission.evaluation_feedback
 
-        # Add challenge type info
-        if battle.challenge_type:
-            battle_result['challenge_type'] = {
-                'key': battle.challenge_type.key,
-                'name': battle.challenge_type.name,
+        # Add prompt category info
+        if battle.prompt and battle.prompt.category:
+            battle_result['category'] = {
+                'id': battle.prompt.category.id,
+                'name': battle.prompt.category.name,
             }
 
         # Truncate challenge text for title
@@ -517,9 +517,9 @@ Focus on visual impact and artistic interpretation."""
         # Generate tags based on battle content
         tags = ['AI Image Generation', 'Prompt Battle']
 
-        # Add challenge type as a tag
-        if battle.challenge_type:
-            tags.append(battle.challenge_type.name)
+        # Add category as a tag
+        if battle.prompt and battle.prompt.category:
+            tags.append(battle.prompt.category.name)
 
         # Add result tag
         if won:
@@ -648,7 +648,7 @@ Focus on visual impact and artistic interpretation."""
             .exclude(
                 hidden_by=user  # Exclude battles hidden by this user
             )
-            .select_related('challenger', 'opponent', 'winner', 'challenge_type')
+            .select_related('challenger', 'opponent', 'winner', 'prompt', 'prompt__category')
         )
 
         # Apply status filter
@@ -800,13 +800,11 @@ class BattleInvitationViewSet(viewsets.ReadOnlyModelViewSet):
         """Send an SMS battle invitation to a phone number."""
         from django.core.exceptions import ValidationError
 
-        from core.battles.models import ChallengeType
         from core.sms.utils import normalize_phone_number
 
         # Validate phone number
         phone = request.data.get('phone_number', '').strip()
         recipient_name = request.data.get('recipient_name', '').strip()
-        challenge_type_key = request.data.get('challenge_type')
 
         if not phone:
             return Response({'error': 'Phone number is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -816,33 +814,27 @@ class BattleInvitationViewSet(viewsets.ReadOnlyModelViewSet):
         except ValidationError as e:
             return Response({'error': str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get challenge type
-        challenge_type = None
-        if challenge_type_key:
-            try:
-                challenge_type = ChallengeType.objects.get(key=challenge_type_key, is_active=True)
-            except ChallengeType.DoesNotExist:
-                pass
+        # Get a random active prompt
+        prompt = PromptChallengePrompt.objects.filter(is_active=True).order_by('?').first()
 
-        if not challenge_type:
-            challenge_type = ChallengeType.objects.filter(is_active=True).first()
-
-        if not challenge_type:
-            return Response({'error': 'No challenge types available.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Generate challenge
-        challenge_text = challenge_type.generate_challenge()
+        if not prompt:
+            return Response({'error': 'No prompts available.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create the battle (opponent will be set when they accept)
         battle = PromptBattle.objects.create(
             challenger=request.user,
             opponent=None,  # Will be set when SMS recipient accepts
-            challenge_text=challenge_text,
-            challenge_type=challenge_type,
+            challenge_text=prompt.prompt_text,
+            prompt=prompt,
             match_source=MatchSource.INVITATION,
-            duration_minutes=challenge_type.default_duration_minutes,
+            duration_minutes=3,  # Default duration
             status=BattleStatus.PENDING,
         )
+
+        # Increment usage counter
+        from django.db.models import F
+
+        PromptChallengePrompt.objects.filter(id=prompt.id).update(times_used=F('times_used') + 1)
 
         # Create SMS invitation
         invitation = BattleInvitation.objects.create(
@@ -883,42 +875,40 @@ def generate_battle_link(request):
     via WhatsApp, iMessage, social media, etc. No SMS is sent.
 
     Request body:
-        challenge_type_key (optional): Specific challenge type key
+        category_id (optional): Filter prompts by category ID
 
     Returns:
         invite_url: The shareable link
         invitation: Invitation details
     """
-    challenge_type_key = request.data.get('challenge_type_key')
 
-    # Get challenge type
-    if challenge_type_key:
-        try:
-            challenge_type = ChallengeType.objects.get(key=challenge_type_key)
-        except ChallengeType.DoesNotExist:
-            return Response(
-                {'error': f'Challenge type "{challenge_type_key}" not found.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-    else:
-        # Get random active challenge type
-        challenge_type = ChallengeType.objects.filter(is_active=True).order_by('?').first()
-        if not challenge_type:
-            return Response({'error': 'No challenge types available.'}, status=status.HTTP_400_BAD_REQUEST)
+    category_id = request.data.get('category_id')
 
-    # Generate challenge
-    challenge_text = challenge_type.generate_challenge()
+    # Build queryset for active prompts
+    queryset = PromptChallengePrompt.objects.filter(is_active=True)
+    if category_id:
+        queryset = queryset.filter(category_id=category_id)
+
+    # Get random prompt using weighted selection
+    prompt = queryset.order_by('?').first()
+    if not prompt:
+        return Response({'error': 'No prompts available.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Create the battle
     battle = PromptBattle.objects.create(
         challenger=request.user,
         opponent=None,  # Will be set when recipient accepts
-        challenge_text=challenge_text,
-        challenge_type=challenge_type,
+        challenge_text=prompt.prompt_text,
+        prompt=prompt,
         match_source=MatchSource.INVITATION,
-        duration_minutes=challenge_type.default_duration_minutes,
+        duration_minutes=3,  # Default duration
         status=BattleStatus.PENDING,
     )
+
+    # Increment usage counter
+    from django.db.models import F
+
+    PromptChallengePrompt.objects.filter(id=prompt.id).update(times_used=F('times_used') + 1)
 
     # Create link invitation (no SMS sent)
     invitation = BattleInvitation.objects.create(
@@ -951,9 +941,9 @@ def get_invitation_by_token(request, token):
     - expired/cancelled: Error response
     """
     try:
-        invitation = BattleInvitation.objects.select_related('sender', 'battle', 'battle__challenge_type').get(
-            invite_token=token
-        )
+        invitation = BattleInvitation.objects.select_related(
+            'sender', 'battle', 'battle__prompt', 'battle__prompt__category'
+        ).get(invite_token=token)
     except BattleInvitation.DoesNotExist:
         return Response({'error': 'Invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -998,7 +988,9 @@ def get_invitation_by_token(request, token):
             'battle': {
                 'id': invitation.battle.id,
                 'challenge_text': invitation.battle.challenge_text,
-                'challenge_type': invitation.battle.challenge_type.name if invitation.battle.challenge_type else None,
+                'category': invitation.battle.prompt.category.name
+                if invitation.battle.prompt and invitation.battle.prompt.category
+                else None,
             },
             'expires_at': invitation.expires_at.isoformat(),
         }
@@ -1271,9 +1263,9 @@ def get_battle_public(request, battle_id):
     from django.shortcuts import get_object_or_404
 
     battle = get_object_or_404(
-        PromptBattle.objects.select_related('challenger', 'opponent', 'winner', 'challenge_type').prefetch_related(
-            'submissions__user'
-        ),
+        PromptBattle.objects.select_related(
+            'challenger', 'opponent', 'winner', 'prompt', 'prompt__category'
+        ).prefetch_related('submissions__user'),
         id=battle_id,
     )
 
@@ -1324,11 +1316,11 @@ def get_battle_public(request, battle_id):
             if battle.opponent
             else None,
             'challenge_text': battle.challenge_text,
-            'challenge_type': {
-                'key': battle.challenge_type.key,
-                'name': battle.challenge_type.name,
+            'category': {
+                'id': battle.prompt.category.id,
+                'name': battle.prompt.category.name,
             }
-            if battle.challenge_type
+            if battle.prompt and battle.prompt.category
             else None,
             'status': battle.status,
             'battle_type': battle.battle_type,
@@ -1370,7 +1362,7 @@ def get_user_battles(request, username):
             Q(challenger=user) | Q(opponent=user),
             status=BattleStatus.COMPLETED,
         )
-        .select_related('challenger', 'opponent', 'winner', 'challenge_type')
+        .select_related('challenger', 'opponent', 'winner', 'prompt', 'prompt__category')
         .prefetch_related('submissions__user')
         .order_by('-completed_at')[:50]
     )
@@ -1414,11 +1406,11 @@ def get_user_battles(request, username):
             if battle.opponent
             else None,
             'challenge_text': battle.challenge_text,
-            'challenge_type': {
-                'key': battle.challenge_type.key,
-                'name': battle.challenge_type.name,
+            'category': {
+                'id': battle.prompt.category.id,
+                'name': battle.prompt.category.name,
             }
-            if battle.challenge_type
+            if battle.prompt and battle.prompt.category
             else None,
             'status': battle.status,
             'battle_type': battle.battle_type,
@@ -1482,9 +1474,9 @@ def get_battle_share_data(request, battle_id):
     from django.shortcuts import get_object_or_404
 
     battle = get_object_or_404(
-        PromptBattle.objects.select_related('challenger', 'opponent', 'winner', 'challenge_type').prefetch_related(
-            'submissions__user'
-        ),
+        PromptBattle.objects.select_related(
+            'challenger', 'opponent', 'winner', 'prompt', 'prompt__category'
+        ).prefetch_related('submissions__user'),
         id=battle_id,
     )
 
@@ -1614,7 +1606,7 @@ def pending_battles(request):
             status__in=[BattleStatus.ACTIVE, BattleStatus.PENDING],
         )
         .exclude(hidden_by=user)
-        .select_related('challenger', 'opponent', 'challenge_type', 'current_turn_user', 'invitation')
+        .select_related('challenger', 'opponent', 'prompt', 'prompt__category', 'current_turn_user', 'invitation')
         .prefetch_related('submissions')
     )
 
@@ -1672,7 +1664,7 @@ def pending_battles(request):
             status=BattleStatus.COMPLETED,
             completed_at__gte=seven_days_ago,
         )
-        .select_related('challenger', 'opponent', 'winner', 'challenge_type')
+        .select_related('challenger', 'opponent', 'winner', 'prompt', 'prompt__category')
         .order_by('-completed_at')[:10]
     )
 
@@ -1953,11 +1945,11 @@ def _serialize_async_battle(battle: PromptBattle, user) -> dict:
         else None,
         'opponent_display_name': opponent_display_name,
         'challenge_text': battle.challenge_text[:100] + ('...' if len(battle.challenge_text) > 100 else ''),
-        'challenge_type': {
-            'key': battle.challenge_type.key,
-            'name': battle.challenge_type.name,
+        'category': {
+            'id': battle.prompt.category.id,
+            'name': battle.prompt.category.name,
         }
-        if battle.challenge_type
+        if battle.prompt and battle.prompt.category
         else None,
         'status': 'pending',  # Will be overwritten by caller
         'phase': battle.phase,
@@ -2058,3 +2050,408 @@ def battle_share_page(request, battle_id):
 </html>"""
 
     return HttpResponse(html, content_type='text/html')
+
+
+# =============================================================================
+# ADMIN - PROMPT CHALLENGE PROMPTS MANAGEMENT
+# =============================================================================
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_prompt_list(request):
+    """List all curated prompts for admin management.
+
+    Query params:
+        - category: Filter by category ID
+        - difficulty: Filter by difficulty (easy/medium/hard)
+        - is_active: Filter by active status (true/false)
+        - search: Search in prompt text
+        - page: Page number (default: 1)
+        - page_size: Items per page (default: 20, max: 100)
+    """
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+
+    from core.battles.models import PromptChallengePrompt
+
+    queryset = PromptChallengePrompt.objects.select_related('category').all()
+
+    # Apply filters
+    category_id = request.query_params.get('category')
+    if category_id:
+        queryset = queryset.filter(category_id=category_id)
+
+    difficulty = request.query_params.get('difficulty')
+    if difficulty:
+        queryset = queryset.filter(difficulty=difficulty)
+
+    is_active = request.query_params.get('is_active')
+    if is_active is not None:
+        queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
+    search = request.query_params.get('search')
+    if search:
+        queryset = queryset.filter(prompt_text__icontains=search)
+
+    # Order by most recently created first
+    queryset = queryset.order_by('-created_at')
+
+    # Pagination
+    total = queryset.count()
+    page = int(request.query_params.get('page', 1))
+    page_size = min(int(request.query_params.get('page_size', 20)), 100)
+    offset = (page - 1) * page_size
+
+    prompts = queryset[offset : offset + page_size]
+
+    data = [
+        {
+            'id': p.id,
+            'promptText': p.prompt_text,
+            'category': {'id': p.category.id, 'name': p.category.name, 'slug': p.category.slug} if p.category else None,
+            'difficulty': p.difficulty,
+            'isActive': p.is_active,
+            'weight': p.weight,
+            'timesUsed': p.times_used,
+            'createdAt': p.created_at.isoformat(),
+            'updatedAt': p.updated_at.isoformat(),
+        }
+        for p in prompts
+    ]
+
+    return Response(
+        {
+            'prompts': data,
+            'total': total,
+            'page': page,
+            'pageSize': page_size,
+            'totalPages': (total + page_size - 1) // page_size,
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_prompt_create(request):
+    """Create a new curated prompt."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info(f'admin_prompt_create request.data: {request.data}')
+
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+
+    from core.battles.models import PromptChallengePrompt
+
+    # Support both camelCase and snake_case keys
+    prompt_text = (request.data.get('promptText') or request.data.get('prompt_text', '')).strip()
+    if not prompt_text:
+        return Response({'error': 'promptText is required'}, status=400)
+
+    if len(prompt_text) < 10:
+        return Response({'error': 'promptText must be at least 10 characters'}, status=400)
+
+    # Support both camelCase and snake_case keys
+    # Default to "Images & Video" category (ID: 9) if not provided
+    category_id = request.data.get('categoryId') or request.data.get('category_id') or 9
+    difficulty = request.data.get('difficulty', 'medium')
+    weight = float(request.data.get('weight', 1.0))
+    is_active = request.data.get('isActive') if 'isActive' in request.data else request.data.get('is_active', True)
+
+    prompt = PromptChallengePrompt.objects.create(
+        prompt_text=prompt_text,
+        category_id=category_id,
+        difficulty=difficulty,
+        weight=weight,
+        is_active=is_active,
+    )
+
+    return Response(
+        {
+            'id': prompt.id,
+            'promptText': prompt.prompt_text,
+            'category': {'id': prompt.category.id, 'name': prompt.category.name} if prompt.category else None,
+            'difficulty': prompt.difficulty,
+            'isActive': prompt.is_active,
+            'weight': prompt.weight,
+            'timesUsed': prompt.times_used,
+            'createdAt': prompt.created_at.isoformat(),
+        },
+        status=201,
+    )
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def admin_prompt_detail(request, pk):
+    """Get, update, or delete a single prompt."""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+
+    from core.battles.models import PromptChallengePrompt
+
+    try:
+        prompt = PromptChallengePrompt.objects.select_related('category').get(id=pk)
+    except PromptChallengePrompt.DoesNotExist:
+        return Response({'error': 'Prompt not found'}, status=404)
+
+    if request.method == 'GET':
+        return Response(
+            {
+                'id': prompt.id,
+                'promptText': prompt.prompt_text,
+                'category': {'id': prompt.category.id, 'name': prompt.category.name, 'slug': prompt.category.slug}
+                if prompt.category
+                else None,
+                'difficulty': prompt.difficulty,
+                'isActive': prompt.is_active,
+                'weight': prompt.weight,
+                'timesUsed': prompt.times_used,
+                'createdAt': prompt.created_at.isoformat(),
+                'updatedAt': prompt.updated_at.isoformat(),
+            }
+        )
+
+    elif request.method == 'PUT':
+        # Frontend sends snake_case keys via axios interceptor
+        if 'prompt_text' in request.data:
+            prompt_text = request.data['prompt_text'].strip()
+            if len(prompt_text) < 10:
+                return Response({'error': 'prompt_text must be at least 10 characters'}, status=400)
+            prompt.prompt_text = prompt_text
+
+        if 'category_id' in request.data:
+            prompt.category_id = request.data['category_id']
+
+        if 'difficulty' in request.data:
+            prompt.difficulty = request.data['difficulty']
+
+        if 'weight' in request.data:
+            prompt.weight = float(request.data['weight'])
+
+        if 'is_active' in request.data:
+            prompt.is_active = request.data['is_active']
+
+        prompt.save()
+
+        return Response(
+            {
+                'id': prompt.id,
+                'promptText': prompt.prompt_text,
+                'category': {'id': prompt.category.id, 'name': prompt.category.name} if prompt.category else None,
+                'difficulty': prompt.difficulty,
+                'isActive': prompt.is_active,
+                'weight': prompt.weight,
+                'timesUsed': prompt.times_used,
+                'createdAt': prompt.created_at.isoformat(),
+                'updatedAt': prompt.updated_at.isoformat(),
+            }
+        )
+
+    elif request.method == 'DELETE':
+        prompt.delete()
+        return Response({'message': 'Prompt deleted'}, status=204)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_prompt_stats(request):
+    """Get prompt statistics for the admin dashboard."""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+
+    from django.db.models import Count, Sum
+
+    from core.battles.models import PromptChallengePrompt
+
+    total = PromptChallengePrompt.objects.count()
+    active = PromptChallengePrompt.objects.filter(is_active=True).count()
+    inactive = total - active
+
+    # By difficulty
+    by_difficulty = (
+        PromptChallengePrompt.objects.values('difficulty').annotate(count=Count('id')).order_by('difficulty')
+    )
+
+    # By category
+    by_category = (
+        PromptChallengePrompt.objects.filter(category__isnull=False)
+        .values('category__id', 'category__name')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+
+    # Most used
+    most_used = PromptChallengePrompt.objects.filter(times_used__gt=0).order_by('-times_used')[:5]
+
+    # Least used (active prompts that haven't been used)
+    least_used = PromptChallengePrompt.objects.filter(is_active=True, times_used=0).order_by('created_at')[:5]
+
+    # Total times used
+    total_usage = PromptChallengePrompt.objects.aggregate(total=Sum('times_used'))['total'] or 0
+
+    return Response(
+        {
+            'total': total,
+            'active': active,
+            'inactive': inactive,
+            'totalUsage': total_usage,
+            'byDifficulty': {item['difficulty']: item['count'] for item in by_difficulty},
+            'byCategory': [
+                {'categoryId': item['category__id'], 'categoryName': item['category__name'], 'count': item['count']}
+                for item in by_category
+            ],
+            'mostUsed': [
+                {
+                    'id': p.id,
+                    'promptText': p.prompt_text[:100] + ('...' if len(p.prompt_text) > 100 else ''),
+                    'timesUsed': p.times_used,
+                }
+                for p in most_used
+            ],
+            'leastUsed': [
+                {
+                    'id': p.id,
+                    'promptText': p.prompt_text[:100] + ('...' if len(p.prompt_text) > 100 else ''),
+                    'timesUsed': p.times_used,
+                }
+                for p in least_used
+            ],
+        }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_prompt_categories(request):
+    """Get available categories for the prompt filter dropdown."""
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+
+    from core.taxonomy.models import Taxonomy
+
+    categories = Taxonomy.objects.filter(taxonomy_type='category', is_active=True).order_by('name')
+
+    return Response(
+        {
+            'categories': [{'id': c.id, 'name': c.name, 'slug': c.slug} for c in categories],
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_prompt_bulk_update(request):
+    """Bulk update multiple prompts at once.
+
+    Request body:
+        {
+            "ids": [1, 2, 3],
+            "updates": {
+                "categoryId": 5,        # optional
+                "difficulty": "hard",   # optional
+                "isActive": true,       # optional
+                "weight": 1.5           # optional
+            }
+        }
+
+    Returns:
+        {
+            "updated": 3,
+            "failed": []
+        }
+    """
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+
+    from core.battles.models import PromptChallengePrompt
+
+    ids = request.data.get('ids', [])
+    updates = request.data.get('updates', {})
+
+    if not ids:
+        return Response({'error': 'No prompt IDs provided'}, status=400)
+
+    if len(ids) > 100:
+        return Response({'error': 'Cannot update more than 100 prompts at once'}, status=400)
+
+    if not updates:
+        return Response({'error': 'No updates provided'}, status=400)
+
+    # Build the update dict
+    update_fields = {}
+
+    if 'categoryId' in updates:
+        update_fields['category_id'] = updates['categoryId']
+
+    if 'difficulty' in updates:
+        if updates['difficulty'] not in ['easy', 'medium', 'hard']:
+            return Response({'error': 'Invalid difficulty value'}, status=400)
+        update_fields['difficulty'] = updates['difficulty']
+
+    if 'isActive' in updates:
+        update_fields['is_active'] = bool(updates['isActive'])
+
+    if 'weight' in updates:
+        try:
+            weight = float(updates['weight'])
+            if weight < 0.1 or weight > 10.0:
+                return Response({'error': 'Weight must be between 0.1 and 10.0'}, status=400)
+            update_fields['weight'] = weight
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid weight value'}, status=400)
+
+    if not update_fields:
+        return Response({'error': 'No valid update fields provided'}, status=400)
+
+    # Perform bulk update
+    updated_count = PromptChallengePrompt.objects.filter(id__in=ids).update(**update_fields)
+
+    return Response(
+        {
+            'updated': updated_count,
+            'failed': [],
+        }
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_prompt_bulk_delete(request):
+    """Bulk delete multiple prompts at once.
+
+    Request body:
+        {
+            "ids": [1, 2, 3]
+        }
+
+    Returns:
+        {
+            "deleted": 3,
+            "failed": []
+        }
+    """
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=403)
+
+    from core.battles.models import PromptChallengePrompt
+
+    ids = request.data.get('ids', [])
+
+    if not ids:
+        return Response({'error': 'No prompt IDs provided'}, status=400)
+
+    if len(ids) > 100:
+        return Response({'error': 'Cannot delete more than 100 prompts at once'}, status=400)
+
+    # Perform bulk delete
+    deleted_count, _ = PromptChallengePrompt.objects.filter(id__in=ids).delete()
+
+    return Response(
+        {
+            'deleted': deleted_count,
+            'failed': [],
+        }
+    )

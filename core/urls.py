@@ -44,6 +44,13 @@ from .battles.views import (
     BattleInvitationViewSet,
     PromptBattleViewSet,
     accept_invitation_by_token,
+    admin_prompt_bulk_delete,
+    admin_prompt_bulk_update,
+    admin_prompt_categories,
+    admin_prompt_create,
+    admin_prompt_detail,
+    admin_prompt_list,
+    admin_prompt_stats,
     battle_leaderboard,
     battle_stats,
     expire_battles,
@@ -422,6 +429,18 @@ urlpatterns = [
     # Bulk battle management endpoints
     path('battles/bulk-delete/', PromptBattleViewSet.as_view({'post': 'bulk_delete'}), name='battles_bulk_delete'),
     path('battles/my-history/', PromptBattleViewSet.as_view({'get': 'my_history'}), name='battles_my_history'),
+    # Admin - Prompt Challenge Prompts Management
+    path('battles/admin/prompt-challenge-prompts/', admin_prompt_list, name='admin_prompt_list'),
+    path('battles/admin/prompt-challenge-prompts/create/', admin_prompt_create, name='admin_prompt_create'),
+    path('battles/admin/prompt-challenge-prompts/stats/', admin_prompt_stats, name='admin_prompt_stats'),
+    path('battles/admin/prompt-challenge-prompts/categories/', admin_prompt_categories, name='admin_prompt_categories'),
+    path(
+        'battles/admin/prompt-challenge-prompts/bulk-update/', admin_prompt_bulk_update, name='admin_prompt_bulk_update'
+    ),
+    path(
+        'battles/admin/prompt-challenge-prompts/bulk-delete/', admin_prompt_bulk_delete, name='admin_prompt_bulk_delete'
+    ),
+    path('battles/admin/prompt-challenge-prompts/<int:pk>/', admin_prompt_detail, name='admin_prompt_detail'),
     # Weekly challenges endpoints
     path('', include('core.challenges.urls')),
     # Email notification endpoints

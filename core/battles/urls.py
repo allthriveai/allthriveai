@@ -36,4 +36,17 @@ urlpatterns = [
     path('<int:battle_id>/extend-deadline/', views.extend_battle_deadline, name='extend-deadline'),
     path('<int:battle_id>/send-reminder/', views.send_battle_reminder, name='send-reminder'),
     path('<int:battle_id>/start-turn/', views.start_battle_turn, name='start-turn'),
+    # Admin - Prompt Challenge Prompts Management
+    path('admin/prompt-challenge-prompts/', views.admin_prompt_list, name='admin-prompt-list'),
+    path('admin/prompt-challenge-prompts/create/', views.admin_prompt_create, name='admin-prompt-create'),
+    path('admin/prompt-challenge-prompts/stats/', views.admin_prompt_stats, name='admin-prompt-stats'),
+    path('admin/prompt-challenge-prompts/categories/', views.admin_prompt_categories, name='admin-prompt-categories'),
+    path(
+        'admin/prompt-challenge-prompts/bulk-update/', views.admin_prompt_bulk_update, name='admin-prompt-bulk-update'
+    ),
+    path(
+        'admin/prompt-challenge-prompts/bulk-delete/', views.admin_prompt_bulk_delete, name='admin-prompt-bulk-delete'
+    ),
+    # Keep <int:pk>/ last so it doesn't match string routes above
+    path('admin/prompt-challenge-prompts/<int:pk>/', views.admin_prompt_detail, name='admin-prompt-detail'),
 ]
