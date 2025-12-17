@@ -114,23 +114,26 @@ export function HeroSection({ onRequestInvite, isModalOpen = false }: HeroSectio
               transition={{ duration: 0.7, delay: 0.1 }}
               className="mb-6"
             >
-              <h1 className="font-bold tracking-tight mb-4 text-white max-w-2xl flex flex-col" style={{ textShadow: '0 0 20px rgba(15, 23, 42, 0.9), 0 0 40px rgba(15, 23, 42, 0.7), 0 0 60px rgba(15, 23, 42, 0.5)' }}>
-                <span className="whitespace-nowrap text-[1.5rem] sm:text-[2rem] md:text-[2.98rem]">Create with AI anywhere</span>
-                <span className="text-[2rem] sm:text-[2.75rem] md:text-[4.2rem]">Consolidate here</span>
+              <h1 className="font-bold tracking-tight mb-6 max-w-2xl">
+                <span className="block text-[2rem] sm:text-[3rem] md:text-[4rem] text-white leading-[1.1]">
+                  Creating with AI?
+                </span>
                 <span
-                  className="pb-2 animate-gradient-rotate text-[2.25rem] sm:text-[3rem] md:text-[4.5rem]"
+                  className="block text-[2.5rem] sm:text-[3.5rem] md:text-[4.5rem] leading-[1.1] animate-gradient-rotate"
                   style={{
                     backgroundSize: '300% 300%',
-                    background: 'linear-gradient(to right, #22d3ee, #2dd4bf, #4ade80)',
+                    background: 'linear-gradient(90deg, #22d3ee, #4ade80, #22d3ee)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
-                    textShadow: 'none',
                   }}
                 >
-                  Thrive together
+                  You belong here.
                 </span>
               </h1>
+              <p className="text-xl sm:text-[1.375rem] text-gray-300 mb-4">
+                Share your work. Level up your skills. Thrive together.
+              </p>
             </motion.div>
 
             {/* CTA Button */}

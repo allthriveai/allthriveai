@@ -73,7 +73,7 @@ export function ThankYouSlide() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="text-xl sm:text-2xl text-gray-400 mb-10 italic"
         >
-          Create with AI anywhere. Consolidate here. Thrive together.
+          Creating with AI? You belong here.
         </motion.p>
 
         {/* Contact */}

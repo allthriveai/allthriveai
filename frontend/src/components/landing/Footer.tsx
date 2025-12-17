@@ -48,8 +48,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 leading-relaxed">
-              The gamified AI portfolio platform for anyone creating with AI. Automate your AI portfolio,
-              compete in Prompt Battles, and level up your AI skills.
+              A community for AI creators at any level. Share your work, compete in prompt battles, and thrive together.
             </p>
             {/* Social links */}
             <div className="flex items-center gap-3">
@@ -145,7 +144,7 @@ export function Footer() {
             </Link>
           </p>
           <p className="text-gray-500 dark:text-gray-500 text-sm text-center">
-            Create with AI anywhere. Consolidate here. Thrive together.
+            Creating with AI? You belong here.
           </p>
         </div>
       </div>

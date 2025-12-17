@@ -73,7 +73,7 @@ export function ProblemSlide() {
           className="text-center mt-12"
         >
           <p className="text-2xl text-white font-light">
-            <GradientText>Create with AI anywhere.</GradientText> Consolidate here. Thrive together.
+            <GradientText>Creating with AI?</GradientText> You belong here.
           </p>
         </motion.div>
       </div>

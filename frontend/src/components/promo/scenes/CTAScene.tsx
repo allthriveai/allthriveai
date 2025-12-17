@@ -73,13 +73,10 @@ export function CTAScene({ elapsed }: CTASceneProps) {
             className="mb-8"
           >
             <div className="text-lg text-white/80 font-medium">
-              Create with AI anywhere.
-            </div>
-            <div className="text-lg text-white/80 font-medium">
-              Consolidate here.
+              Creating with AI?
             </div>
             <div className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent mt-1">
-              Thrive together.
+              You belong here.
             </div>
           </motion.div>
         )}

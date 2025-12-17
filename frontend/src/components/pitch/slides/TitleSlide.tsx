@@ -72,7 +72,7 @@ export function TitleSlide() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="text-2xl sm:text-3xl text-white font-light mb-4"
         >
-          Create with AI anywhere. Consolidate here. Thrive together.
+          Creating with AI? You belong here.
         </motion.p>
 
         {/* Sub-tagline */}
@@ -82,7 +82,7 @@ export function TitleSlide() {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-lg sm:text-xl text-gray-400 max-w-3xl"
         >
-          The gamified AI portfolio platform for anyone creating with AI. Build your portfolio, compete in Prompt Battles, and level up.
+          A community for AI creators at any level. Share your work, compete in prompt battles, and thrive together.
         </motion.p>
       </div>
     </PitchSlide>

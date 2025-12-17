@@ -89,8 +89,8 @@ export function Testimonials() {
               AI Creators
             </span>
           </h2>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-            Join thousands of creators who are building, learning, and growing together.
+          <p className="text-lg text-gray-400 max-w-3xl mx-auto">
+            Join to see what others are building, learn together, and grow your skill portfolio.
           </p>
         </motion.div>
 

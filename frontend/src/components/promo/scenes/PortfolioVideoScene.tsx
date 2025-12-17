@@ -290,8 +290,8 @@ export function PortfolioVideoScene({ elapsed, isPlaying }: PortfolioVideoSceneP
                   animate={{ opacity: 1, y: 0 }}
                   className="text-center mt-4 px-6"
                 >
-                  <span className="text-white/60 text-sm">Create anywhere, </span>
-                  <span className="text-cyan-400 text-sm font-semibold">consolidate here</span>
+                  <span className="text-white/60 text-sm">Creating with AI? </span>
+                  <span className="text-cyan-400 text-sm font-semibold">You belong here</span>
                 </motion.div>
               )}
             </>

@@ -43,7 +43,7 @@ export function MarketSlide() {
             The <GradientText>Opportunity</GradientText>
           </h2>
           <p className="text-xl text-gray-400">
-            500M+ people using AI, looking to consolidate and learn
+            500M+ people using AI, looking to share and level up
           </p>
         </motion.div>
 
