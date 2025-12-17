@@ -53,6 +53,13 @@ def keep_latest_str_or_existing(existing: str | None, new: str | None) -> str | 
     return existing
 
 
+def keep_latest_bool_or_existing(existing: bool | None, new: bool | None) -> bool | None:
+    """Reducer that keeps new value if provided, otherwise keeps existing."""
+    if new is not None:
+        return new
+    return existing
+
+
 # Agent State with reducers for user context
 class ProjectAgentState(TypedDict):
     """State for the project creation agent."""
@@ -61,6 +68,8 @@ class ProjectAgentState(TypedDict):
     # Use reducers to preserve user context across checkpointed state
     user_id: Annotated[int | None, keep_latest_or_existing]
     username: Annotated[str | None, keep_latest_str_or_existing]
+    # Integration connection status - checked at session start
+    has_github_connected: Annotated[bool | None, keep_latest_bool_or_existing]
 
 
 # Initialize LLM via centralized AI Gateway (lazy initialization for CI compatibility)
@@ -97,9 +106,23 @@ async def agent_node(state: ProjectAgentState) -> ProjectAgentState:
     """
     messages = state['messages']
 
-    # Add system prompt if not already present
+    # Build context section with user state info
+    context_parts = []
+    has_github = state.get('has_github_connected')
+    if has_github is not None:
+        context_parts.append(f'has_github_connected: {has_github}')
+    username = state.get('username')
+    if username:
+        context_parts.append(f'username: {username}')
+
+    context_section = ''
+    if context_parts:
+        context_section = '\n\n## Current User Context\n' + '\n'.join(context_parts)
+
+    # Add system prompt with context if not already present
     if not any(isinstance(m, SystemMessage) for m in messages):
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + list(messages)
+        system_content = SYSTEM_PROMPT + context_section
+        messages = [SystemMessage(content=system_content)] + list(messages)
 
     # Invoke LLM with tools (async) - use lazy getter for CI compatibility
     response = await get_llm_with_tools().ainvoke(messages)
@@ -244,13 +267,36 @@ async def stream_agent_response(user_message: str, user_id: int, username: str, 
     Yields:
         Dictionary with response chunks and metadata
     """
+    import asyncio
+
+    from django.contrib.auth import get_user_model
+
+    from core.integrations.github.helpers import get_user_github_token
+
     # Get async agent with checkpointer for conversation memory
     agent = await _get_async_agent()
 
     config = {'configurable': {'thread_id': session_id, 'user_id': user_id}}
 
-    # Create input
-    input_state = {'messages': [HumanMessage(content=user_message)], 'user_id': user_id, 'username': username}
+    # Check GitHub connection status upfront so agent knows before calling tools
+    # Use asyncio.to_thread to avoid Django's SynchronousOnlyOperation error
+    def _check_github_connection():
+        User = get_user_model()
+        try:
+            user = User.objects.get(id=user_id)
+            return get_user_github_token(user) is not None
+        except User.DoesNotExist:
+            return False
+
+    has_github_connected = await asyncio.to_thread(_check_github_connection)
+
+    # Create input with GitHub connection status
+    input_state = {
+        'messages': [HumanMessage(content=user_message)],
+        'user_id': user_id,
+        'username': username,
+        'has_github_connected': has_github_connected,
+    }
 
     # Track if project was created during streaming
     project_created = False

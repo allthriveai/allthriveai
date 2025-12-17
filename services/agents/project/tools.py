@@ -135,6 +135,13 @@ class ImportFromURLInput(BaseModel):
     )
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
     is_private: bool = Field(default=False, description='Whether to mark the project as private')
+    force_clip: bool = Field(
+        default=False,
+        description=(
+            'For GitHub URLs only: Set to True to clip the repo without GitHub connection. '
+            'Use when user explicitly chooses to clip instead of connecting GitHub.'
+        ),
+    )
 
 
 class RegenerateArchitectureDiagramInput(BaseModel):
@@ -1003,11 +1010,12 @@ def _handle_github_import(
     is_showcase: bool,
     is_private: bool,
     state: dict,
+    force_clip: bool = False,
 ) -> dict:
     """
     Handle GitHub URL import with auto-ownership detection.
 
-    - If user has no GitHub OAuth: auto-clip
+    - If user has no GitHub OAuth: ask them to connect or clip
     - If user doesn't own repo: auto-clip
     - If user owns repo: full GitHub import with AI analysis
     """
@@ -1023,23 +1031,41 @@ def _handle_github_import(
     # Check if user has GitHub connected
     token = get_user_github_token(user)
     if not token:
-        # No GitHub connected - auto-fallback to clipping
-        logger.info(f'No GitHub token, auto-clipping {owner}/{repo}')
-        result = _handle_generic_import(
-            url=url,
-            user=user,
-            is_owned=False,
-            is_showcase=is_showcase,
-            is_private=is_private,
-            state=state,
-        )
-        if result.get('success'):
-            result['auto_clipped'] = True
-            result['message'] = (
-                "I noticed you don't have GitHub connected, so I've added this to your clippings! "
-                'Connect GitHub to import your own repos with full AI analysis.'
+        # No GitHub connected - ask user what they want to do
+        if force_clip:
+            # User chose to clip without connecting GitHub
+            logger.info(f'User chose to clip {owner}/{repo} without GitHub connection')
+            result = _handle_generic_import(
+                url=url,
+                user=user,
+                is_owned=False,
+                is_showcase=is_showcase,
+                is_private=is_private,
+                state=state,
             )
-        return result
+            if result.get('success'):
+                result['clipped'] = True
+                result['message'] = (
+                    "I've added this repository to your clippings! "
+                    'You can connect GitHub anytime in Settings to import your own repos with full AI analysis.'
+                )
+            return result
+
+        # Return a prompt for the user to connect GitHub or clip
+        logger.info(f'No GitHub token for {owner}/{repo}, asking user to connect or clip')
+        return {
+            'success': False,
+            'needs_github_connection': True,
+            'github_url': url,
+            'repo_name': f'{owner}/{repo}',
+            'message': (
+                'I see this is a GitHub repo! Is this your own project, '
+                'or something cool you found and want to clip to save?\n\n'
+                "If it's yours, you can **connect GitHub** in Settings → Integrations "
+                'to import it with full AI analysis.\n'
+                'Or I can just **clip it** to save it to your collection!'
+            ),
+        }
 
     # Check if user owns the repo
     github_service = GitHubService(token)
@@ -1460,17 +1486,23 @@ def import_from_url(
     is_owned: bool | None = None,
     is_showcase: bool = True,
     is_private: bool = False,
+    force_clip: bool = False,
     state: dict | None = None,
 ) -> dict:
     """
     Import any URL as a project with smart domain-specific handling.
 
     This unified tool automatically routes URLs to the appropriate handler:
-    - **GitHub URLs**: Auto-detects ownership via OAuth, no questions needed
+    - **GitHub URLs**: Auto-detects ownership via OAuth. If no GitHub connected,
+      returns needs_github_connection=True - ask user to connect or clip.
     - **GitLab URLs**: Auto-detects ownership via OAuth, no questions needed
     - **YouTube URLs**: Creates rich video projects
     - **Figma URLs**: Imports as owned design (assumes user shares their own designs)
     - **Other URLs**: May return needs_ownership_confirmation=True if is_owned not set
+
+    When the tool returns 'needs_github_connection': True, ask the user:
+    "Would you like to connect GitHub first, or just clip it?"
+    If they want to clip, call again with force_clip=True.
 
     When the tool returns 'needs_ownership_confirmation': True, ask the user:
     "Is this your own project, or are you clipping something you found?"
@@ -1478,7 +1510,7 @@ def import_from_url(
     IMPORTANT: Always show the 'message' field from the response to the user!
 
     Returns:
-        Dictionary with project details, or needs_ownership_confirmation flag
+        Dictionary with project details, or needs_github_connection/needs_ownership_confirmation flag
     """
     from django.contrib.auth import get_user_model
 
@@ -1510,6 +1542,7 @@ def import_from_url(
             is_showcase=is_showcase,
             is_private=is_private,
             state=state,
+            force_clip=force_clip,
         )
     elif domain_type == 'gitlab':
         result = _handle_gitlab_import(

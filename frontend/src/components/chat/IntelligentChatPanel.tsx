@@ -1280,6 +1280,15 @@ export function IntelligentChatPanel({
     }
   }, []);
 
+  // Check if message is asking user to connect GitHub
+  const shouldShowGitHubConnectButton = useCallback((content: string) => {
+    const lowerContent = content.toLowerCase();
+    return (
+      (lowerContent.includes('connect github') || lowerContent.includes('connect your github')) &&
+      (lowerContent.includes('settings') || lowerContent.includes('integrations'))
+    );
+  }, []);
+
   // Custom message renderer for different message types
   const renderMessage = useCallback((message: ChatMessage) => {
     const isUser = message.sender === 'user';
@@ -1322,6 +1331,8 @@ export function IntelligentChatPanel({
     }
 
     // Standard text message
+    const showGitHubButton = !isUser && shouldShowGitHubConnectButton(message.content);
+
     return (
       <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
         <div
@@ -1377,12 +1388,24 @@ export function IntelligentChatPanel({
               >
                 {message.content}
               </ReactMarkdown>
+              {/* Show Connect GitHub button when AI asks user to connect */}
+              {showGitHubButton && (
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={handleConnectGitHub}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <FontAwesomeIcon icon={faGithub} />
+                    Connect GitHub
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
     );
-  }, [currentProjectId, handleUseAsFeaturedImage, handleCreateProjectFromImage]);
+  }, [currentProjectId, handleUseAsFeaturedImage, handleCreateProjectFromImage, shouldShowGitHubConnectButton, handleConnectGitHub, navigate, onClose]);
 
   return (
     <ChatInterface

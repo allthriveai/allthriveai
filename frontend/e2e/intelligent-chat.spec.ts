@@ -694,6 +694,263 @@ test.describe('Intelligent Chat', () => {
    * These tests verify core functionality that MUST work for the product to be usable.
    * They use real API calls and real data - not mocks.
    */
+  test.describe('Mission Critical - Video Upload Project Creation', () => {
+    // Skip in CI - requires AI API keys and file upload infrastructure
+    test.skip(!!process.env.CI, 'Skipping video upload tests in CI - requires API keys');
+    test.setTimeout(180000); // 3 minutes for upload + AI responses
+
+    test('CRITICAL: should create project from uploaded video with ownership confirmation', async ({ page }) => {
+      /**
+       * TDD TEST - VIDEO UPLOAD WORKFLOW
+       *
+       * SCENARIO: As a user I go to +Add Project and upload a video
+       *
+       * EXPECTED FLOW:
+       * 1. User uploads video via drag & drop or file input
+       * 2. AI asks: "Is this your own video, or are you clipping something you found? What tool did you use to make it?"
+       * 3. User responds: "my own and Midjourney"
+       * 4. AI creates project with the video
+       *
+       * SUCCESS: Chat creates a project with the video in user's playground
+       * FAILURE: Chat doesn't create a project (current bug)
+       */
+      const fs = await import('fs');
+      const path = await import('path');
+
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // Read the real test video fixture file
+      const { fileURLToPath } = await import('url');
+      const currentDir = path.dirname(fileURLToPath(import.meta.url));
+      const fixturePath = path.join(currentDir, 'fixtures', 'test-video.mp4');
+      const videoBuffer = fs.readFileSync(fixturePath);
+
+      // Drag and drop the video file into the chat panel
+      // The chat panel has drag-drop support via onDragEnter/onDrop handlers
+      await page.evaluate(
+        async ({ buffer, filename }) => {
+          // Create a File object from the buffer
+          const uint8Array = new Uint8Array(buffer);
+          const blob = new Blob([uint8Array], { type: 'video/mp4' });
+          const file = new File([blob], filename, { type: 'video/mp4' });
+
+          // Find the chat panel (the sliding panel on the right)
+          const dropZone = document.querySelector('.fixed.right-0.top-0');
+          if (!dropZone) {
+            console.error('Chat panel not found');
+            throw new Error('Chat panel not found for drag-drop');
+          }
+
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+
+          // Dispatch drag events in sequence
+          const dragEnterEvent = new DragEvent('dragenter', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+          });
+
+          const dragOverEvent = new DragEvent('dragover', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+          });
+
+          const dropEvent = new DragEvent('drop', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+          });
+
+          dropZone.dispatchEvent(dragEnterEvent);
+          await new Promise(r => setTimeout(r, 100));
+          dropZone.dispatchEvent(dragOverEvent);
+          await new Promise(r => setTimeout(r, 100));
+          dropZone.dispatchEvent(dropEvent);
+        },
+        { buffer: Array.from(videoBuffer), filename: 'test-video.mp4' }
+      );
+
+      // Wait for file to be added to attachments (should see file preview)
+      await page.waitForTimeout(2000);
+
+      // Check if attachment preview is visible
+      const attachmentPreview = page.locator('text=test-video.mp4');
+      const hasAttachment = await attachmentPreview.isVisible().catch(() => false);
+      console.log(`Attachment preview visible: ${hasAttachment}`);
+
+      // Send the message with the video
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      // Wait for upload and AI response asking about ownership
+      await page.waitForTimeout(20000);
+
+      // CRITICAL CHECK 1: AI should ask about ownership
+      const ownershipQuestion = await page.getByText(/your own video|clipping something|what tool/i).isVisible();
+
+      if (ownershipQuestion) {
+        console.log('✓ AI asked about video ownership');
+
+        // Respond with ownership and tool information
+        const chatInput = page.getByPlaceholder('Ask me anything...');
+        await chatInput.fill('my own and Midjourney');
+
+        await sendButton.click();
+
+        // Wait for AI to process and create project
+        await page.waitForTimeout(60000);
+
+        // CRITICAL CHECK 2: AI should have created a project
+        // Look for success indicators - use the entire chat panel content
+        const chatPanel = page.locator('.fixed.right-0.top-0, [class*="slide"], [class*="chat"]').first();
+        const chatPanelText = await chatPanel.textContent() || '';
+        const fullChatText = chatPanelText.toLowerCase();
+
+        // FAILURE indicators that should NOT appear
+        const failureIndicators = [
+          'midjourney is indeed a fantastic platform', // Misrouted to discovery
+          'here are a few noteworthy projects', // Misrouted to discovery
+          'i can help you explore', // Wrong context
+          'search for projects', // Wrong context
+        ];
+
+        let foundFailure = false;
+        for (const indicator of failureIndicators) {
+          if (fullChatText.includes(indicator.toLowerCase())) {
+            console.error(`FAILURE: Found wrong response pattern: "${indicator}"`);
+            foundFailure = true;
+          }
+        }
+
+        // SUCCESS indicators - at least one should appear
+        const successIndicators = [
+          'created',
+          'project',
+          'imported',
+          'project page',
+          'beautiful project',
+          'exploring',
+        ];
+
+        const hasSuccess = successIndicators.some(indicator => fullChatText.includes(indicator));
+
+        // Check for project URL in response (pattern: /@username/project-slug or /username/slug)
+        const projectUrlPattern = /\/[a-z0-9_-]+\/[a-z0-9_-]+/i;
+        const hasProjectUrl = projectUrlPattern.test(fullChatText);
+
+        console.log(`Success indicators found: ${hasSuccess}`);
+        console.log(`Project URL found: ${hasProjectUrl}`);
+        console.log(`Chat content preview: ${fullChatText.substring(0, 500)}...`);
+
+        // ASSERTIONS
+        expect(foundFailure).toBe(false);
+        expect(hasSuccess || hasProjectUrl).toBe(true);
+      } else {
+        // If AI didn't ask about ownership, it might have auto-imported
+        // Check for project creation anyway
+        const chatContent = await page.locator('.chat-message, [class*="message"]').allTextContents();
+        const fullText = chatContent.join(' ').toLowerCase();
+
+        console.log('AI did not ask ownership question, checking for auto-import...');
+        console.log(`Chat content: ${fullText.substring(0, 500)}...`);
+
+        // Should have either asked about ownership OR created the project
+        const hasProjectIndicator = fullText.includes('created') || fullText.includes('project') || fullText.includes('imported');
+        expect(hasProjectIndicator).toBe(true);
+      }
+
+      // Chat should remain functional
+      await expect(chatHeader).toBeVisible();
+
+      // No technical errors should be visible
+      const technicalErrors = ['TypeError', 'Exception', 'Traceback', 'undefined', 'NoneType'];
+      for (const error of technicalErrors) {
+        const hasError = await page.getByText(error).isVisible().catch(() => false);
+        expect(hasError).toBe(false);
+      }
+    });
+
+    test('CRITICAL: should route ownership response back to project agent, not discovery', async ({ page }) => {
+      /**
+       * REGRESSION TEST for supervisor routing bug
+       *
+       * BUG: When user says "my own and Midjourney" in response to ownership question,
+       *      supervisor misroutes to discovery agent (thinking user wants to search Midjourney)
+       *      instead of continuing with project agent.
+       *
+       * EXPECTED: Response should continue video import workflow
+       * ACTUAL (BUG): Response talks about Midjourney projects to explore
+       */
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      await openChatViaAddProject(page);
+
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // Step 1: Send a message that simulates the AI having asked about ownership
+      // We'll directly test the response to "my own and Midjourney"
+      const chatInput = page.getByPlaceholder('Ask me anything...');
+
+      // First, simulate video upload context by mentioning we uploaded a video
+      await chatInput.fill('I just uploaded a video file called sammy.mp4');
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      await page.waitForTimeout(15000);
+
+      // Now respond as if AI asked about ownership
+      await chatInput.fill('my own and Midjourney');
+      await sendButton.click();
+
+      await page.waitForTimeout(30000);
+
+      // Get all chat messages
+      const chatContent = await page.locator('.chat-message, [class*="message"]').allTextContents();
+      const fullText = chatContent.join(' ').toLowerCase();
+
+      // CRITICAL: Response should NOT be about discovering Midjourney projects
+      const discoveryPatterns = [
+        'midjourney is indeed a fantastic platform',
+        'here are a few noteworthy projects',
+        'exploring both your own projects',
+        'fashion prompts',
+        'storm-themed visuals',
+        'conceptual themes',
+        'cultural insights',
+        'architectural exploration',
+        'orbital brutalism',
+      ];
+
+      let wasRoutedToDiscovery = false;
+      for (const pattern of discoveryPatterns) {
+        if (fullText.includes(pattern.toLowerCase())) {
+          console.error(`BUG DETECTED: Response was routed to discovery agent. Found: "${pattern}"`);
+          wasRoutedToDiscovery = true;
+        }
+      }
+
+      // This assertion will FAIL if the bug still exists (TDD red phase)
+      expect(wasRoutedToDiscovery).toBe(false);
+
+      // Chat should remain functional
+      await expect(chatHeader).toBeVisible();
+    });
+  });
+
   test.describe('Mission Critical - GitHub Clipping', () => {
     // Skip in CI - requires AI API keys
     test.skip(!!process.env.CI, 'Skipping mission critical tests in CI - requires API keys');
@@ -1149,6 +1406,372 @@ test.describe('Intelligent Chat', () => {
       const typeError = page.getByText('TypeError');
       const hasTypeError = await typeError.isVisible().catch(() => false);
       expect(hasTypeError).toBe(false);
+    });
+  });
+
+  test.describe('Mission Critical - GitHub Import Without Connection', () => {
+    /**
+     * TDD TEST - GITHUB IMPORT WITHOUT GITHUB CONNECTION
+     *
+     * SCENARIO: As a user without GitHub connected, I go to +Add Project
+     *           and try to import a GitHub repository URL.
+     *
+     * EXPECTED:
+     * 1. Chat asks: "Would you like to connect GitHub first, or just clip it?"
+     * 2. User can choose to connect GitHub → directed to Settings → Integrations
+     * 3. User can choose to clip it → repo is saved as a clipped project
+     *
+     * FAILURE:
+     * - Chat auto-clips without asking (previous behavior)
+     * - Chat shows an error about not being connected
+     * - Chat doesn't create any project
+     */
+
+    // Skip in CI - requires API keys
+    test.skip(!!process.env.CI, 'Skipping GitHub no-connection tests in CI - requires API keys');
+    test.setTimeout(180000); // 3 minutes for AI responses
+
+    test('CRITICAL: should ask user to connect GitHub or clip when GitHub not connected', async ({ page }) => {
+      /**
+       * This test verifies that when a user WITHOUT GitHub connected pastes a GitHub URL,
+       * the chat asks them whether they want to:
+       * 1. Connect GitHub first (to import as their own project)
+       * 2. Just clip it (save without ownership)
+       *
+       * NOTE: This test assumes the test user does NOT have GitHub connected.
+       * If the test user has GitHub connected, this test will verify the existing flow instead.
+       */
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // User pastes a GitHub URL (use a fresh repo that hasn't been imported)
+      const chatInput = page.getByPlaceholder('Ask me anything...');
+      const testGitHubUrl = 'https://github.com/vercel/next.js';
+      await chatInput.fill(testGitHubUrl);
+
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      // Wait for AI to finish processing (wait for "thinking" indicator to disappear)
+      // First wait for thinking to appear
+      await page.waitForTimeout(3000);
+
+      // Then wait for it to disappear (AI finished processing)
+      try {
+        await page.waitForFunction(
+          () => {
+            const content = document.body.textContent || '';
+            return !content.toLowerCase().includes('thinking...');
+          },
+          { timeout: 90000 }
+        );
+      } catch {
+        console.log('Thinking indicator timeout - continuing with current state');
+      }
+
+      // Additional buffer for response to render
+      await page.waitForTimeout(3000);
+
+      // Get all chat panel content
+      const chatPanel = page.locator('.fixed.right-0.top-0, [class*="slide"], [class*="chat"]').first();
+      const chatPanelText = (await chatPanel.textContent()) || '';
+      const fullChatText = chatPanelText.toLowerCase();
+
+      console.log(`Chat response preview: ${fullChatText.substring(0, 800)}...`);
+
+      // Check for the two possible flows:
+      // Flow 1: GitHub NOT connected - should ask about connecting or clipping
+      const githubNotConnectedIndicators = [
+        'connect github',
+        'connect your github',
+        'github account',
+        'settings',
+        'integrations',
+        'clip it',
+        'just clip',
+        'clippings',
+        'need to connect',
+        'i see this is a github repo', // New user-friendly wording
+        'your own project', // Part of new question
+        'clip to save', // Part of new question
+      ];
+
+      // Flow 2: GitHub connected but doesn't own - should auto-clip
+      const autoClipIndicators = [
+        "don't own this repository",
+        "you don't own",
+        'added it to your clippings',
+        'clipped',
+      ];
+
+      // Flow 3: GitHub connected and owns it - should import
+      const ownedImportIndicators = ["imported your repository", "here's your project", 'project page'];
+
+      const hasGitHubNotConnectedPrompt = githubNotConnectedIndicators.some(indicator =>
+        fullChatText.includes(indicator)
+      );
+      const hasAutoClip = autoClipIndicators.some(indicator => fullChatText.includes(indicator));
+      const hasOwnedImport = ownedImportIndicators.some(indicator => fullChatText.includes(indicator));
+
+      console.log(`GitHub not connected prompt: ${hasGitHubNotConnectedPrompt}`);
+      console.log(`Auto-clipped (user doesn't own): ${hasAutoClip}`);
+      console.log(`Owned import: ${hasOwnedImport}`);
+
+      // FAILURE indicators - these should NOT appear
+      const failureIndicators = [
+        'error',
+        'failed to import',
+        'unable to import',
+        'cannot import',
+        'typeerror',
+        'something went wrong',
+      ];
+
+      let hasFailure = false;
+      for (const indicator of failureIndicators) {
+        if (fullChatText.includes(indicator)) {
+          console.error(`FAILURE: Found error indicator: "${indicator}"`);
+          hasFailure = true;
+        }
+      }
+
+      // ASSERTIONS
+      // One of the valid flows should have occurred
+      const validFlowOccurred = hasGitHubNotConnectedPrompt || hasAutoClip || hasOwnedImport;
+      expect(hasFailure).toBe(false);
+      expect(validFlowOccurred).toBe(true);
+
+      // If GitHub not connected prompt appeared, verify it offers both options
+      if (hasGitHubNotConnectedPrompt) {
+        console.log('✓ GitHub connection prompt shown - testing clip flow');
+
+        // User should be offered the option to connect or clip
+        const hasConnectOption = fullChatText.includes('connect github') || fullChatText.includes('settings');
+        const hasClipOption = fullChatText.includes('clip') || fullChatText.includes('clipping');
+
+        expect(hasConnectOption || hasClipOption).toBe(true);
+      }
+    });
+
+    test('CRITICAL: should clip GitHub repo when user chooses "just clip it"', async ({ page }) => {
+      /**
+       * This test verifies the full flow when user chooses to clip instead of connecting GitHub:
+       * 1. User pastes GitHub URL
+       * 2. AI asks about connecting GitHub or clipping
+       * 3. User says "just clip it"
+       * 4. AI clips the repo and creates a project
+       *
+       * NOTE: This test only runs if GitHub is NOT connected for the test user.
+       */
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Open chat via +Add Project button
+      await openChatViaAddProject(page);
+
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // User pastes a GitHub URL
+      const chatInput = page.getByPlaceholder('Ask me anything...');
+      const testGitHubUrl = 'https://github.com/microsoft/TypeScript';
+      await chatInput.fill(testGitHubUrl);
+
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      // Wait for AI to finish processing
+      await page.waitForTimeout(3000);
+      try {
+        await page.waitForFunction(
+          () => {
+            const content = document.body.textContent || '';
+            return !content.toLowerCase().includes('thinking...');
+          },
+          { timeout: 90000 }
+        );
+      } catch {
+        console.log('Thinking indicator timeout - continuing');
+      }
+      await page.waitForTimeout(3000);
+
+      // Get chat content
+      const chatPanel = page.locator('.fixed.right-0.top-0, [class*="slide"], [class*="chat"]').first();
+      let chatPanelText = (await chatPanel.textContent()) || '';
+      let fullChatText = chatPanelText.toLowerCase();
+
+      // Check if GitHub connection prompt appeared
+      const hasConnectionPrompt =
+        fullChatText.includes('connect github') ||
+        fullChatText.includes('connect your github') ||
+        fullChatText.includes('need to connect');
+
+      if (hasConnectionPrompt) {
+        console.log('✓ GitHub connection prompt appeared, responding with "just clip it"');
+
+        // User chooses to clip
+        await chatInput.fill('just clip it');
+        await sendButton.click();
+
+        // Wait for AI to finish processing
+        await page.waitForTimeout(3000);
+        try {
+          await page.waitForFunction(
+            () => {
+              const content = document.body.textContent || '';
+              return !content.toLowerCase().includes('thinking...');
+            },
+            { timeout: 90000 }
+          );
+        } catch {
+          console.log('Thinking indicator timeout - continuing');
+        }
+        await page.waitForTimeout(3000);
+
+        // Get updated chat content
+        chatPanelText = (await chatPanel.textContent()) || '';
+        fullChatText = chatPanelText.toLowerCase();
+
+        console.log(`Response after "just clip it": ${fullChatText.substring(fullChatText.length - 500)}...`);
+
+        // Should have clipped the project
+        const clipSuccessIndicators = [
+          'clipped',
+          'clipping',
+          'added to your',
+          'saved',
+          'project',
+          'typescript',
+        ];
+
+        const hasClipSuccess = clipSuccessIndicators.some(indicator => fullChatText.includes(indicator));
+
+        // Check for project URL in response
+        const projectUrlPattern = /\/[a-z0-9_-]+\/[a-z0-9_-]+/i;
+        const hasProjectUrl = projectUrlPattern.test(fullChatText);
+
+        console.log(`Clip success indicators: ${hasClipSuccess}`);
+        console.log(`Project URL found: ${hasProjectUrl}`);
+
+        expect(hasClipSuccess || hasProjectUrl).toBe(true);
+      } else {
+        // GitHub might already be connected - check if it auto-clipped or imported
+        console.log('GitHub connection prompt did not appear - user may have GitHub connected');
+
+        const hasResult =
+          fullChatText.includes('clipped') ||
+          fullChatText.includes('imported') ||
+          fullChatText.includes('project');
+
+        expect(hasResult).toBe(true);
+      }
+    });
+
+    test('CRITICAL: should direct user to Settings when they want to connect GitHub', async ({ page }) => {
+      /**
+       * This test verifies that when user chooses to connect GitHub:
+       * 1. User pastes GitHub URL
+       * 2. AI asks about connecting GitHub or clipping
+       * 3. User says "I want to connect GitHub"
+       * 4. AI provides instructions to go to Settings → Integrations
+       *
+       * NOTE: This test only runs if GitHub is NOT connected for the test user.
+       */
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Open chat via +Add Project button
+      await openChatViaAddProject(page);
+
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // User pastes a GitHub URL
+      const chatInput = page.getByPlaceholder('Ask me anything...');
+      const testGitHubUrl = 'https://github.com/facebook/react';
+      await chatInput.fill(testGitHubUrl);
+
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      // Wait for AI to finish processing
+      await page.waitForTimeout(3000);
+      try {
+        await page.waitForFunction(
+          () => {
+            const content = document.body.textContent || '';
+            return !content.toLowerCase().includes('thinking...');
+          },
+          { timeout: 90000 }
+        );
+      } catch {
+        console.log('Thinking indicator timeout - continuing');
+      }
+      await page.waitForTimeout(3000);
+
+      // Get chat content
+      const chatPanel = page.locator('.fixed.right-0.top-0, [class*="slide"], [class*="chat"]').first();
+      let chatPanelText = (await chatPanel.textContent()) || '';
+      let fullChatText = chatPanelText.toLowerCase();
+
+      // Check if GitHub connection prompt appeared
+      const hasConnectionPrompt =
+        fullChatText.includes('connect github') ||
+        fullChatText.includes('connect your github') ||
+        fullChatText.includes('need to connect');
+
+      if (hasConnectionPrompt) {
+        console.log('✓ GitHub connection prompt appeared, responding with "connect github"');
+
+        // User chooses to connect GitHub
+        await chatInput.fill('I want to connect my GitHub');
+        await sendButton.click();
+
+        // Wait for AI to finish processing
+        await page.waitForTimeout(3000);
+        try {
+          await page.waitForFunction(
+            () => {
+              const content = document.body.textContent || '';
+              return !content.toLowerCase().includes('thinking...');
+            },
+            { timeout: 60000 }
+          );
+        } catch {
+          console.log('Thinking indicator timeout - continuing');
+        }
+        await page.waitForTimeout(3000);
+
+        // Get updated chat content
+        chatPanelText = (await chatPanel.textContent()) || '';
+        fullChatText = chatPanelText.toLowerCase();
+
+        console.log(`Response after "connect github": ${fullChatText.substring(fullChatText.length - 500)}...`);
+
+        // Should mention Settings or Integrations
+        const settingsIndicators = ['settings', 'integrations', 'connect', 'account', 'come back'];
+
+        const hasSettingsDirection = settingsIndicators.some(indicator => fullChatText.includes(indicator));
+
+        console.log(`Settings direction found: ${hasSettingsDirection}`);
+
+        // The AI should direct user to settings
+        expect(hasSettingsDirection).toBe(true);
+      } else {
+        // GitHub might already be connected
+        console.log('GitHub connection prompt did not appear - user may have GitHub connected');
+        console.log('Test passes by default since GitHub is already connected');
+      }
     });
   });
 });

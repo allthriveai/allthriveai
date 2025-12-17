@@ -139,6 +139,37 @@ User: "Help me understand RAG and create an infographic about it"
 3. **Be efficient** - Avoid unnecessary agent calls
 4. **Handle ambiguity** - If unclear, default to single most-likely agent
 5. **User intent first** - Focus on what the user actually wants, not what's technically possible
+6. **CRITICAL - Continue ongoing workflows** - If the conversation shows an agent asked a question (like "Is this your own video?" or "What tool did you use?"), the user's response should ALWAYS go back to that same agent, even if they mention tool names like "Midjourney", "Runway", "Sora", etc. These are answers to questions, NOT new search queries.
+
+## Examples of Continuing Workflows (CRITICAL)
+
+Recent conversation:
+agent: Is this your own video, or are you clipping something you found? What tool did you use to make it?
+User: "my own and Midjourney"
+```json
+{{
+  "analysis": "User is answering the project agent's ownership question - mentions owning the video and using Midjourney as the tool",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "project", "task": "Continue video import workflow with ownership=true and tool=Midjourney", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
+
+Recent conversation:
+agent: What would you like to call this project?
+User: "AI Art Experiment"
+```json
+{{
+  "analysis": "User is providing a title in response to the project agent's question",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "project", "task": "Continue project creation with title 'AI Art Experiment'", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
 
 Now analyze the following user request and provide your orchestration plan:
 """

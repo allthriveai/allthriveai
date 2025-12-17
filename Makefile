@@ -928,6 +928,26 @@ aws-import-user-projects:
 	@echo "Importing projects for $(USERNAME) on AWS..."
 	@make aws-run-command CMD="sync_user_projects_to_prod --username $(USERNAME) --import"
 
+# Reindex all projects in Weaviate on AWS
+# Usage: make aws-weaviate-reindex ENVIRONMENT=production
+aws-weaviate-reindex:
+	@echo "Triggering Weaviate full reindex on AWS..."
+	@echo "This queues Celery tasks to regenerate all embeddings."
+	@make aws-run-command CMD="setup_weaviate --reindex"
+
+# Reindex all content (projects, users, quizzes) in Weaviate on AWS
+# Usage: make aws-weaviate-reindex-all ENVIRONMENT=production
+aws-weaviate-reindex-all:
+	@echo "Triggering Weaviate full reindex of ALL content on AWS..."
+	@echo "This queues Celery tasks to regenerate embeddings for projects, users, and quizzes."
+	@make aws-run-command CMD="setup_weaviate --reindex-all"
+
+# Check Weaviate connection status on AWS
+# Usage: make aws-weaviate-check ENVIRONMENT=production
+aws-weaviate-check:
+	@echo "Checking Weaviate connection on AWS..."
+	@make aws-run-command CMD="setup_weaviate --check"
+
 # Pull production database to local
 pull-prod-db:
 	@echo "⚠️  WARNING: This will REPLACE your local database with production data!"

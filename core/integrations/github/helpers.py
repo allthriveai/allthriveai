@@ -43,7 +43,8 @@ def parse_github_url(url: str) -> tuple[str, str]:
         ValueError: If URL is not a valid GitHub URL
     """
     # Match github.com/owner/repo or github.com/owner/repo.git
-    pattern = r'github\.com[:/]([^/]+)/([^/\.]+?)(?:\.git)?/?$'
+    # Allow dots in repo names (e.g., next.js, vue.js) but strip .git suffix
+    pattern = r'github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$'
     match = re.search(pattern, url)
 
     if not match:
