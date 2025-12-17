@@ -65,7 +65,9 @@ export function WhatIsAllThrive() {
             <br />
             Ready to move beyond the basics?
             <br />
-            All Thrive gives you a place to share, learn, and grow alongside other creators.
+            All Thrive gives you a place to share, learn,
+            <br />
+            and grow alongside other creators.
           </p>
         </motion.div>
       </div>
