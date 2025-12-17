@@ -11,28 +11,28 @@ export function HeroSection({ onRequestInvite, isModalOpen = false }: HeroSectio
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between">
-            <a href="/" className="inline-flex items-center gap-3">
+            <a href="/" className="inline-flex items-center gap-2 sm:gap-3">
               <img
                 src="/all-thrvie-logo.png"
                 alt="All Thrive"
-                className="h-10 w-auto"
+                className="h-8 sm:h-10 w-auto"
               />
-              <span className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
+              <span className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
                 All Thrive
               </span>
             </a>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <a
                 href="/explore"
-                className="text-white/70 font-medium text-sm hover:text-white transition-colors duration-300"
+                className="text-white/70 font-medium text-xs sm:text-sm hover:text-white transition-colors duration-300"
               >
                 Explore
               </a>
               <a
                 href="/auth"
-                className="px-5 py-2 rounded-sm border border-white/20 text-white/90 font-medium text-sm hover:bg-white/10 hover:border-white/30 transition-all duration-300"
+                className="px-3 sm:px-5 py-1.5 sm:py-2 rounded-sm border border-white/20 text-white/90 font-medium text-xs sm:text-sm hover:bg-white/10 hover:border-white/30 transition-all duration-300"
               >
                 Sign In
               </a>
@@ -103,7 +103,7 @@ export function HeroSection({ onRequestInvite, isModalOpen = false }: HeroSectio
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-24 sm:pt-20 pb-12 sm:pb-20">
         <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
           {/* Left side - Text content */}
           <div className="flex-[3] text-center lg:text-left">

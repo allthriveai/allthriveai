@@ -12,7 +12,11 @@ from django.utils import timezone
 from core.integrations.youtube.ai_analyzer import analyze_youtube_video
 from core.integrations.youtube.helpers import generate_video_slug
 from core.integrations.youtube.service import YouTubeService
-from core.integrations.youtube_feed_models import YouTubeFeedAgent, YouTubeFeedVideo
+from core.integrations.youtube_feed_models import (
+    DeletedYouTubeFeedVideo,
+    YouTubeFeedAgent,
+    YouTubeFeedVideo,
+)
 from core.projects.models import Project
 
 logger = logging.getLogger(__name__)
@@ -114,6 +118,12 @@ class YouTubeFeedSyncService:
             # Get all video IDs we already have for this agent
             known_video_ids = set(YouTubeFeedVideo.objects.filter(agent=agent).values_list('video_id', flat=True))
 
+            # Also include deleted video IDs to prevent them from appearing as "new"
+            deleted_video_ids = set(
+                DeletedYouTubeFeedVideo.objects.filter(agent=agent).values_list('video_id', flat=True)
+            )
+            known_video_ids = known_video_ids | deleted_video_ids
+
             # STEP 1: Check FREE RSS feed first (no API quota cost!)
             logger.info(f'Checking RSS feed for new videos from {agent.channel_name} ({agent.channel_id})')
             new_video_ids = check_channel_rss_for_new_videos(agent.channel_id, known_video_ids)
@@ -154,6 +164,13 @@ class YouTubeFeedSyncService:
             # Process each video - only fetch details for new videos
             for video_id in video_ids:
                 try:
+                    # Check if video was deleted by admin - skip to prevent re-import
+                    # (also covered by known_video_ids merge above, but explicit check for API fallback path)
+                    if DeletedYouTubeFeedVideo.objects.filter(video_id=video_id).exists():
+                        logger.debug(f'Skipping deleted video: {video_id}')
+                        results['skipped'] += 1
+                        continue
+
                     # Check if video already exists - skip if so (saves API quota)
                     if YouTubeFeedVideo.objects.filter(video_id=video_id).exists():
                         logger.debug(f'Skipping existing video: {video_id}')

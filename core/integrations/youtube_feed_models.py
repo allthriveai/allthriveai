@@ -279,3 +279,78 @@ class YouTubeFeedVideo(models.Model):
     def shorts_url(self) -> str:
         """Get the YouTube Shorts URL."""
         return f'https://www.youtube.com/shorts/{self.video_id}'
+
+
+class DeletedYouTubeFeedVideo(models.Model):
+    """Track YouTube videos that should not be synced.
+
+    This includes:
+    1. Videos deleted by admins (to prevent recreation)
+    2. Videos that failed content moderation (to prevent re-checking)
+
+    Similar to DeletedRedditThread for Reddit integration.
+    """
+
+    class DeletionType(models.TextChoices):
+        ADMIN_DELETED = 'admin_deleted', 'Admin Deleted'
+        MODERATION_FAILED = 'moderation_failed', 'Moderation Failed'
+
+    video_id = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text='YouTube video ID that was deleted or rejected',
+    )
+
+    deletion_type = models.CharField(
+        max_length=20,
+        choices=DeletionType.choices,
+        default=DeletionType.ADMIN_DELETED,
+        db_index=True,
+        help_text='Type of deletion: admin or moderation failure',
+    )
+
+    agent = models.ForeignKey(
+        YouTubeFeedAgent,
+        on_delete=models.CASCADE,
+        related_name='deleted_videos',
+        help_text='Agent that originally created this video project',
+    )
+
+    channel_id = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text='YouTube channel ID for reference',
+    )
+
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text='Admin user who deleted the video',
+    )
+
+    deleted_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When the video was deleted',
+    )
+
+    deletion_reason = models.TextField(
+        blank=True,
+        default='',
+        help_text='Optional reason for deletion',
+    )
+
+    class Meta:
+        db_table = 'deleted_youtube_feed_videos'
+        verbose_name = 'Deleted YouTube Feed Video'
+        verbose_name_plural = 'Deleted YouTube Feed Videos'
+        indexes = [
+            models.Index(fields=['video_id']),
+            models.Index(fields=['agent', '-deleted_at']),
+        ]
+        ordering = ['-deleted_at']
+
+    def __str__(self):
+        return f'Deleted: {self.video_id} ({self.channel_id})'

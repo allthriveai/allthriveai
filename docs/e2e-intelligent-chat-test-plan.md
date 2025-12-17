@@ -549,10 +549,10 @@ test.describe('AI URL Import Tests', () => {
 - [x] Prompt injection prevention tests (6 tests)
 - [x] XSS prevention tests (3 tests)
 - [x] Image generation workflow tests (6 tests)
+- [x] Full user journey tests (7 tests)
 
 ### High Priority - To Implement
 - [ ] Rate limiting behavior tests
-- [ ] Full user journey tests
 - [ ] Figma/GitLab integration tests
 - [ ] Document upload tests
 - [ ] Authorization tests

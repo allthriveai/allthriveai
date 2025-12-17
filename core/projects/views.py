@@ -246,7 +246,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """Called when deleting a project.
 
         Admins can delete any project, regular users can only delete their own.
-        For Reddit thread projects, records deletion to prevent resync recreation.
+        For Reddit thread projects and YouTube video projects, records deletion
+        to prevent resync recreation.
         """
         from core.users.models import UserRole
 
@@ -261,6 +262,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # If this is a Reddit thread project, record the deletion
         if instance.type == Project.ProjectType.REDDIT_THREAD and hasattr(instance, 'reddit_thread'):
             self._record_reddit_thread_deletion(instance, self.request.user)
+
+        # If this is a YouTube video project, record the deletion
+        if instance.type == Project.ProjectType.VIDEO and hasattr(instance, 'youtube_feed_video'):
+            self._record_youtube_video_deletion(instance, self.request.user)
 
         instance.delete()
         # Invalidate cache after delete
@@ -289,6 +294,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f'Failed to record Reddit thread deletion: {e}', exc_info=True)
+
+    def _record_youtube_video_deletion(self, project, deleted_by):
+        """Record a YouTube video deletion to prevent resync recreation."""
+        try:
+            from core.integrations.youtube_feed_models import DeletedYouTubeFeedVideo
+
+            feed_video = project.youtube_feed_video
+
+            # Create a deletion record
+            DeletedYouTubeFeedVideo.objects.create(
+                video_id=feed_video.video_id,
+                agent=feed_video.agent,
+                channel_id=feed_video.channel_id,
+                deleted_by=deleted_by,
+                deletion_type=DeletedYouTubeFeedVideo.DeletionType.ADMIN_DELETED,
+                deletion_reason=f'Deleted by admin {deleted_by.username}',
+            )
+
+            logger.info(
+                f'Recorded deletion of YouTube video {feed_video.video_id} '
+                f'({feed_video.channel_id}) by {deleted_by.username}'
+            )
+        except Exception as e:
+            logger.error(f'Failed to record YouTube video deletion: {e}', exc_info=True)
 
     def _invalidate_user_cache(self, user):
         """Invalidate cached project lists for a user."""
@@ -599,17 +628,21 @@ CRITICAL REQUIREMENTS:
 
         # Admin can delete any projects, regular users only their own
         if request.user.role == UserRole.ADMIN:
-            queryset = Project.objects.filter(id__in=project_ids).select_related('reddit_thread')
+            queryset = Project.objects.filter(id__in=project_ids).select_related('reddit_thread', 'youtube_feed_video')
         else:
-            queryset = Project.objects.filter(id__in=project_ids, user=request.user).select_related('reddit_thread')
+            queryset = Project.objects.filter(id__in=project_ids, user=request.user).select_related(
+                'reddit_thread', 'youtube_feed_video'
+            )
 
         # Get affected users for cache invalidation
         affected_users = set(queryset.values_list('user', flat=True))
 
-        # Record Reddit thread deletions before actual deletion
+        # Record deletions before actual deletion to prevent resync recreation
         for project in queryset:
             if project.type == Project.ProjectType.REDDIT_THREAD and hasattr(project, 'reddit_thread'):
                 self._record_reddit_thread_deletion(project, request.user)
+            if project.type == Project.ProjectType.VIDEO and hasattr(project, 'youtube_feed_video'):
+                self._record_youtube_video_deletion(project, request.user)
 
         deleted_count, _ = queryset.delete()
 
