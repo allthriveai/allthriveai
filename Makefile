@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db create-youtube-agent
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db create-youtube-agent
 
 help:
 	@echo "Available commands:"
@@ -48,6 +48,8 @@ help:
 	@echo "  make add-tool        - Add a new tool (interactive, or: WEBSITE=url LOGO=filename.png)"
 	@echo "  make export-tools    - Export tools from database to YAML file"
 	@echo "  make load-tools      - Load tools from YAML file into database"
+	@echo "  make export-tasks    - Export tasks from database to YAML file"
+	@echo "  make load-tasks      - Load tasks from YAML file into database"
 	@echo "  make refresh-tool-news - Refresh What's New for tools (TOOL=slug, LIMIT=n, DRY_RUN=1)"
 	@echo "  make create-youtube-agent - Create YouTube feed agent (CHANNEL_URL, SOURCE_NAME required)"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
@@ -286,6 +288,15 @@ endif
 load-tools:
 	@echo "Loading tools from YAML..."
 	docker-compose exec web python manage.py seed_tools
+
+# Task YAML commands
+export-tasks:
+	@echo "Exporting tasks to YAML..."
+	docker-compose exec web python manage.py export_tasks
+
+load-tasks:
+	@echo "Loading tasks from YAML..."
+	docker-compose exec web python manage.py seed_tasks
 
 reset-db:
 	@echo "⚠️  WARNING: This will DELETE all data in the database!"

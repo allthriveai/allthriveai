@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   PaperClipIcon,
   PhotoIcon,
@@ -314,7 +315,7 @@ export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
               Drop files here or click to upload
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Images, videos, or documents (max 100MB)
+              Images (50MB), videos (500MB), or documents (100MB)
             </p>
           </div>
         ) : (
@@ -337,15 +338,15 @@ export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
         )}
       </div>
 
-      {/* Image/Video preview modal */}
-      {previewUrl && (
+      {/* Image/Video preview modal - rendered via portal to appear above task modal */}
+      {previewUrl && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
           onClick={() => setPreviewUrl(null)}
         >
           <button
             onClick={() => setPreviewUrl(null)}
-            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white"
+            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white z-10"
           >
             <XMarkIcon className="w-8 h-8" />
           </button>
@@ -365,7 +366,8 @@ export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
               onClick={(e) => e.stopPropagation()}
             />
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

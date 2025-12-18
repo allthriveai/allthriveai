@@ -32,9 +32,9 @@ const ALLOWED_FILE_TYPES = {
 };
 
 // Size limits (must match backend)
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
-const MAX_DOC_SIZE = 25 * 1024 * 1024; // 25MB
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_DOC_SIZE = 100 * 1024 * 1024; // 100MB
 
 function isAllowedFileType(type: string): boolean {
   return (
@@ -94,7 +94,8 @@ interface ChatInterfaceProps {
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
   import_from_url: 'Importing from URL',
   import_github_project: 'Importing from GitHub',
-  import_video_project: 'Processing video',
+  create_media_project: 'Creating media project',
+  import_video_project: 'Processing video', // Deprecated - keeping for backwards compat
   scrape_webpage_for_project: 'Scraping webpage',
   create_project: 'Creating project',
   create_product: 'Creating product',

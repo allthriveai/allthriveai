@@ -112,7 +112,7 @@ export function ImageUpload({
   onImageUploaded,
   onImageRemoved,
   className = '',
-  maxSizeMB = 10,
+  maxSizeMB = 50,
   acceptedFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   showPresets = false,
   username = '',

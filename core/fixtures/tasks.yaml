@@ -1,0 +1,111 @@
+# =============================================================================
+# AllThrive AI Task Tracker - Tasks Configuration
+# =============================================================================
+# This file contains task options (statuses, types, priorities) and tasks.
+#
+# USAGE:
+#   - Load tasks: docker compose exec web python manage.py seed_tasks
+#   - Export changes: docker compose exec web python manage.py export_tasks
+#
+# CONVENTIONS:
+#   - Options are referenced by slug (auto-generated from name if not provided)
+#   - Assignees are referenced by email
+#   - Dates use ISO 8601 format
+#   - Multi-line descriptions use YAML literal block style (|)
+# =============================================================================
+
+statuses:
+- name: Backlog
+  slug: backlog
+  color: slate
+  order: 0
+  is_default: true
+- name: New Test Status
+  slug: new-test-status
+  color: blue
+  order: 0
+- name: bew
+  slug: bew
+  color: yellow
+  order: 0
+- name: dfsdfsd
+  slug: dfsdfsd
+  color: blue
+  order: 0
+- name: To Do
+  slug: todo
+  color: blue
+  order: 1
+- name: In Progress
+  slug: in-progress
+  color: yellow
+  order: 2
+- name: Review
+  slug: review
+  color: purple
+  order: 3
+- name: Done
+  slug: done
+  color: green
+  order: 4
+  is_closed_status: true
+types:
+- name: Task
+  slug: task
+  color: slate
+  order: 0
+  icon: check-circle
+  is_default: true
+- name: Bug
+  slug: bug
+  color: red
+  order: 1
+  icon: bug-ant
+- name: Feature
+  slug: feature
+  color: purple
+  order: 2
+  icon: sparkles
+- name: Improvement
+  slug: improvement
+  color: blue
+  order: 3
+  icon: arrow-trending-up
+priorities:
+- name: Low
+  slug: low
+  color: slate
+  order: 0
+- name: ascascascsa
+  slug: ascascascsa
+  color: blue
+  order: 0
+- name: Medium
+  slug: medium
+  color: yellow
+  order: 1
+  is_default: true
+- name: High
+  slug: high
+  color: orange
+  order: 2
+- name: Critical
+  slug: critical
+  color: red
+  order: 3
+tasks:
+- title: asdasddddddddd
+  status: new-test-status
+  description: '##efdsf'
+  task_type: task
+  priority: medium
+- title: sdad
+  status: todo
+  task_type: task
+  priority: medium
+  order_in_status: 1
+- title: sdasdd
+  status: in-progress
+  description: asdsa
+  task_type: task
+  priority: medium

@@ -113,10 +113,10 @@ def upload_image(request):
     folder = request.data.get('folder', 'images')
     is_public = request.data.get('is_public', 'true').lower() == 'true'
 
-    # Validate file size (max 10MB)
-    max_size = 10 * 1024 * 1024  # 10MB
+    # Validate file size (max 50MB for images)
+    max_size = 50 * 1024 * 1024  # 50MB
     if uploaded_file.size > max_size:
-        return Response({'error': 'File too large. Maximum size: 10MB'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'File too large. Maximum size: 50MB'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Sanitize the filename to prevent path traversal and injection
     safe_filename = sanitize_filename(uploaded_file.name)
@@ -293,11 +293,11 @@ def upload_file(request):
     if content_type not in ALLOWED_TYPES:
         return Response({'error': f'File type not allowed: {content_type}'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Validate file size (max 100MB for videos, 25MB for docs)
+    # Validate file size (max 500MB for videos, 100MB for docs)
     if content_type.startswith('video/'):
-        max_size = 100 * 1024 * 1024  # 100MB
+        max_size = 500 * 1024 * 1024  # 500MB
     else:
-        max_size = 25 * 1024 * 1024  # 25MB
+        max_size = 100 * 1024 * 1024  # 100MB
 
     if uploaded_file.size > max_size:
         max_size_mb = max_size // (1024 * 1024)
