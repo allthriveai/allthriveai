@@ -15,7 +15,6 @@ export const platformWalkthroughTour: TourDefinition = {
   id: 'platform_walkthrough',
   title: 'Platform Tour',
   description: 'Let Ember show you around All Thrive.',
-  adventureId: 'platform_tour',
   completionPoints: 100,
   // NOTE: targetPath means "where to navigate AFTER this step" (when clicking Next)
   steps: [

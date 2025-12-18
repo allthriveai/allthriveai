@@ -254,6 +254,18 @@ export interface CustomSectionContent {
 }
 
 // ============================================================================
+// ALL PROJECTS SECTION (auto-fetched, not manually selected)
+// ============================================================================
+
+export interface AllProjectsSectionContent {
+  // This section auto-fetches projects, so content is minimal
+  title?: string;             // Custom title (default: "My Projects")
+  showDescription?: boolean;  // Show project descriptions
+  maxProjects?: number;       // Max projects to show (unused - uses initialDisplayCount)
+  initialDisplayCount?: number;  // Number to show before "Show All" (default: 6)
+}
+
+// ============================================================================
 // UNIFIED SECTION CONTENT TYPE
 // ============================================================================
 
@@ -267,7 +279,8 @@ export type ProfileSectionContent =
   | FeaturedContentSectionContent
   | BattleStatsSectionContent
   | RecentBattlesSectionContent
-  | CustomSectionContent;
+  | CustomSectionContent
+  | AllProjectsSectionContent;
 
 // ============================================================================
 // PROFILE SECTION
