@@ -69,7 +69,7 @@ export const DynamicGradientCard = memo(function DynamicGradientCard({
 
   return (
     <div
-      className="w-full aspect-[4/3] flex items-center justify-center p-8 pb-48 md:pb-8 relative overflow-hidden"
+      className="w-full aspect-[4/3] min-h-[280px] flex items-center justify-center p-8 pb-48 md:pb-8 relative overflow-hidden"
       style={{
         background: `linear-gradient(135deg, ${fromColor} 0%, ${toColor} 100%)`,
       }}

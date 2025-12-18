@@ -88,6 +88,8 @@ interface ChatInterfaceProps {
   onCancelProcessing?: () => void;
   /** Current tool being executed (for enhanced loading indicator) */
   currentTool?: string | null;
+  /** Callback to receive the file select trigger function */
+  onFileSelectRef?: (triggerFn: () => void) => void;
 }
 
 // Human-friendly tool names for the loading indicator
@@ -101,6 +103,16 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   create_product: 'Creating product',
   extract_url_info: 'Analyzing URL',
 };
+
+// Rotating status messages when no specific tool is active
+const THINKING_MESSAGES = [
+  'Thinking...',
+  'Processing...',
+  'Working on it...',
+  'Almost there...',
+  'Analyzing...',
+  'Generating response...',
+];
 
 export function ChatInterface({
   isOpen,
@@ -122,13 +134,16 @@ export function ChatInterface({
   isUploading = false,
   onCancelProcessing,
   currentTool,
+  onFileSelectRef,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const dragCounterRef = useRef(0);
+  const [thinkingIndex, setThinkingIndex] = useState(0);
 
   // Clear file error after 5 seconds
   useEffect(() => {
@@ -137,6 +152,18 @@ export function ChatInterface({
       return () => clearTimeout(timer);
     }
   }, [fileError]);
+
+  // Rotate thinking messages while loading (only when no specific tool is active)
+  useEffect(() => {
+    if (isLoading && !currentTool) {
+      const interval = setInterval(() => {
+        setThinkingIndex((prev) => (prev + 1) % THINKING_MESSAGES.length);
+      }, 2500);
+      return () => clearInterval(interval);
+    } else {
+      setThinkingIndex(0);
+    }
+  }, [isLoading, currentTool]);
 
   // Validate and filter files
   const validateFiles = (files: File[]): { valid: File[]; errors: string[] } => {
@@ -177,6 +204,34 @@ export function ChatInterface({
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  // Provide file select trigger function to parent
+  useEffect(() => {
+    if (onFileSelectRef && enableAttachments) {
+      onFileSelectRef(() => {
+        fileInputRef.current?.click();
+      });
+    }
+  }, [onFileSelectRef, enableAttachments]);
+
+  // Handle file input change
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const { valid, errors } = validateFiles(files);
+
+    if (errors.length > 0) {
+      setFileError(errors.join('; '));
+    }
+
+    if (valid.length > 0) {
+      setAttachments(prev => [...prev, ...valid]);
+    }
+
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -268,6 +323,18 @@ export function ChatInterface({
 
   return (
     <>
+      {/* Hidden file input for programmatic file selection */}
+      {enableAttachments && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          multiple
+          accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+          onChange={handleFileInputChange}
+        />
+      )}
+
       {/* Sliding Panel */}
       <div
         className={`fixed right-0 top-0 md:top-16 w-full md:w-[480px] h-[100dvh] md:h-[calc(100vh-4rem)] border-l border-gray-200 dark:border-gray-700 flex flex-col shadow-2xl transition-all duration-300 z-[60] md:z-40 bg-white dark:bg-gray-900 md:bg-white/95 md:dark:bg-gray-900/95 ${
@@ -283,9 +350,15 @@ export function ChatInterface({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        {/* Drag overlay */}
+        {/* Drag overlay with blur effect */}
         {isDragging && enableAttachments && (
-          <div className="absolute inset-0 z-50 bg-primary-500/20 border-2 border-dashed border-primary-500 rounded-lg flex items-center justify-center pointer-events-none">
+          <div
+            className="absolute inset-0 z-50 bg-primary-500/20 border-2 border-dashed border-primary-500 rounded-lg flex items-center justify-center pointer-events-none"
+            style={{
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+            }}
+          >
             <div className="bg-white dark:bg-gray-800 rounded-lg px-6 py-4 shadow-lg max-w-sm">
               <div className="flex items-start gap-3">
                 <div className="flex gap-1">
@@ -408,7 +481,7 @@ export function ChatInterface({
                             </span>
                           </span>
                         ) : (
-                          <span className="animate-pulse">Thinking...</span>
+                          <span className="animate-pulse transition-opacity duration-300">{THINKING_MESSAGES[thinkingIndex]}</span>
                         )}
                       </span>
                       {onCancelProcessing && (
@@ -534,7 +607,7 @@ export function ChatInterface({
             <button
               type="submit"
               disabled={isLoading}
-              className="px-3 sm:px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2 shadow-sm"
+              className="px-3 sm:px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2 shadow-md"
               aria-label="Send message"
             >
               <PaperAirplaneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
