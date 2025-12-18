@@ -97,7 +97,7 @@ def sync_social_account_to_connection(sender, request, sociallogin, **kwargs):
         user.github_url = profile_url
         fields_to_update.append('github_url')
         logger.info(f'Pre-filled github_url for user {user.username} from OAuth data')
-    elif provider in ('linkedin', 'linkedin_oauth2') and profile_url and not user.linkedin_url:
+    elif provider in ('linkedin', 'linkedin_oauth2', 'openid_connect') and profile_url and not user.linkedin_url:
         user.linkedin_url = profile_url
         fields_to_update.append('linkedin_url')
         logger.info(f'Pre-filled linkedin_url for user {user.username} from OAuth data')

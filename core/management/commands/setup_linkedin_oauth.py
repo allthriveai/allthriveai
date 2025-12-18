@@ -1,19 +1,22 @@
 """
 Management command to setup LinkedIn OAuth social application.
 Run with: python manage.py setup_linkedin_oauth
+
+NOTE: LinkedIn OAuth is now configured via OpenID Connect in settings.py.
+This command is kept for backwards compatibility and to display the correct callback URL.
+The OIDC configuration in SOCIALACCOUNT_PROVIDERS['openid_connect'] handles the actual setup.
 """
 
 import os
 from urllib.parse import urlparse
 
-from allauth.socialaccount.models import SocialApp
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = 'Setup LinkedIn OAuth social application'
+    help = 'Display LinkedIn OAuth configuration info (OIDC-based)'
 
     def handle(self, *args, **options):
         # Get the current site and determine protocol
@@ -23,7 +26,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f'Using site: {site.domain}')
 
-        # Get credentials from environment
+        # Check if credentials are configured
         linkedin_client_id = os.environ.get('LINKEDIN_OAUTH_CLIENT_ID')
         linkedin_client_secret = os.environ.get('LINKEDIN_OAUTH_CLIENT_SECRET')
 
@@ -33,33 +36,12 @@ class Command(BaseCommand):
             )
             return
 
-        # Create or update LinkedIn social app
-        linkedin_app, created = SocialApp.objects.get_or_create(
-            provider='linkedin_oauth2',
-            defaults={
-                'name': 'LinkedIn OAuth',
-                'client_id': linkedin_client_id,
-                'secret': linkedin_client_secret,
-            },
-        )
-
-        if not created:
-            # Update existing app
-            linkedin_app.client_id = linkedin_client_id
-            linkedin_app.secret = linkedin_client_secret
-            linkedin_app.save()
-            self.stdout.write(self.style.SUCCESS('✅ Updated existing LinkedIn OAuth app'))
-        else:
-            self.stdout.write(self.style.SUCCESS('✅ Created new LinkedIn OAuth app'))
-
-        # Add site to the social app if not already added
-        if site not in linkedin_app.sites.all():
-            linkedin_app.sites.add(site)
-            self.stdout.write(self.style.SUCCESS(f'✅ Added site {site.domain} to LinkedIn OAuth app'))
-        else:
-            self.stdout.write(f'✅ Site {site.domain} already linked to LinkedIn OAuth app')
-
-        self.stdout.write(self.style.SUCCESS('\n🎉 LinkedIn OAuth setup complete!'))
-        self.stdout.write(f'\nCallback URL: {protocol}://{site.domain}/accounts/linkedin_oauth2/login/callback/')
+        self.stdout.write(self.style.SUCCESS('✅ LinkedIn OAuth credentials found in environment'))
+        self.stdout.write('')
+        self.stdout.write('LinkedIn OAuth is configured via OpenID Connect in settings.py')
+        self.stdout.write('No SocialApp database entry is needed - configuration is in SOCIALACCOUNT_PROVIDERS')
+        self.stdout.write('')
+        self.stdout.write(self.style.SUCCESS('🎉 LinkedIn OAuth configuration verified!'))
+        self.stdout.write(f'\nCallback URL: {protocol}://{site.domain}/accounts/oidc/linkedin/login/callback/')
         self.stdout.write('\nMake sure this URL is added in your LinkedIn Developer App settings:')
         self.stdout.write('https://www.linkedin.com/developers/apps\n')

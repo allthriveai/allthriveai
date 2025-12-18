@@ -47,12 +47,12 @@ When configuring OAuth apps with providers, use these callback URLs:
 ### Development
 - **Google**: `http://localhost:8000/accounts/google/login/callback/`
 - **GitHub**: `http://localhost:8000/accounts/github/login/callback/`
-- **LinkedIn**: `http://localhost:8000/accounts/linkedin_oauth2/login/callback/`
+- **LinkedIn**: `http://localhost:8000/accounts/oidc/linkedin/login/callback/`
 
 ### Production
 - **Google**: `https://api.allthrive.ai/accounts/google/login/callback/`
 - **GitHub**: `https://api.allthrive.ai/accounts/github/login/callback/`
-- **LinkedIn**: `https://api.allthrive.ai/accounts/linkedin_oauth2/login/callback/`
+- **LinkedIn**: `https://api.allthrive.ai/accounts/oidc/linkedin/login/callback/`
 
 ## Testing the Fix
 
