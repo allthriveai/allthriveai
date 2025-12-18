@@ -5,7 +5,7 @@
  * In edit mode, shows a ToolSelector dropdown for adding/removing tools.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CodeBracketIcon, PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { ToolSelector } from '../ToolSelector';
 import type { ToolSummary } from '@/types/models';
@@ -28,19 +28,22 @@ export function InlineToolsEditor({
   isSaving = false,
 }: InlineToolsEditorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [localToolIds, setLocalToolIds] = useState<number[]>(toolIds);
 
-  // Handle tool selection changes
+  // Handle tool selection changes - save immediately on change
   const handleToolsUpdate = useCallback(async (newToolIds: number[]) => {
-    setLocalToolIds(newToolIds);
     try {
       await onToolsChange(newToolIds);
     } catch (error) {
-      // Revert on error
-      setLocalToolIds(toolIds);
       console.error('Failed to update tools:', error);
     }
-  }, [onToolsChange, toolIds]);
+  }, [onToolsChange]);
+
+  // Reset expanded state when exiting edit mode
+  useEffect(() => {
+    if (!isEditing) {
+      setIsExpanded(false);
+    }
+  }, [isEditing]);
 
   // View mode - show tools as clickable chips
   if (!isEditing) {
@@ -89,12 +92,13 @@ export function InlineToolsEditor({
       </div>
 
       {isExpanded ? (
-        <div className="p-4 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 space-y-4">
-          <div className="[&_input]:!bg-white/10 [&_input]:!border-white/20 [&_input]:!text-white [&_input]:placeholder:!text-white/40 [&_.text-gray-900]:!text-white [&_.text-gray-500]:!text-white/60 [&_.dark\\:text-white]:!text-white [&_.dark\\:text-gray-400]:!text-white/60 [&_.bg-white]:!bg-gray-800/90 [&_.dark\\:bg-gray-800]:!bg-gray-800/90 [&_.border-gray-200]:!border-white/20 [&_.dark\\:border-gray-700]:!border-white/20 [&_.hover\\:bg-gray-50]:hover:!bg-white/10 [&_.dark\\:hover\\:bg-gray-700]:hover:!bg-white/10 [&_.bg-primary-50]:!bg-primary-500/20 [&_.dark\\:bg-primary-900\\/20]:!bg-primary-500/20 [&_.text-primary-700]:!text-primary-300 [&_.dark\\:text-primary-300]:!text-primary-300 [&_.bg-amber-100]:!bg-amber-500/20 [&_.dark\\:bg-amber-900\\/30]:!bg-amber-500/20 [&_.text-amber-800]:!text-amber-300 [&_.dark\\:text-amber-200]:!text-amber-300 [&_.ring-amber-300]:!ring-amber-500/50 [&_.dark\\:ring-amber-700]:!ring-amber-500/50">
+        <div className="relative z-50 p-4 bg-gray-900/95 backdrop-blur-xl rounded-xl border border-white/20 space-y-4 shadow-2xl">
+          <div className="[&_input]:!bg-white/10 [&_input]:!border-white/20 [&_input]:!text-white [&_input]:placeholder:!text-white/40 [&_.text-gray-900]:!text-white [&_.text-gray-500]:!text-white/60 [&_.dark\\:text-white]:!text-white [&_.dark\\:text-gray-400]:!text-white/60 [&_.bg-white]:!bg-gray-800 [&_.dark\\:bg-gray-800]:!bg-gray-800 [&_.border-gray-200]:!border-white/20 [&_.dark\\:border-gray-700]:!border-white/20 [&_.hover\\:bg-gray-50]:hover:!bg-white/10 [&_.dark\\:hover\\:bg-gray-700]:hover:!bg-white/10 [&_.bg-primary-50]:!bg-primary-500/20 [&_.dark\\:bg-primary-900\\/20]:!bg-primary-500/20 [&_.text-primary-700]:!text-primary-300 [&_.dark\\:text-primary-300]:!text-primary-300 [&_.bg-amber-100]:!bg-amber-500/20 [&_.dark\\:bg-amber-900\\/30]:!bg-amber-500/20 [&_.text-amber-800]:!text-amber-300 [&_.dark\\:text-amber-200]:!text-amber-300 [&_.ring-amber-300]:!ring-amber-500/50 [&_.dark\\:ring-amber-700]:!ring-amber-500/50 [&_.absolute]:!z-[60]">
             <ToolSelector
-              selectedToolIds={localToolIds}
+              selectedToolIds={toolIds}
               onChange={handleToolsUpdate}
               disabled={isSaving}
+              initialSelectedTools={tools}
             />
           </div>
           <div className="flex justify-end">

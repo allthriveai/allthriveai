@@ -1,21 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
 import { getTools } from '@/services/tools';
 import type { Tool } from '@/types/models';
-import { MagnifyingGlassIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, XMarkIcon, Bars2Icon } from '@heroicons/react/24/outline';
 
 interface ToolSelectorProps {
   selectedToolIds: number[];
   onChange: (toolIds: number[]) => void;
   disabled?: boolean;
+  /** Initial tools to display immediately (before API loads) */
+  initialSelectedTools?: Array<{ id: number; name: string; slug: string; logoUrl?: string; tagline?: string }>;
 }
 
-export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelectorProps) {
+export function ToolSelector({ selectedToolIds, onChange, disabled, initialSelectedTools }: ToolSelectorProps) {
   const [tools, setTools] = useState<Tool[]>([]);
-  const [selectedTools, setSelectedTools] = useState<Tool[]>([]);
+  const [selectedTools, setSelectedTools] = useState<Tool[]>(
+    // Use initial tools if provided, cast to Tool type
+    (initialSelectedTools as Tool[]) || []
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Load all tools on mount
   useEffect(() => {
@@ -33,15 +42,23 @@ export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelect
   }, []);
 
   // Update selected tools when IDs change - preserve order from selectedToolIds
+  // Use either API-loaded tools OR initial tools as the source for mapping
   useEffect(() => {
-    if (tools.length > 0) {
-      // Map IDs to tools while preserving the order from selectedToolIds
-      const selected = selectedToolIds
-        .map(id => tools.find(tool => tool.id === id))
-        .filter((tool): tool is Tool => tool !== undefined);
-      setSelectedTools(selected);
+    if (selectedToolIds.length > 0) {
+      // Use API tools if loaded, otherwise fall back to initialSelectedTools
+      const sourceTools = tools.length > 0 ? tools : (initialSelectedTools as Tool[]) || [];
+      if (sourceTools.length > 0) {
+        // Map IDs to tools while preserving the order from selectedToolIds
+        const selected = selectedToolIds
+          .map(id => sourceTools.find(tool => tool.id === id))
+          .filter((tool): tool is Tool => tool !== undefined);
+        // Only update if we found at least some tools to avoid clearing display
+        if (selected.length > 0) {
+          setSelectedTools(selected);
+        }
+      }
     }
-  }, [tools, selectedToolIds]);
+  }, [tools, selectedToolIds, initialSelectedTools]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -70,24 +87,51 @@ export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelect
     onChange(selectedToolIds.filter(id => id !== toolId));
   };
 
-  // Move tool up in the order
-  const handleMoveUp = (toolId: number) => {
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
     if (disabled) return;
-    const index = selectedToolIds.indexOf(toolId);
-    if (index <= 0) return;
-    const newOrder = [...selectedToolIds];
-    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-    onChange(newOrder);
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    // Add some styling feedback
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
   };
 
-  // Move tool down in the order
-  const handleMoveDown = (toolId: number) => {
-    if (disabled) return;
-    const index = selectedToolIds.indexOf(toolId);
-    if (index < 0 || index >= selectedToolIds.length - 1) return;
-    const newOrder = [...selectedToolIds];
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    onChange(newOrder);
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex || disabled) return;
+
+    // Reorder the tools
+    const newSelectedTools = [...selectedTools];
+    const [draggedTool] = newSelectedTools.splice(draggedIndex, 1);
+    newSelectedTools.splice(dropIndex, 0, draggedTool);
+
+    // Update state immediately for optimistic UI
+    setSelectedTools(newSelectedTools);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+
+    // Notify parent of new order
+    onChange(newSelectedTools.map(t => t.id));
   };
 
   const filteredTools = tools.filter(tool =>
@@ -106,70 +150,58 @@ export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelect
 
   return (
     <div className="space-y-3">
-      {/* Selected Tools Display - with reorder buttons */}
+      {/* Selected Tools Display - with drag and drop reordering */}
       {selectedTools.length > 0 && (
         <div className="space-y-2">
           {selectedTools.length > 1 && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              First tool appears in project teaser. Use arrows to reorder.
+              First tool appears in project teaser. Drag to reorder.
             </p>
           )}
           <div className="flex flex-wrap gap-2">
             {selectedTools.map((tool, index) => (
               <div
                 key={tool.id}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
+                draggable={!disabled && selectedTools.length > 1}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, index)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all ${
                   index === 0
                     ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 ring-2 ring-amber-300 dark:ring-amber-700'
                     : 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                } ${
+                  !disabled && selectedTools.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''
+                } ${
+                  dragOverIndex === index && draggedIndex !== index
+                    ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900'
+                    : ''
                 }`}
               >
-                {/* Reorder buttons */}
+                {/* Drag handle */}
                 {!disabled && selectedTools.length > 1 && (
-                  <div className="flex flex-col -my-1 mr-1">
-                    <button
-                      onClick={() => handleMoveUp(tool.id)}
-                      disabled={index === 0}
-                      className={`p-0.5 rounded transition-colors ${
-                        index === 0
-                          ? 'opacity-30 cursor-not-allowed'
-                          : 'hover:bg-black/10 dark:hover:bg-white/10'
-                      }`}
-                      type="button"
-                      title="Move up"
-                    >
-                      <ChevronUpIcon className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => handleMoveDown(tool.id)}
-                      disabled={index === selectedTools.length - 1}
-                      className={`p-0.5 rounded transition-colors ${
-                        index === selectedTools.length - 1
-                          ? 'opacity-30 cursor-not-allowed'
-                          : 'hover:bg-black/10 dark:hover:bg-white/10'
-                      }`}
-                      type="button"
-                      title="Move down"
-                    >
-                      <ChevronDownIcon className="w-3 h-3" />
-                    </button>
-                  </div>
+                  <Bars2Icon className="w-3 h-3 opacity-50" />
                 )}
                 {tool.logoUrl && (
                   <img
                     src={tool.logoUrl}
                     alt={tool.name}
-                    className="w-4 h-4 rounded object-cover"
+                    className="w-4 h-4 rounded object-cover pointer-events-none"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 )}
-                <span className="font-medium">{tool.name}</span>
-                {index === 0 && <span className="text-xs opacity-75">(featured)</span>}
+                <span className="font-medium pointer-events-none">{tool.name}</span>
+                {index === 0 && <span className="text-xs opacity-75 pointer-events-none">(featured)</span>}
                 {!disabled && (
                   <button
-                    onClick={() => handleRemoveTool(tool.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveTool(tool.id);
+                    }}
                     className="ml-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5 transition-colors"
                     type="button"
                   >
@@ -200,7 +232,7 @@ export function ToolSelector({ selectedToolIds, onChange, disabled }: ToolSelect
 
         {/* Dropdown List */}
         {isDropdownOpen && !disabled && (
-          <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+          <div className="absolute z-[100] w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-64 overflow-y-auto">
             {filteredTools.length === 0 ? (
               <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
                 No tools found

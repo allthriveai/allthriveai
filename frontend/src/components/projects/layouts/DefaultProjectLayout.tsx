@@ -214,13 +214,17 @@ export function DefaultProjectLayout() {
     }
   }, [project.id, project.content, setProject]);
 
-  // Helper to filter content keys to only allowed ones
+  // Helper to filter content keys to only allowed ones for updates
+  // Note: We exclude large read-only data (github, figma, reddit) that was imported
+  // and shouldn't be sent back on every update to avoid exceeding size limits
   const filterContentKeys = useCallback((contentObj: Record<string, unknown> | undefined): Record<string, unknown> => {
     const allowedKeys = [
       'blocks', 'cover', 'tags', 'metadata',
       'heroDisplayMode', 'heroQuote', 'heroVideoUrl', 'heroSlideshowImages',
       'heroSlideUpElement1', 'heroSlideUpElement2', 'heroGradientFrom', 'heroGradientTo',
-      'templateVersion', 'sections', 'github', 'figma', 'tldrBgColor'
+      'templateVersion', 'sections', 'tldrBgColor', 'techStack', 'video'
+      // Intentionally exclude: github, figma, reddit, redditPermalink
+      // These contain large imported data that shouldn't be re-sent on updates
     ];
     const filtered: Record<string, unknown> = {};
     if (contentObj) {
@@ -257,11 +261,14 @@ export function DefaultProjectLayout() {
 
     try {
       // Save to backend
+      console.log('[DEBUG] Sending content update:', JSON.stringify(updatedContent, null, 2));
       const updated = await updateProject(project.id, { content: updatedContent });
       setProject(updated);
     } catch (error: any) {
       console.error('Failed to update section:', error);
-      console.error('Error details:', error?.response?.data || error?.message || error);
+      console.error('Error response data:', JSON.stringify(error?.response?.data, null, 2));
+      console.error('Full error object:', error);
+      console.error('[DEBUG] Failed payload:', JSON.stringify({ content: updatedContent }, null, 2));
       // Rollback on error
       setProject(originalProject);
     } finally {

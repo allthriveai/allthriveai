@@ -144,7 +144,7 @@ function ResourceLinkCard({ link, index, isEditing, isSubtle, onUpdate, onDelete
             isEditable={true}
             onChange={handleUrlChange}
             placeholder="https://..."
-            className="text-sm text-gray-500 dark:text-gray-400 font-mono"
+            className="text-sm text-gray-500 dark:text-gray-400 font-mono break-all [overflow-wrap:anywhere]"
           />
           <InlineEditableText
             value={link.description || ''}
