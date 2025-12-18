@@ -1,14 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
+  type CollisionDetection,
+  type UniqueIdentifier,
 } from '@dnd-kit/core';
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import type { DragStartEvent, DragEndEvent, DragOverEvent } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -137,9 +142,28 @@ function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }
     transition,
   };
 
+  // Track if we're actually dragging to prevent click on drag end
+  const [wasDragging, setWasDragging] = useState(false);
+
+  // Update wasDragging when isDragging changes
+  useEffect(() => {
+    if (isDragging) {
+      setWasDragging(true);
+    }
+  }, [isDragging]);
+
+  const handleClick = () => {
+    // Only trigger click if we weren't dragging
+    if (wasDragging) {
+      setWasDragging(false);
+      return;
+    }
+    onClick();
+  };
+
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard task={task} onClick={onClick} isDragging={isDragging} />
+      <TaskCard task={task} onClick={handleClick} isDragging={isDragging} />
     </div>
   );
 }
@@ -149,10 +173,16 @@ interface KanbanColumnProps {
   column: KanbanColumn;
   onTaskClick: (task: Task) => void;
   onQuickCreate: () => void;
+  isOver?: boolean;
 }
 
-function KanbanColumnComponent({ column, onTaskClick, onQuickCreate }: KanbanColumnProps) {
+function KanbanColumnComponent({ column, onTaskClick, onQuickCreate, isOver }: KanbanColumnProps) {
   const colors = getColorClasses(column.status.color);
+
+  // Make this column a droppable target using its status.id prefixed to avoid collision with task ids
+  const { setNodeRef } = useDroppable({
+    id: `column-${column.status.id}`,
+  });
 
   return (
     <div className="flex-shrink-0 w-72 md:w-80 flex flex-col max-h-full">
@@ -181,8 +211,13 @@ function KanbanColumnComponent({ column, onTaskClick, onQuickCreate }: KanbanCol
         </div>
       </div>
 
-      {/* Column Content */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-50 dark:bg-slate-900/50 rounded-b-lg border border-t-0 border-slate-200 dark:border-slate-700 min-h-[200px]">
+      {/* Column Content - this is the droppable zone */}
+      <div
+        ref={setNodeRef}
+        className={`flex-1 overflow-y-auto p-2 space-y-2 bg-slate-50 dark:bg-slate-900/50 rounded-b-lg border border-t-0 border-slate-200 dark:border-slate-700 min-h-[200px] transition-colors ${
+          isOver ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-300 dark:border-cyan-500/30' : ''
+        }`}
+      >
         <SortableContext
           items={column.tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
@@ -197,14 +232,55 @@ function KanbanColumnComponent({ column, onTaskClick, onQuickCreate }: KanbanCol
         </SortableContext>
 
         {column.tasks.length === 0 && (
-          <div className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
-            No tasks
+          <div className={`py-8 text-center text-sm ${isOver ? 'text-cyan-500 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500'}`}>
+            {isOver ? 'Drop here' : 'No tasks'}
           </div>
         )}
       </div>
     </div>
   );
 }
+
+// Custom collision detection for kanban board (multi-container)
+// Uses pointerWithin for containers, closestCenter for items
+const customCollisionDetection: CollisionDetection = (args) => {
+  // First check if we're within any containers (columns)
+  const pointerIntersections = pointerWithin(args);
+  const rectIntersections = rectIntersection(args);
+
+  // Combine all possible collisions
+  const allCollisions = [...pointerIntersections, ...rectIntersections];
+
+  // Get unique collisions by id
+  const seen = new Set<UniqueIdentifier>();
+  const uniqueCollisions = allCollisions.filter((collision) => {
+    if (seen.has(collision.id)) return false;
+    seen.add(collision.id);
+    return true;
+  });
+
+  if (uniqueCollisions.length === 0) {
+    return closestCenter(args);
+  }
+
+  // Separate tasks (numeric ids) from columns (string ids with "column-" prefix)
+  const taskCollisions = uniqueCollisions.filter((c) => typeof c.id === 'number');
+  const columnCollisions = uniqueCollisions.filter(
+    (c) => typeof c.id === 'string' && String(c.id).startsWith('column-')
+  );
+
+  // Prefer task collisions (for precise positioning within column)
+  if (taskCollisions.length > 0) {
+    return [taskCollisions[0]];
+  }
+
+  // Fall back to column collision (for dropping in empty area or end of column)
+  if (columnCollisions.length > 0) {
+    return [columnCollisions[0]];
+  }
+
+  return closestCenter(args);
+};
 
 export function TaskKanbanView({
   columns,
@@ -213,6 +289,7 @@ export function TaskKanbanView({
   onQuickCreate,
 }: TaskKanbanViewProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeColumnId, setActiveColumnId] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -232,6 +309,19 @@ export function TaskKanbanView({
     [columns]
   );
 
+  // Extract column status id from droppable id (handles both "column-123" and task ids)
+  const getColumnStatusId = useCallback(
+    (id: string | number): number | null => {
+      if (typeof id === 'string' && id.startsWith('column-')) {
+        return parseInt(id.replace('column-', ''), 10);
+      }
+      // It's a task id, find its column
+      const column = findColumnByTaskId(id as number);
+      return column?.status.id ?? null;
+    },
+    [findColumnByTaskId]
+  );
+
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const { active } = event;
@@ -245,29 +335,44 @@ export function TaskKanbanView({
     [findColumnByTaskId]
   );
 
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { over } = event;
+      if (!over) {
+        setActiveColumnId(null);
+        return;
+      }
+      const columnId = getColumnStatusId(over.id);
+      setActiveColumnId(columnId);
+    },
+    [getColumnStatusId]
+  );
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveTask(null);
+      setActiveColumnId(null);
 
       if (!over) return;
 
       const activeId = active.id as number;
       const overId = over.id;
 
-      // Find source and destination columns
+      // Find source column
       const sourceColumn = findColumnByTaskId(activeId);
       if (!sourceColumn) return;
 
-      // Check if dropping over a column header (status id is the column id)
-      const isOverColumn = columns.some((col) => col.status.id === overId);
+      // Check if dropping over a column (prefixed with "column-")
+      const isOverColumn = typeof overId === 'string' && overId.startsWith('column-');
 
       let destinationColumn: KanbanColumn | undefined;
       let newOrder: number;
 
       if (isOverColumn) {
-        // Dropped on column header - add to end of column
-        destinationColumn = columns.find((col) => col.status.id === overId);
+        // Dropped on column - add to end of column
+        const statusId = parseInt((overId as string).replace('column-', ''), 10);
+        destinationColumn = columns.find((col) => col.status.id === statusId);
         newOrder = destinationColumn?.tasks.length || 0;
       } else {
         // Dropped on another task
@@ -305,8 +410,9 @@ export function TaskKanbanView({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 md:-mx-0 md:px-0">
@@ -316,6 +422,7 @@ export function TaskKanbanView({
             column={column}
             onTaskClick={onTaskClick}
             onQuickCreate={() => onQuickCreate(column.status.id)}
+            isOver={activeColumnId === column.status.id}
           />
         ))}
       </div>
