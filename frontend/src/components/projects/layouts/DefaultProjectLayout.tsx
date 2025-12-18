@@ -18,6 +18,7 @@ import {
   EditModeIndicator,
 } from '../shared/InlineEditable';
 import { TldrSection } from '../shared/TldrSection';
+import { InlineToolsEditor } from '../shared/InlineToolsEditor';
 import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import { ProjectSections } from '../sections';
 import type { ProjectSection, SectionType } from '@/types/sections';
@@ -26,7 +27,6 @@ import type { Taxonomy } from '@/types/models';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import {
-  CodeBracketIcon,
   EllipsisVerticalIcon,
   TrashIcon,
   ChevronDownIcon,
@@ -182,6 +182,20 @@ export function DefaultProjectLayout() {
     }
   }, [project.id, setProject]);
 
+  // Handle tools change
+  const handleToolsChange = useCallback(async (toolIds: number[]) => {
+    try {
+      setIsSaving(true);
+      const updated = await updateProject(project.id, { tools: toolIds });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update tools:', error);
+      throw error; // Re-throw so the component can handle it
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project.id, setProject]);
+
   // Handle background gradient change
   const handleGradientChange = useCallback(async (fromColor: string, toColor: string) => {
     try {
@@ -200,13 +214,17 @@ export function DefaultProjectLayout() {
     }
   }, [project.id, project.content, setProject]);
 
-  // Helper to filter content keys to only allowed ones
+  // Helper to filter content keys to only allowed ones for updates
+  // Note: We exclude large read-only data (github, figma, reddit) that was imported
+  // and shouldn't be sent back on every update to avoid exceeding size limits
   const filterContentKeys = useCallback((contentObj: Record<string, unknown> | undefined): Record<string, unknown> => {
     const allowedKeys = [
       'blocks', 'cover', 'tags', 'metadata',
       'heroDisplayMode', 'heroQuote', 'heroVideoUrl', 'heroSlideshowImages',
       'heroSlideUpElement1', 'heroSlideUpElement2', 'heroGradientFrom', 'heroGradientTo',
-      'templateVersion', 'sections', 'github', 'figma', 'tldrBgColor'
+      'templateVersion', 'sections', 'tldrBgColor', 'techStack', 'video'
+      // Intentionally exclude: github, figma, reddit, redditPermalink
+      // These contain large imported data that shouldn't be re-sent on updates
     ];
     const filtered: Record<string, unknown> = {};
     if (contentObj) {
@@ -243,11 +261,14 @@ export function DefaultProjectLayout() {
 
     try {
       // Save to backend
+      console.log('[DEBUG] Sending content update:', JSON.stringify(updatedContent, null, 2));
       const updated = await updateProject(project.id, { content: updatedContent });
       setProject(updated);
     } catch (error: any) {
       console.error('Failed to update section:', error);
-      console.error('Error details:', error?.response?.data || error?.message || error);
+      console.error('Error response data:', JSON.stringify(error?.response?.data, null, 2));
+      console.error('Full error object:', error);
+      console.error('[DEBUG] Failed payload:', JSON.stringify({ content: updatedContent }, null, 2));
       // Rollback on error
       setProject(originalProject);
     } finally {
@@ -739,27 +760,16 @@ export function DefaultProjectLayout() {
                 darkMode={true}
               />
 
-              {/* Tools Used */}
-              {project.toolsDetails && project.toolsDetails.length > 0 && (
-                <div className="space-y-4">
-                  <p className="text-xs font-bold text-white/50 uppercase tracking-[0.2em] pl-1">Built With</p>
-                  <div className="flex flex-wrap gap-3">
-                    {project.toolsDetails.map((tool) => (
-                      <button
-                        key={tool.id}
-                        onClick={() => openToolTray(tool.slug)}
-                        className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                      >
-                        {tool.logoUrl ? (
-                          <img src={tool.logoUrl} alt={tool.name} className="w-5 h-5 rounded-md object-cover shadow-sm" />
-                        ) : (
-                          <CodeBracketIcon className="w-5 h-5 text-white/70" />
-                        )}
-                        <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{tool.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {/* Tools Used - editable for owners */}
+              {(isEditing || (project.toolsDetails && project.toolsDetails.length > 0)) && (
+                <InlineToolsEditor
+                  tools={project.toolsDetails || []}
+                  toolIds={project.tools || []}
+                  isEditing={isEditing}
+                  onToolClick={openToolTray}
+                  onToolsChange={handleToolsChange}
+                  isSaving={isSaving}
+                />
               )}
 
 

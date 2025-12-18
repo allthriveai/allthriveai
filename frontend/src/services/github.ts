@@ -32,20 +32,52 @@ export interface GitHubRepository {
   forks: number;
   isPrivate: boolean;
   updatedAt: string;
+  installationAccount?: string;
 }
 
 /**
- * Fetch user's GitHub repositories
+ * Error thrown when GitHub App needs to be installed
+ */
+export class GitHubInstallationNeededError extends Error {
+  installUrl: string;
+
+  constructor(message: string, installUrl: string) {
+    super(message);
+    this.name = 'GitHubInstallationNeededError';
+    this.installUrl = installUrl;
+  }
+}
+
+/**
+ * Fetch user's GitHub repositories from GitHub App installations.
+ * Only returns repos the user has explicitly granted access to.
  */
 export async function fetchGitHubRepos(): Promise<GitHubRepository[]> {
   try {
-    const response = await api.get<ApiResponse<{ repositories: GitHubRepository[]; count: number }>>(
-      '/github/repos/'
-    );
+    const response = await api.get<ApiResponse<{
+      repositories: GitHubRepository[];
+      count: number;
+      installationsCount?: number;
+    }>>('/github/repos/');
+
+    // Check if needs installation (returned as 200 with needsInstallation flag)
+    const data = response.data as any;
+    if (data.needsInstallation || data.needs_installation) {
+      const installUrl = data.installUrl || data.install_url || 'https://github.com/apps/all-thrive-ai/installations/new';
+      throw new GitHubInstallationNeededError(
+        data.error || 'Please install the All Thrive AI app on your GitHub repositories.',
+        installUrl
+      );
+    }
 
     const repos = response.data.data?.repositories || [];
     return repos;
   } catch (error: any) {
+    // Re-throw GitHubInstallationNeededError as-is
+    if (error instanceof GitHubInstallationNeededError) {
+      throw error;
+    }
+
     console.error('Failed to fetch GitHub repos:', error);
 
     // Handle specific error cases
@@ -59,6 +91,19 @@ export async function fetchGitHubRepos(): Promise<GitHubRepository[]> {
     }
 
     throw new Error(error.response?.data?.error || 'Failed to fetch GitHub repositories');
+  }
+}
+
+/**
+ * Get the GitHub App installation URL
+ */
+export async function getGitHubAppInstallUrl(): Promise<string> {
+  try {
+    const response = await api.get<ApiResponse<{ installUrl: string; appSlug: string }>>('/github/app/install-url/');
+    return response.data.data?.installUrl || 'https://github.com/apps/all-thrive-ai/installations/new';
+  } catch (error) {
+    console.error('Failed to get GitHub App install URL:', error);
+    return 'https://github.com/apps/all-thrive-ai/installations/new';
   }
 }
 

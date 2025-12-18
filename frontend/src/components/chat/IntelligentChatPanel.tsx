@@ -14,6 +14,7 @@ import { setProjectFeaturedImage, createProjectFromImageSession } from '@/servic
 import {
   fetchGitHubRepos,
   checkGitHubConnection,
+  GitHubInstallationNeededError,
   type GitHubRepository,
 } from '@/services/github';
 import {
@@ -70,7 +71,7 @@ export function IntelligentChatPanel({
   const [architectureInitialMessageSent, setArchitectureInitialMessageSent] = useState(false);
 
   // GitHub integration state
-  const [githubStep, setGithubStep] = useState<'idle' | 'loading' | 'connect' | 'repos' | 'importing'>('idle');
+  const [githubStep, setGithubStep] = useState<'idle' | 'loading' | 'connect' | 'install' | 'repos' | 'importing'>('idle');
   const [githubRepos, setGithubRepos] = useState<GitHubRepository[]>([]);
   const [githubSearchQuery, setGithubSearchQuery] = useState('');
   const [githubMessage, setGithubMessage] = useState<string>('');
@@ -279,6 +280,9 @@ export function IntelligentChatPanel({
     }
   };
 
+  // GitHub App installation URL state
+  const [githubInstallUrl, setGithubInstallUrl] = useState<string>('');
+
   // GitHub integration handlers
   const handleGitHubImport = useCallback(async () => {
     setGithubStep('loading');
@@ -304,6 +308,15 @@ export function IntelligentChatPanel({
         setGithubMessage(`Found ${fetchedRepos.length} repositories!`);
       } catch (repoError: any) {
         console.error('Failed to fetch GitHub repos:', repoError);
+
+        // Check if user needs to install the GitHub App
+        if (repoError instanceof GitHubInstallationNeededError) {
+          setGithubInstallUrl(repoError.installUrl);
+          setGithubStep('install');
+          setGithubMessage('Select which repositories to share with All Thrive AI.');
+          return;
+        }
+
         setGithubMessage(repoError.message || 'Failed to load repositories. Please try again.');
         setGithubStep('idle');
       }
@@ -313,6 +326,14 @@ export function IntelligentChatPanel({
       setGithubStep('idle');
     }
   }, []);
+
+  const handleInstallGitHubApp = () => {
+    if (githubInstallUrl) {
+      window.location.href = githubInstallUrl;
+    } else {
+      window.location.href = 'https://github.com/apps/all-thrive-ai/installations/new';
+    }
+  };
 
   const handleConnectGitHub = () => {
     const backendUrl = import.meta.env.VITE_API_URL;
@@ -646,6 +667,28 @@ export function IntelligentChatPanel({
             </div>
           )}
 
+          {/* Install GitHub App to select repos */}
+          {githubStep === 'install' && (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Choose which repositories you want to share with All Thrive AI. You control exactly what we can access.
+              </p>
+              <button
+                onClick={handleInstallGitHubApp}
+                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faGithub} />
+                Select Repositories
+              </button>
+              <button
+                onClick={handleCancelGitHub}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
           {/* Repository list */}
           {githubStep === 'repos' && githubRepos.length > 0 && (
             <div className="space-y-3">
@@ -699,13 +742,23 @@ export function IntelligentChatPanel({
                   ))}
               </div>
 
-              {/* Cancel button */}
-              <button
-                onClick={handleCancelGitHub}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                Cancel
-              </button>
+              {/* Action buttons */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleCancelGitHub}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  Cancel
+                </button>
+                <a
+                  href="https://github.com/apps/all-thrive-ai/installations/new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300"
+                >
+                  + Add more repos
+                </a>
+              </div>
             </div>
           )}
         </div>

@@ -144,7 +144,7 @@ function ResourceLinkCard({ link, index, isEditing, isSubtle, onUpdate, onDelete
             isEditable={true}
             onChange={handleUrlChange}
             placeholder="https://..."
-            className="text-sm text-gray-500 dark:text-gray-400 font-mono"
+            className="text-sm text-gray-500 dark:text-gray-400 font-mono break-all [overflow-wrap:anywhere]"
           />
           <InlineEditableText
             value={link.description || ''}
@@ -208,9 +208,21 @@ function ResourceLinkCard({ link, index, isEditing, isSubtle, onUpdate, onDelete
   );
 }
 
+// Helper to check if a URL is valid and not a placeholder
+function isValidUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  // Filter out placeholder/dummy URLs
+  if (['...', '#', '', 'null', 'undefined'].includes(url)) return false;
+  // Must start with http:// or https://
+  return url.startsWith('http://') || url.startsWith('https://');
+}
+
 export function LinksSection({ content, isEditing, onUpdate }: LinksSectionProps) {
-  const { links, title, style } = content;
+  const { links: rawLinks, title, style } = content;
   const isSubtle = style === 'subtle';
+
+  // Filter out invalid links in view mode (keep all in edit mode so user can fix them)
+  const links = isEditing ? rawLinks : rawLinks?.filter(link => isValidUrl(link.url));
 
   const handleTitleChange = useCallback(
     async (newTitle: string) => {

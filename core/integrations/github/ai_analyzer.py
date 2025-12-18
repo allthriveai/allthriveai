@@ -453,20 +453,28 @@ def analyze_github_repo_for_template(repo_data: dict, readme_content: str = '', 
             )
             section_order += 1
 
-        # Links section
+        # Links section - filter out placeholder/dummy URLs
         if result.get('links') and len(result['links']) > 0:
-            sections.append(
-                {
-                    'id': f'section-links-{name[:8]}',
-                    'type': 'links',
-                    'enabled': True,
-                    'order': section_order,
-                    'content': {
-                        'links': result['links'],
-                    },
-                }
-            )
-            section_order += 1
+            valid_links = [
+                link
+                for link in result['links']
+                if link.get('url')
+                and link['url'] not in ('...', '#', '', 'null', 'undefined')
+                and link['url'].startswith(('http://', 'https://'))
+            ]
+            if valid_links:
+                sections.append(
+                    {
+                        'id': f'section-links-{name[:8]}',
+                        'type': 'links',
+                        'enabled': True,
+                        'order': section_order,
+                        'content': {
+                            'links': valid_links,
+                        },
+                    }
+                )
+                section_order += 1
 
         # Validate metadata
         validated = {

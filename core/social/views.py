@@ -185,12 +185,67 @@ def oauth_callback(request, provider):
     state = request.GET.get('state')
     error = request.GET.get('error')
 
+    # GitHub App installation params (when "Request user authorization during installation" is enabled)
+    installation_id = request.GET.get('installation_id')
+    setup_action = request.GET.get('setup_action')
+
     # Default redirect URL
     default_redirect = f'{settings.FRONTEND_URL}/account/settings/integrations'
 
     # Handle OAuth errors
     if error:
         return redirect(f'{default_redirect}?error={error}')
+
+    # Special case: GitHub App installation with OAuth
+    # When user installs from GitHub directly (not from our app), there's no state
+    # but there is an installation_id. Handle this case for authenticated users.
+    if provider == 'github' and installation_id and not state:
+        if not request.user.is_authenticated:
+            return redirect(f'{default_redirect}?error=not_authenticated')
+
+        # This is a GitHub-initiated installation+OAuth flow
+        # The user is already authenticated, so we just need to store the installation
+        try:
+            from core.integrations.models import GitHubAppInstallation
+
+            installation_id_int = int(installation_id)
+            GitHubAppInstallation.objects.update_or_create(
+                installation_id=installation_id_int,
+                defaults={
+                    'user': request.user,
+                    'account_login': '',
+                    'account_type': '',
+                    'repository_selection': 'selected',
+                },
+            )
+            logger.info(
+                f'Saved GitHub App installation {installation_id} for user {request.user.username} '
+                f'(GitHub-initiated, setup_action={setup_action})'
+            )
+
+            # Also exchange the code for a token if we have one
+            if code:
+                try:
+                    oauth_service = SocialOAuthService(provider)
+                    redirect_uri = f'{settings.BACKEND_URL}/api/v1/social/callback/{provider}/'
+                    token_data = oauth_service.exchange_code_for_token(code, redirect_uri)
+
+                    oauth_service.create_or_update_connection(
+                        user=request.user,
+                        access_token=token_data.get('access_token'),
+                        refresh_token=token_data.get('refresh_token'),
+                        expires_in=token_data.get('expires_in'),
+                        scope=token_data.get('scope'),
+                    )
+                    logger.info(f'Updated GitHub OAuth token for user {request.user.username}')
+                except Exception as e:
+                    logger.warning(f'Failed to exchange GitHub code during installation: {e}')
+
+            return redirect(f'{default_redirect}?connected=github&github_installed=true')
+
+        except (ValueError, TypeError) as e:
+            logger.warning(f'Invalid installation_id {installation_id}: {e}')
+            return redirect(f'{default_redirect}?error=invalid_installation')
 
     if not code or not state:
         return redirect(f'{default_redirect}?error=missing_params')
@@ -230,9 +285,34 @@ def oauth_callback(request, provider):
             scope=token_data.get('scope'),
         )
 
+        # If this is a GitHub App installation callback, also store the installation
+        if provider == 'github' and installation_id:
+            try:
+                from core.integrations.models import GitHubAppInstallation
+
+                installation_id_int = int(installation_id)
+                GitHubAppInstallation.objects.update_or_create(
+                    installation_id=installation_id_int,
+                    defaults={
+                        'user': request.user,
+                        'account_login': '',  # Will be populated on first repo fetch
+                        'account_type': '',
+                        'repository_selection': 'selected',
+                    },
+                )
+                logger.info(
+                    f'Saved GitHub App installation {installation_id} for user {request.user.username} '
+                    f'(setup_action={setup_action})'
+                )
+            except (ValueError, TypeError) as e:
+                logger.warning(f'Invalid installation_id {installation_id}: {e}')
+
         # Redirect back to the original page with success
         separator = '&' if '?' in next_url else '?'
-        return redirect(f'{next_url}{separator}connected={provider}')
+        success_params = f'connected={provider}'
+        if installation_id:
+            success_params += '&github_installed=true'
+        return redirect(f'{next_url}{separator}{success_params}')
 
     except Exception as e:
         # Log error and redirect with error message

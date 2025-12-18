@@ -7,7 +7,10 @@ Future multi-integration views should use IntegrationRegistry.get_for_url(url).
 
 import logging
 
+import requests
+from django.conf import settings
 from django.core.cache import cache
+from django.shortcuts import redirect
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -20,6 +23,7 @@ from core.integrations.github.helpers import (
     get_user_github_token,
     parse_github_url,
 )
+from core.integrations.models import GitHubAppInstallation
 from core.projects.models import Project
 
 logger = logging.getLogger(__name__)
@@ -29,11 +33,11 @@ logger = logging.getLogger(__name__)
 @permission_classes([IsAuthenticated])
 def list_user_repos(request):
     """
-    Fetch user's GitHub repositories using the GitHub MCP Server.
+    Fetch user's GitHub repositories from GitHub App installations.
 
-    This is a simple read-only endpoint that fetches the user's repos
-    for display in the UI. The actual import happens via the agent's
-    import_github_project tool.
+    Only returns repos the user has explicitly granted access to by installing
+    the GitHub App on specific repos/orgs. This gives users control over
+    which repos they share with All Thrive AI.
 
     Returns:
         List of repositories with basic metadata
@@ -52,28 +56,19 @@ def list_user_repos(request):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Fetch repos using GitHub REST API (simple approach)
-        # We use REST here instead of MCP because we just need a simple list
-        import requests
-
         headers = {
             'Authorization': f'token {user_token}',
             'Accept': 'application/vnd.github.v3+json',
         }
 
-        # Fetch user's repos (sorted by updated, limited to 100)
-        response = requests.get(
-            'https://api.github.com/user/repos',
+        # First, check user's installations
+        install_response = requests.get(
+            'https://api.github.com/user/installations',
             headers=headers,
-            params={
-                'sort': 'updated',
-                'per_page': 100,
-                'affiliation': 'owner,collaborator',
-            },
             timeout=10,
         )
 
-        if response.status_code == 401:
+        if install_response.status_code == 401:
             return Response(
                 {
                     'success': False,
@@ -83,44 +78,94 @@ def list_user_repos(request):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if response.status_code == 403:
-            # Check for rate limiting
-            if 'X-RateLimit-Remaining' in response.headers and response.headers['X-RateLimit-Remaining'] == '0':
-                reset_time = response.headers.get('X-RateLimit-Reset', 'unknown')
-                return Response(
-                    {
-                        'success': False,
-                        'error': f'GitHub API rate limit exceeded. Resets at {reset_time}.',
+        install_response.raise_for_status()
+        install_data = install_response.json()
+        installations = install_data.get('installations', [])
+
+        # If no installations, prompt user to install the app
+        if not installations:
+            app_slug = getattr(settings, 'GITHUB_APP_SLUG', 'all-thrive-ai')
+            return Response(
+                {
+                    'success': False,
+                    'error': (
+                        'No GitHub repositories connected. '
+                        'Please install the All Thrive AI app on your repositories.'
+                    ),
+                    'connected': True,
+                    'needs_installation': True,
+                    'install_url': f'https://github.com/apps/{app_slug}/installations/new',
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Sync installations to our database
+        for install in installations:
+            installation_id = install.get('id')
+            if installation_id:
+                GitHubAppInstallation.objects.update_or_create(
+                    installation_id=installation_id,
+                    defaults={
+                        'user': request.user,
+                        'account_login': install.get('account', {}).get('login', ''),
+                        'account_type': install.get('account', {}).get('type', ''),
+                        'repository_selection': install.get('repository_selection', 'all'),
                     },
-                    status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )
 
-        response.raise_for_status()
-        repos_data = response.json()
+        # Fetch repos from each installation
+        all_repos = []
+        seen_repo_ids = set()
 
-        # Transform to simpler format for frontend
-        repos = []
-        for repo in repos_data:
-            repos.append(
-                {
-                    'name': repo['name'],
-                    'fullName': repo['full_name'],
-                    'description': repo['description'] or '',
-                    'htmlUrl': repo['html_url'],
-                    'language': repo['language'] or '',
-                    'stars': repo['stargazers_count'],
-                    'forks': repo['forks_count'],
-                    'isPrivate': repo['private'],
-                    'updatedAt': repo['updated_at'],
-                }
-            )
+        for installation in installations:
+            installation_id = installation.get('id')
+            if not installation_id:
+                continue
+
+            try:
+                repos_response = requests.get(
+                    f'https://api.github.com/user/installations/{installation_id}/repositories',
+                    headers=headers,
+                    params={'per_page': 100},
+                    timeout=10,
+                )
+
+                if repos_response.status_code == 200:
+                    repos_data = repos_response.json()
+                    for repo in repos_data.get('repositories', []):
+                        # Deduplicate repos (in case of multiple installations)
+                        if repo['id'] in seen_repo_ids:
+                            continue
+                        seen_repo_ids.add(repo['id'])
+
+                        all_repos.append(
+                            {
+                                'name': repo['name'],
+                                'fullName': repo['full_name'],
+                                'description': repo['description'] or '',
+                                'htmlUrl': repo['html_url'],
+                                'language': repo['language'] or '',
+                                'stars': repo['stargazers_count'],
+                                'forks': repo['forks_count'],
+                                'isPrivate': repo['private'],
+                                'updatedAt': repo['updated_at'],
+                                'installationAccount': installation.get('account', {}).get('login', ''),
+                            }
+                        )
+            except requests.RequestException as e:
+                logger.warning(f'Failed to fetch repos for installation {installation_id}: {e}')
+                continue
+
+        # Sort by updated_at
+        all_repos.sort(key=lambda r: r['updatedAt'], reverse=True)
 
         return Response(
             {
                 'success': True,
                 'data': {
-                    'repositories': repos,
-                    'count': len(repos),
+                    'repositories': all_repos,
+                    'count': len(all_repos),
+                    'installations_count': len(installations),
                 },
             }
         )
@@ -341,3 +386,203 @@ def get_task_status(request, task_id):
         response_data['error'] = str(task.info)
 
     return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def github_app_installation_callback(request):
+    """
+    Handle GitHub App installation callback.
+
+    After a user installs the GitHub App on their repos/orgs, GitHub redirects
+    here with installation_id. We store it for later use.
+
+    Query params:
+        installation_id: The GitHub App installation ID
+        setup_action: 'install' or 'update'
+
+    This endpoint redirects to the frontend after storing the installation.
+    """
+    installation_id = request.GET.get('installation_id')
+
+    if not installation_id:
+        logger.warning('GitHub App callback without installation_id')
+        frontend_url = settings.FRONTEND_URL
+        return redirect(f'{frontend_url}/settings/integrations?github_error=no_installation_id')
+
+    try:
+        installation_id = int(installation_id)
+    except (TypeError, ValueError):
+        logger.error(f'Invalid installation_id: {installation_id}')
+        frontend_url = settings.FRONTEND_URL
+        return redirect(f'{frontend_url}/settings/integrations?github_error=invalid_installation_id')
+
+    # Fetch installation details from GitHub
+    user_token = get_user_github_token(request.user)
+    if user_token:
+        try:
+            headers = {
+                'Authorization': f'token {user_token}',
+                'Accept': 'application/vnd.github.v3+json',
+            }
+            response = requests.get(
+                f'https://api.github.com/app/installations/{installation_id}',
+                headers=headers,
+                timeout=10,
+            )
+
+            if response.status_code == 200:
+                install_data = response.json()
+                account_login = install_data.get('account', {}).get('login', '')
+                account_type = install_data.get('account', {}).get('type', '')
+                repository_selection = install_data.get('repository_selection', 'all')
+            else:
+                account_login = ''
+                account_type = ''
+                repository_selection = 'all'
+        except Exception as e:
+            logger.warning(f'Failed to fetch installation details: {e}')
+            account_login = ''
+            account_type = ''
+            repository_selection = 'all'
+    else:
+        account_login = ''
+        account_type = ''
+        repository_selection = 'all'
+
+    # Store the installation
+    installation, created = GitHubAppInstallation.objects.update_or_create(
+        installation_id=installation_id,
+        defaults={
+            'user': request.user,
+            'account_login': account_login,
+            'account_type': account_type,
+            'repository_selection': repository_selection,
+        },
+    )
+
+    action = 'created' if created else 'updated'
+    logger.info(f'GitHub App installation {installation_id} {action} for user {request.user.username}')
+
+    # Redirect to frontend
+    frontend_url = settings.FRONTEND_URL
+    return redirect(f'{frontend_url}/settings/integrations?github_installed=true')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sync_github_installations(request):
+    """
+    Sync GitHub App installations for the current user.
+
+    Fetches all installations accessible to the user's GitHub token and stores them.
+    This is useful after OAuth to discover existing installations.
+
+    Returns:
+        List of installations synced
+    """
+    user_token = get_user_github_token(request.user)
+
+    if not user_token:
+        return Response(
+            {
+                'success': False,
+                'error': 'GitHub not connected. Please connect your GitHub account first.',
+                'connected': False,
+            },
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        headers = {
+            'Authorization': f'token {user_token}',
+            'Accept': 'application/vnd.github.v3+json',
+        }
+
+        # Fetch user's accessible installations
+        response = requests.get(
+            'https://api.github.com/user/installations',
+            headers=headers,
+            timeout=10,
+        )
+
+        if response.status_code == 401:
+            return Response(
+                {
+                    'success': False,
+                    'error': 'GitHub token is invalid or expired. Please reconnect your GitHub account.',
+                    'connected': False,
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        response.raise_for_status()
+        data = response.json()
+        installations = data.get('installations', [])
+
+        synced = []
+        for install_data in installations:
+            installation_id = install_data.get('id')
+            if not installation_id:
+                continue
+
+            installation, created = GitHubAppInstallation.objects.update_or_create(
+                installation_id=installation_id,
+                defaults={
+                    'user': request.user,
+                    'account_login': install_data.get('account', {}).get('login', ''),
+                    'account_type': install_data.get('account', {}).get('type', ''),
+                    'repository_selection': install_data.get('repository_selection', 'all'),
+                },
+            )
+            synced.append(
+                {
+                    'installation_id': installation_id,
+                    'account': install_data.get('account', {}).get('login', ''),
+                    'created': created,
+                }
+            )
+
+        logger.info(f'Synced {len(synced)} GitHub App installations for user {request.user.username}')
+
+        return Response(
+            {
+                'success': True,
+                'data': {
+                    'installations': synced,
+                    'count': len(synced),
+                },
+            }
+        )
+
+    except requests.RequestException as e:
+        logger.error(f'Failed to sync GitHub installations: {e}')
+        return Response(
+            {
+                'success': False,
+                'error': 'Failed to fetch installations from GitHub. Please try again.',
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_github_app_install_url(request):
+    """
+    Get the GitHub App installation URL.
+
+    Returns the URL to redirect users to install the GitHub App on their repos.
+    """
+    app_slug = getattr(settings, 'GITHUB_APP_SLUG', 'all-thrive-ai')
+    install_url = f'https://github.com/apps/{app_slug}/installations/new'
+
+    return Response(
+        {
+            'success': True,
+            'data': {
+                'install_url': install_url,
+                'app_slug': app_slug,
+            },
+        }
+    )

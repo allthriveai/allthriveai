@@ -379,6 +379,11 @@ GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
 GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
 
+# GitHub App settings (for installation-based repo access)
+GITHUB_APP_ID = config('GITHUB_APP_ID', default='')  # Numeric App ID
+GITHUB_APP_SLUG = config('GITHUB_APP_SLUG', default='all-thrive-ai')  # App slug for URLs
+GITHUB_APP_PRIVATE_KEY = config('GITHUB_APP_PRIVATE_KEY', default='')  # PEM private key (optional)
+
 GITLAB_OAUTH_CLIENT_ID = config('GITLAB_OAUTH_CLIENT_ID', default='')
 GITLAB_OAUTH_CLIENT_SECRET = config('GITLAB_OAUTH_CLIENT_SECRET', default='')
 

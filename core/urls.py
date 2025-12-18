@@ -68,9 +68,12 @@ from .events.views import EventViewSet
 from .integrations.figma.views import get_file_preview as get_figma_file_preview
 from .integrations.figma.views import list_user_files as list_figma_files
 from .integrations.github.views import (
+    get_github_app_install_url,
     get_task_status,
+    github_app_installation_callback,
     import_github_repo_async,
     list_user_repos,
+    sync_github_installations,
 )
 from .integrations.gitlab.views import list_user_projects as list_gitlab_projects
 from .integrations.linkedin.views import (
@@ -409,6 +412,9 @@ urlpatterns = [
     # GitHub integration endpoints (legacy - use generic endpoints above)
     path('github/repos/', list_user_repos, name='github_repos'),
     path('github/import/', import_github_repo_async, name='github_import'),
+    path('github/app/install-url/', get_github_app_install_url, name='github_app_install_url'),
+    path('github/app/callback/', github_app_installation_callback, name='github_app_callback'),
+    path('github/app/installations/sync/', sync_github_installations, name='github_sync_installations'),
     # GitLab integration endpoints
     path('gitlab/projects/', list_gitlab_projects, name='gitlab_projects'),
     # Figma integration endpoints
