@@ -11,6 +11,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { SwatchIcon } from '@heroicons/react/24/outline';
 import { InlineEditableText } from './InlineEditable';
 import { updateProject } from '@/services/projects';
@@ -50,11 +51,28 @@ export function TldrSection({
 }: TldrSectionProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [pickerPosition, setPickerPosition] = useState({ top: 0, right: 0 });
+
+  // Update picker position when it opens
+  useEffect(() => {
+    if (showColorPicker && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPickerPosition({
+        top: rect.bottom + 8, // 8px gap below button
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [showColorPicker]);
 
   // Close picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        colorPickerRef.current && !colorPickerRef.current.contains(target) &&
+        buttonRef.current && !buttonRef.current.contains(target)
+      ) {
         setShowColorPicker(false);
       }
     };
@@ -130,16 +148,25 @@ export function TldrSection({
 
       {/* Color picker button for owners in edit mode */}
       {isEditing && (
-        <div className="absolute top-3 right-3" ref={colorPickerRef}>
+        <div className="absolute top-3 right-3">
           <button
+            ref={buttonRef}
             onClick={() => setShowColorPicker(!showColorPicker)}
             className={buttonClasses}
             title="Change background color"
           >
             <SwatchIcon className="w-5 h-5" />
           </button>
-          {showColorPicker && (
-            <div className="absolute top-full right-0 mt-2 p-3 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl z-50">
+          {showColorPicker && createPortal(
+            <div
+              ref={colorPickerRef}
+              className="fixed p-3 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl"
+              style={{
+                top: pickerPosition.top,
+                right: pickerPosition.right,
+                zIndex: 9999,
+              }}
+            >
               <p className="text-xs text-white/60 mb-3 font-medium">Background Color</p>
               <div className="grid grid-cols-5 gap-2 mb-3">
                 {PRESET_COLORS.map((color) => (
@@ -173,7 +200,8 @@ export function TldrSection({
                   Reset to default
                 </button>
               )}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       )}
