@@ -258,6 +258,11 @@ Resources:
                 - 'http://localhost:3000'
             - Name: FRONTEND_URL
               Value: !If [HasFrontendUrl, !Ref FrontendUrl, 'http://localhost:3000']
+            - Name: BACKEND_URL
+              Value: !If
+                - HasDomain
+                - !Sub 'https://api.${DomainName}'
+                - 'http://localhost:8000'
             # Weaviate Vector Database
             - Name: WEAVIATE_HOST
               Value: !Sub 'weaviate.${EnvironmentName}.allthrive.local'
@@ -383,6 +388,26 @@ Resources:
             - Name: GOOGLE_CLIENT_SECRET
               ValueFrom: !Sub
                 - '${SecretArn}:GOOGLE_CLIENT_SECRET::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-OAuthCredentialsArn
+            - Name: GITHUB_CLIENT_ID
+              ValueFrom: !Sub
+                - '${SecretArn}:GITHUB_CLIENT_ID::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-OAuthCredentialsArn
+            - Name: GITHUB_CLIENT_SECRET
+              ValueFrom: !Sub
+                - '${SecretArn}:GITHUB_CLIENT_SECRET::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-OAuthCredentialsArn
+            - Name: LINKEDIN_OAUTH_CLIENT_ID
+              ValueFrom: !Sub
+                - '${SecretArn}:LINKEDIN_OAUTH_CLIENT_ID::'
+                - SecretArn: !ImportValue
+                    Fn::Sub: ${EnvironmentName}-OAuthCredentialsArn
+            - Name: LINKEDIN_OAUTH_CLIENT_SECRET
+              ValueFrom: !Sub
+                - '${SecretArn}:LINKEDIN_OAUTH_CLIENT_SECRET::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-OAuthCredentialsArn
             - Name: REDIS_AUTH_TOKEN

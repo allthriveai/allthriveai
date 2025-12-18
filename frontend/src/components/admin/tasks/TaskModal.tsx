@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Task, TaskOption, TaskAdminUser } from '@/types/tasks';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { TaskOptionSelect } from './TaskOptionSelect';
+import { TaskComments } from './TaskComments';
 
 interface TaskModalProps {
   task: Task | null;
@@ -9,6 +10,7 @@ interface TaskModalProps {
   types: TaskOption[];
   priorities: TaskOption[];
   admins: TaskAdminUser[];
+  currentUser: TaskAdminUser | null;
   onSave: (data: Partial<Task>) => Promise<void>;
   onClose: () => void;
   isLoading: boolean;
@@ -20,6 +22,7 @@ export function TaskModal({
   types,
   priorities,
   admins,
+  currentUser,
   onSave,
   onClose,
   isLoading,
@@ -224,6 +227,11 @@ export function TaskModal({
                 className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30"
               />
             </div>
+
+            {/* Comments - Only show for existing tasks */}
+            {isEditing && task && (
+              <TaskComments taskId={task.id} currentUser={currentUser} />
+            )}
           </div>
         </form>
 

@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'core.events',  # Events and calendar
     'core.social',  # Social connections
     'core.engagement',  # Engagement tracking for personalization
+    'core.tasks',  # Admin task tracker for team coordination
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

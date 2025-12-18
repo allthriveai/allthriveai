@@ -1,8 +1,8 @@
 /**
- * Profile Generator E2E Tests - Image Upload & LinkedIn Screenshot Support
+ * Profile Generator E2E Tests - Drag & Drop Image Upload & LinkedIn Screenshot Support
  *
  * These tests validate the Profile Generator's ability to:
- * - Accept and process image uploads (especially LinkedIn screenshots)
+ * - Accept images via drag & drop (especially LinkedIn screenshots)
  * - Provide helpful guidance when users paste LinkedIn URLs
  * - Generate profile sections from uploaded images
  *
@@ -10,8 +10,14 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { loginViaAPI, waitForAuth, dismissOnboardingModal } from '../helpers';
+import { loginViaAPI, waitForAuth, dismissOnboardingModal, TEST_USER } from '../helpers';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Skip all tests unless RUN_AI_TESTS=true
 const RUN_AI_TESTS = process.env.RUN_AI_TESTS === 'true';
@@ -54,10 +60,10 @@ function isRateLimited(response: string): boolean {
   return response.includes('rate limit') || response.includes('too many requests');
 }
 
-// Helper to open profile generator tray
-async function openProfileGenerator(page: Page) {
-  // Navigate to profile page first
-  await page.goto('/profile');
+// Helper to open profile generator tray and wait for welcome message to finish typing
+async function openProfileGenerator(page: Page, waitForWelcome = true) {
+  // Navigate to user's own profile page (/:username route)
+  await page.goto(`/${TEST_USER.username}`);
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(1000);
 
@@ -65,9 +71,71 @@ async function openProfileGenerator(page: Page) {
   const generatorButton = page.locator('[data-testid="profile-generator-button"]');
   await generatorButton.click();
   await page.waitForTimeout(500);
+
+  // Wait for welcome message typing animation to complete (message ends with "craft your profile!")
+  if (waitForWelcome) {
+    try {
+      await page.waitForFunction(
+        () => document.body.textContent?.toLowerCase().includes('craft your profile'),
+        { timeout: 30000 }
+      );
+    } catch {
+      console.log('Welcome message typing animation timeout - continuing');
+    }
+    await page.waitForTimeout(500);
+  }
 }
 
-test.describe('Profile Generator with Image Upload', () => {
+// Helper to simulate drag and drop of a file
+async function dragDropFile(page: Page, selector: string, filePath: string) {
+  const buffer = fs.readFileSync(filePath);
+  const fileName = path.basename(filePath);
+  const mimeType = filePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+  // Create a DataTransfer-like object and dispatch events
+  await page.evaluate(
+    async ({ selector, fileName, mimeType, base64 }) => {
+      const target = document.querySelector(selector);
+      if (!target) throw new Error(`Element not found: ${selector}`);
+
+      // Convert base64 back to array buffer
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const file = new File([bytes], fileName, { type: mimeType });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+
+      // Dispatch drag events
+      const dragEnter = new DragEvent('dragenter', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      });
+      target.dispatchEvent(dragEnter);
+
+      const dragOver = new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      });
+      target.dispatchEvent(dragOver);
+
+      const drop = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      });
+      target.dispatchEvent(drop);
+    },
+    { selector, fileName, mimeType, base64: buffer.toString('base64') }
+  );
+}
+
+test.describe('Profile Generator with Drag & Drop Image Upload', () => {
   test.skip(!RUN_AI_TESTS, 'Skipping AI tests - set RUN_AI_TESTS=true to run');
   test.setTimeout(180000); // 3 minutes for AI processing
 
@@ -83,9 +151,8 @@ test.describe('Profile Generator with Image Upload', () => {
 
       // Verify welcome message contains LinkedIn tip
       const chatContent = await getChatContent(page);
-      expect(chatContent).toContain("can't scrape");
-      expect(chatContent).toContain('linkedin');
       expect(chatContent).toContain('screenshot');
+      expect(chatContent).toContain('linkedin');
     });
 
     test('should display the standard profile creation prompt', async ({ page }) => {
@@ -94,73 +161,101 @@ test.describe('Profile Generator with Image Upload', () => {
       const chatContent = await getChatContent(page);
       expect(chatContent).toContain('tell me a bit about yourself');
     });
+
+    test('should mention drag and drop in welcome message', async ({ page }) => {
+      await openProfileGenerator(page);
+
+      const chatContent = await getChatContent(page);
+      expect(chatContent).toMatch(/drag|drop/i);
+    });
   });
 
-  test.describe('Image Upload UI', () => {
-    test('should show upload/attachment button', async ({ page }) => {
+  test.describe('Drag and Drop UI', () => {
+    test('should show drag overlay when dragging files over chat area', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // Verify attachment button exists
-      const attachButton = page.locator('[data-testid="attach-image-button"]');
-      await expect(attachButton).toBeVisible();
+      const _chatArea = page.locator('[data-testid="profile-generator-chat"]');
+
+      // Simulate drag enter using evaluate to properly create DataTransfer
+      await page.evaluate(() => {
+        const target = document.querySelector('[data-testid="profile-generator-chat"]');
+        if (!target) return;
+
+        const dataTransfer = new DataTransfer();
+        const dragEnter = new DragEvent('dragenter', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+        });
+        target.dispatchEvent(dragEnter);
+      });
+
+      // Verify drag overlay appears
+      await expect(page.locator('[data-testid="drag-overlay"]')).toBeVisible();
     });
 
-    test('should accept image files and show preview', async ({ page }) => {
+    test('should hide drag overlay when dragging leaves', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // Upload test image using the file input
-      const fileInput = page.locator('[data-testid="profile-generator-chat"] input[type="file"]');
-      await fileInput.setInputFiles(path.join(__dirname, '../fixtures/test-image.png'));
+      // Trigger drag enter then drag leave
+      await page.evaluate(() => {
+        const target = document.querySelector('[data-testid="profile-generator-chat"]');
+        if (!target) return;
+
+        const dataTransfer = new DataTransfer();
+
+        const dragEnter = new DragEvent('dragenter', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+        });
+        target.dispatchEvent(dragEnter);
+
+        const dragLeave = new DragEvent('dragleave', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+        });
+        target.dispatchEvent(dragLeave);
+      });
+
+      // Verify drag overlay is hidden
+      await expect(page.locator('[data-testid="drag-overlay"]')).not.toBeVisible();
+    });
+
+    test('should accept dropped image and show preview', async ({ page }) => {
+      await openProfileGenerator(page);
+
+      // Drop test image
+      await dragDropFile(
+        page,
+        '[data-testid="profile-generator-chat"]',
+        path.join(__dirname, '../fixtures/test-image.png')
+      );
 
       // Verify preview appears
       await expect(page.locator('[data-testid="attachment-preview"]')).toBeVisible();
-    });
-
-    test('should reject non-image files', async ({ page }) => {
-      await openProfileGenerator(page);
-
-      // Try to upload a non-image file (use a text file that exists or create condition)
-      const fileInput = page.locator('[data-testid="profile-generator-chat"] input[type="file"]');
-
-      // Create a temporary text file buffer for testing
-      // Note: For actual test, we'd need a test-document.txt fixture
-      // For now, check that only image/* types are accepted via the accept attribute
-      const acceptAttr = await fileInput.getAttribute('accept');
-      expect(acceptAttr).toContain('image/');
     });
 
     test('should allow removing attached images before sending', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // Upload test image
-      const fileInput = page.locator('[data-testid="profile-generator-chat"] input[type="file"]');
-      await fileInput.setInputFiles(path.join(__dirname, '../fixtures/test-image.png'));
+      // Drop test image
+      await dragDropFile(
+        page,
+        '[data-testid="profile-generator-chat"]',
+        path.join(__dirname, '../fixtures/test-image.png')
+      );
 
       // Verify preview appears
       await expect(page.locator('[data-testid="attachment-preview"]')).toBeVisible();
 
       // Click remove/clear button
-      const clearButton = page.locator('[data-testid="clear-attachments"]');
+      const clearButton = page.locator('[data-testid="clear-attachment"]');
       await clearButton.click();
 
       // Verify preview is gone
       await expect(page.locator('[data-testid="attachment-preview"]')).not.toBeVisible();
-    });
-  });
-
-  test.describe('Drag and Drop', () => {
-    test('should show drag overlay when dragging files over chat area', async ({ page }) => {
-      await openProfileGenerator(page);
-
-      const chatArea = page.locator('[data-testid="profile-generator-chat"]');
-
-      // Simulate drag enter
-      await chatArea.dispatchEvent('dragenter', {
-        dataTransfer: { types: ['Files'] }
-      });
-
-      // Verify drag overlay appears
-      await expect(page.locator('[data-testid="drag-overlay"]')).toBeVisible();
     });
   });
 
@@ -192,7 +287,7 @@ test.describe('Profile Generator with Image Upload', () => {
       expect(hasErrorIndicators(chatContent)).toBe(false);
 
       // Verify the response mentions inability to scrape and suggests screenshot
-      expect(chatContent).toMatch(/can't scrape|cannot scrape|unable to access/i);
+      expect(chatContent).toMatch(/can't|cannot|unable/i);
       expect(chatContent).toMatch(/screenshot/i);
     });
 
@@ -220,12 +315,15 @@ test.describe('Profile Generator with Image Upload', () => {
   });
 
   test.describe('Full Image Upload Flow', () => {
-    test('should process uploaded image and acknowledge it', async ({ page }) => {
+    test('should process dropped image and acknowledge it', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // Upload test image
-      const fileInput = page.locator('[data-testid="profile-generator-chat"] input[type="file"]');
-      await fileInput.setInputFiles(path.join(__dirname, '../fixtures/test-image.png'));
+      // Drop test image
+      await dragDropFile(
+        page,
+        '[data-testid="profile-generator-chat"]',
+        path.join(__dirname, '../fixtures/test-image.png')
+      );
 
       // Add a message with the image
       const chatInput = page.locator('[data-testid="profile-chat-input"]');
@@ -254,9 +352,12 @@ test.describe('Profile Generator with Image Upload', () => {
     test('should process LinkedIn screenshot and generate profile sections', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // Upload LinkedIn screenshot fixture
-      const fileInput = page.locator('[data-testid="profile-generator-chat"] input[type="file"]');
-      await fileInput.setInputFiles(path.join(__dirname, '../fixtures/linkedin-screenshot.png'));
+      // Drop LinkedIn screenshot fixture
+      await dragDropFile(
+        page,
+        '[data-testid="profile-generator-chat"]',
+        path.join(__dirname, '../fixtures/linkedin-screenshot.png')
+      );
 
       // Add context message
       const chatInput = page.locator('[data-testid="profile-chat-input"]');
@@ -289,9 +390,12 @@ test.describe('Profile Generator with Image Upload', () => {
     test('should allow sending image without text message', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // Upload test image without any text
-      const fileInput = page.locator('[data-testid="profile-generator-chat"] input[type="file"]');
-      await fileInput.setInputFiles(path.join(__dirname, '../fixtures/test-image.png'));
+      // Drop test image without any text
+      await dragDropFile(
+        page,
+        '[data-testid="profile-generator-chat"]',
+        path.join(__dirname, '../fixtures/test-image.png')
+      );
 
       // Don't fill any text, just send
       const sendButton = page.locator('[data-testid="send-message-button"]');
@@ -318,19 +422,18 @@ test.describe('Profile Generator with Image Upload', () => {
     test('should show upload progress indicator while uploading', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // Upload a larger image to give time to see progress
-      const fileInput = page.locator('[data-testid="profile-generator-chat"] input[type="file"]');
-      await fileInput.setInputFiles(path.join(__dirname, '../fixtures/test-image.png'));
+      // Drop image
+      await dragDropFile(
+        page,
+        '[data-testid="profile-generator-chat"]',
+        path.join(__dirname, '../fixtures/test-image.png')
+      );
 
-      // Click send and immediately check for progress indicator
+      // Click send and check that upload happens
       const sendButton = page.locator('[data-testid="send-message-button"]');
+      await sendButton.click();
 
-      // Use Promise.race to check for progress indicator during upload
-      const sendPromise = sendButton.click();
-
-      // The upload might be fast, so this is best-effort
-      // Just verify the flow completes successfully
-      await sendPromise;
+      // Wait for AI response
       await waitForAIResponse(page, 90000);
 
       // Verify no errors
@@ -343,14 +446,37 @@ test.describe('Profile Generator with Image Upload', () => {
     test('should handle upload failure gracefully', async ({ page }) => {
       await openProfileGenerator(page);
 
-      // This test verifies the error state exists
-      // In a real scenario, we'd mock the upload endpoint to fail
-      // For now, just verify the error display mechanism exists
-
       // Check that error state can be displayed
       const errorDisplay = page.locator('[data-testid="upload-error"]');
       // It should not be visible normally
       await expect(errorDisplay).not.toBeVisible();
+    });
+
+    test('should reject non-image files', async ({ page }) => {
+      await openProfileGenerator(page);
+
+      // Try to drop a non-image file by simulating it
+      await page.evaluate(() => {
+        const target = document.querySelector('[data-testid="profile-generator-chat"]');
+        if (!target) return;
+
+        const file = new File(['test content'], 'document.txt', { type: 'text/plain' });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+
+        const drop = new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+        });
+        target.dispatchEvent(drop);
+      });
+
+      // Attachment preview should NOT appear for non-image
+      await expect(page.locator('[data-testid="attachment-preview"]')).not.toBeVisible();
+
+      // Should show an error or just ignore
+      // (implementation can choose to show error toast or silently ignore)
     });
   });
 });

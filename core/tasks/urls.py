@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AdminUserViewSet,
+    TaskCommentViewSet,
     TaskDashboardViewSet,
     TaskOptionViewSet,
     TaskViewSet,
@@ -13,6 +14,7 @@ router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'options', TaskOptionViewSet, basename='task-option')
 router.register(r'dashboards', TaskDashboardViewSet, basename='task-dashboard')
 router.register(r'admins', AdminUserViewSet, basename='admin-user')
+router.register(r'comments', TaskCommentViewSet, basename='task-comment')
 
 urlpatterns = [
     path('', include(router.urls)),

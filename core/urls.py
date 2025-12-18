@@ -482,6 +482,8 @@ urlpatterns = [
     path('extension/', include('core.extension.urls')),
     # Engagement tracking endpoints
     path('engagement/', include('core.engagement.urls')),
+    # Admin task tracker
+    path('admin/tasks/', include('core.tasks.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

@@ -1329,6 +1329,7 @@ export default function ProfilePage() {
                     </button>
                   )}
                   <button
+                    data-testid="profile-generator-button"
                     onClick={handleGenerateProfile}
                     className="px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 border border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors flex items-center gap-2"
                   >

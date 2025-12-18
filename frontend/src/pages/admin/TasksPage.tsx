@@ -612,6 +612,7 @@ export default function TasksPage() {
               types={types}
               priorities={priorities}
               admins={admins}
+              currentUser={admins.find((a) => a.id === user?.id) || null}
               onSave={handleSaveTask}
               onClose={() => {
                 setShowTaskModal(false);

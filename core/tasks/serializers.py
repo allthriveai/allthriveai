@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Task, TaskDashboard, TaskOption
+from .models import Task, TaskComment, TaskDashboard, TaskOption
 
 User = get_user_model()
 
@@ -259,3 +259,30 @@ class TaskStatsSerializer(serializers.Serializer):
     overdue = serializers.IntegerField()
     due_soon = serializers.IntegerField()
     unassigned = serializers.IntegerField()
+
+
+class TaskCommentSerializer(serializers.ModelSerializer):
+    """Serializer for task comments."""
+
+    author_detail = AdminUserSerializer(source='author', read_only=True)
+
+    class Meta:
+        model = TaskComment
+        fields = [
+            'id',
+            'task',
+            'author',
+            'author_detail',
+            'content',
+            'created_at',
+            'updated_at',
+            'is_deleted',
+        ]
+        read_only_fields = ['id', 'author', 'author_detail', 'created_at', 'updated_at', 'is_deleted']
+
+    def create(self, validated_data):
+        """Set author from request user."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['author'] = request.user
+        return super().create(validated_data)

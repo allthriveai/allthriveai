@@ -15,10 +15,11 @@ from rest_framework.response import Response
 
 from core.permissions import IsAdminRole
 
-from .models import Task, TaskDashboard, TaskOption
+from .models import Task, TaskComment, TaskDashboard, TaskOption
 from .serializers import (
     AdminUserSerializer,
     TaskBulkUpdateSerializer,
+    TaskCommentSerializer,
     TaskCreateSerializer,
     TaskDashboardSerializer,
     TaskOptionSerializer,
@@ -558,3 +559,39 @@ class AdminUserViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AdminUserSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
     pagination_class = None  # Return all admins without pagination
+
+
+class TaskCommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing task comments.
+    Admin-only access. Authors can edit/delete their own comments.
+    """
+
+    queryset = TaskComment.objects.select_related('author', 'task').filter(is_deleted=False)
+    serializer_class = TaskCommentSerializer
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get_queryset(self):
+        """Filter comments by task if task_id is provided."""
+        queryset = super().get_queryset()
+        task_id = self.request.query_params.get('task')
+        if task_id:
+            queryset = queryset.filter(task_id=task_id)
+        return queryset.order_by('created_at')
+
+    def perform_update(self, serializer):
+        """Only allow author to update their comment."""
+        if serializer.instance.author != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied('You can only edit your own comments.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Soft delete - only allow author to delete their comment."""
+        if instance.author != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied('You can only delete your own comments.')
+        instance.is_deleted = True
+        instance.save()

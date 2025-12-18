@@ -177,3 +177,26 @@ export interface KanbanColumn {
   status: TaskOption;
   tasks: Task[];
 }
+
+// Task comment
+export interface TaskComment {
+  id: number;
+  task: number;
+  author: number | null;
+  authorDetail: TaskAdminUser | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+}
+
+// Create comment payload
+export interface CreateTaskCommentPayload {
+  task: number;
+  content: string;
+}
+
+// Update comment payload
+export interface UpdateTaskCommentPayload {
+  content: string;
+}

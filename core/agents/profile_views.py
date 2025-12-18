@@ -54,6 +54,7 @@ def profile_generate_stream(request):
         body = json.loads(request.body)
         session_id = body.get('session_id') or str(uuid.uuid4())
         user_message = body.get('message', '').strip()
+        image_url = body.get('image_url')  # Optional image URL for vision
 
         # Validate input
         is_valid, error_msg, sanitized_message = validate_chat_input(user_message, request.user.id)
@@ -63,7 +64,7 @@ def profile_generate_stream(request):
 
         user_message = sanitized_message
 
-        logger.info(f'[PROFILE_AGENT] Session: {session_id}')
+        logger.info(f'[PROFILE_AGENT] Session: {session_id}, has_image: {bool(image_url)}')
 
         async def event_stream():
             """Generator for SSE events."""
@@ -75,6 +76,7 @@ def profile_generate_stream(request):
                     user_id=request.user.id,
                     username=request.user.username,
                     session_id=session_id,
+                    image_url=image_url,  # Pass image URL for vision
                 ):
                     yield f'data: {json.dumps(chunk)}\n\n'
 

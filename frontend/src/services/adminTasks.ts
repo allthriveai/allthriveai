@@ -18,6 +18,9 @@ import type {
   TaskOptionPayload,
   TaskDashboardPayload,
   TaskOptionType,
+  TaskComment,
+  CreateTaskCommentPayload,
+  UpdateTaskCommentPayload,
 } from '@/types/tasks';
 
 const BASE_URL = '/admin/tasks';
@@ -311,6 +314,40 @@ export const adminTasksService = {
     const response = await api.get<TaskAdminUser[] | { results: TaskAdminUser[] }>(`${BASE_URL}/admins/`);
     const data = response.data;
     return Array.isArray(data) ? data : (data.results || []);
+  },
+
+  // ========== COMMENTS ==========
+
+  /**
+   * Get comments for a task
+   */
+  async getComments(taskId: number): Promise<TaskComment[]> {
+    const response = await api.get<TaskComment[] | { results: TaskComment[] }>(`${BASE_URL}/comments/?task=${taskId}`);
+    const data = response.data;
+    return Array.isArray(data) ? data : (data.results || []);
+  },
+
+  /**
+   * Create a comment on a task
+   */
+  async createComment(payload: CreateTaskCommentPayload): Promise<TaskComment> {
+    const response = await api.post<TaskComment>(`${BASE_URL}/comments/`, payload);
+    return response.data;
+  },
+
+  /**
+   * Update a comment (author only)
+   */
+  async updateComment(id: number, payload: UpdateTaskCommentPayload): Promise<TaskComment> {
+    const response = await api.patch<TaskComment>(`${BASE_URL}/comments/${id}/`, payload);
+    return response.data;
+  },
+
+  /**
+   * Delete a comment (author only, soft delete)
+   */
+  async deleteComment(id: number): Promise<void> {
+    await api.delete(`${BASE_URL}/comments/${id}/`);
   },
 };
 
