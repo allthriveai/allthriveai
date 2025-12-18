@@ -80,7 +80,7 @@ class ImportGitHubProjectInput(BaseModel):
 
     url: str = Field(description='GitHub repository URL (e.g., https://github.com/user/repo)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=False, description='Whether to mark the project as private (hidden from public)')
+    is_private: bool = Field(default=True, description='Whether to mark the project as private (hidden from public)')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
@@ -102,7 +102,7 @@ class ScrapeWebpageInput(BaseModel):
 
     url: str = Field(description='The URL of the webpage to scrape (e.g., https://example.com/project)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+    is_private: bool = Field(default=True, description='Whether to mark the project as private')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
@@ -118,7 +118,27 @@ class ImportVideoProjectInput(BaseModel):
     is_owned: bool = Field(default=True, description='True if user created the video, False if clipping')
     tool_hint: str = Field(default='', description='Tool mentioned by user (e.g., "Runway", "Midjourney", "Pika")')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+
+
+class ImportMediaInput(BaseModel):
+    """Input for import_media unified tool - handles uploaded images, videos, gifs."""
+
+    file_url: str = Field(description='The S3/MinIO URL of the uploaded file')
+    filename: str = Field(description='Original filename (e.g., "my-art.png", "demo.mp4")')
+    title: str | None = Field(
+        default=None,
+        description='Title for the project. If None, tool will request user input before proceeding.',
+    )
+    tool_hint: str | None = Field(
+        default=None,
+        description=(
+            'Tool used to create this (e.g., "Midjourney", "Runway", "Photoshop"). '
+            'If None for images, tool will request user input.'
+        ),
+    )
+    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
+    is_private: bool = Field(default=True, description='Whether to mark the project as private')
 
 
 class ImportFromURLInput(BaseModel):
@@ -134,7 +154,7 @@ class ImportFromURLInput(BaseModel):
         ),
     )
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+    is_private: bool = Field(default=True, description='Whether to mark the project as private')
     force_clip: bool = Field(
         default=False,
         description=(
@@ -372,7 +392,7 @@ def extract_url_info(text: str) -> dict:
 def import_github_project(
     url: str,
     is_showcase: bool = True,
-    is_private: bool = False,
+    is_private: bool = True,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
@@ -690,7 +710,7 @@ def create_product(
 def scrape_webpage_for_project(
     url: str,
     is_showcase: bool = True,
-    is_private: bool = False,
+    is_private: bool = True,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
@@ -870,7 +890,7 @@ def import_video_project(
     is_owned: bool = True,
     tool_hint: str = '',
     is_showcase: bool = True,
-    is_private: bool = False,
+    is_private: bool = True,
     state: dict | None = None,
 ) -> dict:
     """
@@ -971,8 +991,9 @@ def import_video_project(
         title=project_title,
         description=analysis.get('description', ''),
         type=project_type,
-        # Use video URL as featured image (browsers will show video poster/thumbnail)
-        featured_image_url=video_url,
+        # Don't set featured_image_url for video uploads - the video player handles display
+        # Setting video URL here causes HeroImage to render broken <img> tag with video src
+        featured_image_url='',
         content=content,
         is_showcased=is_showcase,
         is_private=is_private,
@@ -1485,7 +1506,7 @@ def import_from_url(
     url: str,
     is_owned: bool | None = None,
     is_showcase: bool = True,
-    is_private: bool = False,
+    is_private: bool = True,
     force_clip: bool = False,
     state: dict | None = None,
 ) -> dict:

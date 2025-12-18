@@ -33,6 +33,14 @@ export function HeroImage({
   const [urlInputValue, setUrlInputValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Check if URL is a video file (should not be rendered as image)
+  const isVideoUrl = imageUrl && /\.(mp4|webm|mov|avi|mkv|m4v)(\?|$)/i.test(imageUrl);
+
+  // Skip rendering if URL is a video file (bad data from legacy bug)
+  if (isVideoUrl && !isEditing) {
+    return null;
+  }
+
   // No image - show placeholder only in editing mode
   if (!imageUrl) {
     if (!isEditing) return null;

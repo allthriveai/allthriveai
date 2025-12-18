@@ -1951,7 +1951,7 @@ export default function ProfilePage() {
                               <span>See Public Profile</span>
                             </button>
 
-                            {/* Bulk Edit - Only show on Playground/Clipped tabs with projects */}
+                            {/* Bulk Delete - Only show on Playground/Clipped tabs with projects */}
                             {canManagePosts &&
                              ((activeTab === 'playground' && projects.playground.length > 0) ||
                               (activeTab === 'clipped' && clippedProjects.length > 0)) && (
@@ -1964,7 +1964,7 @@ export default function ProfilePage() {
                                 role="menuitem"
                               >
                                 <FontAwesomeIcon icon={faList} className="w-4 h-4" />
-                                <span>Bulk Edit</span>
+                                <span>Bulk Delete</span>
                               </button>
                             )}
 

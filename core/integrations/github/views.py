@@ -242,7 +242,7 @@ def import_github_repo_async(request):
         # Get and validate URL
         url = request.data.get('url')
         is_showcase = request.data.get('is_showcase', True)
-        is_private = request.data.get('is_private', False)
+        is_private = request.data.get('is_private', True)
 
         if not url:
             return Response(

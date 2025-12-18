@@ -92,7 +92,7 @@ export function VideoProjectLayout() {
   const canEdit = isOwner || isAdmin || isImpersonating;
 
   // Edit mode state (toggle between view and edit modes)
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
   const [isSaving, setIsSaving] = useState(false);
 
   // Computed editing state - must be able to edit AND in edit mode

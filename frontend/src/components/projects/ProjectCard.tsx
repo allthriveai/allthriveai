@@ -97,8 +97,8 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
 
-  // Check if user is admin
-  const isAdmin = user?.role === 'admin';
+  // Check if user is admin (includes superusers via isAdminRole)
+  const isAdmin = user?.isAdminRole || user?.role === 'admin';
   // User can delete if they're the owner OR if they're an admin
   const canDelete = isOwner || isAdmin;
 

@@ -34,6 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
     tier_display = serializers.CharField(source='get_tier_display', read_only=True)
     social_connections = serializers.SerializerMethodField()
     current_streak = serializers.SerializerMethodField()
+    is_admin_role = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = User
@@ -59,6 +60,7 @@ class UserSerializer(serializers.ModelSerializer):
             'level',
             'current_streak',
             'is_guest',
+            'is_admin_role',
         ]
         read_only_fields = [
             'id',
@@ -71,6 +73,7 @@ class UserSerializer(serializers.ModelSerializer):
             'level',
             'current_streak',
             'is_guest',
+            'is_admin_role',
         ]  # Prevent role escalation and point manipulation
 
     def get_fields(self):

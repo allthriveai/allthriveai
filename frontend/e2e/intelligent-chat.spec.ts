@@ -1409,6 +1409,356 @@ test.describe('Intelligent Chat', () => {
     });
   });
 
+  test.describe('Mission Critical - Image Upload Project Creation', () => {
+    /**
+     * TDD TEST - IMAGE UPLOAD WORKFLOW
+     *
+     * SCENARIO: As a user I go to +Add Project and upload an image
+     *
+     * EXPECTED:
+     * 1. User uploads an image via drag & drop or file input
+     * 2. AI asks: "What's the title for this project?" and "What tools did you use to create it?"
+     * 3. User responds with title and tools
+     * 4. AI creates a project with the image and metadata
+     *
+     * FAILURE (CURRENT BUG):
+     * - Gemini creates a NEW image instead of processing the uploaded one
+     * - AI doesn't recognize the image as an upload for project creation
+     */
+
+    // Skip in CI - requires AI API keys and file upload infrastructure
+    test.skip(!!process.env.CI, 'Skipping image upload tests in CI - requires API keys');
+    test.setTimeout(180000); // 3 minutes for upload + AI responses
+
+    test('CRITICAL: should ask for title and tools when user uploads an image', async ({ page }) => {
+      /**
+       * TDD TEST - This test should FAIL with current behavior
+       *
+       * SCENARIO: User uploads an image via +Add Project
+       *
+       * EXPECTED FLOW:
+       * 1. User clicks +Add Project
+       * 2. User uploads/drags an image
+       * 3. AI asks: "What's the title for this project?" and "What tools did you use?"
+       * 4. AI does NOT try to generate a new image
+       *
+       * CURRENT FAILURE:
+       * - Gemini generates a new image instead of asking about the uploaded one
+       */
+      const fs = await import('fs');
+      const path = await import('path');
+
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Open chat via +Add Project button (real user workflow)
+      await openChatViaAddProject(page);
+
+      // Wait for the chat panel to be visible
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // Read the real test image fixture file
+      const { fileURLToPath } = await import('url');
+      const currentDir = path.dirname(fileURLToPath(import.meta.url));
+      const fixturePath = path.join(currentDir, 'fixtures', 'test-image.png');
+      const imageBuffer = fs.readFileSync(fixturePath);
+
+      // Drag and drop the image file into the chat panel
+      await page.evaluate(
+        async ({ buffer, filename }) => {
+          // Create a File object from the buffer
+          const uint8Array = new Uint8Array(buffer);
+          const blob = new Blob([uint8Array], { type: 'image/png' });
+          const file = new File([blob], filename, { type: 'image/png' });
+
+          // Find the chat panel (the sliding panel on the right)
+          const dropZone = document.querySelector('.fixed.right-0.top-0');
+          if (!dropZone) {
+            console.error('Chat panel not found');
+            throw new Error('Chat panel not found for drag-drop');
+          }
+
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+
+          // Dispatch drag events in sequence
+          const dragEnterEvent = new DragEvent('dragenter', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+          });
+
+          const dragOverEvent = new DragEvent('dragover', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+          });
+
+          const dropEvent = new DragEvent('drop', {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer,
+          });
+
+          dropZone.dispatchEvent(dragEnterEvent);
+          await new Promise(r => setTimeout(r, 100));
+          dropZone.dispatchEvent(dragOverEvent);
+          await new Promise(r => setTimeout(r, 100));
+          dropZone.dispatchEvent(dropEvent);
+        },
+        { buffer: Array.from(imageBuffer), filename: 'test-image.png' }
+      );
+
+      // Wait for file to be added to attachments
+      await page.waitForTimeout(2000);
+
+      // Check if attachment preview is visible
+      const attachmentPreview = page.locator('text=test-image.png');
+      const hasAttachment = await attachmentPreview.isVisible().catch(() => false);
+      console.log(`Image attachment preview visible: ${hasAttachment}`);
+
+      // Send the message with the image (no text - just the image)
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      // Wait for AI response
+      await page.waitForTimeout(30000);
+
+      // Get all chat panel content
+      const chatPanel = page.locator('.fixed.right-0.top-0, [class*="slide"], [class*="chat"]').first();
+      const chatPanelText = (await chatPanel.textContent()) || '';
+      const fullChatText = chatPanelText.toLowerCase();
+
+      console.log(`Chat response preview: ${fullChatText.substring(0, 800)}...`);
+
+      // FAILURE indicators - These should NOT appear
+      // Current bug: Gemini creates an image instead of asking about the uploaded one
+      const failureIndicators = [
+        'generating an image',
+        'creating an image',
+        'here is the image',
+        "here's an image",
+        "i've created",
+        'i have created',
+        'generated image',
+        'image generation',
+        "let me create",
+        "i'll create",
+        'creating your image',
+        'generating your image',
+        'dall-e',
+        'midjourney style',
+        'abstract art', // AI describing an image it created
+        'vibrant colors', // AI describing an image it created
+        'digital artwork', // AI describing an image it created
+      ];
+
+      let hasImageGeneration = false;
+      for (const indicator of failureIndicators) {
+        if (fullChatText.includes(indicator)) {
+          console.error(`BUG DETECTED: AI is generating an image instead of asking about the upload. Found: "${indicator}"`);
+          hasImageGeneration = true;
+        }
+      }
+
+      // SUCCESS indicators - At least one should appear
+      // AI should ask about title/name and tools used
+      const successIndicators = [
+        'title',
+        'name',
+        'what would you like to call',
+        'what is this',
+        'tell me about',
+        'what tools',
+        'what did you use',
+        'how did you create',
+        'how was this made',
+        'created with',
+        'made with',
+        'your image',
+        'uploaded image',
+        'this image',
+        'the image you',
+      ];
+
+      const hasProjectQuestion = successIndicators.some(indicator => fullChatText.includes(indicator));
+
+      console.log(`AI generated image (FAILURE): ${hasImageGeneration}`);
+      console.log(`AI asked about project (SUCCESS): ${hasProjectQuestion}`);
+
+      // ASSERTIONS
+      // This test should FAIL if Gemini generates an image
+      expect(hasImageGeneration).toBe(false);
+
+      // This test should PASS if AI asks about the uploaded image
+      expect(hasProjectQuestion).toBe(true);
+
+      // Chat should remain functional
+      await expect(chatHeader).toBeVisible();
+
+      // No technical errors should be visible
+      const technicalErrors = ['TypeError', 'Exception', 'Traceback', 'undefined', 'NoneType'];
+      for (const error of technicalErrors) {
+        const hasError = await page.getByText(error).isVisible().catch(() => false);
+        expect(hasError).toBe(false);
+      }
+    });
+
+    test('CRITICAL: should create project after user provides title and tools for uploaded image', async ({ page }) => {
+      /**
+       * TDD TEST - Full image upload flow
+       *
+       * SCENARIO: User uploads an image and provides title/tools
+       *
+       * EXPECTED FLOW:
+       * 1. User uploads image
+       * 2. AI asks for title and tools
+       * 3. User responds: "My AI Art" and "Midjourney"
+       * 4. AI creates the project with the image
+       *
+       * SUCCESS: Project is created with the uploaded image
+       * FAILURE: AI generates a new image or doesn't create a project
+       */
+      const fs = await import('fs');
+      const path = await import('path');
+
+      await page.goto('/explore');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Open chat via +Add Project button
+      await openChatViaAddProject(page);
+
+      const chatHeader = page.getByText('All Thrive AI Chat');
+      await expect(chatHeader).toBeVisible({ timeout: 10000 });
+
+      // Read the test image
+      const { fileURLToPath } = await import('url');
+      const currentDir = path.dirname(fileURLToPath(import.meta.url));
+      const fixturePath = path.join(currentDir, 'fixtures', 'test-image.png');
+      const imageBuffer = fs.readFileSync(fixturePath);
+
+      // Drag and drop the image
+      await page.evaluate(
+        async ({ buffer, filename }) => {
+          const uint8Array = new Uint8Array(buffer);
+          const blob = new Blob([uint8Array], { type: 'image/png' });
+          const file = new File([blob], filename, { type: 'image/png' });
+
+          const dropZone = document.querySelector('.fixed.right-0.top-0');
+          if (!dropZone) throw new Error('Chat panel not found');
+
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+
+          dropZone.dispatchEvent(new DragEvent('dragenter', { bubbles: true, cancelable: true, dataTransfer }));
+          await new Promise(r => setTimeout(r, 100));
+          dropZone.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer }));
+          await new Promise(r => setTimeout(r, 100));
+          dropZone.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer }));
+        },
+        { buffer: Array.from(imageBuffer), filename: 'my-ai-art.png' }
+      );
+
+      await page.waitForTimeout(2000);
+
+      // Send the image
+      const sendButton = page.locator('button[aria-label="Send message"]');
+      await sendButton.click();
+
+      // Wait for AI to ask about the image
+      await page.waitForTimeout(20000);
+
+      // Get chat content
+      const chatPanel = page.locator('.fixed.right-0.top-0, [class*="slide"], [class*="chat"]').first();
+      let chatPanelText = (await chatPanel.textContent()) || '';
+      let fullChatText = chatPanelText.toLowerCase();
+
+      // Check if AI asked about the image (and didn't generate one)
+      const askedAboutImage =
+        fullChatText.includes('title') ||
+        fullChatText.includes('name') ||
+        fullChatText.includes('what tools') ||
+        fullChatText.includes('tell me about') ||
+        fullChatText.includes('your image');
+
+      if (askedAboutImage) {
+        console.log('✓ AI asked about the image, providing title and tools');
+
+        // User responds with title and tools
+        const chatInput = page.getByPlaceholder('Ask me anything...');
+        await chatInput.fill('The title is "Cosmic Dreams" and I made it with Midjourney');
+        await sendButton.click();
+
+        // Wait for AI to create the project
+        await page.waitForTimeout(60000);
+
+        // Get updated chat content
+        chatPanelText = (await chatPanel.textContent()) || '';
+        fullChatText = chatPanelText.toLowerCase();
+
+        console.log(`Response after providing title/tools: ${fullChatText.substring(fullChatText.length - 500)}...`);
+
+        // SUCCESS indicators
+        const projectCreatedIndicators = [
+          'created',
+          'project',
+          'cosmic dreams',
+          'midjourney',
+          'project page',
+          'check it out',
+          'here is your project',
+        ];
+
+        const hasProjectCreated = projectCreatedIndicators.some(indicator => fullChatText.includes(indicator));
+
+        // Check for project URL
+        const projectUrlPattern = /\/[a-z0-9_-]+\/[a-z0-9_-]+/i;
+        const hasProjectUrl = projectUrlPattern.test(fullChatText);
+
+        console.log(`Project created indicators: ${hasProjectCreated}`);
+        console.log(`Project URL found: ${hasProjectUrl}`);
+
+        // FAILURE indicators - should NOT appear
+        const failureIndicators = [
+          'generating an image',
+          "i've created an image",
+          'here is the generated image',
+        ];
+
+        let hasFailure = false;
+        for (const indicator of failureIndicators) {
+          if (fullChatText.includes(indicator)) {
+            console.error(`FAILURE: AI generated an image instead of creating project: "${indicator}"`);
+            hasFailure = true;
+          }
+        }
+
+        expect(hasFailure).toBe(false);
+        expect(hasProjectCreated || hasProjectUrl).toBe(true);
+      } else {
+        // AI didn't ask about the image - this is the bug
+        console.error('BUG: AI did not ask about the uploaded image');
+        console.log(`Chat content: ${fullChatText.substring(0, 800)}...`);
+
+        // Check if AI generated an image (the bug)
+        const generatedImage = fullChatText.includes('generating') || fullChatText.includes("i've created");
+
+        if (generatedImage) {
+          console.error('BUG CONFIRMED: AI is generating images instead of processing uploads');
+        }
+
+        // This assertion will fail to indicate the bug
+        expect(askedAboutImage).toBe(true);
+      }
+
+      // Chat should remain functional
+      await expect(chatHeader).toBeVisible();
+    });
+  });
+
   test.describe('Mission Critical - GitHub Import Without Connection', () => {
     /**
      * TDD TEST - GITHUB IMPORT WITHOUT GITHUB CONNECTION

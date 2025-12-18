@@ -205,3 +205,62 @@ class TaskComment(models.Model):
     def __str__(self):
         author_name = self.author.username if self.author else 'Unknown'
         return f'Comment by {author_name} on "{self.task.title}"'
+
+
+class TaskAttachment(models.Model):
+    """File attachments (images, videos, documents) for tasks."""
+
+    class AttachmentType(models.TextChoices):
+        IMAGE = 'image', 'Image'
+        VIDEO = 'video', 'Video'
+        DOCUMENT = 'document', 'Document'
+
+    task = models.ForeignKey(
+        Task,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='task_attachments',
+    )
+
+    # File info
+    file_url = models.URLField(max_length=1000)
+    filename = models.CharField(max_length=255)
+    original_filename = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=100, help_text='MIME type')
+    file_size = models.PositiveIntegerField(help_text='Size in bytes')
+    attachment_type = models.CharField(
+        max_length=20,
+        choices=AttachmentType.choices,
+        default=AttachmentType.DOCUMENT,
+    )
+
+    # Optional metadata
+    description = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['task', 'order']),
+            models.Index(fields=['attachment_type']),
+        ]
+
+    def __str__(self):
+        return f'{self.original_filename} on "{self.task.title}"'
+
+    def save(self, *args, **kwargs):
+        # Auto-detect attachment type from file_type
+        if not self.attachment_type or self.attachment_type == self.AttachmentType.DOCUMENT:
+            if self.file_type.startswith('image/'):
+                self.attachment_type = self.AttachmentType.IMAGE
+            elif self.file_type.startswith('video/'):
+                self.attachment_type = self.AttachmentType.VIDEO
+        super().save(*args, **kwargs)

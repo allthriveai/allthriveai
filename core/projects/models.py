@@ -88,7 +88,7 @@ class Project(models.Model):
         help_text='Featured at top of profile (only one per user)',
     )
     is_private = models.BooleanField(
-        default=False,
+        default=True,
         help_text='Hidden from explore feed and public views. Only visible to owner.',
     )
     is_archived = models.BooleanField(

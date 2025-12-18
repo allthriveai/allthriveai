@@ -23,6 +23,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, KanbanColumn } from '@/types/tasks';
 import { PlusIcon, CalendarIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import ReactMarkdown from 'react-markdown';
 
 interface TaskKanbanViewProps {
   columns: KanbanColumn[];
@@ -76,9 +77,16 @@ function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
       )}
 
       {/* Title */}
-      <h4 className="font-medium text-slate-900 dark:text-white mb-2 line-clamp-2">
-        {task.title}
-      </h4>
+      <div className="font-medium text-slate-900 dark:text-white mb-2 line-clamp-2 prose prose-sm dark:prose-invert prose-headings:m-0 prose-p:m-0 max-w-none">
+        <ReactMarkdown>{task.title}</ReactMarkdown>
+      </div>
+
+      {/* Description preview */}
+      {task.description && (
+        <div className="text-sm text-slate-600 dark:text-slate-400 mb-2 line-clamp-2 prose prose-sm dark:prose-invert prose-p:m-0 prose-headings:m-0 max-w-none">
+          <ReactMarkdown>{task.description}</ReactMarkdown>
+        </div>
+      )}
 
       {/* Meta row */}
       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">

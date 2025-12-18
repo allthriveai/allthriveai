@@ -15,9 +15,10 @@ from rest_framework.response import Response
 
 from core.permissions import IsAdminRole
 
-from .models import Task, TaskComment, TaskDashboard, TaskOption
+from .models import Task, TaskAttachment, TaskComment, TaskDashboard, TaskOption
 from .serializers import (
     AdminUserSerializer,
+    TaskAttachmentSerializer,
     TaskBulkUpdateSerializer,
     TaskCommentSerializer,
     TaskCreateSerializer,
@@ -595,3 +596,42 @@ class TaskCommentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('You can only delete your own comments.')
         instance.is_deleted = True
         instance.save()
+
+
+class TaskAttachmentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing task attachments (images, videos, documents).
+    Admin-only access.
+    """
+
+    queryset = TaskAttachment.objects.select_related('uploaded_by', 'task')
+    serializer_class = TaskAttachmentSerializer
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get_queryset(self):
+        """Filter attachments by task if task_id is provided."""
+        queryset = super().get_queryset()
+        task_id = self.request.query_params.get('task')
+        if task_id:
+            queryset = queryset.filter(task_id=task_id)
+        return queryset.order_by('order', 'created_at')
+
+    def perform_destroy(self, instance):
+        """Only allow uploader or admins to delete attachments."""
+        # All admins can delete any attachment for now
+        instance.delete()
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        """Reorder attachments within a task."""
+        task_id = request.data.get('task_id')
+        order_list = request.data.get('order', [])
+
+        if not task_id or not order_list:
+            return Response({'error': 'task_id and order list required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            for idx, attachment_id in enumerate(order_list):
+                TaskAttachment.objects.filter(id=attachment_id, task_id=task_id).update(order=idx)
+
+        return Response({'status': 'reordered'})

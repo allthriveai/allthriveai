@@ -186,11 +186,12 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     };
   }, [isOpen, feedScrollContainerRef]);
 
-  // Wheel event detection for desktop - close tray when user scrolls past bottom
+  // Wheel event detection - close tray when user scrolls past bottom (mobile only)
   // Note: shouldRender is in deps to ensure this runs after scroll container is mounted
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
-    if (!isOpen || !shouldRender || !scrollContainer) return;
+    // Only enable scroll-to-close on mobile
+    if (!isOpen || !shouldRender || !scrollContainer || !isMobileRef.current) return;
 
     let overscrollAccumulator = 0;
     const OVERSCROLL_THRESHOLD = 100; // pixels of overscroll to trigger close

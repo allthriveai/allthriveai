@@ -90,7 +90,7 @@ export function DefaultProjectLayout() {
   } = useProjectContext();
 
   const [showMenu, setShowMenu] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false); // Default to published view
+  const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
   const [isSaving, setIsSaving] = useState(false);
 
   // Category picker state

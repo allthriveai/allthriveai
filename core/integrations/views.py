@@ -173,7 +173,7 @@ def import_from_url(request):
                 user_id=request.user.id,
                 url=url,
                 is_showcased=request.data.get('is_showcase', True),
-                is_private=request.data.get('is_private', False),
+                is_private=request.data.get('is_private', True),
             )
 
             logger.info(f'Queued {integration.display_name} import task {task.id} for user {request.user.username}')

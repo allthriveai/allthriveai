@@ -200,3 +200,41 @@ export interface CreateTaskCommentPayload {
 export interface UpdateTaskCommentPayload {
   content: string;
 }
+
+// Task attachment type
+export type AttachmentType = 'image' | 'video' | 'document';
+
+// Task attachment
+export interface TaskAttachment {
+  id: number;
+  task: number;
+  uploadedBy: number | null;
+  uploadedByDetail: TaskAdminUser | null;
+  fileUrl: string;
+  filename: string;
+  originalFilename: string;
+  fileType: string;
+  fileSize: number;
+  attachmentType: AttachmentType;
+  description: string;
+  order: number;
+  createdAt: string;
+}
+
+// Create attachment payload
+export interface CreateTaskAttachmentPayload {
+  task: number;
+  fileUrl: string;
+  filename: string;
+  originalFilename: string;
+  fileType: string;
+  fileSize: number;
+  attachmentType?: AttachmentType;
+  description?: string;
+}
+
+// Update attachment payload
+export interface UpdateTaskAttachmentPayload {
+  description?: string;
+  order?: number;
+}

@@ -6,6 +6,7 @@ import {
   TrashIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
+import ReactMarkdown from 'react-markdown';
 
 interface TaskTableViewProps {
   tasks: Task[];
@@ -241,9 +242,14 @@ export function TaskTableView({
                           </span>
                         )}
                       </div>
-                      <span className="font-medium text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors line-clamp-1">
-                        {task.title}
-                      </span>
+                      <div className="font-medium text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors line-clamp-1 prose prose-sm dark:prose-invert prose-headings:m-0 prose-p:m-0 max-w-none">
+                        <ReactMarkdown>{task.title}</ReactMarkdown>
+                      </div>
+                      {task.description && (
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 prose prose-xs dark:prose-invert prose-p:m-0 max-w-none">
+                          <ReactMarkdown>{task.description}</ReactMarkdown>
+                        </div>
+                      )}
                     </button>
                   </td>
                   {/* Status */}

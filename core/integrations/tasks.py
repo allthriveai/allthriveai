@@ -102,7 +102,7 @@ def import_project_generic_task(self, platform: str, user_id: int, url: str, **k
 
 
 @shared_task(bind=True, max_retries=3, soft_time_limit=IMPORT_TASK_SOFT_LIMIT, time_limit=IMPORT_TASK_HARD_LIMIT)
-def import_github_repo_task(self, user_id: int, url: str, is_showcase: bool = True, is_private: bool = False):
+def import_github_repo_task(self, user_id: int, url: str, is_showcase: bool = True, is_private: bool = True):
     """
     Background task for importing GitHub repositories.
 

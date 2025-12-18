@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import type { Task, TaskOption, TaskAdminUser } from '@/types/tasks';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { TaskOptionSelect } from './TaskOptionSelect';
 import { TaskComments } from './TaskComments';
+import { TaskAttachments } from './TaskAttachments';
+import ReactMarkdown from 'react-markdown';
 
 interface TaskModalProps {
   task: Task | null;
@@ -49,6 +51,17 @@ export function TaskModal({
 
   // Validation
   const [errors, setErrors] = useState<{ title?: string }>({});
+
+  // Editing states (for existing tasks, show markdown by default; for new tasks, show input)
+  const [isEditingTitle, setIsEditingTitle] = useState(!isEditing);
+  const [isEditingDescription, setIsEditingDescription] = useState(!isEditing);
+
+  // Reset editing states when task changes
+  useEffect(() => {
+    const editing = !!task;
+    setIsEditingTitle(!editing);
+    setIsEditingDescription(!editing);
+  }, [task?.id]);
 
   // Handle close with animation
   const handleClose = () => {
@@ -123,24 +136,50 @@ export function TaskModal({
           <div className="p-6 space-y-5">
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (errors.title) setErrors({});
-                }}
-                placeholder="Task title"
-                className={`w-full px-3 py-2.5 bg-white dark:bg-slate-900 border rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-colors ${
-                  errors.title
-                    ? 'border-red-300 dark:border-red-500/50 focus:ring-red-500/30'
-                    : 'border-slate-200 dark:border-slate-700 focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-cyan-500/30'
-                }`}
-                autoFocus
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                {isEditing && !isEditingTitle && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTitle(true)}
+                    className="p-1 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors rounded"
+                    title="Edit title"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {isEditingTitle ? (
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (errors.title) setErrors({});
+                  }}
+                  onBlur={() => isEditing && title && setIsEditingTitle(false)}
+                  placeholder="Task title (supports Markdown)"
+                  className={`w-full px-3 py-2.5 bg-white dark:bg-slate-900 border rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-colors font-mono text-sm ${
+                    errors.title
+                      ? 'border-red-300 dark:border-red-500/50 focus:ring-red-500/30'
+                      : 'border-slate-200 dark:border-slate-700 focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-cyan-500/30'
+                  }`}
+                  autoFocus
+                />
+              ) : (
+                <div
+                  onClick={() => setIsEditingTitle(true)}
+                  className="px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:border-cyan-500/50 transition-colors prose prose-sm dark:prose-invert max-w-none prose-p:my-0 prose-headings:my-0"
+                >
+                  {title ? (
+                    <ReactMarkdown>{title}</ReactMarkdown>
+                  ) : (
+                    <span className="text-slate-400">Click to add title...</span>
+                  )}
+                </div>
+              )}
               {errors.title && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                   {errors.title}
@@ -150,16 +189,43 @@ export function TaskModal({
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add details..."
-                rows={4}
-                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30 resize-none"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Description
+                </label>
+                {isEditing && !isEditingDescription && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingDescription(true)}
+                    className="p-1 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors rounded"
+                    title="Edit description"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {isEditingDescription ? (
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => isEditing && description && setIsEditingDescription(false)}
+                  placeholder="Add details... (supports Markdown)"
+                  rows={4}
+                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30 resize-none font-mono text-sm"
+                  autoFocus={isEditing}
+                />
+              ) : (
+                <div
+                  onClick={() => setIsEditingDescription(true)}
+                  className="min-h-[100px] px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:border-cyan-500/50 transition-colors prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0"
+                >
+                  {description ? (
+                    <ReactMarkdown>{description}</ReactMarkdown>
+                  ) : (
+                    <span className="text-slate-400">Click to add details...</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Status */}
@@ -227,6 +293,11 @@ export function TaskModal({
                 className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30"
               />
             </div>
+
+            {/* Attachments - Only show for existing tasks */}
+            {isEditing && task && (
+              <TaskAttachments taskId={task.id} currentUser={currentUser} />
+            )}
 
             {/* Comments - Only show for existing tasks */}
             {isEditing && task && (
