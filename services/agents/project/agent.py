@@ -28,10 +28,12 @@ logger = logging.getLogger(__name__)
 # Build a lookup for tools that need state injection
 TOOLS_NEEDING_STATE = {
     'create_project',
+    'create_media_project',  # NEW: Unified media tool (images, videos, generation)
+    'create_project_from_screenshot',  # Fallback when URL scraping fails
     'create_product',
-    'import_from_url',  # NEW: Unified URL import tool
+    'import_from_url',  # Unified URL import tool
     'import_github_project',
-    'import_video_project',
+    # 'import_video_project' - DEPRECATED, use create_media_project
     'scrape_webpage_for_project',
     'regenerate_architecture_diagram',  # Regenerate architecture diagrams
 }
@@ -119,10 +121,11 @@ async def agent_node(state: ProjectAgentState) -> ProjectAgentState:
     if context_parts:
         context_section = '\n\n## Current User Context\n' + '\n'.join(context_parts)
 
-    # Add system prompt with context if not already present
-    if not any(isinstance(m, SystemMessage) for m in messages):
-        system_content = SYSTEM_PROMPT + context_section
-        messages = [SystemMessage(content=system_content)] + list(messages)
+    # ALWAYS use the latest system prompt - filter out any old ones first
+    # This ensures prompt changes are picked up even with cached conversation history
+    messages_without_system = [m for m in messages if not isinstance(m, SystemMessage)]
+    system_content = SYSTEM_PROMPT + context_section
+    messages = [SystemMessage(content=system_content)] + messages_without_system
 
     # Invoke LLM with tools (async) - use lazy getter for CI compatibility
     response = await get_llm_with_tools().ainvoke(messages)

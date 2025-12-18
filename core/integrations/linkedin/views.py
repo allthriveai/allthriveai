@@ -256,7 +256,7 @@ def import_linkedin_content(request):
         from core.integrations.linkedin.integration import LinkedInIntegration
 
         is_showcase = request.data.get('is_showcase', True)
-        is_private = request.data.get('is_private', False)
+        is_private = request.data.get('is_private', True)
 
         # Use the integration class to import
         integration = LinkedInIntegration()

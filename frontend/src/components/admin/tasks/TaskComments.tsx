@@ -3,6 +3,7 @@ import { PaperAirplaneIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/ou
 import type { TaskComment, TaskAdminUser } from '@/types/tasks';
 import adminTasksService from '@/services/adminTasks';
 import { formatDistanceToNow } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
 
 interface TaskCommentsProps {
   taskId: number;
@@ -219,9 +220,9 @@ export function TaskComments({ taskId, currentUser }: TaskCommentsProps) {
                 ) : (
                   // Display mode
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-words">
-                      {comment.content}
-                    </p>
+                    <div className="text-sm text-slate-700 dark:text-slate-300 break-words prose prose-sm dark:prose-invert prose-p:my-0.5 prose-headings:my-1 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0 max-w-none">
+                      <ReactMarkdown>{comment.content}</ReactMarkdown>
+                    </div>
                     {isAuthor(comment) && (
                       <div className="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button

@@ -284,6 +284,8 @@ function AddBlockButton({ onAdd, position, isAdding }: AddBlockButtonProps) {
   return (
     <div
       className={`group relative flex items-center justify-center ${
+        showPicker ? 'z-50' : 'z-20'
+      } ${
         position === 'top' ? 'mb-4' : position === 'bottom' ? 'mt-4' : position === 'empty' ? '' : 'my-4'
       }`}
     >

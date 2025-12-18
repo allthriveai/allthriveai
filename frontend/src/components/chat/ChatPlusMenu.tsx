@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFigma, faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { faBagShopping, faCircleQuestion, faCommentDots, faEllipsis, faLink, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faBagShopping, faCircleQuestion, faCommentDots, faEllipsis, faLink, faTrashCan, faCloudArrowUp } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
 
-export type IntegrationType = 'github' | 'gitlab' | 'figma' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product' | 'import-url' | 'clear-conversation';
+export type IntegrationType = 'github' | 'gitlab' | 'figma' | 'youtube' | 'create-visual' | 'ask-help' | 'describe' | 'create-product' | 'import-url' | 'upload-media' | 'clear-conversation';
 
 interface ChatPlusMenuProps {
   onIntegrationSelect: (type: IntegrationType) => void;
@@ -36,10 +36,10 @@ const integrationOptions: IntegrationOption[] = [
     isPrimary: true,
   },
   {
-    type: 'create-visual',
-    label: 'Create Image/Infographic',
-    icon: '🍌',
-    description: 'Generate visuals with AI',
+    type: 'upload-media',
+    label: 'Upload Image or Video',
+    icon: faCloudArrowUp,
+    description: 'Upload media to create a project',
     available: true,
     isPrimary: true,
   },
@@ -60,6 +60,14 @@ const integrationOptions: IntegrationOption[] = [
     isPrimary: true,
   },
   // Secondary options - in "More Integrations" submenu
+  {
+    type: 'create-visual',
+    label: 'Create Image/Infographic',
+    icon: '🍌',
+    description: 'Generate visuals with AI',
+    available: true,
+    isPrimary: false,
+  },
   {
     type: 'github',
     label: 'Add from GitHub',

@@ -14,26 +14,34 @@
  * 7. Footer with clipper info + social actions
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowTopRightOnSquareIcon,
   GlobeAltIcon,
+  EllipsisVerticalIcon,
+  TrashIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
 import { useProjectContext } from '@/context/ProjectContext';
+import { updateProject, getTaxonomies } from '@/services/projects';
 import { getCategoryColors } from '@/utils/categoryColors';
 import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
-import { OverviewSection } from '../sections/OverviewSection';
-import { FeaturesSection } from '../sections/FeaturesSection';
-import { GallerySection } from '../sections/GallerySection';
-import { VideoSection } from '../sections/VideoSection';
-import { LinksSection } from '../sections/LinksSection';
-import type { ProjectSection, OverviewSectionContent, FeaturesSectionContent, GallerySectionContent, VideoSectionContent, LinksSectionContent } from '@/types/sections';
+import {
+  InlineEditableTitle,
+  EditModeIndicator,
+} from '../shared/InlineEditable';
+import { TldrSection } from '../shared/TldrSection';
+import { InlineToolsEditor } from '../shared/InlineToolsEditor';
+import { ProjectSections } from '../sections';
+import type { ProjectSection, SectionType } from '@/types/sections';
+import { createDefaultSectionContent, generateSectionId } from '@/types/sections';
+import type { Taxonomy } from '@/types/models';
 
 /**
  * Extract domain from URL for display
@@ -62,6 +70,8 @@ function getFaviconUrl(url: string): string {
 export function ClippedArticleLayout() {
   const {
     project,
+    setProject,
+    isOwner,
     isLiked,
     heartCount,
     isLiking,
@@ -77,8 +87,220 @@ export function ClippedArticleLayout() {
     selectedToolSlug,
     openToolTray,
     closeToolTray,
+    handleDelete,
     isAuthenticated,
   } = useProjectContext();
+
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Category picker state
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [allCategories, setAllCategories] = useState<Taxonomy[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const categoryPickerRef = useRef<HTMLDivElement>(null);
+
+  // Computed editing state
+  const isEditing = isOwner && isEditMode;
+
+  // Toggle edit mode
+  const toggleEditMode = useCallback(() => {
+    setIsEditMode(prev => !prev);
+  }, []);
+
+  // Fetch categories when picker opens
+  useEffect(() => {
+    if (showCategoryPicker && allCategories.length === 0 && !categoriesLoading) {
+      setCategoriesLoading(true);
+      getTaxonomies('category')
+        .then(setAllCategories)
+        .catch(console.error)
+        .finally(() => setCategoriesLoading(false));
+    }
+  }, [showCategoryPicker, allCategories.length, categoriesLoading]);
+
+  // Close pickers when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryPickerRef.current && !categoryPickerRef.current.contains(event.target as Node)) {
+        setShowCategoryPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Helper to filter content keys to only allowed ones for updates
+  // Note: We exclude large read-only data (github, figma, reddit) that was imported
+  const filterContentKeys = useCallback((contentObj: Record<string, unknown> | undefined): Record<string, unknown> => {
+    const allowedKeys = [
+      'blocks', 'cover', 'tags', 'metadata',
+      'heroDisplayMode', 'heroQuote', 'heroVideoUrl', 'heroSlideshowImages',
+      'heroSlideUpElement1', 'heroSlideUpElement2', 'heroGradientFrom', 'heroGradientTo',
+      'templateVersion', 'sections', 'tldrBgColor', 'techStack', 'video'
+    ];
+    const filtered: Record<string, unknown> = {};
+    if (contentObj) {
+      for (const key of allowedKeys) {
+        if (key in contentObj) {
+          filtered[key] = contentObj[key];
+        }
+      }
+    }
+    return filtered;
+  }, []);
+
+  // Handle inline title change
+  const handleTitleChange = useCallback(async (newTitle: string) => {
+    try {
+      const updated = await updateProject(project.id, { title: newTitle });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update title:', error);
+    }
+  }, [project.id, setProject]);
+
+  // Handle tools change
+  const handleToolsChange = useCallback(async (toolIds: number[]) => {
+    try {
+      setIsSaving(true);
+      const updated = await updateProject(project.id, { tools: toolIds });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update tools:', error);
+      throw error;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project.id, setProject]);
+
+  // Handle category change
+  const handleCategoryChange = useCallback(async (categoryId: number) => {
+    try {
+      const updated = await updateProject(project.id, { categories: [categoryId] });
+      setProject(updated);
+      setShowCategoryPicker(false);
+    } catch (error) {
+      console.error('Failed to update category:', error);
+    }
+  }, [project.id, setProject]);
+
+  // Handle section content update (auto-save)
+  const handleSectionUpdate = useCallback(async (sectionId: string, content: ProjectSection['content']) => {
+    if (!project.content?.sections) return;
+
+    const updatedSections = project.content.sections.map((section: ProjectSection) =>
+      section.id === sectionId ? { ...section, content } : section
+    );
+
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      sections: updatedSections,
+    };
+
+    const originalProject = project;
+    setProject({ ...project, content: updatedContent });
+    setIsSaving(true);
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update section:', error);
+      setProject(originalProject);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle adding a new section
+  const handleAddSection = useCallback(async (type: SectionType, afterSectionId?: string) => {
+    const currentSections = project.content?.sections || [];
+
+    const newSection: ProjectSection = {
+      id: generateSectionId(type),
+      type,
+      enabled: true,
+      order: 0,
+      content: createDefaultSectionContent(type),
+    };
+
+    let insertIndex = 0;
+    if (afterSectionId) {
+      const afterIndex = currentSections.findIndex(s => s.id === afterSectionId);
+      if (afterIndex !== -1) {
+        insertIndex = afterIndex + 1;
+      } else {
+        insertIndex = currentSections.length;
+      }
+    }
+
+    const newSections = [...currentSections];
+    newSections.splice(insertIndex, 0, newSection);
+    const reorderedSections = newSections.map((s, idx) => ({ ...s, order: idx }));
+
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      templateVersion: 2 as const,
+      sections: reorderedSections,
+    };
+
+    const originalProject = project;
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to add section:', error);
+      setProject(originalProject);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle deleting a section
+  const handleDeleteSection = useCallback(async (sectionId: string) => {
+    if (!project.content?.sections) return;
+
+    const newSections = project.content.sections
+      .filter(s => s.id !== sectionId)
+      .map((s, idx) => ({ ...s, order: idx }));
+
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      sections: newSections,
+    };
+
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to delete section:', error);
+    }
+  }, [project, setProject, filterContentKeys]);
+
+  // Handle reordering sections (drag-and-drop)
+  const handleReorderSections = useCallback(async (reorderedSections: ProjectSection[]) => {
+    const updatedContent = {
+      ...filterContentKeys(project.content as Record<string, unknown>),
+      templateVersion: 2 as const,
+      sections: reorderedSections,
+    };
+
+    const originalProject = project;
+    setProject({ ...project, content: updatedContent });
+
+    try {
+      const updated = await updateProject(project.id, { content: updatedContent });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to reorder sections:', error);
+      setProject(originalProject);
+    }
+  }, [project, setProject, filterContentKeys]);
 
   // Get category colors
   const primaryCategory = project.categoriesDetails?.[0];
@@ -97,13 +319,6 @@ export function ClippedArticleLayout() {
     const content = project.content as { sections?: ProjectSection[] } | undefined;
     return content?.sections || [];
   }, [project.content]);
-
-  // Find specific sections
-  const overviewSection = sections.find(s => s.type === 'overview' && s.enabled);
-  const featuresSection = sections.find(s => s.type === 'features' && s.enabled);
-  const videoSection = sections.find(s => s.type === 'video' && s.enabled);
-  const gallerySection = sections.find(s => s.type === 'gallery' && s.enabled);
-  const linksSection = sections.find(s => s.type === 'links' && s.enabled);
 
   // Get hero image
   const heroImage = project.featuredImageUrl || project.bannerUrl;
@@ -137,13 +352,84 @@ export function ClippedArticleLayout() {
 
         {/* Content Container */}
         <div className="relative max-w-4xl mx-auto px-6 sm:px-8">
+          {/* Owner Menu */}
+          {isOwner && (
+            <div className="absolute top-4 right-4 z-30">
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <EllipsisVerticalIcon className="w-6 h-6" />
+                </button>
+                {showMenu && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                    <button
+                      onClick={handleDelete}
+                      className="w-full px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3 transition-colors"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* If no hero, add some top padding */}
           {!heroImage && <div className="pt-16" />}
 
           {/* Title & Source - Positioned to overlap hero slightly */}
           <div className={heroImage ? '-mt-24 relative z-10' : ''}>
-            {/* Category Badge */}
-            {primaryCategory && (
+            {/* Category Badge - editable for owners */}
+            {isEditing ? (
+              <div className="relative inline-block mb-4" ref={categoryPickerRef}>
+                <button
+                  onClick={() => setShowCategoryPicker(!showCategoryPicker)}
+                  className="group flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-full border backdrop-blur-xl shadow-lg transition-all hover:scale-105"
+                  style={{
+                    backgroundColor: `${categoryFromColor}20`,
+                    borderColor: `${categoryFromColor}40`,
+                    color: categoryFromColor,
+                  }}
+                >
+                  {primaryCategory?.name || 'Select Category'}
+                  <ChevronDownIcon className="w-4 h-4 opacity-70 group-hover:opacity-100" />
+                </button>
+                {showCategoryPicker && (
+                  <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl z-50">
+                    {categoriesLoading ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
+                    ) : (
+                      <div className="p-2">
+                        {allCategories.map((category) => {
+                          const { from: catColor } = getCategoryColors(category.color, category.id);
+                          const isSelected = primaryCategory?.id === category.id;
+                          return (
+                            <button
+                              key={category.id}
+                              onClick={() => handleCategoryChange(category.id)}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                                isSelected
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: catColor }}
+                              />
+                              {category.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : primaryCategory ? (
               <span
                 className="inline-block px-4 py-1.5 text-sm font-semibold rounded-full border backdrop-blur-xl shadow-lg mb-4"
                 style={{
@@ -154,12 +440,17 @@ export function ClippedArticleLayout() {
               >
                 {primaryCategory.name}
               </span>
-            )}
+            ) : null}
 
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
-              {project.title}
-            </h1>
+            {/* Title - Inline Editable for Owners */}
+            <InlineEditableTitle
+              value={project.title}
+              isEditable={isEditing}
+              onChange={handleTitleChange}
+              placeholder="Enter title..."
+              className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white leading-tight mb-6"
+              as="h1"
+            />
 
             {/* Source Attribution Bar */}
             {sourceUrl && (
@@ -199,73 +490,44 @@ export function ClippedArticleLayout() {
             )}
           </div>
 
-          {/* Overview/Description */}
-          {overviewSection ? (
+          {/* Description/TL;DR - editable for owners */}
+          {(project.description || isEditing) && (
             <div className="mb-12">
-              <OverviewSection content={overviewSection.content as OverviewSectionContent} />
-            </div>
-          ) : project.description && (
-            <div className="mb-12">
-              <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
-                {project.description}
-              </p>
-            </div>
-          )}
-
-          {/* Features Section */}
-          {featuresSection && (
-            <div className="mb-12">
-              <FeaturesSection content={featuresSection.content as FeaturesSectionContent} />
+              <TldrSection
+                project={project}
+                isEditing={isEditing}
+                onProjectUpdate={setProject}
+                darkMode={false}
+              />
             </div>
           )}
 
-          {/* Video Section */}
-          {videoSection && (
+          {/* Project Sections - Full CRUD support */}
+          {(sections.length > 0 || isEditing) && (
             <div className="mb-12">
-              <VideoSection content={videoSection.content as VideoSectionContent} />
+              <ProjectSections
+                sections={sections}
+                isEditing={isEditing}
+                onSectionUpdate={handleSectionUpdate}
+                onAddSection={handleAddSection}
+                onDeleteSection={handleDeleteSection}
+                onReorderSections={handleReorderSections}
+              />
             </div>
           )}
 
-          {/* Gallery Section */}
-          {gallerySection && (
+          {/* Tools - editable for owners */}
+          {(isEditing || (project.toolsDetails && project.toolsDetails.length > 0)) && (
             <div className="mb-12">
-              <GallerySection content={gallerySection.content as GallerySectionContent} />
-            </div>
-          )}
-
-          {/* Links Section */}
-          {linksSection && (
-            <div className="mb-12">
-              <LinksSection content={linksSection.content as LinksSectionContent} />
-            </div>
-          )}
-
-          {/* Tools Mentioned */}
-          {project.toolsDetails && project.toolsDetails.length > 0 && (
-            <div className="mb-12">
-              <h3 className="text-sm font-semibold mb-4 uppercase tracking-wider text-gray-500 dark:text-white/50">
-                Tools Mentioned
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {project.toolsDetails.map((tool) => (
-                  <button
-                    key={tool.id}
-                    onClick={() => openToolTray(tool.slug)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-                  >
-                    {tool.logoUrl && (
-                      <img
-                        src={tool.logoUrl}
-                        alt={tool.name}
-                        className="w-5 h-5 rounded object-cover"
-                      />
-                    )}
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {tool.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <InlineToolsEditor
+                tools={project.toolsDetails || []}
+                toolIds={project.tools || []}
+                isEditing={isEditing}
+                onToolClick={openToolTray}
+                onToolsChange={handleToolsChange}
+                isSaving={isSaving}
+                darkMode={false}
+              />
             </div>
           )}
 
@@ -358,6 +620,14 @@ export function ClippedArticleLayout() {
       {selectedToolSlug && (
         <ToolTray isOpen={isToolTrayOpen} onClose={closeToolTray} toolSlug={selectedToolSlug} />
       )}
+
+      {/* Edit Mode Indicator */}
+      <EditModeIndicator
+        isOwner={isOwner}
+        isEditMode={isEditMode}
+        onToggle={toggleEditMode}
+        isSaving={isSaving}
+      />
     </>
   );
 }

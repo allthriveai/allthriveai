@@ -634,3 +634,206 @@ class FullFlowIntegrationTest(TestCase):
         print(f'   Plan type: {plan.plan_type}')
         print(f'   Primary agent: {plan.primary_agent}')
         print('   SUPPORT agent handles help questions correctly!')
+
+
+class ScreenshotFallbackTest(TestCase):
+    """
+    Test the screenshot fallback flow when URL scraping fails.
+
+    MISSION CRITICAL: When a URL cannot be scraped, users should be able to
+    upload a screenshot and have the AI analyze it to create a project.
+
+    Flow:
+    1. User pastes URL that fails to scrape
+    2. AI suggests uploading a screenshot
+    3. User uploads screenshot
+    4. AI analyzes screenshot and creates project WITHOUT using it as hero image
+
+    Note: Some tests use mocks (run in CI), others use real AI (require API keys).
+    """
+
+    # =========================================================================
+    # Unit Tests (No AI tokens - run in regular CI)
+    # =========================================================================
+
+    def test_url_scrape_failure_suggests_screenshot(self):
+        """
+        CRITICAL: When URL scraping fails, the response MUST include suggest_screenshot=True.
+
+        SCENARIO: User pastes a URL that cannot be scraped (site blocks bots)
+        EXPECTED: Tool returns suggest_screenshot=True with helpful message
+        FAILURE: User has no fallback option when scraping fails
+        """
+        from unittest.mock import MagicMock, patch
+
+        from services.agents.project.tools import _handle_generic_import
+        from services.url_import import URLScraperError
+
+        # Create a mock user to avoid database issues
+        mock_user = MagicMock()
+        mock_user.id = 1
+        mock_user.username = 'testuser_screenshot'
+
+        # Mock the scraper to raise an error (patch at the source module)
+        with patch('services.url_import.scraper.scrape_url_for_project') as mock_scrape:
+            mock_scrape.side_effect = URLScraperError('Access denied - site blocking bots')
+
+            result = _handle_generic_import(
+                url='https://blocked-site.com/project',
+                user=mock_user,
+                is_owned=True,
+                is_showcase=True,
+                is_private=True,
+                state={'user_id': mock_user.id, 'username': mock_user.username},
+            )
+
+            # CRITICAL assertions
+            self.assertFalse(
+                result.get('success'),
+                'CRITICAL: Failed scrape should return success=False',
+            )
+            self.assertTrue(
+                result.get('suggest_screenshot'),
+                'CRITICAL: Failed scrape MUST return suggest_screenshot=True to guide user',
+            )
+            self.assertEqual(
+                result.get('failed_url'),
+                'https://blocked-site.com/project',
+                'CRITICAL: failed_url must be preserved for screenshot tool',
+            )
+            self.assertIn(
+                'screenshot',
+                result.get('message', '').lower(),
+                'CRITICAL: Message must mention screenshot as fallback option',
+            )
+
+            print('\n Screenshot Fallback Suggestion Test')
+            print(f'   suggest_screenshot: {result.get("suggest_screenshot")}')
+            print(f'   failed_url: {result.get("failed_url")}')
+            print(f'   message: {result.get("message", "")[:80]}...')
+
+    def test_screenshot_tool_exists_and_has_correct_schema(self):
+        """
+        CRITICAL: create_project_from_screenshot tool MUST exist with correct parameters.
+
+        SCENARIO: Tool is available for the agent to use
+        EXPECTED: Tool has screenshot_url, original_url, and state parameters
+        FAILURE: Tool missing or has wrong schema, agent can't use fallback
+        """
+        from services.agents.project.tools import (
+            PROJECT_TOOLS,
+            create_project_from_screenshot,
+        )
+
+        # Verify tool is in PROJECT_TOOLS
+        tool_names = [t.name for t in PROJECT_TOOLS]
+        self.assertIn(
+            'create_project_from_screenshot',
+            tool_names,
+            'CRITICAL: create_project_from_screenshot must be in PROJECT_TOOLS',
+        )
+
+        # Verify tool has correct schema via its args_schema
+        schema = create_project_from_screenshot.args_schema
+        self.assertIsNotNone(schema, 'Tool must have args_schema defined')
+
+        # Check required fields exist
+        schema_fields = schema.model_fields
+        self.assertIn('screenshot_url', schema_fields, 'CRITICAL: Tool must accept screenshot_url')
+        self.assertIn('screenshot_filename', schema_fields, 'CRITICAL: Tool must accept screenshot_filename')
+        self.assertIn('original_url', schema_fields, 'CRITICAL: Tool must accept original_url')
+
+        print('\n Screenshot Tool Schema Test')
+        print('   Tool name: create_project_from_screenshot')
+        print(f'   Schema fields: {list(schema_fields.keys())}')
+
+    # =========================================================================
+    # AI Integration Tests (Require API keys - skip in regular CI)
+    # =========================================================================
+
+    @unittest.skipIf(SKIP_AI_TESTS, 'AI API keys not configured')
+    def test_ai_recognizes_screenshot_fallback_flow(self):
+        """
+        CRITICAL: AI must understand the screenshot fallback flow from prompts.
+
+        SCENARIO: import_from_url returns suggest_screenshot=True
+        EXPECTED: AI tells user to upload a screenshot
+        FAILURE: AI doesn't guide user through the fallback
+        """
+        from services.agents.project.prompts import SYSTEM_PROMPT
+        from services.ai import AIProvider
+
+        ai = AIProvider()
+
+        # Simulate the scenario where import_from_url failed
+        prompt = """The import_from_url tool just returned this result:
+{
+  "success": false,
+  "error": "Could not import from URL: Access denied",
+  "suggest_screenshot": true,
+  "failed_url": "https://blocked-site.com/project",
+  "message": "I couldn't access that URL. Would you like to upload a screenshot instead?"
+}
+
+What should you tell the user? Be brief."""
+
+        response = ai.complete(
+            prompt=prompt,
+            system_message=SYSTEM_PROMPT,
+            temperature=0.3,
+            max_tokens=150,
+        )
+
+        response_lower = response.lower()
+
+        # Must mention screenshot
+        self.assertTrue(
+            'screenshot' in response_lower or 'upload' in response_lower,
+            f'AI should suggest screenshot upload when suggest_screenshot=True. Got: "{response}"',
+        )
+
+        print('\n AI Screenshot Fallback Recognition Test')
+        print(f'   AI response: {response[:100]}...')
+
+    @unittest.skipIf(SKIP_AI_TESTS, 'AI API keys not configured')
+    def test_screenshot_upload_triggers_correct_tool(self):
+        """
+        CRITICAL: When user uploads screenshot after failed URL scrape,
+        AI should use create_project_from_screenshot (not create_media_project).
+
+        SCENARIO: User uploads screenshot with context of failed URL scrape
+        EXPECTED: AI selects create_project_from_screenshot tool
+        FAILURE: Wrong tool used, screenshot becomes hero image incorrectly
+        """
+        from services.agents.project.prompts import SYSTEM_PROMPT
+        from services.ai import AIProvider
+
+        ai = AIProvider()
+
+        # Simulate conversation context
+        prompt = """Previous context:
+- User tried to import https://blocked-site.com/project
+- import_from_url failed with suggest_screenshot=True
+- User just uploaded a screenshot: [image: screenshot.png](https://s3.amazonaws.com/uploads/screenshot.png)
+
+Which tool should you use?
+A) create_media_project (for normal image uploads that become project hero)
+B) create_project_from_screenshot (for analyzing screenshot without using as hero)
+
+Respond with just A or B."""
+
+        response = ai.complete(
+            prompt=prompt,
+            system_message=SYSTEM_PROMPT,
+            temperature=0.1,
+            max_tokens=10,
+        )
+
+        self.assertIn(
+            'B',
+            response.upper(),
+            f'AI should use create_project_from_screenshot for screenshot fallback. Got: "{response}"',
+        )
+
+        print('\n Screenshot Tool Selection Test')
+        print(f'   AI selected: {response.strip()}')

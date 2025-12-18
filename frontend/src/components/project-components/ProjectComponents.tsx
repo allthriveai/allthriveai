@@ -26,7 +26,7 @@ interface ProjectComponentsProps {
  */
 export function ProjectComponents({ layout, className }: ProjectComponentsProps) {
   const { components } = layout;
-  const [isEditMode, setIsEditMode] = useState(false); // Default to published view
+  const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
   const toggleEditMode = useCallback(() => setIsEditMode(prev => !prev), []);
 
   // Try to get project context for edit mode indicator

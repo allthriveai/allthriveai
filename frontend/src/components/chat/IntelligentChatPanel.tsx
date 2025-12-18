@@ -88,6 +88,9 @@ export function IntelligentChatPanel({
 
   // Integration picker state
   const [showIntegrationPicker, setShowIntegrationPicker] = useState(false);
+
+  // File select trigger function from ChatInterface
+  const triggerFileSelectRef = useRef<(() => void) | null>(null);
   const [integrationStatus, setIntegrationStatus] = useState<{
     github: boolean;
     gitlab: boolean;
@@ -623,6 +626,12 @@ export function IntelligentChatPanel({
         // Set product creation context and show welcome
         setHasInteracted(true);
         sendMessage('I want to create a digital product to sell on the marketplace');
+        break;
+      case 'upload-media':
+        // Trigger file selection dialog
+        if (triggerFileSelectRef.current) {
+          triggerFileSelectRef.current();
+        }
         break;
     }
   }, [handleGitHubImport, handleGitLabImport, handleFigmaImport, sendMessage]);
@@ -1235,6 +1244,15 @@ export function IntelligentChatPanel({
             <FontAwesomeIcon icon={faPencil} className="w-5 h-5 text-primary-500" />
             <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">Create Manually</span>
           </button>
+          <button
+            onClick={() => {
+              setHasInteracted(true);
+              sendMessage("I want to upload files by dragging and dropping them");
+            }}
+            className="col-span-3 flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors border-2 border-dashed border-slate-300 dark:border-slate-600 min-h-[72px]"
+          >
+            <span className="text-slate-400 dark:text-slate-500 text-xs leading-tight">Drag and drop any image or video to make a project</span>
+          </button>
         </div>
       </div>
     );
@@ -1562,6 +1580,9 @@ export function IntelligentChatPanel({
       isUploading={isUploading}
       onCancelUpload={handleCancelUpload}
       onCancelProcessing={cancelProcessing}
+      onFileSelectRef={(triggerFn) => {
+        triggerFileSelectRef.current = triggerFn;
+      }}
     />
   );
 }

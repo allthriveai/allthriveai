@@ -21,7 +21,7 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
   const analysis = project.content?.figma?.analysis;
   const figmaData = project.content?.figma;
 
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
   const [isHeroEditorOpen, setIsHeroEditorOpen] = useState(false);
   const toggleEditMode = useCallback(() => setIsEditMode(prev => !prev), []);
   const isEditing = isOwner && isEditMode;

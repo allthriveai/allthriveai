@@ -18,6 +18,10 @@ interface InlineHeroEditorProps {
   isOpen: boolean;
   onClose: () => void;
   onProjectUpdate: (project: Project) => void;
+  /** File dropped from drag-and-drop on HeroImage - will be uploaded when tray opens */
+  pendingFile?: File | null;
+  /** Called after pendingFile has been processed */
+  onPendingFileProcessed?: () => void;
 }
 
 export function InlineHeroEditor({
@@ -25,6 +29,8 @@ export function InlineHeroEditor({
   isOpen,
   onClose,
   onProjectUpdate,
+  pendingFile,
+  onPendingFileProcessed,
 }: InlineHeroEditorProps) {
   // Hero display state
   const [heroDisplayMode, setHeroDisplayMode] = useState<'image' | 'video' | 'slideshow' | 'quote' | 'slideup'>(
@@ -275,6 +281,50 @@ export function InlineHeroEditor({
   const handleUploadIntent = useCallback(() => {
     uploadIntentTimestampRef.current = Date.now();
   }, []);
+
+  // Handle pending file from drag-and-drop on HeroImage
+  // This effect runs when the tray opens with a pending file
+  const pendingFileProcessedRef = useRef<File | null>(null);
+  useEffect(() => {
+    if (!isOpen || !pendingFile) return;
+
+    // Don't process the same file twice
+    if (pendingFileProcessedRef.current === pendingFile) return;
+    pendingFileProcessedRef.current = pendingFile;
+
+    // Determine file type and upload accordingly
+    if (pendingFile.type.startsWith('image/')) {
+      // Upload as featured image
+      setIsUploadingFeatured(true);
+      uploadImage(pendingFile, 'projects', true)
+        .then((response) => {
+          setFeaturedImageUrl(response.url);
+          setHeroDisplayMode('image');
+        })
+        .catch((error) => {
+          console.error('Failed to upload dropped image:', error);
+        })
+        .finally(() => {
+          setIsUploadingFeatured(false);
+          onPendingFileProcessed?.();
+        });
+    } else if (pendingFile.type.startsWith('video/')) {
+      // Upload as hero video
+      setIsUploadingVideo(true);
+      uploadFile(pendingFile, 'projects/videos', true)
+        .then((response) => {
+          setHeroVideoUrl(response.url);
+          setHeroDisplayMode('video');
+        })
+        .catch((error) => {
+          console.error('Failed to upload dropped video:', error);
+        })
+        .finally(() => {
+          setIsUploadingVideo(false);
+          onPendingFileProcessed?.();
+        });
+    }
+  }, [isOpen, pendingFile, onPendingFileProcessed]);
 
   // Upload handlers
   const handleFeaturedImageUpload = useCallback(async (file: File) => {

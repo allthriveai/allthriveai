@@ -52,6 +52,8 @@ export interface User {
   lifetimeProjectsCreated?: number;
   // Guest user flag
   isGuest?: boolean;
+  // Admin role (includes superusers)
+  isAdminRole?: boolean;
 }
 
 // Authentication state

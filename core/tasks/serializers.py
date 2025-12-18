@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Task, TaskComment, TaskDashboard, TaskOption
+from .models import Task, TaskAttachment, TaskComment, TaskDashboard, TaskOption
 
 User = get_user_model()
 
@@ -285,4 +285,36 @@ class TaskCommentSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             validated_data['author'] = request.user
+        return super().create(validated_data)
+
+
+class TaskAttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for task attachments (images, videos, documents)."""
+
+    uploaded_by_detail = AdminUserSerializer(source='uploaded_by', read_only=True)
+
+    class Meta:
+        model = TaskAttachment
+        fields = [
+            'id',
+            'task',
+            'uploaded_by',
+            'uploaded_by_detail',
+            'file_url',
+            'filename',
+            'original_filename',
+            'file_type',
+            'file_size',
+            'attachment_type',
+            'description',
+            'order',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'uploaded_by', 'uploaded_by_detail', 'created_at']
+
+    def create(self, validated_data):
+        """Set uploaded_by from request user."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['uploaded_by'] = request.user
         return super().create(validated_data)

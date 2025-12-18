@@ -21,6 +21,9 @@ import type {
   TaskComment,
   CreateTaskCommentPayload,
   UpdateTaskCommentPayload,
+  TaskAttachment,
+  CreateTaskAttachmentPayload,
+  UpdateTaskAttachmentPayload,
 } from '@/types/tasks';
 
 const BASE_URL = '/admin/tasks';
@@ -348,6 +351,51 @@ export const adminTasksService = {
    */
   async deleteComment(id: number): Promise<void> {
     await api.delete(`${BASE_URL}/comments/${id}/`);
+  },
+
+  // ========== ATTACHMENTS ==========
+
+  /**
+   * Get attachments for a task
+   */
+  async getAttachments(taskId: number): Promise<TaskAttachment[]> {
+    const response = await api.get<TaskAttachment[] | { results: TaskAttachment[] }>(`${BASE_URL}/attachments/?task=${taskId}`);
+    const data = response.data;
+    return Array.isArray(data) ? data : (data.results || []);
+  },
+
+  /**
+   * Create an attachment on a task
+   */
+  async createAttachment(payload: CreateTaskAttachmentPayload): Promise<TaskAttachment> {
+    const response = await api.post<TaskAttachment>(`${BASE_URL}/attachments/`, payload);
+    return response.data;
+  },
+
+  /**
+   * Update an attachment (description, order)
+   */
+  async updateAttachment(id: number, payload: UpdateTaskAttachmentPayload): Promise<TaskAttachment> {
+    const response = await api.patch<TaskAttachment>(`${BASE_URL}/attachments/${id}/`, payload);
+    return response.data;
+  },
+
+  /**
+   * Delete an attachment
+   */
+  async deleteAttachment(id: number): Promise<void> {
+    await api.delete(`${BASE_URL}/attachments/${id}/`);
+  },
+
+  /**
+   * Reorder attachments within a task
+   */
+  async reorderAttachments(taskId: number, order: number[]): Promise<{ status: string }> {
+    const response = await api.post<{ status: string }>(`${BASE_URL}/attachments/reorder/`, {
+      taskId,
+      order,
+    });
+    return response.data;
   },
 };
 

@@ -90,7 +90,7 @@ export function DefaultProjectLayout() {
   } = useProjectContext();
 
   const [showMenu, setShowMenu] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false); // Default to published view
+  const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
   const [isSaving, setIsSaving] = useState(false);
 
   // Category picker state
@@ -106,6 +106,8 @@ export function DefaultProjectLayout() {
 
   // Hero editor tray state
   const [showHeroEditor, setShowHeroEditor] = useState(false);
+  // Pending file from drag-and-drop on hero image
+  const [pendingHeroFile, setPendingHeroFile] = useState<File | null>(null);
 
   // Background gradient picker state
   const [showGradientPicker, setShowGradientPicker] = useState(false);
@@ -802,6 +804,11 @@ export function DefaultProjectLayout() {
                 isAuthenticated={isAuthenticated}
                 isEditing={isEditing}
                 onEditClick={() => setShowHeroEditor(true)}
+                onHeroImageUpload={(file) => {
+                  // Store file and open tray - InlineHeroEditor will upload
+                  setPendingHeroFile(file);
+                  setShowHeroEditor(true);
+                }}
               />
             </div>
           </div>
@@ -866,8 +873,13 @@ export function DefaultProjectLayout() {
       <InlineHeroEditor
         project={project}
         isOpen={showHeroEditor}
-        onClose={() => setShowHeroEditor(false)}
+        onClose={() => {
+          setShowHeroEditor(false);
+          setPendingHeroFile(null);
+        }}
         onProjectUpdate={setProject}
+        pendingFile={pendingHeroFile}
+        onPendingFileProcessed={() => setPendingHeroFile(null)}
       />
     </>
   );

@@ -736,18 +736,273 @@ jobs:
             # Don't fail the deploy for seed issues - data may already exist
           fi
 
+  # Smoke test OAuth endpoints after deployment
+  smoke-test-oauth:
+    needs: [deploy-backend, deploy-frontend, migrate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for services to stabilize
+        run: |
+          echo "⏳ Waiting 30s for services to fully stabilize..."
+          sleep 30
+
+      - name: Test GitHub OAuth endpoint
+        run: |
+          echo "🔍 Testing GitHub OAuth endpoint..."
+
+          RESPONSE=$(curl -sI "https://api.allthrive.ai/accounts/github/login/" 2>&1)
+          HTTP_CODE=$(echo "$RESPONSE" | grep -i "^HTTP" | tail -1 | awk '{print $2}')
+
+          if [ "$HTTP_CODE" != "302" ]; then
+            echo "❌ GitHub OAuth endpoint returned HTTP $HTTP_CODE (expected 302)"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          # Verify redirect goes to GitHub
+          LOCATION=$(echo "$RESPONSE" | grep -i "^location:" | head -1)
+          if ! echo "$LOCATION" | grep -q "github.com/login/oauth/authorize"; then
+            echo "❌ GitHub OAuth not redirecting to GitHub"
+            echo "Location: $LOCATION"
+            exit 1
+          fi
+
+          # Verify callback URL is correct
+          if ! echo "$LOCATION" | grep -q "redirect_uri=https%3A%2F%2Fapi.allthrive.ai%2Faccounts%2Fgithub%2Flogin%2Fcallback%2F"; then
+            echo "❌ GitHub OAuth callback URL is incorrect"
+            echo "Location: $LOCATION"
+            exit 1
+          fi
+
+          echo "✅ GitHub OAuth endpoint is working correctly"
+
+      - name: Test Google OAuth endpoint
+        run: |
+          echo "🔍 Testing Google OAuth endpoint..."
+
+          RESPONSE=$(curl -sI "https://api.allthrive.ai/accounts/google/login/" 2>&1)
+          HTTP_CODE=$(echo "$RESPONSE" | grep -i "^HTTP" | tail -1 | awk '{print $2}')
+
+          if [ "$HTTP_CODE" != "302" ]; then
+            echo "❌ Google OAuth endpoint returned HTTP $HTTP_CODE (expected 302)"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          # Verify redirect goes to Google
+          LOCATION=$(echo "$RESPONSE" | grep -i "^location:" | head -1)
+          if ! echo "$LOCATION" | grep -q "accounts.google.com"; then
+            echo "❌ Google OAuth not redirecting to Google"
+            echo "Location: $LOCATION"
+            exit 1
+          fi
+
+          # Verify callback URL is correct
+          if ! echo "$LOCATION" | grep -q "redirect_uri=https%3A%2F%2Fapi.allthrive.ai%2Faccounts%2Fgoogle%2Flogin%2Fcallback%2F"; then
+            echo "❌ Google OAuth callback URL is incorrect"
+            echo "Location: $LOCATION"
+            exit 1
+          fi
+
+          echo "✅ Google OAuth endpoint is working correctly"
+
+      - name: Test LinkedIn OAuth endpoint
+        run: |
+          echo "🔍 Testing LinkedIn OAuth endpoint..."
+
+          RESPONSE=$(curl -sI "https://api.allthrive.ai/accounts/linkedin_oauth2/login/" 2>&1)
+          HTTP_CODE=$(echo "$RESPONSE" | grep -i "^HTTP" | tail -1 | awk '{print $2}')
+
+          if [ "$HTTP_CODE" != "302" ]; then
+            echo "❌ LinkedIn OAuth endpoint returned HTTP $HTTP_CODE (expected 302)"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          # Verify redirect goes to LinkedIn
+          LOCATION=$(echo "$RESPONSE" | grep -i "^location:" | head -1)
+          if ! echo "$LOCATION" | grep -q "linkedin.com"; then
+            echo "❌ LinkedIn OAuth not redirecting to LinkedIn"
+            echo "Location: $LOCATION"
+            exit 1
+          fi
+
+          echo "✅ LinkedIn OAuth endpoint is working correctly"
+
+      - name: Test API health endpoint
+        run: |
+          echo "🔍 Testing API health endpoint..."
+
+          RESPONSE=$(curl -s "https://api.allthrive.ai/api/v1/health/" 2>&1)
+
+          if ! echo "$RESPONSE" | grep -q '"status"'; then
+            echo "❌ API health endpoint not responding correctly"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          echo "✅ API health endpoint is working"
+          echo "$RESPONSE" | head -5
+
+      - name: Test frontend is accessible
+        run: |
+          echo "🔍 Testing frontend accessibility..."
+
+          HTTP_CODE=$(curl -sI "https://allthrive.ai/" | grep -i "^HTTP" | tail -1 | awk '{print $2}')
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Frontend returned HTTP $HTTP_CODE (expected 200)"
+            exit 1
+          fi
+
+          echo "✅ Frontend is accessible"
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "🎉 All OAuth smoke tests passed!"
+          echo "=========================================="
+          echo ""
+          echo "Verified endpoints:"
+          echo "  ✅ GitHub OAuth:   https://api.allthrive.ai/accounts/github/login/"
+          echo "  ✅ Google OAuth:   https://api.allthrive.ai/accounts/google/login/"
+          echo "  ✅ LinkedIn OAuth: https://api.allthrive.ai/accounts/linkedin_oauth2/login/"
+          echo "  ✅ API Health:     https://api.allthrive.ai/api/v1/health/"
+          echo "  ✅ Frontend:       https://allthrive.ai/"
+          echo ""
+
+  # Full E2E OAuth tests with Playwright (optional - runs if test credentials are configured)
+  e2e-oauth-tests:
+    needs: [smoke-test-oauth]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if E2E OAuth tests should run
+        id: check-creds
+        env:
+          TEST_GITHUB_EMAIL: ${{ secrets.TEST_GITHUB_EMAIL }}
+          TEST_GITHUB_PASSWORD: ${{ secrets.TEST_GITHUB_PASSWORD }}
+          TEST_LINKEDIN_EMAIL: ${{ secrets.TEST_LINKEDIN_EMAIL }}
+          TEST_LINKEDIN_PASSWORD: ${{ secrets.TEST_LINKEDIN_PASSWORD }}
+        run: |
+          # Check if OAuth test credentials are configured (GitHub and LinkedIn only)
+          # Google OAuth is tested via smoke test only - Google blocks automated logins
+          HAS_GITHUB="false"
+          HAS_LINKEDIN="false"
+
+          if [ -n "$TEST_GITHUB_EMAIL" ] && [ -n "$TEST_GITHUB_PASSWORD" ]; then
+            HAS_GITHUB="true"
+          fi
+          if [ -n "$TEST_LINKEDIN_EMAIL" ] && [ -n "$TEST_LINKEDIN_PASSWORD" ]; then
+            HAS_LINKEDIN="true"
+          fi
+
+          if [ "$HAS_GITHUB" = "true" ] || [ "$HAS_LINKEDIN" = "true" ]; then
+            echo "has_credentials=true" >> $GITHUB_OUTPUT
+            echo "✅ OAuth test credentials found - will run E2E tests"
+            echo "   GitHub:   $HAS_GITHUB"
+            echo "   LinkedIn: $HAS_LINKEDIN"
+            echo "   Google:   ⏭️ Skipped (smoke test only - blocks automated logins)"
+          else
+            echo "has_credentials=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No OAuth test credentials configured - skipping E2E tests"
+            echo "   To enable, add these secrets to your repository:"
+            echo "   - TEST_GITHUB_EMAIL / TEST_GITHUB_PASSWORD"
+            echo "   - TEST_LINKEDIN_EMAIL / TEST_LINKEDIN_PASSWORD"
+            echo ""
+            echo "   Note: Google OAuth requires manual testing (blocks automated logins)"
+          fi
+
+      - name: Checkout code
+        if: steps.check-creds.outputs.has_credentials == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.check-creds.outputs.has_credentials == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.check-creds.outputs.has_credentials == 'true'
+        working-directory: frontend
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        if: steps.check-creds.outputs.has_credentials == 'true'
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run OAuth E2E tests
+        if: steps.check-creds.outputs.has_credentials == 'true'
+        working-directory: frontend
+        env:
+          PROD_URL: https://allthrive.ai
+          API_URL: https://api.allthrive.ai
+          TEST_GITHUB_EMAIL: ${{ secrets.TEST_GITHUB_EMAIL }}
+          TEST_GITHUB_PASSWORD: ${{ secrets.TEST_GITHUB_PASSWORD }}
+          TEST_LINKEDIN_EMAIL: ${{ secrets.TEST_LINKEDIN_EMAIL }}
+          TEST_LINKEDIN_PASSWORD: ${{ secrets.TEST_LINKEDIN_PASSWORD }}
+        run: |
+          echo "🧪 Running OAuth E2E tests against production..."
+          echo "   Testing: GitHub, LinkedIn"
+          echo "   Skipped: Google (requires manual testing)"
+          npx playwright test oauth-e2e.spec.ts --project=chromium --reporter=list --grep-invert="Smoke Tests"
+
+      - name: Upload test results
+        if: steps.check-creds.outputs.has_credentials == 'true' && failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oauth-e2e-results
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: E2E Tests Summary
+        run: |
+          if [ "${{ steps.check-creds.outputs.has_credentials }}" = "true" ]; then
+            echo "✅ OAuth E2E tests completed"
+          else
+            echo "⏭️  OAuth E2E tests skipped (no test credentials configured)"
+            echo ""
+            echo "The basic OAuth endpoint smoke tests still passed!"
+            echo "To enable full E2E login flow testing, add test account secrets to your repository."
+          fi
+
   # Notify on completion
   notify:
-    needs: [deploy-backend, deploy-frontend, migrate]
+    needs: [deploy-backend, deploy-frontend, migrate, smoke-test-oauth, e2e-oauth-tests]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Send notification
         run: |
+          # Core deployment jobs must succeed
+          # e2e-oauth-tests is optional (skipped if no credentials)
           if [ "${{ needs.deploy-backend.result }}" == "success" ] && \
-             [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
-            echo "Deployment successful!"
+             [ "${{ needs.deploy-frontend.result }}" == "success" ] && \
+             [ "${{ needs.smoke-test-oauth.result }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+            echo ""
+            echo "Results:"
+            echo "  - Backend:          ${{ needs.deploy-backend.result }}"
+            echo "  - Frontend:         ${{ needs.deploy-frontend.result }}"
+            echo "  - Migrations:       ${{ needs.migrate.result }}"
+            echo "  - OAuth Smoke:      ${{ needs.smoke-test-oauth.result }}"
+            echo "  - OAuth E2E:        ${{ needs.e2e-oauth-tests.result }}"
+            echo ""
+            if [ "${{ needs.e2e-oauth-tests.result }}" == "skipped" ]; then
+              echo "ℹ️  OAuth E2E tests were skipped (no test credentials configured)"
+            fi
           else
-            echo "Deployment failed!"
+            echo "❌ Deployment failed!"
+            echo ""
+            echo "Results:"
+            echo "  - Backend:          ${{ needs.deploy-backend.result }}"
+            echo "  - Frontend:         ${{ needs.deploy-frontend.result }}"
+            echo "  - Migrations:       ${{ needs.migrate.result }}"
+            echo "  - OAuth Smoke:      ${{ needs.smoke-test-oauth.result }}"
+            echo "  - OAuth E2E:        ${{ needs.e2e-oauth-tests.result }}"
             exit 1
           fi

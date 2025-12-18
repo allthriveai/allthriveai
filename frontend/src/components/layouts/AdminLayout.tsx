@@ -9,6 +9,7 @@ import {
   UsersIcon,
   SparklesIcon,
   ClipboardDocumentListIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {
@@ -69,6 +70,11 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       label: 'Tasks',
       path: '/admin/tasks',
       icon: ClipboardDocumentListIcon,
+    },
+    {
+      label: 'UAT Scenarios',
+      path: '/admin/uat-scenarios',
+      icon: BeakerIcon,
     },
     // Future admin sections can be added here:
     // {

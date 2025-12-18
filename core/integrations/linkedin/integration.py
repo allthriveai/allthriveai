@@ -248,7 +248,7 @@ class LinkedInIntegration(BaseIntegration):
         User = get_user_model()
 
         is_showcased = kwargs.get('is_showcased', kwargs.get('is_showcase', True))
-        is_private = kwargs.get('is_private', False)
+        is_private = kwargs.get('is_private', True)
 
         try:
             # Get user

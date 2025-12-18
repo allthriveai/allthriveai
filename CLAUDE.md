@@ -57,6 +57,10 @@ make frontend        # Run frontend locally (or cd frontend && npm run dev -- --
 | `make recreate-pip` | Delete and recreate Pip with latest data |
 | `make seed-quizzes` | Seed initial quiz data |
 | `make seed-all` | Seed all initial data |
+| `make export-tools` | Export tools from database to YAML |
+| `make load-tools` | Load tools from YAML into database |
+| `make export-tasks` | Export tasks from database to YAML |
+| `make load-tasks` | Load tasks from YAML into database |
 | `make create-youtube-agent` | Create YouTube feed agent (see below) |
 | `make reset-db` | DANGER: Flush database and reseed |
 

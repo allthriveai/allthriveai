@@ -41,7 +41,7 @@ def import_youtube_video_task(
     user_id: int,
     video_id: str,
     is_showcased: bool = True,
-    is_private: bool = False,
+    is_private: bool = True,
     content_source_id: int = None,
     skip_ai_analysis: bool = False,
 ) -> dict[str, Any]:

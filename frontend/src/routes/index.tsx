@@ -51,6 +51,7 @@ import AdminPromptChallengePromptsPage from '@/pages/admin/PromptChallengePrompt
 import AdminImpersonatePage from '@/pages/admin/ImpersonatePage';
 import AdminCircleManagementPage from '@/pages/admin/CircleManagementPage';
 import AdminTasksPage from '@/pages/admin/TasksPage';
+import AdminUATScenariosPage from '@/pages/admin/UATScenariosPage';
 import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
 import ExtensionPage from '@/pages/ExtensionPage';
 import PitchDeckPage from '@/pages/PitchDeckPage';
@@ -305,6 +306,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminTasksPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/uat-scenarios"
+        element={
+          <ProtectedRoute>
+            <AdminUATScenariosPage />
           </ProtectedRoute>
         }
       />

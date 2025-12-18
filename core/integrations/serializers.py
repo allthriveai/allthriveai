@@ -43,7 +43,7 @@ class YouTubeImportSerializer(serializers.Serializer):
     video_url = serializers.URLField(required=False, help_text='YouTube video URL (for single video import)')
     channel_url = serializers.URLField(required=False, help_text='YouTube channel URL (for channel import)')
     is_showcase = serializers.BooleanField(default=True, help_text='Display in showcase section')
-    is_private = serializers.BooleanField(default=False, help_text='Make project private')
+    is_private = serializers.BooleanField(default=True, help_text='Make project private')
     max_videos = serializers.IntegerField(
         default=50, min_value=1, max_value=100, help_text='Max videos to import from channel'
     )

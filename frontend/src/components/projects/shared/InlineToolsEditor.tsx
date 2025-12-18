@@ -17,6 +17,7 @@ interface InlineToolsEditorProps {
   onToolClick: (toolSlug: string) => void;
   onToolsChange: (toolIds: number[]) => Promise<void>;
   isSaving?: boolean;
+  darkMode?: boolean;
 }
 
 export function InlineToolsEditor({
@@ -26,6 +27,7 @@ export function InlineToolsEditor({
   onToolClick,
   onToolsChange,
   isSaving = false,
+  darkMode = true,
 }: InlineToolsEditorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -53,20 +55,26 @@ export function InlineToolsEditor({
 
     return (
       <div className="space-y-4">
-        <p className="text-xs font-bold text-white/50 uppercase tracking-[0.2em] pl-1">Built With</p>
+        <p className={`text-xs font-bold uppercase tracking-[0.2em] pl-1 ${darkMode ? 'text-white/50' : 'text-gray-500'}`}>Built With</p>
         <div className="flex flex-wrap gap-3">
           {tools.map((tool) => (
             <button
               key={tool.id}
               onClick={() => onToolClick(tool.slug)}
-              className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+              className={`group flex items-center gap-2.5 px-4 py-2 backdrop-blur-xl rounded-xl border transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${
+                darkMode
+                  ? 'bg-white/5 hover:bg-white/15 border-white/10 hover:border-white/30'
+                  : 'bg-gray-100 hover:bg-gray-200 border-gray-200 hover:border-gray-300'
+              }`}
             >
               {tool.logoUrl ? (
                 <img src={tool.logoUrl} alt={tool.name} className="w-5 h-5 rounded-md object-cover shadow-sm" />
               ) : (
-                <CodeBracketIcon className="w-5 h-5 text-white/70" />
+                <CodeBracketIcon className={`w-5 h-5 ${darkMode ? 'text-white/70' : 'text-gray-500'}`} />
               )}
-              <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{tool.name}</span>
+              <span className={`text-sm font-medium transition-colors ${
+                darkMode ? 'text-white/80 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900'
+              }`}>{tool.name}</span>
             </button>
           ))}
         </div>
@@ -78,11 +86,15 @@ export function InlineToolsEditor({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-white/50 uppercase tracking-[0.2em] pl-1">Built With</p>
+        <p className={`text-xs font-bold uppercase tracking-[0.2em] pl-1 ${darkMode ? 'text-white/50' : 'text-gray-500'}`}>Built With</p>
         {!isExpanded && (
           <button
             onClick={() => setIsExpanded(true)}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 hover:border-white/20 transition-all"
+            className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg border transition-all ${
+              darkMode
+                ? 'text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20'
+                : 'text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 border-gray-200 hover:border-gray-300'
+            }`}
             disabled={isSaving}
           >
             <PencilIcon className="w-3.5 h-3.5" />
@@ -117,20 +129,30 @@ export function InlineToolsEditor({
               <button
                 key={tool.id}
                 onClick={() => onToolClick(tool.slug)}
-                className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                className={`group flex items-center gap-2.5 px-4 py-2 backdrop-blur-xl rounded-xl border transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${
+                  darkMode
+                    ? 'bg-white/5 hover:bg-white/15 border-white/10 hover:border-white/30'
+                    : 'bg-gray-100 hover:bg-gray-200 border-gray-200 hover:border-gray-300'
+                }`}
               >
                 {tool.logoUrl ? (
                   <img src={tool.logoUrl} alt={tool.name} className="w-5 h-5 rounded-md object-cover shadow-sm" />
                 ) : (
-                  <CodeBracketIcon className="w-5 h-5 text-white/70" />
+                  <CodeBracketIcon className={`w-5 h-5 ${darkMode ? 'text-white/70' : 'text-gray-500'}`} />
                 )}
-                <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{tool.name}</span>
+                <span className={`text-sm font-medium transition-colors ${
+                  darkMode ? 'text-white/80 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900'
+                }`}>{tool.name}</span>
               </button>
             ))
           ) : (
             <button
               onClick={() => setIsExpanded(true)}
-              className="flex items-center gap-2 px-4 py-2 text-white/50 hover:text-white/70 bg-white/5 hover:bg-white/10 backdrop-blur-xl rounded-xl border border-dashed border-white/20 hover:border-white/30 transition-all"
+              className={`flex items-center gap-2 px-4 py-2 backdrop-blur-xl rounded-xl border border-dashed transition-all ${
+                darkMode
+                  ? 'text-white/50 hover:text-white/70 bg-white/5 hover:bg-white/10 border-white/20 hover:border-white/30'
+                  : 'text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-300 hover:border-gray-400'
+              }`}
               disabled={isSaving}
             >
               <PlusIcon className="w-5 h-5" />
