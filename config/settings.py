@@ -97,7 +97,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.github',
-    'allauth.socialaccount.providers.linkedin_oauth2',
+    'allauth.socialaccount.providers.openid_connect',  # For LinkedIn OIDC
 ]
 
 MIDDLEWARE = [
@@ -848,18 +848,20 @@ SOCIALACCOUNT_PROVIDERS = {
             'user:email',
         ],
     },
-    'linkedin_oauth2': {
-        'SCOPE': [
-            'openid',
-            'profile',
-            'email',
-        ],
-        'PROFILE_FIELDS': [
-            'id',
-            'first-name',
-            'last-name',
-            'email-address',
-            'picture-url',
+    # LinkedIn uses OpenID Connect (the old linkedin_oauth2 provider is deprecated)
+    # The SocialApp should be created with provider_id='linkedin'
+    # See: https://docs.allauth.org/en/dev/socialaccount/providers/linkedin.html
+    'openid_connect': {
+        'APPS': [
+            {
+                'provider_id': 'linkedin',
+                'name': 'LinkedIn',
+                'client_id': config('LINKEDIN_OAUTH_CLIENT_ID', default=''),
+                'secret': config('LINKEDIN_OAUTH_CLIENT_SECRET', default=''),
+                'settings': {
+                    'server_url': 'https://www.linkedin.com/oauth',
+                },
+            },
         ],
     },
 }

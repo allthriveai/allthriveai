@@ -26,6 +26,12 @@ function TypingMessage({
 }) {
   const [displayedContent, setDisplayedContent] = useState('');
   const [isComplete, setIsComplete] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+
+  // Keep ref updated without triggering effect re-run
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (isComplete) return;
@@ -38,12 +44,12 @@ function TypingMessage({
       } else {
         clearInterval(interval);
         setIsComplete(true);
-        onComplete?.();
+        onCompleteRef.current?.();
       }
     }, typingSpeed);
 
     return () => clearInterval(interval);
-  }, [content, typingSpeed, onComplete, isComplete]);
+  }, [content, typingSpeed, isComplete]);
 
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none">

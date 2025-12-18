@@ -37,7 +37,7 @@ export function GuestSignupModal({
    * Handle OAuth login for guest conversion.
    * Prepares session on backend and redirects to OAuth provider.
    */
-  const handleOAuthLogin = async (provider: 'google' | 'github' | 'linkedin_oauth2') => {
+  const handleOAuthLogin = async (provider: 'google' | 'github' | 'linkedin') => {
     setIsOAuthLoading(provider);
     setError(null);
 
@@ -54,7 +54,9 @@ export function GuestSignupModal({
 
       // Redirect to OAuth provider (full page redirect for session persistence)
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const loginUrl = `${backendUrl}/accounts/${provider}/login/?process=login`;
+      // LinkedIn uses OpenID Connect with a different URL pattern
+      const providerPath = provider === 'linkedin' ? 'oidc/linkedin' : provider;
+      const loginUrl = `${backendUrl}/accounts/${providerPath}/login/?process=login`;
       window.location.href = loginUrl;
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -199,14 +201,14 @@ export function GuestSignupModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleOAuthLogin('linkedin_oauth2')}
+                  onClick={() => handleOAuthLogin('linkedin')}
                   disabled={isOAuthLoading !== null}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg
                            bg-white/5 border border-white/10 text-white hover:bg-white/10
                            hover:border-cyan-400/30 transition-all text-sm font-medium
                            disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isOAuthLoading === 'linkedin_oauth2' ? (
+                  {isOAuthLoading === 'linkedin' ? (
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
