@@ -484,6 +484,33 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
                                 tech_added += 1
                                 logger.info(f'Added technology "{tool.name}" to project {project.id}')
 
+        # Also check for GitHub import format: content['tech_stack'] or content['github']['tech_stack']
+        tech_stack = content.get('tech_stack') or content.get('github', {}).get('tech_stack', {})
+        if tech_stack:
+            # Add languages
+            for lang_name in tech_stack.get('languages', {}).keys():
+                tool = match_or_create_technology(lang_name)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+                    tech_added += 1
+                    logger.info(f'Added language "{tool.name}" to project {project.id}')
+
+            # Add frameworks
+            for framework_name in tech_stack.get('frameworks', []):
+                tool = match_or_create_technology(framework_name)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+                    tech_added += 1
+                    logger.info(f'Added framework "{tool.name}" to project {project.id}')
+
+            # Add tools (build tools, CI/CD, etc.)
+            for tool_name in tech_stack.get('tools', []):
+                tool = match_or_create_technology(tool_name)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+                    tech_added += 1
+                    logger.info(f'Added tool "{tool.name}" to project {project.id}')
+
     logger.info(
         f'AI metadata applied: {categories_added} categories, {len(topics)} topics, '
         f'{tools_added} AI tools, {tech_added} technologies'

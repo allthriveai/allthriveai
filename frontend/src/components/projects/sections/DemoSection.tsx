@@ -175,11 +175,24 @@ function CTAButton({ cta, index, isEditing, onUpdate, onDelete }: CTAButtonProps
   );
 }
 
+// Helper to check if a URL is valid and not a placeholder
+function isValidUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  // Filter out placeholder/dummy URLs
+  if (['...', '#', '', 'null', 'undefined'].includes(url)) return false;
+  // Must start with http:// or https://
+  return url.startsWith('http://') || url.startsWith('https://');
+}
+
 export function DemoSection({ content, isEditing, onUpdate }: DemoSectionProps) {
-  const { video, liveUrl, ctas, title } = content;
+  const { video, liveUrl: rawLiveUrl, ctas: rawCtas, title } = content;
+
+  // Filter out invalid URLs in view mode (keep all in edit mode so user can fix them)
+  const liveUrl = isEditing ? rawLiveUrl : (isValidUrl(rawLiveUrl) ? rawLiveUrl : null);
+  const ctas = isEditing ? rawCtas : rawCtas?.filter(cta => isValidUrl(cta.url));
 
   // Check if there's any content to show
-  const hasVideo = video && video.url;
+  const hasVideo = video && video.url && isValidUrl(video.url);
   const hasCTAs = ctas && ctas.length > 0;
 
   const handleTitleChange = useCallback(

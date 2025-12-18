@@ -238,18 +238,24 @@ class Tool(models.Model):
 
         # Auto-create or update linked taxonomy
         if not self.taxonomy:
-            taxonomy, created = Taxonomy.objects.get_or_create(
-                name=self.name,
-                defaults={
-                    'taxonomy_type': 'tool',
-                    'description': self.description,
-                    'website_url': self.website_url,
-                    'logo_url': self.logo_url,
-                    'usage_tips': self.usage_tips,
-                    'best_for': self.best_practices,
-                    'is_active': self.is_active,
-                },
-            )
+            # First try to find existing taxonomy by slug (handles case variations)
+            expected_slug = slugify(self.name)
+            try:
+                taxonomy = Taxonomy.objects.get(slug=expected_slug)
+            except Taxonomy.DoesNotExist:
+                # Try by name, or create new
+                taxonomy, created = Taxonomy.objects.get_or_create(
+                    name=self.name,
+                    defaults={
+                        'taxonomy_type': 'tool',
+                        'description': self.description,
+                        'website_url': self.website_url,
+                        'logo_url': self.logo_url,
+                        'usage_tips': self.usage_tips,
+                        'best_for': self.best_practices,
+                        'is_active': self.is_active,
+                    },
+                )
             self.taxonomy = taxonomy
 
         super().save(*args, **kwargs)

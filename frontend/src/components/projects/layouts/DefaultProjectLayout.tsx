@@ -18,6 +18,7 @@ import {
   EditModeIndicator,
 } from '../shared/InlineEditable';
 import { TldrSection } from '../shared/TldrSection';
+import { InlineToolsEditor } from '../shared/InlineToolsEditor';
 import { EditableBlocksContainer } from '../shared/EditableBlocksContainer';
 import { ProjectSections } from '../sections';
 import type { ProjectSection, SectionType } from '@/types/sections';
@@ -26,7 +27,6 @@ import type { Taxonomy } from '@/types/models';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import {
-  CodeBracketIcon,
   EllipsisVerticalIcon,
   TrashIcon,
   ChevronDownIcon,
@@ -179,6 +179,20 @@ export function DefaultProjectLayout() {
       setProject(updated);
     } catch (error) {
       console.error('Failed to update title:', error);
+    }
+  }, [project.id, setProject]);
+
+  // Handle tools change
+  const handleToolsChange = useCallback(async (toolIds: number[]) => {
+    try {
+      setIsSaving(true);
+      const updated = await updateProject(project.id, { tools: toolIds });
+      setProject(updated);
+    } catch (error) {
+      console.error('Failed to update tools:', error);
+      throw error; // Re-throw so the component can handle it
+    } finally {
+      setIsSaving(false);
     }
   }, [project.id, setProject]);
 
@@ -739,27 +753,16 @@ export function DefaultProjectLayout() {
                 darkMode={true}
               />
 
-              {/* Tools Used */}
-              {project.toolsDetails && project.toolsDetails.length > 0 && (
-                <div className="space-y-4">
-                  <p className="text-xs font-bold text-white/50 uppercase tracking-[0.2em] pl-1">Built With</p>
-                  <div className="flex flex-wrap gap-3">
-                    {project.toolsDetails.map((tool) => (
-                      <button
-                        key={tool.id}
-                        onClick={() => openToolTray(tool.slug)}
-                        className="group flex items-center gap-2.5 px-4 py-2 bg-white/5 hover:bg-white/15 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/30 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                      >
-                        {tool.logoUrl ? (
-                          <img src={tool.logoUrl} alt={tool.name} className="w-5 h-5 rounded-md object-cover shadow-sm" />
-                        ) : (
-                          <CodeBracketIcon className="w-5 h-5 text-white/70" />
-                        )}
-                        <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{tool.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {/* Tools Used - editable for owners */}
+              {(isEditing || (project.toolsDetails && project.toolsDetails.length > 0)) && (
+                <InlineToolsEditor
+                  tools={project.toolsDetails || []}
+                  toolIds={project.tools || []}
+                  isEditing={isEditing}
+                  onToolClick={openToolTray}
+                  onToolsChange={handleToolsChange}
+                  isSaving={isSaving}
+                />
               )}
 
 

@@ -7,6 +7,61 @@ from django.db import models
 from core.integrations.reddit_models import RedditCommunityAgent, RedditThread  # noqa: F401
 
 
+class GitHubAppInstallation(models.Model):
+    """Track GitHub App installations for users.
+
+    When a user installs the GitHub App on their repos/orgs, we store the
+    installation_id to generate installation access tokens for repo access.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='github_app_installations',
+        help_text='User who installed the app',
+    )
+
+    installation_id = models.BigIntegerField(
+        unique=True,
+        help_text='GitHub App installation ID',
+    )
+
+    # Optional: track which account (user or org) this installation is for
+    account_login = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='GitHub account login (username or org name)',
+    )
+
+    account_type = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text='Account type (User or Organization)',
+    )
+
+    # Permissions and repo selection
+    repository_selection = models.CharField(
+        max_length=20,
+        default='all',
+        help_text='Repository selection (all or selected)',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'github_app_installations'
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['installation_id']),
+        ]
+        verbose_name = 'GitHub App Installation'
+        verbose_name_plural = 'GitHub App Installations'
+
+    def __str__(self):
+        return f'Installation {self.installation_id} for {self.user.username}'
+
+
 class ContentSource(models.Model):
     """Track content sources for automatic syncing (YouTube channels, RSS feeds, etc.)."""
 
