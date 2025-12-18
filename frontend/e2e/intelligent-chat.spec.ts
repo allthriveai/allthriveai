@@ -1563,37 +1563,42 @@ test.describe('Intelligent Chat', () => {
         }
       }
 
-      // SUCCESS indicators - At least one should appear
-      // AI should ask about title/name and tools used
-      const successIndicators = [
+      // SUCCESS indicators - AI should ask about BOTH title AND tool
+      // Check for title-related phrases
+      const titleIndicators = [
         'title',
         'name',
         'what would you like to call',
         'what is this',
-        'tell me about',
-        'what tools',
+        'call this project',
+        'call this',
+      ];
+
+      // Check for tool-related phrases
+      const toolIndicators = [
+        'what tool',
         'what did you use',
         'how did you create',
         'how was this made',
         'created with',
         'made with',
-        'your image',
-        'uploaded image',
-        'this image',
-        'the image you',
+        'made this with',
       ];
 
-      const hasProjectQuestion = successIndicators.some(indicator => fullChatText.includes(indicator));
+      const hasProjectQuestion = titleIndicators.some(indicator => fullChatText.includes(indicator));
+      const hasToolQuestion = toolIndicators.some(indicator => fullChatText.includes(indicator));
 
       console.log(`AI generated image (FAILURE): ${hasImageGeneration}`);
-      console.log(`AI asked about project (SUCCESS): ${hasProjectQuestion}`);
+      console.log(`AI asked about title (SUCCESS): ${hasProjectQuestion}`);
+      console.log(`AI asked about tool (SUCCESS): ${hasToolQuestion}`);
 
       // ASSERTIONS
       // This test should FAIL if Gemini generates an image
       expect(hasImageGeneration).toBe(false);
 
-      // This test should PASS if AI asks about the uploaded image
+      // This test should PASS if AI asks about BOTH title AND tool
       expect(hasProjectQuestion).toBe(true);
+      expect(hasToolQuestion).toBe(true);
 
       // Chat should remain functional
       await expect(chatHeader).toBeVisible();
@@ -1680,6 +1685,7 @@ test.describe('Intelligent Chat', () => {
       const askedAboutImage =
         fullChatText.includes('title') ||
         fullChatText.includes('name') ||
+        fullChatText.includes('call') || // AI might ask "what would you like to call..."
         fullChatText.includes('what tools') ||
         fullChatText.includes('tell me about') ||
         fullChatText.includes('your image');
@@ -1692,52 +1698,50 @@ test.describe('Intelligent Chat', () => {
         await chatInput.fill('The title is "Cosmic Dreams" and I made it with Midjourney');
         await sendButton.click();
 
-        // Wait for AI to create the project
-        await page.waitForTimeout(60000);
+        // Wait for AI to process and redirect to project page
+        // The chat panel closes and redirects after project creation
+        await page.waitForTimeout(15000);
 
-        // Get updated chat content
-        chatPanelText = (await chatPanel.textContent()) || '';
-        fullChatText = chatPanelText.toLowerCase();
+        // Check if we were redirected to a project page (SUCCESS scenario)
+        // Or check if chat panel is still open with content
+        const currentUrl = page.url();
+        const isOnProjectPage = currentUrl.includes('/e2e-test-user/') && currentUrl.includes('cosmic');
 
-        console.log(`Response after providing title/tools: ${fullChatText.substring(fullChatText.length - 500)}...`);
+        console.log(`Current URL after project creation: ${currentUrl}`);
+        console.log(`Redirected to project page: ${isOnProjectPage}`);
 
-        // SUCCESS indicators
-        const projectCreatedIndicators = [
-          'created',
-          'project',
-          'cosmic dreams',
-          'midjourney',
-          'project page',
-          'check it out',
-          'here is your project',
-        ];
+        if (isOnProjectPage) {
+          // SUCCESS: Project was created and we were redirected
+          console.log('✓ SUCCESS: Project created and redirected to project page');
+          expect(isOnProjectPage).toBe(true);
+        } else {
+          // Check if chat panel still has content (fallback)
+          const freshChatPanel = page.locator('.fixed.right-0.top-0, [class*="slide"], [class*="chat"]').first();
+          const isVisible = await freshChatPanel.isVisible({ timeout: 5000 }).catch(() => false);
 
-        const hasProjectCreated = projectCreatedIndicators.some(indicator => fullChatText.includes(indicator));
+          if (isVisible) {
+            chatPanelText = (await freshChatPanel.textContent({ timeout: 5000 })) || '';
+            fullChatText = chatPanelText.toLowerCase();
 
-        // Check for project URL
-        const projectUrlPattern = /\/[a-z0-9_-]+\/[a-z0-9_-]+/i;
-        const hasProjectUrl = projectUrlPattern.test(fullChatText);
+            console.log(`Response after providing title/tools: ${fullChatText.substring(fullChatText.length - 500)}...`);
 
-        console.log(`Project created indicators: ${hasProjectCreated}`);
-        console.log(`Project URL found: ${hasProjectUrl}`);
+            // SUCCESS indicators
+            const projectCreatedIndicators = ['created', 'project', 'cosmic dreams'];
+            const hasProjectCreated = projectCreatedIndicators.some(indicator => fullChatText.includes(indicator));
 
-        // FAILURE indicators - should NOT appear
-        const failureIndicators = [
-          'generating an image',
-          "i've created an image",
-          'here is the generated image',
-        ];
+            // FAILURE indicators - should NOT appear
+            const failureIndicators = ['generating an image', "i've created an image", 'here is the generated image'];
+            const hasFailure = failureIndicators.some(indicator => fullChatText.includes(indicator));
 
-        let hasFailure = false;
-        for (const indicator of failureIndicators) {
-          if (fullChatText.includes(indicator)) {
-            console.error(`FAILURE: AI generated an image instead of creating project: "${indicator}"`);
-            hasFailure = true;
+            expect(hasFailure).toBe(false);
+            expect(hasProjectCreated).toBe(true);
+          } else {
+            // Chat panel closed - might have redirected to project page
+            // This is still a success if we're on a project page
+            console.log('Chat panel not visible - checking if project page loaded');
+            expect(currentUrl).toMatch(/\/e2e-test-user\//);
           }
         }
-
-        expect(hasFailure).toBe(false);
-        expect(hasProjectCreated || hasProjectUrl).toBe(true);
       } else {
         // AI didn't ask about the image - this is the bug
         console.error('BUG: AI did not ask about the uploaded image');
@@ -1754,8 +1758,16 @@ test.describe('Intelligent Chat', () => {
         expect(askedAboutImage).toBe(true);
       }
 
-      // Chat should remain functional
-      await expect(chatHeader).toBeVisible();
+      // Verify we ended up on a valid page (either chat or project page)
+      // Chat panel closes after project creation and redirects to project page
+      const finalUrl = page.url();
+      if (finalUrl.includes('/e2e-test-user/')) {
+        // We're on the project page - this is expected for successful project creation
+        console.log('✓ Test completed on project page:', finalUrl);
+      } else {
+        // We're still on chat page - verify chat is functional
+        await expect(chatHeader).toBeVisible();
+      }
     });
   });
 

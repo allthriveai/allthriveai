@@ -2128,27 +2128,65 @@ export default function ProfilePage() {
                       ))}
                     </MasonryGrid>
                   ) : (
-                    <div className="py-20 text-center">
+                    <div className="text-center py-20">
+                      <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FontAwesomeIcon icon={faFlask} className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        No projects yet
+                      </h3>
+
                       {isOwnProfile ? (
-                        <button
-                          onClick={() => window.dispatchEvent(new Event('openAddProject'))}
-                          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-medium text-slate-900 transition-all duration-300 hover:scale-105 border border-white/20"
-                          style={{
-                            background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
-                            boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 211, 238, 0.25), 0 2px 8px rgba(74, 222, 128, 0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(34, 211, 238, 0.15)';
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
-                          Add Project
-                        </button>
+                        <div className="max-w-3xl mx-auto">
+                          <p className="text-gray-500 dark:text-gray-400 mb-8">
+                            Start building your portfolio by adding projects
+                          </p>
+
+                          {/* How to add projects instructions */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                            {/* Generate Profile */}
+                            <button
+                              onClick={() => setShowProfileGeneratorTray(true)}
+                              className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
+                            >
+                              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                <FontAwesomeIcon icon={faWandMagicSparkles} className="w-6 h-6 text-purple-500" />
+                              </div>
+                              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                                Generate Profile
+                              </h4>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Tell us about yourself and let AI create your profile with projects, skills, and more
+                              </p>
+                            </button>
+
+                            {/* Add Project with AI */}
+                            <button
+                              onClick={() => window.dispatchEvent(new CustomEvent('openAddProject'))}
+                              className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
+                            >
+                              <div
+                                className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+                                style={{
+                                  background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                                  boxShadow: '0 2px 8px rgba(34, 211, 238, 0.25)',
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faPlus} className="w-6 h-6 text-slate-900" />
+                              </div>
+                              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                                Add Projects with AI
+                              </h4>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Share a link or describe your project, and we'll create a beautiful project page
+                              </p>
+                            </button>
+                          </div>
+                        </div>
                       ) : (
-                        <p className="text-gray-500 dark:text-gray-400">No playground projects yet.</p>
+                        <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                          {displayUser?.firstName || username} hasn't added any projects yet.
+                        </p>
                       )}
                     </div>
                   )}

@@ -9,6 +9,7 @@ Handles:
 """
 
 import logging
+import re
 import time
 import uuid
 
@@ -388,6 +389,22 @@ def _process_with_orchestrator(
     if is_architecture_conversation:
         logger.info('Fast-path: Architecture regeneration - using project agent directly')
         result['intent'] = 'architecture-regeneration'
+        return _process_with_langgraph_agent(
+            conversation_id=conversation_id,
+            message=message,
+            user=user,
+            channel_name=channel_name,
+            channel_layer=channel_layer,
+        )
+
+    # Fast-path: Check for uploaded image/video files - route to project agent
+    # Uploaded files appear as markdown links like [image: filename.png](http://localhost:9000/...)
+    # or [video: filename.mp4](http://localhost:9000/...)
+    # CRITICAL: Uploaded files should ALWAYS go to project agent, NOT image generation!
+    uploaded_media_pattern = r'\[(image|video):\s*[^\]]+\]\(https?://[^)]+\)'
+    if re.search(uploaded_media_pattern, message, re.IGNORECASE):
+        logger.info('Fast-path: Media upload detected - routing to project agent for project creation')
+        result['intent'] = 'project-creation'
         return _process_with_langgraph_agent(
             conversation_id=conversation_id,
             message=message,

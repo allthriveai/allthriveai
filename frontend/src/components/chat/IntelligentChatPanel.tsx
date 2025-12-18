@@ -88,6 +88,9 @@ export function IntelligentChatPanel({
 
   // Integration picker state
   const [showIntegrationPicker, setShowIntegrationPicker] = useState(false);
+
+  // File select trigger function from ChatInterface
+  const triggerFileSelectRef = useRef<(() => void) | null>(null);
   const [integrationStatus, setIntegrationStatus] = useState<{
     github: boolean;
     gitlab: boolean;
@@ -623,6 +626,12 @@ export function IntelligentChatPanel({
         // Set product creation context and show welcome
         setHasInteracted(true);
         sendMessage('I want to create a digital product to sell on the marketplace');
+        break;
+      case 'upload-media':
+        // Trigger file selection dialog
+        if (triggerFileSelectRef.current) {
+          triggerFileSelectRef.current();
+        }
         break;
     }
   }, [handleGitHubImport, handleGitLabImport, handleFigmaImport, sendMessage]);
@@ -1571,6 +1580,9 @@ export function IntelligentChatPanel({
       isUploading={isUploading}
       onCancelUpload={handleCancelUpload}
       onCancelProcessing={cancelProcessing}
+      onFileSelectRef={(triggerFn) => {
+        triggerFileSelectRef.current = triggerFn;
+      }}
     />
   );
 }

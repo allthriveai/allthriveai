@@ -48,7 +48,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 leading-relaxed">
-              A community for AI creators at any level. Share your work, compete in prompt battles, and thrive together.
+              A social learning platform for AI creators. Share what you're working on, compete in prompt battles, and turn learning into play.
             </p>
             {/* Social links */}
             <div className="flex items-center gap-3">
@@ -144,7 +144,7 @@ export function Footer() {
             </Link>
           </p>
           <p className="text-gray-500 dark:text-gray-500 text-sm text-center">
-            Creating with AI? You belong here.
+            Share, learn, and grow together.
           </p>
         </div>
       </div>

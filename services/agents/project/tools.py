@@ -121,24 +121,64 @@ class ImportVideoProjectInput(BaseModel):
     is_private: bool = Field(default=True, description='Whether to mark the project as private')
 
 
-class ImportMediaInput(BaseModel):
-    """Input for import_media unified tool - handles uploaded images, videos, gifs."""
+class CreateMediaProjectInput(BaseModel):
+    """
+    Unified input for create_media_project tool.
 
-    file_url: str = Field(description='The S3/MinIO URL of the uploaded file')
-    filename: str = Field(description='Original filename (e.g., "my-art.png", "demo.mp4")')
+    Handles THREE scenarios:
+    1. GENERATION: User wants to create an image with Gemini (generate_prompt provided)
+    2. FILE IMPORT: User uploaded a file (file_url provided) - images, videos, gifs
+    3. VIDEO URL IMPORT: User pasted a video URL (video_url provided) - YouTube, Vimeo, Loom
+
+    CRITICAL: If file_url is present, it's ALWAYS an import, NEVER generation.
+    """
+
+    # For GENERATION (Gemini) - user wants to create new content
+    generate_prompt: str | None = Field(
+        default=None,
+        description=(
+            'Prompt to generate an image with Gemini. '
+            'Use ONLY when user explicitly asks to create/generate an image. '
+            'Examples: "Make an infographic about AI", "Generate an image of a sunset"'
+        ),
+    )
+
+    # For FILE IMPORT (AI Gateway) - user uploaded their own file
+    file_url: str | None = Field(
+        default=None,
+        description=(
+            'S3/MinIO URL of uploaded file. '
+            'CRITICAL: If this is present, it is an IMPORT, never generation. '
+            'Detected by: [image: filename](url) or [video: filename](url) in message'
+        ),
+    )
+    filename: str | None = Field(
+        default=None,
+        description='Original filename (e.g., "my-art.png", "demo.mp4")',
+    )
+
+    # For VIDEO URL IMPORT (AI Gateway) - user pasted a video URL
+    video_url: str | None = Field(
+        default=None,
+        description='Video URL from YouTube, Vimeo, or Loom to import as a project',
+    )
+
+    # Common fields - required for all scenarios
     title: str | None = Field(
         default=None,
-        description='Title for the project. If None, tool will request user input before proceeding.',
+        description=('Title for the project. ' 'If None, tool returns needs_user_input=True asking for title.'),
     )
     tool_hint: str | None = Field(
         default=None,
         description=(
-            'Tool used to create this (e.g., "Midjourney", "Runway", "Photoshop"). '
-            'If None for images, tool will request user input.'
+            'Tool used to create this content (e.g., "Midjourney", "Runway", "Photoshop"). '
+            'For generation, auto-set to "Gemini". '
+            'For imports, ask user if not provided.'
         ),
     )
-    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+
+    is_showcase: bool = Field(default=True, description='Whether to add to showcase tab')
+    is_private: bool = Field(default=True, description='Whether to mark as private')
 
 
 class ImportFromURLInput(BaseModel):
@@ -173,6 +213,23 @@ class RegenerateArchitectureDiagramInput(BaseModel):
             "User's plain English description of the system architecture. "
             'Should describe the main components and how they connect to each other.'
         )
+    )
+
+
+class CreateProjectFromScreenshotInput(BaseModel):
+    """Input for create_project_from_screenshot tool - fallback when URL scraping fails."""
+
+    screenshot_url: str = Field(description='The S3/MinIO URL of the uploaded screenshot image')
+    screenshot_filename: str = Field(description='Original filename of the screenshot (e.g., "screenshot.png")')
+    original_url: str = Field(default='', description='The original URL that failed to scrape (stored as external_url)')
+    title: str = Field(
+        default='', description='Optional title for the project (extracted from screenshot if not provided)'
+    )
+    is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
+    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_owned: bool = Field(
+        default=True,
+        description='Whether the user owns/created this project (True) or is clipping external content (False)',
     )
 
 
@@ -876,7 +933,17 @@ def scrape_webpage_for_project(
 
     except URLScraperError as e:
         logger.error(f'Failed to scrape URL {url}: {e}')
-        return {'success': False, 'error': f'Could not import from URL: {str(e)}'}
+        return {
+            'success': False,
+            'error': f'Could not import from URL: {str(e)}',
+            'suggest_screenshot': True,
+            'failed_url': url,
+            'message': (
+                "I couldn't access that URL. The site may be blocking automated access. "
+                'Would you like to upload a screenshot of the page instead? '
+                'I can analyze it to create a project for you.'
+            ),
+        }
     except Exception as e:
         logger.exception(f'Unexpected error importing from URL {url}: {e}')
         return {'success': False, 'error': f'Failed to create project: {str(e)}'}
@@ -1019,6 +1086,384 @@ def import_video_project(
             'tools': analysis.get('tool_names', []),
             'sections_count': len(content.get('sections', [])),
         },
+    }
+
+
+# =============================================================================
+# Unified Media Project Tool
+# =============================================================================
+def _detect_media_type(filename: str) -> str:
+    """Detect media type from filename extension."""
+    if not filename:
+        return 'unknown'
+    ext = filename.lower().split('.')[-1] if '.' in filename else ''
+    if ext in ('mp4', 'mov', 'webm', 'avi', 'mkv', 'm4v'):
+        return 'video'
+    elif ext == 'gif':
+        return 'gif'
+    elif ext in ('jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'):
+        return 'image'
+    else:
+        return 'unknown'
+
+
+def _is_video_url(url: str) -> bool:
+    """Check if URL is from a video hosting platform."""
+    if not url:
+        return False
+    url_lower = url.lower()
+    video_domains = ('youtube.com', 'youtu.be', 'vimeo.com', 'loom.com')
+    return any(domain in url_lower for domain in video_domains)
+
+
+@tool(args_schema=CreateMediaProjectInput)
+def create_media_project(
+    generate_prompt: str | None = None,
+    file_url: str | None = None,
+    filename: str | None = None,
+    video_url: str | None = None,
+    title: str | None = None,
+    tool_hint: str | None = None,
+    is_showcase: bool = True,
+    is_private: bool = True,
+    state: dict | None = None,
+) -> dict:
+    """
+    Unified tool for creating media projects - handles generation AND import.
+
+    ROUTING LOGIC:
+    1. If file_url is present → IMPORT FLOW (NEVER generation)
+       - User uploaded an image, video, or gif
+       - Ask for title and tool if missing
+       - Create project with uploaded file
+
+    2. If video_url is present → VIDEO URL IMPORT FLOW
+       - User pasted a YouTube/Vimeo/Loom URL
+       - Extract metadata and create project
+
+    3. If generate_prompt is present (and NO file_url) → GENERATION FLOW
+       - User wants to create an image with Gemini
+       - Generate image, then create project
+
+    CRITICAL: file_url takes priority - if present, it's ALWAYS an import.
+
+    Returns:
+        - If missing required info: {success: False, needs_user_input: True, missing: [...]}
+        - If successful: {success: True, project_id, slug, url, ...}
+    """
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+
+    # Validate state / user context
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+    _ = state.get('username', '')  # Reserved for future use
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # ==========================================================================
+    # FLOW 1: FILE IMPORT (image, video, gif uploaded by user)
+    # ==========================================================================
+    if file_url:
+        # Validate URL format
+        if not file_url.startswith(('http://', 'https://')):
+            return {'success': False, 'error': f'Invalid file URL format: {file_url}'}
+
+        logger.info(f'create_media_project: FILE IMPORT flow for {filename}')
+
+        media_type = _detect_media_type(filename or '')
+
+        # Check if we need user input (title required for all imports)
+        if not title:
+            missing = ['title']
+            if not tool_hint and media_type in ('image', 'gif'):
+                missing.append('tool_hint')
+
+            return {
+                'success': False,
+                'needs_user_input': True,
+                'missing': missing,
+                'media_type': media_type,
+                'file_url': file_url,
+                'filename': filename,
+                'message': (
+                    "What's the title for this project? " 'And what tool did you use to create it?'
+                    if 'tool_hint' in missing
+                    else 'What would you like to call this project?'
+                ),
+            }
+
+        # For videos, use the existing video import logic
+        if media_type == 'video':
+            # Reuse the import_video_project logic internally
+            return _create_video_project_internal(
+                video_url=file_url,
+                filename=filename or 'video.mp4',
+                title=title,
+                tool_hint=tool_hint,
+                is_showcase=is_showcase,
+                is_private=is_private,
+                user=user,
+            )
+
+        # For images/gifs, create an image project
+        return _create_image_project_internal(
+            image_url=file_url,
+            filename=filename or 'image.png',
+            title=title,
+            tool_hint=tool_hint,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            user=user,
+        )
+
+    # ==========================================================================
+    # FLOW 2: VIDEO URL IMPORT (YouTube, Vimeo, Loom)
+    # ==========================================================================
+    if video_url and _is_video_url(video_url):
+        logger.info(f'create_media_project: VIDEO URL flow for {video_url}')
+
+        # For video URLs, we can extract metadata automatically
+        # Use the existing import_from_url logic for YouTube
+        domain_type = _detect_url_domain_type(video_url)
+
+        if domain_type == 'youtube':
+            return _handle_youtube_import(
+                url=video_url,
+                user=user,
+                is_showcase=is_showcase,
+                is_private=is_private,
+            )
+
+        # For Vimeo/Loom, use generic scraper
+        # Assume user owns their own Vimeo/Loom videos (usually personal uploads)
+        return _handle_generic_import(
+            url=video_url,
+            user=user,
+            is_owned=True,
+            is_showcase=is_showcase,
+            is_private=is_private,
+        )
+
+    # ==========================================================================
+    # FLOW 3: GENERATION (create image with Gemini)
+    # ==========================================================================
+    if generate_prompt:
+        logger.info(f'create_media_project: GENERATION flow for prompt: {generate_prompt[:50]}...')
+
+        # For generation, we need a title
+        if not title:
+            return {
+                'success': False,
+                'needs_user_input': True,
+                'missing': ['title'],
+                'generate_prompt': generate_prompt,
+                'message': 'What would you like to call this project once I generate it?',
+            }
+
+        # Generate image with Gemini
+        # Note: This delegates to the existing image generation system
+        # which handles the Gemini API call, upload to MinIO, etc.
+        return _generate_and_create_project(
+            prompt=generate_prompt,
+            title=title,
+            user=user,
+            is_showcase=is_showcase,
+            is_private=is_private,
+        )
+
+    # No valid input provided
+    return {
+        'success': False,
+        'error': (
+            'No media source provided. Either upload a file (file_url), '
+            'paste a video URL (video_url), or describe an image to generate (generate_prompt).'
+        ),
+    }
+
+
+def _create_video_project_internal(
+    video_url: str,
+    filename: str,
+    title: str,
+    tool_hint: str | None,
+    is_showcase: bool,
+    is_private: bool,
+    user,
+) -> dict:
+    """Internal helper to create a video project (reuses import_video_project logic)."""
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.integrations.video.ai_analyzer import analyze_video_for_template
+    from core.projects.models import Project
+
+    logger.info(f'Creating video project: {title} from {filename}')
+
+    # Determine file type
+    file_extension = filename.lower().split('.')[-1] if '.' in filename else 'mp4'
+    file_type_map = {
+        'mp4': 'video/mp4',
+        'mov': 'video/quicktime',
+        'webm': 'video/webm',
+        'avi': 'video/x-msvideo',
+        'mkv': 'video/x-matroska',
+        'm4v': 'video/x-m4v',
+    }
+    file_type = file_type_map.get(file_extension, 'video/mp4')
+
+    # Build context
+    context_parts = []
+    if title:
+        context_parts.append(f'Title: {title}')
+    if tool_hint:
+        context_parts.append(f'Tool used: {tool_hint}')
+    user_context = '. '.join(context_parts)
+
+    # AI analysis with error handling
+    try:
+        analysis = analyze_video_for_template(
+            video_url=video_url,
+            filename=filename,
+            file_type=file_type,
+            user_context=user_context,
+            user=user,
+        )
+        if not analysis:
+            analysis = {}
+    except Exception as e:
+        logger.warning(f'Video analysis failed for {filename}: {e}')
+        analysis = {}
+
+    # Ensure required fields have defaults
+    analysis.setdefault('sections', [])
+    analysis.setdefault('title', title or filename)
+    analysis.setdefault('description', '')
+    analysis.setdefault('tool_names', [])
+
+    # Add user's tool hint
+    if tool_hint:
+        tool_names = analysis.get('tool_names', [])
+        if not any(tool_hint.lower() in t.lower() for t in tool_names):
+            tool_names.insert(0, tool_hint)
+            analysis['tool_names'] = tool_names
+
+    # Build content
+    content = {
+        'templateVersion': 2,
+        'sections': analysis.get('sections', []),
+        'video': {
+            'url': video_url,
+            'filename': filename,
+            'fileType': file_type,
+        },
+    }
+
+    # Create project
+    project = Project.objects.create(
+        user=user,
+        title=title or analysis.get('title', filename),
+        description=analysis.get('description', ''),
+        type=Project.ProjectType.VIDEO,
+        featured_image_url='',
+        content=content,
+        is_showcased=is_showcase,
+        is_private=is_private,
+        tools_order=[],
+    )
+
+    apply_ai_metadata(project, analysis, content=content)
+
+    return {
+        'success': True,
+        'project_id': project.id,
+        'slug': project.slug,
+        'title': project.title,
+        'url': f'/{user.username}/{project.slug}',
+        'message': f"Video project '{project.title}' created successfully!",
+    }
+
+
+def _create_image_project_internal(
+    image_url: str,
+    filename: str,
+    title: str,
+    tool_hint: str | None,
+    is_showcase: bool,
+    is_private: bool,
+    user,
+) -> dict:
+    """Internal helper to create an image project."""
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.projects.models import Project
+
+    logger.info(f'Creating image project: {title} from {filename}')
+
+    # Build content with image
+    content = {
+        'templateVersion': 2,
+        'sections': [],
+        'heroDisplayMode': 'image',
+    }
+
+    # Create project with the uploaded image as featured image
+    project = Project.objects.create(
+        user=user,
+        title=title,
+        description='',
+        type=Project.ProjectType.IMAGE,
+        featured_image_url=image_url,
+        content=content,
+        is_showcased=is_showcase,
+        is_private=is_private,
+        tools_order=[],
+    )
+
+    # Apply tool if provided
+    if tool_hint:
+        analysis = {'tool_names': [tool_hint]}
+        apply_ai_metadata(project, analysis, content=content)
+
+    return {
+        'success': True,
+        'project_id': project.id,
+        'slug': project.slug,
+        'title': project.title,
+        'url': f'/{user.username}/{project.slug}',
+        'message': f"Image project '{project.title}' created successfully!",
+    }
+
+
+def _generate_and_create_project(
+    prompt: str,
+    title: str,
+    user,
+    is_showcase: bool,
+    is_private: bool,
+) -> dict:
+    """
+    Generate an image with Gemini and create a project from it.
+
+    Note: For now, this returns a message asking to use the image generation flow.
+    Full integration with the existing image generation system would require
+    extracting that logic from the WebSocket/Celery flow.
+    """
+
+    # TODO: Integrate with existing Gemini image generation from tasks.py
+    # For now, return instruction to use the chat's image generation flow
+    return {
+        'success': False,
+        'needs_generation': True,
+        'prompt': prompt,
+        'title': title,
+        'message': (
+            f'I\'ll generate an image based on: "{prompt}"\n\n'
+            'Please wait while I create your image with Nano Banana...'
+        ),
     }
 
 
@@ -1492,7 +1937,17 @@ def _handle_generic_import(
 
     except URLScraperError as e:
         logger.error(f'Failed to scrape URL {url}: {e}')
-        return {'success': False, 'error': f'Could not import from URL: {str(e)}'}
+        return {
+            'success': False,
+            'error': f'Could not import from URL: {str(e)}',
+            'suggest_screenshot': True,
+            'failed_url': url,
+            'message': (
+                "I couldn't access that URL. The site may be blocking automated access. "
+                'Would you like to upload a screenshot of the page instead? '
+                'I can analyze it to create a project for you.'
+            ),
+        }
     except Exception as e:
         logger.exception(f'Unexpected error importing from URL {url}: {e}')
         return {'success': False, 'error': f'Failed to create project: {str(e)}'}
@@ -1790,15 +2245,175 @@ Return ONLY the Mermaid code starting with "graph TB". No explanation."""
         return {'success': False, 'error': f'Failed to regenerate diagram: {str(e)}'}
 
 
+@tool(args_schema=CreateProjectFromScreenshotInput)
+def create_project_from_screenshot(
+    screenshot_url: str,
+    screenshot_filename: str,
+    original_url: str = '',
+    title: str = '',
+    is_showcase: bool = True,
+    is_private: bool = True,
+    is_owned: bool = True,
+    state: dict | None = None,
+) -> dict:
+    """
+    Create a project by analyzing a screenshot when URL scraping fails.
+
+    This is a fallback tool for when import_from_url cannot scrape a webpage.
+    The AI analyzes the screenshot to extract title and description,
+    but the screenshot is NOT used as the hero/featured image.
+
+    Returns:
+        Dictionary with project details or error message
+    """
+    import json as json_module
+
+    from django.contrib.auth import get_user_model
+
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.projects.models import Project
+    from services.ai import AIProvider
+
+    User = get_user_model()
+
+    # Validate state / user context
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+    username = state.get('username', '')
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    logger.info(
+        f'create_project_from_screenshot: Analyzing screenshot for user {username}',
+        extra={
+            'screenshot_url': screenshot_url,
+            'original_url': original_url,
+            'has_title': bool(title),
+        },
+    )
+
+    try:
+        # Use vision AI to analyze the screenshot
+        ai = AIProvider(provider='gemini', user_id=user_id)
+
+        analysis_prompt = """Analyze this screenshot of a webpage or project. Extract the following information:
+
+1. title: The main title or name shown (be specific, use the actual text visible)
+2. description: A brief 2-3 sentence description of what this page/project is about
+3. topics: 3-5 relevant topic keywords as a list
+4. project_type: One of: "tool", "article", "portfolio", "website", "app", "other"
+
+Return ONLY valid JSON in this exact format, no other text:
+{"title": "...", "description": "...", "topics": ["...", "..."], "project_type": "..."}"""
+
+        analysis_text = ai.complete_with_image(
+            prompt=analysis_prompt,
+            image_url=screenshot_url,
+            temperature=0.3,
+        )
+
+        # Parse the AI response
+        extracted_data = {}
+        try:
+            # Try to extract JSON from the response
+            # Sometimes AI wraps it in markdown code blocks
+            json_text = analysis_text
+            if '```json' in json_text:
+                json_text = json_text.split('```json')[1].split('```')[0]
+            elif '```' in json_text:
+                json_text = json_text.split('```')[1].split('```')[0]
+
+            extracted_data = json_module.loads(json_text.strip())
+        except (json_module.JSONDecodeError, IndexError) as e:
+            logger.warning(f'Failed to parse AI analysis as JSON: {e}')
+            # Use defaults if parsing fails
+            extracted_data = {
+                'title': '',
+                'description': analysis_text[:500] if analysis_text else '',
+                'topics': [],
+                'project_type': 'other',
+            }
+
+        # Use provided title or extracted title
+        final_title = title or extracted_data.get('title') or 'Imported Project'
+        final_description = extracted_data.get('description') or ''
+        topics = extracted_data.get('topics') or []
+
+        # Map to project type enum (owned = OTHER, not owned = CLIPPED)
+        project_type = Project.ProjectType.OTHER if is_owned else Project.ProjectType.CLIPPED
+
+        # Build content with source info
+        content = {
+            'templateVersion': 2,
+            'sections': [],
+            'source_url': original_url,
+            'imported_via': 'screenshot_analysis',
+        }
+
+        # Create project WITHOUT featured image (screenshot is just for analysis)
+        project = Project.objects.create(
+            user=user,
+            title=final_title,
+            description=final_description,
+            type=project_type,
+            external_url=original_url,
+            featured_image_url='',  # Explicitly empty - don't use screenshot as hero
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+            tools_order=[],
+        )
+
+        # Apply AI metadata for topics/categories
+        if topics:
+            apply_ai_metadata(
+                project,
+                {'topics': topics, 'description': final_description},
+                content=content,
+            )
+
+        logger.info(
+            f'Successfully created project from screenshot: {project.id}',
+            extra={
+                'project_id': project.id,
+                'title': final_title,
+                'original_url': original_url,
+            },
+        )
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'url': f'/{username}/{project.slug}',
+            'message': (
+                f"I created a project called '{project.title}' from your screenshot. "
+                'You can add a hero image later in the project editor.'
+            ),
+        }
+
+    except Exception as e:
+        logger.exception(f'Error creating project from screenshot: {e}')
+        return {'success': False, 'error': f'Failed to analyze screenshot: {str(e)}'}
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
 PROJECT_TOOLS = [
     create_project,
+    create_media_project,  # NEW: Unified media tool (images, videos, generation)
+    create_project_from_screenshot,  # Fallback when URL scraping fails
     extract_url_info,
-    import_from_url,  # NEW: Unified URL import tool
+    import_from_url,  # Unified URL import tool
     import_github_project,  # Keep for backwards compatibility
-    import_video_project,
+    # import_video_project - DEPRECATED, use create_media_project instead
     scrape_webpage_for_project,  # Keep for backwards compatibility
     create_product,
     regenerate_architecture_diagram,  # Regenerate architecture diagrams from user descriptions

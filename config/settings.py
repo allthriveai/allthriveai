@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     'core.social',  # Social connections
     'core.engagement',  # Engagement tracking for personalization
     'core.tasks',  # Admin task tracker for team coordination
+    'core.uat_scenarios',  # UAT scenario tracking for QA
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

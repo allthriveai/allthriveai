@@ -3,10 +3,12 @@
  *
  * Displays featured image with zoom-on-hover and full-screen modal.
  * Supports inline editing for owners with upload/change/remove controls.
+ * Supports drag-and-drop to open the editor tray and upload simultaneously.
  * Returns null if no image is provided and not in editing mode.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import type { DragEvent } from 'react';
 import { PhotoIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface HeroImageProps {
@@ -31,7 +33,65 @@ export function HeroImage({
 }: HeroImageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [urlInputValue, setUrlInputValue] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle drag events for drag-and-drop file upload
+  const handleDragEnter = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isEditing) return;
+      setIsDragging(true);
+    },
+    [isEditing]
+  );
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set to false if we're leaving the dropzone entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+
+      if (!isEditing) return;
+
+      const files = e.dataTransfer.files;
+      if (files.length === 0) return;
+
+      const file = files[0];
+
+      // Validate it's an image
+      if (!file.type.startsWith('image/')) {
+        console.warn('Only image files are supported');
+        return;
+      }
+
+      // Open the tray if callback is provided
+      if (onEditClick) {
+        onEditClick();
+      }
+
+      // Upload the file
+      if (onImageUpload) {
+        onImageUpload(file);
+      }
+    },
+    [isEditing, onEditClick, onImageUpload]
+  );
 
   // Check if URL is a video file (should not be rendered as image)
   const isVideoUrl = imageUrl && /\.(mp4|webm|mov|avi|mkv|m4v)(\?|$)/i.test(imageUrl);
@@ -67,15 +127,37 @@ export function HeroImage({
               fileInputRef.current?.click();
             }
           }}
-          className="relative group transform hover:scale-[1.02] transition-all duration-500 ease-out cursor-pointer"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`relative group transform hover:scale-[1.02] transition-all duration-500 ease-out cursor-pointer ${
+            isDragging ? 'scale-[1.02]' : ''
+          }`}
         >
-          <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50" />
-          <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 border-dashed shadow-2xl">
+          <div
+            className={`absolute -inset-2 md:-inset-4 rounded-2xl md:rounded-3xl blur-lg md:blur-xl transition-all duration-300 ${
+              isDragging ? 'bg-primary-500/20 opacity-100' : 'bg-white/5 opacity-50'
+            }`}
+          />
+          <div
+            className={`relative p-1 md:p-2 backdrop-blur-sm rounded-2xl md:rounded-3xl border-dashed shadow-2xl transition-all duration-300 ${
+              isDragging
+                ? 'bg-primary-500/10 border-2 border-primary-500'
+                : 'bg-white/10 border border-white/20'
+            }`}
+          >
             <div className="w-full aspect-video rounded-xl md:rounded-2xl bg-white/5 flex flex-col items-center justify-center p-8 min-h-[200px]">
               {isUploading ? (
                 <>
                   <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
                   <p className="text-white/60 text-sm">Uploading...</p>
+                </>
+              ) : isDragging ? (
+                <>
+                  <PhotoIcon className="w-16 h-16 text-primary-400 mb-4 animate-bounce" />
+                  <p className="text-primary-400 text-sm font-medium mb-2">Drop image to upload</p>
+                  <p className="text-white/40 text-xs">Release to open editor</p>
                 </>
               ) : (
                 <>
@@ -136,7 +218,7 @@ export function HeroImage({
       <div
         className={`relative group transform hover:scale-[1.02] transition-all duration-500 ease-out hover:rotate-1 ${
           isEditing ? 'cursor-pointer' : 'cursor-zoom-in'
-        }`}
+        } ${isDragging ? 'scale-[1.02] rotate-0' : ''}`}
         onClick={() => {
           if (isEditing && onEditClick) {
             onEditClick();
@@ -144,10 +226,24 @@ export function HeroImage({
             setIsModalOpen(true);
           }
         }}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {/* Glassy Card Container for Image */}
-        <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-        <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
+        <div
+          className={`absolute -inset-2 md:-inset-4 rounded-2xl md:rounded-3xl blur-lg md:blur-xl transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl ${
+            isDragging ? 'bg-primary-500/20 opacity-100' : 'bg-white/5 opacity-50'
+          }`}
+        />
+        <div
+          className={`relative p-1 md:p-2 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl transition-all duration-300 ${
+            isDragging
+              ? 'bg-primary-500/10 border-2 border-primary-500'
+              : 'bg-white/10 border border-white/20'
+          }`}
+        >
           {isUploading ? (
             <div className="w-full aspect-video rounded-xl md:rounded-2xl bg-white/5 flex items-center justify-center">
               <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
@@ -160,8 +256,16 @@ export function HeroImage({
             />
           )}
 
+          {/* Drag overlay - shows when dragging file over existing image */}
+          {isEditing && isDragging && (
+            <div className="absolute inset-0 m-1 md:m-2 rounded-xl md:rounded-2xl bg-primary-500/30 backdrop-blur-sm transition-all flex flex-col items-center justify-center">
+              <PhotoIcon className="w-16 h-16 text-white mb-4 animate-bounce" />
+              <p className="text-white text-sm font-medium">Drop to replace image</p>
+            </div>
+          )}
+
           {/* Edit overlay for owners */}
-          {isEditing && !isUploading && (
+          {isEditing && !isUploading && !isDragging && (
             <div className="absolute inset-0 m-1 md:m-2 rounded-xl md:rounded-2xl bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
               <div className="flex items-center gap-3">
                 <button

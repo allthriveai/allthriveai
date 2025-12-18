@@ -50,6 +50,9 @@ help:
 	@echo "  make load-tools      - Load tools from YAML file into database"
 	@echo "  make export-tasks    - Export tasks from database to YAML file"
 	@echo "  make load-tasks      - Load tasks from YAML file into database"
+	@echo "  make export-uat-scenarios - Export UAT scenarios from database to YAML file"
+	@echo "  make load-uat-scenarios   - Load UAT scenarios from YAML file into database"
+	@echo "  make aws-load-uat-scenarios - Load UAT scenarios on AWS production"
 	@echo "  make refresh-tool-news - Refresh What's New for tools (TOOL=slug, LIMIT=n, DRY_RUN=1)"
 	@echo "  make create-youtube-agent - Create YouTube feed agent (CHANNEL_URL, SOURCE_NAME required)"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
@@ -297,6 +300,20 @@ export-tasks:
 load-tasks:
 	@echo "Loading tasks from YAML..."
 	docker-compose exec web python manage.py seed_tasks
+
+# UAT Scenarios YAML commands
+export-uat-scenarios:
+	@echo "Exporting UAT scenarios to YAML..."
+	docker-compose exec web python manage.py export_uat_scenarios
+
+load-uat-scenarios:
+	@echo "Loading UAT scenarios from YAML..."
+	docker-compose exec web python manage.py seed_uat_scenarios
+
+# Deploy UAT scenarios to production
+aws-load-uat-scenarios:
+	@echo "Loading UAT scenarios on AWS $(ENVIRONMENT)..."
+	@make aws-run-command CMD="seed_uat_scenarios"
 
 reset-db:
 	@echo "⚠️  WARNING: This will DELETE all data in the database!"

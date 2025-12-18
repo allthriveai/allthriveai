@@ -539,7 +539,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     return (
       <>
         {/* Battle Header */}
-        <div className="flex-shrink-0 px-5 py-4 border-b border-cyan-500/30 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex-shrink-0 px-6 md:px-5 py-4 border-b border-cyan-500/30 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900">
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -575,7 +575,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         {/* Battle Content - VS Layout */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain bg-gradient-to-b from-slate-900 to-slate-800 pb-10">
           {/* Your Submission */}
-          <div className="p-4">
+          <div className="p-6 md:p-4">
             <div className="relative">
               {/* Player label */}
               <div className="flex items-center gap-2 mb-2">
@@ -624,7 +624,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           </div>
 
           {/* Opponent Submission */}
-          <div className="p-4 pt-2">
+          <div className="px-6 md:px-4 pb-6 md:pb-4 pt-2">
             <div className="relative">
               {/* Player label */}
               <div className="flex items-center gap-2 mb-2">
@@ -666,7 +666,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           </div>
 
           {/* Prompts & Scores Section */}
-          <div className="px-4 pb-4 space-y-4">
+          <div className="px-6 md:px-4 pb-6 md:pb-4 space-y-4">
             {/* Your Submission Card */}
             <div className="p-4 rounded-xl bg-slate-800/80 border border-cyan-500/30">
               {/* Player header */}
@@ -747,7 +747,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Tool badges */}
           {project.toolsDetails && project.toolsDetails.length > 0 && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-6 md:pb-4">
               <p className="text-xs text-gray-500 mb-2">Tools used:</p>
               <div className="flex flex-wrap gap-2">
                 {project.toolsDetails.slice(0, 3).map((tool) => (
@@ -771,7 +771,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-4 py-4 border-t border-cyan-500/30 bg-slate-900">
+        <div className="flex-shrink-0 px-6 md:px-4 py-4 border-t border-cyan-500/30 bg-slate-900">
           {/* Action buttons */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -852,7 +852,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     return (
       <>
         {/* Header - Fixed with opaque background for readability */}
-        <div className="flex-shrink-0 px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+        <div className="flex-shrink-0 px-6 md:px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
@@ -882,7 +882,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         {/* Content - Scrollable */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain pb-10">
           {/* Video or Featured Image */}
-          <div className="p-4">
+          <div className="p-6 md:p-4">
             {isVideo && videoUrl ? (
               <div className="rounded-lg overflow-hidden">
                 <HeroVideo
@@ -903,7 +903,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           </div>
 
           {/* Category and Tool badges */}
-          <div className="px-4 pb-3">
+          <div className="px-6 md:px-4 pb-3">
             <div className="flex flex-wrap gap-2">
               {project.categoriesDetails?.slice(0, 3).map((category) => (
                 <span
@@ -937,7 +937,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Headline (if available) */}
           {headline && (
-            <div className="px-4 pb-3">
+            <div className="px-6 md:px-4 pb-3">
               <p className="text-base font-medium text-gray-900 dark:text-white leading-snug">
                 {headline}
               </p>
@@ -946,7 +946,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Description / Teaser */}
           {teaserContent && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-base prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-li:my-0">
                 <ReactMarkdown>{teaserContent}</ReactMarkdown>
               </div>
@@ -955,7 +955,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Reddit Discussion Content */}
           {isRedditThread && redditSelftext && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
                 Discussion
               </h3>
@@ -969,7 +969,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Reddit Metadata (subreddit, score, comments) */}
           {isRedditThread && redditData && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                 {redditData.subreddit && (
                   <a
@@ -1012,7 +1012,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Loading indicator for enriched content */}
           {isLoadingContent && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                 <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
                 Loading more details...
@@ -1022,7 +1022,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Key Features (if available) */}
           {features.length > 0 && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
                 Key Features
               </h3>
@@ -1058,7 +1058,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Gallery Preview (if available) */}
           {galleryImages.length > 0 && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
                 Gallery
               </h3>
@@ -1081,7 +1081,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* CTAs from Demo Section */}
           {ctas.length > 0 && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <div className="flex flex-wrap gap-2">
                 {ctas.slice(0, 2).map((cta: any, index: number) => (
                   <a
@@ -1101,7 +1101,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
           {/* Tags */}
           {project.content?.tags && project.content.tags.length > 0 && (
-            <div className="px-4 pb-4">
+            <div className="px-6 md:px-4 pb-4">
               <div className="flex flex-wrap gap-1.5">
                 {(project.content.tags as string[]).slice(0, 5).map((tag, index) => (
                   <span
@@ -1117,7 +1117,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         </div>
 
         {/* Footer - Fixed */}
-        <div className="flex-shrink-0 px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+        <div className="flex-shrink-0 px-6 md:px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
           {/* Action buttons */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
