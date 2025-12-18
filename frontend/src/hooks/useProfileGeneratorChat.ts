@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import type { ProfileSection } from '@/types/profileSections';
+import { uploadImage } from '@/services/upload';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -8,6 +9,7 @@ export interface ProfileChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  imageUrl?: string; // URL of uploaded image (if any)
 }
 
 export interface ProfileGeneratorState {
@@ -36,6 +38,8 @@ const WELCOME_MESSAGE = `Hey! I'm here to help create an amazing profile that sh
 
 **Tell me a bit about yourself!** What do you do, what are you passionate about, or what would you like people to know about you?
 
+💡 **Pro tip:** You can **drag & drop a screenshot of your LinkedIn profile** and I'll use it to build your profile! (I can't scrape LinkedIn directly, but screenshots work great!)
+
 For example:
 - "I'm a full-stack developer who loves building AI tools"
 - "I'm a designer exploring the intersection of art and technology"
@@ -46,6 +50,7 @@ Share as much or as little as you'd like — I'll use this to craft your profile
 export interface UseProfileGeneratorChatReturn {
   state: ProfileGeneratorState;
   sendMessage: (message: string) => Promise<void>;
+  sendMessageWithImage: (message: string, imageFile: File) => Promise<void>;
   resetChat: () => void;
   applyGeneratedSections: () => ProfileSection[] | null;
 }
@@ -76,7 +81,7 @@ export function useProfileGeneratorChat(): UseProfileGeneratorChatReturn {
     return `msg-${messageIdRef.current}-${Date.now()}`;
   }, []);
 
-  const addUserMessage = useCallback((content: string) => {
+  const addUserMessage = useCallback((content: string, imageUrl?: string) => {
     setState(prev => ({
       ...prev,
       messages: [
@@ -86,23 +91,26 @@ export function useProfileGeneratorChat(): UseProfileGeneratorChatReturn {
           role: 'user',
           content,
           timestamp: new Date(),
+          imageUrl,
         },
       ],
     }));
   }, [generateMessageId]);
 
-  const sendMessage = useCallback(async (message: string) => {
-    if (!message.trim() || state.isStreaming) return;
-
-    // Add user message immediately
-    addUserMessage(message);
-
+  const streamMessage = useCallback(async (message: string, imageUrl?: string) => {
     setState(prev => ({ ...prev, isStreaming: true, error: null }));
     currentMessageRef.current = '';
 
+    // Build the message content - include image URL if present
+    let messageContent = message.trim();
+    if (imageUrl) {
+      messageContent = `${messageContent}\n\n[Uploaded Image: ${imageUrl}]`;
+    }
+
     const payload = {
       session_id: state.sessionId,
-      message: message.trim(),
+      message: messageContent,
+      image_url: imageUrl, // Also send as separate field for backend
     };
 
     try {
@@ -237,7 +245,60 @@ export function useProfileGeneratorChat(): UseProfileGeneratorChatReturn {
         currentTool: null,
       }));
     }
-  }, [state.sessionId, state.isStreaming, addUserMessage, generateMessageId]);
+  }, [state.sessionId, generateMessageId]);
+
+  const sendMessage = useCallback(async (message: string) => {
+    if (!message.trim() || state.isStreaming) return;
+
+    // Add user message immediately
+    addUserMessage(message);
+
+    // Stream the response
+    await streamMessage(message);
+  }, [state.isStreaming, addUserMessage, streamMessage]);
+
+  const sendMessageWithImage = useCallback(async (message: string, imageFile: File) => {
+    if (state.isStreaming) return;
+
+    // Create a local preview URL for immediate display
+    const localPreviewUrl = URL.createObjectURL(imageFile);
+
+    // Add user message with local preview immediately
+    addUserMessage(message, localPreviewUrl);
+
+    setState(prev => ({ ...prev, isStreaming: true, error: null }));
+
+    try {
+      // Upload the image first
+      const uploadResult = await uploadImage(imageFile, 'profile-generator');
+
+      // Clean up local preview URL
+      URL.revokeObjectURL(localPreviewUrl);
+
+      // Update the message with the real uploaded URL
+      setState(prev => {
+        const messages = [...prev.messages];
+        const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+        if (lastUserMessage) {
+          lastUserMessage.imageUrl = uploadResult.url;
+        }
+        return { ...prev, messages, isStreaming: false };
+      });
+
+      // Now stream the message with the image URL
+      await streamMessage(message, uploadResult.url);
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      // Clean up local preview URL
+      URL.revokeObjectURL(localPreviewUrl);
+
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to upload image',
+        isStreaming: false,
+      }));
+    }
+  }, [state.isStreaming, addUserMessage, streamMessage]);
 
   const resetChat = useCallback(() => {
     setState({
@@ -266,6 +327,7 @@ export function useProfileGeneratorChat(): UseProfileGeneratorChatReturn {
   return {
     state,
     sendMessage,
+    sendMessageWithImage,
     resetChat,
     applyGeneratedSections,
   };

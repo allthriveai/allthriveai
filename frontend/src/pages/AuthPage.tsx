@@ -270,11 +270,13 @@ export default function AuthPage() {
     }
   }, [isAuthenticated, user?.username, navigate]);
 
-  const handleOAuthLogin = (provider: 'google' | 'github' | 'linkedin_oauth2') => {
+  const handleOAuthLogin = (provider: 'google' | 'github' | 'linkedin') => {
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    // LinkedIn uses OpenID Connect with a different URL pattern
+    const providerPath = provider === 'linkedin' ? 'oidc/linkedin' : provider;
     // Check for next param to redirect after OAuth
     const nextUrl = searchParams.get('next');
-    let loginUrl = `${backendUrl}/accounts/${provider}/login/?process=login`;
+    let loginUrl = `${backendUrl}/accounts/${providerPath}/login/?process=login`;
     if (nextUrl) {
       // Pass the next URL to backend so it can redirect after OAuth completes
       loginUrl += `&next=${encodeURIComponent(nextUrl)}`;
@@ -526,7 +528,7 @@ export default function AuthPage() {
                 GitHub
               </motion.button>
               <motion.button
-                onClick={() => handleOAuthLogin('linkedin_oauth2')}
+                onClick={() => handleOAuthLogin('linkedin')}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-cyan-400/30 transition-all text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-background"
                 variants={motionButtonVariants}
                 whileHover={prefersReducedMotion ? {} : "hover"}

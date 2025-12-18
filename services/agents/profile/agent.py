@@ -298,14 +298,131 @@ async def generate_profile(user_id: int, username: str, focus_areas: list[str] |
         return {'success': False, 'error': str(e)}
 
 
+def _fetch_image_as_base64(image_url: str) -> str | None:
+    """
+    Fetch an image from URL and convert to base64 data URI.
+
+    This is needed because AI models can't access localhost/internal URLs.
+    We fetch the image ourselves and embed it as base64.
+
+    Handles:
+    - Local MinIO URLs (localhost:9000)
+    - Production S3 URLs (s3.amazonaws.com)
+    - CloudFront URLs
+    - Presigned URLs
+    """
+    import base64
+    import os
+
+    import httpx
+
+    try:
+        fetch_url = image_url
+        image_data = None
+        content_type = 'image/png'
+
+        # Convert localhost to Docker internal hostname if running in Docker
+        if os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER'):
+            if 'localhost:9000' in fetch_url:
+                fetch_url = fetch_url.replace('localhost:9000', 'minio:9000')
+            if '127.0.0.1:9000' in fetch_url:
+                fetch_url = fetch_url.replace('127.0.0.1:9000', 'minio:9000')
+
+        # Check if this is an S3 URL that might need IAM auth (private bucket)
+        # Note: Public S3 URLs and presigned URLs work with regular HTTP
+        is_s3_private = (
+            's3.amazonaws.com' in image_url
+            and '?' not in image_url  # Presigned URLs have query params
+            and '/public/' not in image_url  # Our public folder
+        )
+
+        if is_s3_private:
+            # Use storage service with IAM credentials
+            try:
+                import re
+
+                from services.integrations.storage.storage_service import get_storage_service
+
+                # Parse S3 URL: https://bucket.s3.region.amazonaws.com/key
+                # or https://s3.region.amazonaws.com/bucket/key
+                match = re.match(r'https?://(?:([^.]+)\.)?s3[.\w-]*\.amazonaws\.com/(.+)', image_url)
+                if match:
+                    _bucket_or_key = match.group(1) or match.group(2).split('/')[0]
+                    object_key = match.group(2) if match.group(1) else '/'.join(match.group(2).split('/')[1:])
+
+                    storage = get_storage_service()
+                    response = storage.client.get_object(storage.bucket_name, object_key)
+                    image_data = response.read()
+                    content_type = response.headers.get('Content-Type', 'image/png')
+                    response.close()
+                    response.release_conn()
+            except Exception as e:
+                logger.warning(f'Failed to fetch S3 image with IAM, trying public: {e}')
+                is_s3_private = False
+
+        if image_data is None:
+            # Fetch via HTTP (works for public URLs, presigned URLs, local URLs)
+            response = httpx.get(fetch_url, timeout=30, follow_redirects=True)
+            response.raise_for_status()
+            image_data = response.content
+            content_type = response.headers.get('content-type', 'image/png')
+
+        # Clean content type
+        if ';' in content_type:
+            content_type = content_type.split(';')[0].strip()
+
+        # Convert to base64 data URI
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+        logger.info(f'Fetched image ({len(image_data)} bytes) and converted to base64')
+        return f'data:{content_type};base64,{base64_image}'
+
+    except Exception as e:
+        logger.error(f'Failed to fetch image from {image_url}: {e}')
+        return None
+
+
+def _create_human_message(user_message: str, image_url: str | None = None) -> HumanMessage:
+    """
+    Create a HumanMessage, optionally with image content for vision.
+
+    For multimodal messages, LangChain expects content to be a list of
+    content blocks (text and image_url types).
+    """
+    if not image_url:
+        return HumanMessage(content=user_message)
+
+    # Fetch image and convert to base64 (AI models can't access localhost URLs)
+    base64_data_uri = _fetch_image_as_base64(image_url)
+
+    if not base64_data_uri:
+        # If image fetch failed, just send text with a note
+        logger.warning('Could not fetch image, sending text only')
+        return HumanMessage(content=f'{user_message}\n\n[Note: An image was uploaded but could not be processed]')
+
+    # Create multimodal message with text and base64 image
+    content = [
+        {'type': 'text', 'text': user_message},
+        {'type': 'image_url', 'image_url': {'url': base64_data_uri}},
+    ]
+    return HumanMessage(content=content)
+
+
 async def stream_profile_generation(
     user_message: str,
     user_id: int,
     username: str,
     session_id: str,
+    image_url: str | None = None,
 ):
     """
     Stream profile generation responses for interactive use.
+
+    Args:
+        user_message: The user's text message
+        user_id: User ID
+        username: Username
+        session_id: Session ID for checkpointing
+        image_url: Optional URL of an uploaded image (e.g., LinkedIn screenshot)
 
     Yields:
         Dictionary with response chunks and metadata
@@ -314,13 +431,19 @@ async def stream_profile_generation(
 
     config = {'configurable': {'thread_id': session_id, 'user_id': user_id}}
 
+    # Create message (multimodal if image provided)
+    human_message = _create_human_message(user_message, image_url)
+
     input_state = {
-        'messages': [HumanMessage(content=user_message)],
+        'messages': [human_message],
         'user_id': user_id,
         'username': username,
         'user_data': None,
         'generated_sections': None,
     }
+
+    if image_url:
+        logger.info(f'Profile generation with image: {image_url[:50]}...')
 
     # Track for deduplication
     processed_tool_calls = set()

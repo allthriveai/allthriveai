@@ -99,6 +99,14 @@ class GenerateProfileSectionsInput(BaseModel):
         description='User data from gather_user_data tool. If empty, will be fetched automatically.',
     )
     focus_areas: list[str] = Field(default=[], description='Specific areas the user wants to highlight')
+    about_bio: str = Field(
+        default='',
+        description=(
+            'Custom bio content to use for the About section. '
+            'YOU MUST provide this based on the LinkedIn screenshot or conversation. '
+            'Write 2-3 sentences capturing who they are and what they do.'
+        ),
+    )
 
 
 class SaveProfileSectionsInput(BaseModel):
@@ -343,6 +351,7 @@ def generate_profile_sections(
     template: str = '',
     sections_to_generate: list[str] | None = None,
     focus_areas: list[str] | None = None,
+    about_bio: str = '',
     state: dict | None = None,
 ) -> dict:
     """
@@ -410,6 +419,7 @@ def generate_profile_sections(
             achievements=achievements,
             interests=interests,
             focus_areas=focus_areas,
+            about_bio=about_bio,
         )
         if section:
             generated_sections.append(section)
@@ -432,6 +442,7 @@ def _generate_section(
     achievements: list,
     interests: list,
     focus_areas: list,
+    about_bio: str = '',
 ) -> dict | None:
     """
     Generate a single profile section based on type.
@@ -452,13 +463,15 @@ def _generate_section(
     section_id = f'profile-section-{section_type}-{uuid.uuid4().hex[:9]}'
 
     if section_type == 'about':
+        # Use AI-generated bio if provided, otherwise fall back to existing bio
+        bio_content = about_bio.strip() if about_bio else basic.get('bio', '')
         return {
             'id': section_id,
             'type': 'about',
             'visible': True,
             'order': order,
             'content': {
-                'bio': basic.get('bio', ''),
+                'bio': bio_content,
                 'showLocation': bool(basic.get('location')),
                 'showPronouns': bool(basic.get('pronouns')),
                 'showStatus': bool(basic.get('current_status')),

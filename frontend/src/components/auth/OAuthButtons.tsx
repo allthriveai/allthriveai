@@ -3,10 +3,12 @@ import { useState } from 'react';
 export function OAuthButtons() {
   const [isLoading] = useState(false);
 
-  const handleOAuthLogin = (provider: 'google' | 'github' | 'linkedin_oauth2') => {
+  const handleOAuthLogin = (provider: 'google' | 'github' | 'linkedin') => {
     // Simple full-page redirect to OAuth - no popup
     const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const loginUrl = `${backendUrl}/accounts/${provider}/login/?process=login`;
+    // LinkedIn uses OpenID Connect with a different URL pattern
+    const providerPath = provider === 'linkedin' ? 'oidc/linkedin' : provider;
+    const loginUrl = `${backendUrl}/accounts/${providerPath}/login/?process=login`;
     window.location.href = loginUrl;
   };
 
@@ -40,7 +42,7 @@ export function OAuthButtons() {
       </button>
 
       <button
-        onClick={() => handleOAuthLogin('linkedin_oauth2')}
+        onClick={() => handleOAuthLogin('linkedin')}
         type="button"
         disabled={isLoading}
         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all duration-200 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
