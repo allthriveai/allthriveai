@@ -40,6 +40,7 @@ from .auth.views import (
     username_profile_view,
 )
 from .auth.views_token import generate_ws_connection_token
+from .avatars.views import AvatarGenerationSessionViewSet, UserAvatarViewSet
 from .battles.views import (
     BattleInvitationViewSet,
     PromptBattleViewSet,
@@ -183,6 +184,8 @@ me_router.register(r'side-quests', SideQuestViewSet, basename='me-side-quests')
 me_router.register(r'quest-categories', QuestCategoryViewSet, basename='me-quest-categories')
 me_router.register(r'achievements', AchievementViewSet, basename='me-achievements')
 me_router.register(r'circles', CircleViewSet, basename='me-circles')
+me_router.register(r'avatars', UserAvatarViewSet, basename='me-avatars')
+me_router.register(r'avatar-sessions', AvatarGenerationSessionViewSet, basename='me-avatar-sessions')
 
 # Taxonomy router (public but auth-required)
 taxonomy_router = DefaultRouter()

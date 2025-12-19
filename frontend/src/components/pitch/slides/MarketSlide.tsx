@@ -103,7 +103,7 @@ export function MarketSlide() {
           <p className="text-gray-500">
             Behance proved designers need portfolios <span className="text-cyan-400 font-medium">(acquired for $150M)</span>
             <br />
-            <span className="text-white">We're building the same for AI creators</span>
+            <span className="text-white">We're building the same for the AI curious</span>
           </p>
         </motion.div>
       </div>

@@ -223,6 +223,10 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       setEventsOpen(true);
       setAboutOpen(false);
     } else if (menuItem === 'Chat') {
+      // On /home, chat is embedded - don't open sidebar
+      if (location.pathname === '/home') {
+        return;
+      }
       // Open chat panel in support mode (with help questions visible)
       setAddProjectOpen(true);
       setChatSupportMode(true);
@@ -230,7 +234,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       setAboutOpen(false);
       setEventsOpen(false);
     }
-  }, []);
+  }, [location.pathname]);
 
   const handleCloseAbout = () => {
     setAboutOpen(false);
@@ -284,7 +288,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         {/* Top Navigation */}
         <TopNavigation
           onMenuClick={handleMenuClick}
-          onAddProject={handleOpenAddProject}
           onOpenActiveQuest={openActiveQuestTray}
         />
 

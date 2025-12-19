@@ -7,11 +7,10 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   const navigation = {
-    explore: [
+    discover: [
       { name: 'Explore Projects', href: '/explore' },
       { name: 'Learn', href: '/learn' },
       { name: 'Tools', href: '/tools' },
-      { name: 'Thrive Circle', href: '/thrive-circle' },
     ],
     play: [
       { name: 'Prompt Battle', href: '/play/prompt-battle' },
@@ -19,11 +18,10 @@ export function Footer() {
       { name: 'Quizzes', href: '/quizzes' },
     ],
     connect: [
-      { name: 'About', href: '/about' },
-      { name: 'Pricing', href: '/pricing' },
+      { name: 'Thrive Circle', href: '/thrive-circle' },
       { name: 'Sign In', href: '/auth' },
     ],
-    social: [
+    allthrive: [
       { name: 'Instagram', icon: faInstagram, href: 'http://instagram.com/pippromptbattlebot' },
       { name: 'GitHub', icon: faGithub, href: 'https://github.com/allthriveai' },
       { name: 'WhatsApp', icon: faSquareWhatsapp, href: 'https://chat.whatsapp.com/ILi7yNkQB0e7dKbzaHjfZy' },
@@ -34,44 +32,68 @@ export function Footer() {
   return (
     <footer className="relative bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-white/5" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="flex flex-col md:flex-row md:justify-between gap-8 lg:gap-12">
-          {/* Brand column */}
-          <div className="md:max-w-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
+          {/* All Thrive column */}
+          <div aria-label="All Thrive">
             <Link to="/" className="inline-flex items-center gap-2 mb-4">
               <img
                 src="/all-thrvie-logo.png"
                 alt="All Thrive"
-                className="h-8 w-auto"
+                className="h-7 w-auto"
               />
-              <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
-                All Thrive
-              </span>
+              <span className="text-gray-900 dark:text-white font-semibold text-xl">All Thrive</span>
             </Link>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-6 leading-relaxed">
-              A social learning platform for AI creators. Share what you're working on, compete in prompt battles, and turn learning into play.
-            </p>
+            <ul className="space-y-3 mb-4">
+              <li>
+                <Link
+                  to="/about"
+                  className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                >
+                  About
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/pricing"
+                  className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                >
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="https://chat.whatsapp.com/ILi7yNkQB0e7dKbzaHjfZy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm inline-flex items-center gap-2 group"
+                >
+                  <ChatBubbleLeftRightIcon className="w-4 h-4 group-hover:text-cyan-600 dark:group-hover:text-cyan-400" />
+                  Contact Us
+                </a>
+              </li>
+            </ul>
             {/* Social links */}
-            <div className="flex items-center gap-3">
-              {navigation.social.map((item) => (
+            <div className="flex items-center gap-2">
+              {navigation.allthrive.map((item) => (
                 <a
                   key={item.name}
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-sm bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 hover:border-cyan-400 dark:hover:border-cyan-500/30 transition-all duration-300"
+                  className="w-8 h-8 rounded-sm bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 hover:border-cyan-400 dark:hover:border-cyan-500/30 transition-all duration-300"
                   aria-label={`Follow us on ${item.name}`}
                 >
-                  <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+                  <FontAwesomeIcon icon={item.icon} className="w-3.5 h-3.5" />
                 </a>
               ))}
             </div>
           </div>
 
-          {/* Explore links */}
-          <nav aria-label="Explore">
-            <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Explore</h3>
+          {/* Discover links */}
+          <nav aria-label="Discover">
+            <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Discover</h3>
             <ul className="space-y-3">
-              {navigation.explore.map((item) => (
+              {navigation.discover.map((item) => (
                 <li key={item.name}>
                   <Link
                     to={item.href}
@@ -86,7 +108,7 @@ export function Footer() {
 
           {/* Play links */}
           <nav aria-label="Play">
-            <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Play</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Play</h3>
             <ul className="space-y-3">
               {navigation.play.map((item) => (
                 <li key={item.name}>
@@ -103,7 +125,7 @@ export function Footer() {
 
           {/* Connect links */}
           <nav aria-label="Connect">
-            <h3 className="text-gray-900 dark:text-white font-semibold mb-4">Connect</h3>
+            <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Connect</h3>
             <ul className="space-y-3">
               {navigation.connect.map((item) => (
                 <li key={item.name}>
@@ -115,17 +137,6 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
-              <li>
-                <a
-                  href="https://chat.whatsapp.com/ILi7yNkQB0e7dKbzaHjfZy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm inline-flex items-center gap-2 group"
-                >
-                  <ChatBubbleLeftRightIcon className="w-4 h-4 group-hover:text-cyan-600 dark:group-hover:text-cyan-400" />
-                  Contact Us
-                </a>
-              </li>
             </ul>
           </nav>
         </div>
@@ -144,7 +155,7 @@ export function Footer() {
             </Link>
           </p>
           <p className="text-gray-500 dark:text-gray-500 text-sm text-center">
-            Share, learn, and grow together.
+            An AI playground to share and learn about AI.
           </p>
         </div>
       </div>

@@ -9,7 +9,7 @@
  *          cross-device sync, semantic search, and AI memory
  */
 
-import type { ChatMessage } from '@/hooks/useIntelligentChat';
+import type { ChatMessage, IntelligentChatMetadata } from '@/hooks/useIntelligentChat';
 import { logError } from '@/utils/errorHandler';
 
 // Storage configuration
@@ -25,18 +25,13 @@ interface StoredChatData {
 }
 
 // Serialized version of ChatMessage for storage
+// Uses IntelligentChatMetadata to stay in sync with message types
 interface SerializedChatMessage {
   id: string;
   content: string;
   sender: 'user' | 'assistant';
   timestamp: string; // ISO string
-  metadata?: {
-    type?: 'text' | 'generating' | 'generated_image';
-    imageUrl?: string;
-    filename?: string;
-    sessionId?: number;
-    iterationNumber?: number;
-  };
+  metadata?: IntelligentChatMetadata;
 }
 
 /**

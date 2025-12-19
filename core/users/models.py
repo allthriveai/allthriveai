@@ -160,6 +160,9 @@ class User(AbstractUser):
     lifetime_comments_posted = models.IntegerField(default=0, help_text='Total comments posted')
     lifetime_battles_participated = models.IntegerField(default=0, help_text='Total battles participated in')
     lifetime_battles_won = models.IntegerField(default=0, help_text='Total battles won')
+    ai_avatars_created = models.IntegerField(
+        default=0, help_text='Total AI avatars created (for Prompt Engineer achievement)'
+    )
 
     # Achievement tracking
     total_achievements_unlocked = models.IntegerField(default=0, help_text='Total achievements unlocked')
@@ -234,13 +237,14 @@ class User(AbstractUser):
         ('battle_pip', 'Prompt Battle'),
         ('add_project', 'Add Your First Project'),
         ('explore', 'Explore'),
+        ('personalize', 'Personalize'),
     ]
     onboarding_path = models.CharField(
         max_length=20,
         blank=True,
         choices=ONBOARDING_PATH_CHOICES,
         db_index=True,
-        help_text='Path selected during onboarding (Prompt Battle, Add Project, or Explore)',
+        help_text='Path selected during onboarding (Battle, Project, Explore, or Personalize)',
     )
     onboarding_completed_at = models.DateTimeField(
         null=True,

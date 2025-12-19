@@ -150,8 +150,8 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
               </button>
 
-              {/* Chat Button - Hidden on /home where chat is integrated */}
-              {isAuthenticated && location.pathname !== '/home' && (
+              {/* Chat Button - Opens sidebar chat (except on /home where chat is embedded) */}
+              {isAuthenticated && (
                 <button
                   onClick={() => onMenuClick('Chat')}
                   className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-slate-900"

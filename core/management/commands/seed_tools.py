@@ -218,6 +218,11 @@ class Command(BaseCommand):
                 'is_verified': tool_data.get('is_verified', False),
                 'company': company,
                 'whats_new': tool_data.get('whats_new', []),
+                # Game/Trading Card Attributes
+                'superpowers': tool_data.get('superpowers', []),
+                'game_stats': tool_data.get('game_stats', {}),
+                'rarity': tool_data.get('rarity', 'common'),
+                'synergy_tools': tool_data.get('synergy_tools', []),
             }
 
             # Track if YAML has whats_new data

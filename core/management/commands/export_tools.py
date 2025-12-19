@@ -270,6 +270,16 @@ class Command(BaseCommand):
             if tool.whats_new:
                 tool_data['whats_new'] = tool.whats_new
 
+            # Game/Trading Card Attributes
+            if tool.superpowers:
+                tool_data['superpowers'] = tool.superpowers
+            if tool.game_stats:
+                tool_data['game_stats'] = tool.game_stats
+            if tool.rarity and tool.rarity != 'common':
+                tool_data['rarity'] = tool.rarity
+            if tool.synergy_tools:
+                tool_data['synergy_tools'] = tool.synergy_tools
+
             tools.append(tool_data)
             stats['tools'] += 1
 

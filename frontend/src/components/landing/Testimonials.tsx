@@ -37,7 +37,7 @@ const testimonials: Testimonial[] = [
     role: 'ML Engineer',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=marcus&backgroundColor=14b8a6',
     content:
-      'Finally, a platform that understands AI creators. The community here is incredibly supportive and inspiring.',
+      'Finally, a platform that understands the AI curious. The community here is incredibly supportive and inspiring.',
     rating: 5,
   },
   {
@@ -86,7 +86,7 @@ export function Testimonials() {
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
             Loved by{' '}
             <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-green-400 bg-clip-text text-transparent">
-              AI Creators
+              the AI Curious
             </span>
           </h2>
           <p className="text-lg text-gray-400 max-w-3xl mx-auto">

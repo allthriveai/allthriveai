@@ -742,6 +742,21 @@ class Command(BaseCommand):
                 'rarity': AchievementRarity.LEGENDARY,
                 'order': 17,
             },
+            {
+                'key': 'prompt_engineer',
+                'name': 'Prompt Engineer',
+                'description': 'Mastered the art of AI prompting by creating your first avatar',
+                'icon': 'faWandMagicSparkles',
+                'color_from': 'purple-500',
+                'color_to': 'pink-500',
+                'category': AchievementCategory.ENGAGEMENT,
+                'points': 50,
+                'criteria_type': CriteriaType.FIRST_TIME,
+                'criteria_value': 1,
+                'tracking_field': 'ai_avatars_created',
+                'rarity': AchievementRarity.RARE,
+                'order': 18,
+            },
         ]
 
         created_count = 0

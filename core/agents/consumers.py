@@ -16,6 +16,8 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 
+# Import avatar task for avatar generation requests
+from core.avatars.tasks import process_avatar_generation_task
 from core.projects.models import Project
 
 from .metrics import MetricsCollector
@@ -152,23 +154,48 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send_error(f'Rate limit exceeded. Try again in {minutes} minutes.')
                 return
 
-            # Queue message for async processing via Celery
-            # Circuit breaker is checked in the Celery task
-            task = process_chat_message_task.delay(
-                conversation_id=self.conversation_id,
-                message=message,
-                user_id=self.user.id,
-                channel_name=self.group_name,  # Redis group name for broadcasting
-            )
+            # Check if this is an avatar generation request
+            if self.conversation_id.startswith('avatar-'):
+                # Handle avatar generation via dedicated task
+                session_id = data.get('session_id')
+                reference_image_url = data.get('reference_image_url')
 
-            # Send task queued confirmation
-            await self.send(
-                text_data=json.dumps(
-                    {'event': 'task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                if not session_id:
+                    await self.send_error('session_id is required for avatar generation')
+                    return
+
+                task = process_avatar_generation_task.delay(
+                    session_id=session_id,
+                    prompt=message,
+                    user_id=self.user.id,
+                    channel_name=self.group_name,
+                    reference_image_url=reference_image_url,
                 )
-            )
 
-            logger.debug(f'Message queued: task_id={task.id}, user={self.user.id}')
+                await self.send(
+                    text_data=json.dumps(
+                        {'event': 'avatar_task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                    )
+                )
+                logger.debug(f'Avatar generation queued: task_id={task.id}, session_id={session_id}')
+            else:
+                # Queue message for async processing via Celery
+                # Circuit breaker is checked in the Celery task
+                task = process_chat_message_task.delay(
+                    conversation_id=self.conversation_id,
+                    message=message,
+                    user_id=self.user.id,
+                    channel_name=self.group_name,  # Redis group name for broadcasting
+                )
+
+                # Send task queued confirmation
+                await self.send(
+                    text_data=json.dumps(
+                        {'event': 'task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                    )
+                )
+
+                logger.debug(f'Message queued: task_id={task.id}, user={self.user.id}')
 
         except json.JSONDecodeError:
             await self.send_error('Invalid message format. Please try again.')

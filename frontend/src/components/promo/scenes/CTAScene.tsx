@@ -124,7 +124,7 @@ export function CTAScene({ elapsed }: CTASceneProps) {
             transition={{ delay: 0.2 }}
             className="mt-6 text-white/50 text-sm"
           >
-            Join 2,000+ AI creators on the waitlist
+            Join 2,000+ AI curious people on the waitlist
           </motion.div>
         )}
       </div>

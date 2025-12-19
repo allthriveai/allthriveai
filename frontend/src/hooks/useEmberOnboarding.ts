@@ -10,7 +10,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
-export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize';
+// Legacy IDs for backwards compatibility, new IDs for avatar-focused onboarding
+export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize' | 'play' | 'learn';
 
 interface EmberOnboardingState {
   hasSeenModal: boolean;
@@ -20,6 +21,14 @@ interface EmberOnboardingState {
 }
 
 const STORAGE_KEY = 'ember_onboarding';
+
+// Dev mode: Force onboarding to always show for testing
+// Set to true to always show onboarding, false for normal behavior
+const DEV_FORCE_ONBOARDING = import.meta.env.DEV && true;
+
+if (DEV_FORCE_ONBOARDING) {
+  console.log('[EmberOnboarding] DEV MODE: Forcing onboarding to always show');
+}
 
 const defaultState: EmberOnboardingState = {
   hasSeenModal: false,
@@ -94,14 +103,17 @@ export function useEmberOnboarding() {
   // Guest users are temporary accounts created for battle invitations - they shouldn't see onboarding
   // Battle invite pages should go straight to accepting the challenge without interruption
   // Public pages (landing, about, etc.) shouldn't show onboarding even if user has inherited auth cookies
-  const shouldShowModal =
-    isAuthenticated &&
-    isLoaded &&
-    !state.hasSeenModal &&
-    !state.isDismissed &&
-    !user?.isGuest &&
-    !isOnBattleInvitePage &&
-    !isOnPublicPage;
+  //
+  // In dev mode with DEV_FORCE_ONBOARDING=true, always show onboarding for testing
+  const shouldShowModal = DEV_FORCE_ONBOARDING
+    ? isAuthenticated && isLoaded && !user?.isGuest && !isOnBattleInvitePage && !isOnPublicPage
+    : isAuthenticated &&
+      isLoaded &&
+      !state.hasSeenModal &&
+      !state.isDismissed &&
+      !user?.isGuest &&
+      !isOnBattleInvitePage &&
+      !isOnPublicPage;
 
   // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all 4 adventures)
   // Also skip for guest users, battle invite pages, and public pages

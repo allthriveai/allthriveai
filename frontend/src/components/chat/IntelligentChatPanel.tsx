@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -8,7 +8,15 @@ import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
 import { GeneratedImageMessage } from './GeneratedImageMessage';
-import { useIntelligentChat, type ChatMessage, type QuotaExceededInfo } from '@/hooks/useIntelligentChat';
+import {
+  OnboardingIntroMessage,
+  AvatarTemplateSelector,
+  AvatarPreviewMessage,
+  PathSelectionMessage,
+} from './onboarding';
+import { useIntelligentChat, type ChatMessage, type QuotaExceededInfo, type OrchestrationAction } from '@/hooks/useIntelligentChat';
+import { useOnboardingChat } from '@/hooks/useOnboardingChat';
+import { useOrchestrationActions } from '@/hooks/useOrchestrationActions';
 import { useAuth } from '@/hooks/useAuth';
 import { setProjectFeaturedImage, createProjectFromImageSession } from '@/services/projects';
 import {
@@ -135,12 +143,58 @@ export function IntelligentChatPanel({
     setQuotaExceeded(info);
   }, []);
 
+  // Orchestration actions hook (Ember - site guide)
+  // This enables the AI to navigate users, highlight UI elements, open trays, etc.
+  const {
+    executeAction: executeOrchestrationAction,
+    pendingAction,
+    confirmPendingAction,
+    cancelPendingAction,
+  } = useOrchestrationActions({
+    onTrayOpen: (tray) => {
+      // Handle tray opening - quest tray is handled via custom event
+      console.log('[IntelligentChatPanel] Opening tray:', tray);
+    },
+  });
+
+  // Handle orchestration action from AI - execute if auto_execute, otherwise queue for confirmation
+  const handleOrchestrationAction = useCallback((action: OrchestrationAction) => {
+    console.log('[IntelligentChatPanel] Received orchestration action:', action);
+
+    // Execute the action (will return false if it needs confirmation)
+    const wasExecuted = executeOrchestrationAction(action);
+
+    if (wasExecuted && action.action === 'navigate') {
+      // Close chat panel after navigation
+      setTimeout(() => {
+        onClose();
+      }, 300);
+    }
+  }, [executeOrchestrationAction, onClose]);
+
   const { messages, isConnected, isConnecting, isLoading, currentTool, sendMessage, clearMessages, cancelProcessing } = useIntelligentChat({
     conversationId,
     onError: (err) => setError(err),
     onProjectCreated: handleProjectCreated,
     onQuotaExceeded: handleQuotaExceeded,
+    onOrchestrationAction: handleOrchestrationAction,
   });
+
+  // Onboarding chat integration
+  const onboarding = useOnboardingChat({
+    onComplete: () => {
+      // After onboarding completes, the chat is ready for normal use
+      setHasInteracted(true);
+    },
+  });
+
+  // Merge onboarding messages with regular messages
+  const allMessages = useMemo(() => {
+    if (onboarding.isOnboardingActive) {
+      return [...onboarding.onboardingMessages, ...messages];
+    }
+    return messages;
+  }, [onboarding.isOnboardingActive, onboarding.onboardingMessages, messages]);
 
   // Send initial message for architecture regeneration mode
   useEffect(() => {
@@ -1258,6 +1312,41 @@ export function IntelligentChatPanel({
     );
   };
 
+  // Pending orchestration action confirmation dialog
+  const renderPendingActionConfirmation = () => {
+    if (!pendingAction) return null;
+
+    return (
+      <div className="mx-4 mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🔥</span>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              Ember wants to perform an action
+            </p>
+          </div>
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            {pendingAction.description}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={confirmPendingAction}
+              className="flex-1 px-3 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
+            >
+              Yes, do it
+            </button>
+            <button
+              onClick={cancelPendingAction}
+              className="flex-1 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Quota exceeded banner with upgrade options
   const renderQuotaExceeded = () => {
     if (!quotaExceeded) return null;
@@ -1401,6 +1490,57 @@ export function IntelligentChatPanel({
       );
     }
 
+    // Handle onboarding intro message
+    if (messageType === 'onboarding_intro') {
+      return (
+        <OnboardingIntroMessage
+          username={onboarding.username}
+          onContinue={onboarding.handleIntroComplete}
+          onSkip={onboarding.handleIntroSkip}
+        />
+      );
+    }
+
+    // Handle onboarding avatar prompt
+    if (messageType === 'onboarding_avatar_prompt') {
+      return (
+        <AvatarTemplateSelector
+          selectedTemplate={onboarding.selectedTemplate}
+          onSelectTemplate={onboarding.handleSelectTemplate}
+          prompt={onboarding.avatarPrompt}
+          onPromptChange={onboarding.handlePromptChange}
+          onGenerate={onboarding.handleGenerateAvatar}
+          onSkip={onboarding.handleSkipAvatar}
+          isGenerating={onboarding.isAvatarGenerating}
+          isConnecting={onboarding.isAvatarConnecting}
+          error={onboarding.avatarError}
+        />
+      );
+    }
+
+    // Handle onboarding avatar preview
+    if (messageType === 'onboarding_avatar_preview' && message.metadata?.avatarImageUrl) {
+      return (
+        <AvatarPreviewMessage
+          imageUrl={message.metadata.avatarImageUrl}
+          onAccept={onboarding.handleAcceptAvatar}
+          onRefine={onboarding.handleRefineAvatar}
+          onSkip={onboarding.handleSkipPreview}
+          isAccepting={onboarding.isAvatarSaving}
+        />
+      );
+    }
+
+    // Handle onboarding path selection
+    if (messageType === 'onboarding_path_selection') {
+      return (
+        <PathSelectionMessage
+          selectedPath={onboarding.selectedPath}
+          onSelectPath={onboarding.handleSelectPath}
+        />
+      );
+    }
+
     // Standard text message
     const showGitHubButton = !isUser && shouldShowGitHubConnectButton(message.content);
 
@@ -1476,14 +1616,14 @@ export function IntelligentChatPanel({
         </div>
       </div>
     );
-  }, [currentProjectId, handleUseAsFeaturedImage, handleCreateProjectFromImage, shouldShowGitHubConnectButton, handleConnectGitHub, navigate, onClose]);
+  }, [currentProjectId, handleUseAsFeaturedImage, handleCreateProjectFromImage, shouldShowGitHubConnectButton, handleConnectGitHub, navigate, onClose, onboarding]);
 
   return (
     <ChatInterface
       isOpen={isOpen}
       onClose={onClose}
       onSendMessage={handleSendMessage}
-      messages={messages as any}
+      messages={allMessages as any}
       isLoading={isLoading || isUploading}
       currentTool={currentTool}
       error={error}
@@ -1557,22 +1697,32 @@ export function IntelligentChatPanel({
         showIntegrationPicker ? (
           <>
             {renderQuotaExceeded()}
+            {renderPendingActionConfirmation()}
             {renderIntegrationPicker()}
           </>
         ) : githubStep !== 'idle' ? (
           <>
             {renderQuotaExceeded()}
+            {renderPendingActionConfirmation()}
             {renderGitHubUI()}
           </>
         ) : gitlabStep !== 'idle' ? (
           <>
             {renderQuotaExceeded()}
+            {renderPendingActionConfirmation()}
             {renderGitLabUI()}
           </>
         ) : figmaStep !== 'idle' ? (
           <>
             {renderQuotaExceeded()}
+            {renderPendingActionConfirmation()}
             {renderFigmaUI()}
+          </>
+        ) : pendingAction ? (
+          // Show pending action confirmation when there's a pending orchestration action
+          <>
+            {renderQuotaExceeded()}
+            {renderPendingActionConfirmation()}
           </>
         ) : undefined
       }

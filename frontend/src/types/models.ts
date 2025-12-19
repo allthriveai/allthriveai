@@ -54,6 +54,8 @@ export interface User {
   isGuest?: boolean;
   // Admin role (includes superusers)
   isAdminRole?: boolean;
+  // Avatar tracking
+  aiAvatarsCreated?: number;
 }
 
 // Authentication state

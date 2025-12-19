@@ -4,7 +4,6 @@ import {
   faGraduationCap,
   faUsers,
   faUser,
-  faLifeRing,
   faWrench,
   faTrophy,
   faBrain,
@@ -12,11 +11,7 @@ import {
   faGift,
   faCalendar,
   faComments,
-  faBug,
-  faInfoCircle,
-  faHeart,
   faWandSparkles,
-  faDollarSign,
   faIdCard,
   faCog,
   faStore,
@@ -46,61 +41,36 @@ export const getMenuSections = (
   username?: string
 ): MenuSection[] => [
   {
-    title: 'EXPLORE',
+    title: 'DISCOVER',
     icon: faCompass,
     path: '/explore',
-    items: [],
+    items: [
+      { label: 'Explore', path: '/explore', icon: faCompass },
+      { label: 'Tool Directory', path: '/tools', icon: faWrench },
+      { label: 'Marketplace (Coming Soon)', icon: faStore },
+    ],
   },
   {
     title: 'PLAY',
     icon: faGamepad,
-    path: '/play/side-quests',
+    path: '/challenges',
     items: [
       { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
       { label: 'Side Quests', path: '/play/side-quests', icon: faGamepad },
       { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy, className: 'text-pink-500 dark:text-pink-400' },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
-    ],
-  },
-  {
-    title: 'LEARN',
-    icon: faGraduationCap,
-    path: '/learn',
-    items: [
       { label: 'Learning Paths', path: '#', icon: faGraduationCap },
-      { label: 'Quizzes', path: '/quizzes', icon: faBrain },
-      { label: 'Marketplace (Coming Soon)', icon: faStore },
-      { label: 'Tool Directory', path: '/tools', icon: faWrench },
     ],
   },
   {
-    title: 'MEMBERSHIP',
+    title: 'CONNECT',
     icon: faUsers,
     path: '/thrive-circle',
     items: [
       { label: 'Your Thrive Circle', path: '/thrive-circle', icon: faUserGroup },
       { label: 'Perks', path: '/perks', icon: faGift },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar'), icon: faCalendar },
-    ],
-  },
-  {
-    title: 'SUPPORT',
-    icon: faLifeRing,
-    onClick: () => onMenuClick('Chat'),
-    items: [
       { label: 'Chat', onClick: () => onMenuClick('Chat'), icon: faComments },
-      { label: 'Report an Issue', path: 'https://github.com/allthriveai/allthriveai/issues', external: true, icon: faBug },
-      {
-        label: 'About All Thrive',
-        onClick: () => onMenuClick('About Us'),
-        icon: faInfoCircle,
-        subItems: [
-          { label: 'About Us', onClick: () => onMenuClick('About Us'), icon: faInfoCircle },
-          { label: 'Our Values', onClick: () => onMenuClick('Our Values'), icon: faHeart },
-          { label: 'Whats New', path: '#', icon: faWandSparkles },
-        ]
-      },
-      { label: 'Pricing', path: '/pricing', icon: faDollarSign },
     ],
   },
   {
@@ -121,8 +91,7 @@ export const getMenuSections = (
 
 // Route patterns for active state detection
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
-  'EXPLORE': (path) => path === '/explore',
-  'LEARN': (path) => path === '/learn',
+  'DISCOVER': (path) => path === '/explore',
   'Quizzes': (path) => path === '/quizzes',
   "This Week's Challenge": (path) => path === '/challenges' || path.startsWith('/challenges/') || path === '/this-weeks-challenge',
   'Side Quests': (path) => path === '/play/side-quests',

@@ -2,7 +2,7 @@
 
 **Showcase, Learn & Play with AI**
 
-The community platform for AI creators. Automate your AI portfolio, learn something new with gamified challenges, and compete in Prompt Battles.
+The community platform for the AI curious. Automate your AI portfolio, learn something new with gamified challenges, and compete in Prompt Battles.
 
 *Create with AI anywhere. Consolidate here. Thrive together.*
 

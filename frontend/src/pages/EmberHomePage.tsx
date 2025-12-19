@@ -11,7 +11,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useIntelligentChat, type OrchestrationAction } from '@/hooks/useIntelligentChat';
 import { useOrchestrationActions } from '@/hooks/useOrchestrationActions';
+import { useOnboardingChat } from '@/hooks/useOnboardingChat';
 import { ChatPlusMenu, type IntegrationType } from '@/components/chat/ChatPlusMenu';
+import {
+  OnboardingIntroMessage,
+  AvatarTemplateSelector,
+  AvatarPreviewMessage,
+  PathSelectionMessage,
+} from '@/components/chat/onboarding';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import ReactMarkdown from 'react-markdown';
 import { ArrowRightIcon, SparklesIcon } from '@heroicons/react/24/outline';
@@ -55,6 +62,9 @@ function EmberHomeContent() {
       navigate(url);
     },
   });
+
+  // Onboarding chat integration
+  const onboarding = useOnboardingChat();
 
   // Auto-scroll to bottom only when there are actual conversation messages
   useEffect(() => {
@@ -154,32 +164,87 @@ function EmberHomeContent() {
   }, [greetingMessage, messages.length]);
 
   // Combine Ember's initial greeting with conversation messages
-  const allMessages = [
-    { id: 'ember-greeting', sender: 'ember' as const, content: typedGreeting, isTyping: !isTypingComplete, isGreeting: true },
-    ...messages,
-  ];
+  // Skip the greeting when onboarding is active - onboarding has its own intro
+  const allMessages = onboarding.isOnboardingActive
+    ? messages
+    : [
+        { id: 'ember-greeting', sender: 'ember' as const, content: typedGreeting, isTyping: !isTypingComplete, isGreeting: true },
+        ...messages,
+      ];
 
   // Show feeling pills with staggered animation
+  // Don't show pills when onboarding is active
   const [showPills, setShowPills] = useState(false);
 
   useEffect(() => {
-    if (isTypingComplete && messages.length === 0) {
+    if (isTypingComplete && messages.length === 0 && !onboarding.isOnboardingActive) {
       // Delay showing pills for a moment after typing completes
       const timer = setTimeout(() => setShowPills(true), 300);
       return () => clearTimeout(timer);
     } else {
       setShowPills(false);
     }
-  }, [isTypingComplete, messages.length]);
+  }, [isTypingComplete, messages.length, onboarding.isOnboardingActive]);
+
+  // Render onboarding message based on step
+  const renderOnboardingStep = () => {
+    switch (onboarding.currentStep) {
+      case 'intro':
+        return (
+          <OnboardingIntroMessage
+            username={onboarding.username}
+            onContinue={onboarding.handleIntroComplete}
+            onSkip={onboarding.handleIntroSkip}
+          />
+        );
+      case 'avatar-create':
+        return (
+          <AvatarTemplateSelector
+            selectedTemplate={onboarding.selectedTemplate}
+            onSelectTemplate={onboarding.handleSelectTemplate}
+            prompt={onboarding.avatarPrompt}
+            onPromptChange={onboarding.handlePromptChange}
+            onGenerate={onboarding.handleGenerateAvatar}
+            onSkip={onboarding.handleSkipAvatar}
+            isGenerating={onboarding.isAvatarGenerating}
+            isConnecting={onboarding.isAvatarConnecting}
+            error={onboarding.avatarError}
+          />
+        );
+      case 'avatar-preview':
+        return onboarding.generatedAvatarUrl ? (
+          <AvatarPreviewMessage
+            imageUrl={onboarding.generatedAvatarUrl}
+            onAccept={onboarding.handleAcceptAvatar}
+            onRefine={onboarding.handleRefineAvatar}
+            onSkip={onboarding.handleSkipPreview}
+            isAccepting={onboarding.isAvatarSaving}
+          />
+        ) : null;
+      case 'choose-path':
+        return (
+          <PathSelectionMessage
+            selectedPath={onboarding.selectedPath}
+            onSelectPath={onboarding.handleSelectPath}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-[calc(100vh-12rem)] flex flex-col relative">
-      {/* Chat Container */}
-      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full relative z-10">
+      {/* Chat Container - matches header/footer max-w-7xl */}
+      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="flex-1 overflow-y-auto py-6">
           {/* Messages List */}
           <div className="space-y-4">
+            {/* Onboarding step - shown when onboarding is active */}
+            {onboarding.isOnboardingActive && renderOnboardingStep()}
+
+            {/* Regular messages */}
             {allMessages.map((message) => (
               <div
                 key={message.id}

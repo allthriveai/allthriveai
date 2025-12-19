@@ -3,6 +3,25 @@
  */
 
 import { motion } from 'framer-motion';
+import { PuzzlePieceIcon, AcademicCapIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+
+const features = [
+  {
+    icon: PuzzlePieceIcon,
+    title: 'Post the messy middle',
+    description: 'Share and get feedback on what you\'re working on at any stage. This is a playground, not a portfolio.',
+  },
+  {
+    icon: AcademicCapIcon,
+    title: 'Learn through play',
+    description: 'Play interactive games, play against other members, or participate in weekly challenges.',
+  },
+  {
+    icon: UserGroupIcon,
+    title: 'Figure it out together',
+    description: 'Connect with others who are just as curious. No gatekeeping, just growth.',
+  },
+];
 
 export function WhatIsAllThrive() {
   return (
@@ -44,32 +63,56 @@ export function WhatIsAllThrive() {
         </div>
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
+          className="text-center mb-16"
         >
           <p className="text-cyan-400 font-medium mb-6 tracking-wide">What is All Thrive?</p>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-8 leading-[1.15]">
-            A community for AI creators{' '}
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.15]">
+            For the AI curious{' '}
             <span className="bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
               at any level.
             </span>
           </h2>
-
-          <p className="text-xl sm:text-2xl text-gray-400 leading-relaxed max-w-3xl mx-auto">
-            Want to share and get feedback on your latest AI creation?
-            <br />
-            Ready to move beyond the basics?
-            <br />
-            All Thrive gives you a place to share, learn,
-            <br />
-            and grow alongside other creators.
-          </p>
         </motion.div>
+
+        {/* Feature cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {features.map((feature, index) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="group relative"
+            >
+              <div className="relative h-full p-8 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-cyan-500/30 transition-all duration-300">
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                <div className="relative text-center">
+                  <div className="w-12 h-12 mb-5 mx-auto rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20">
+                    <feature.icon className="w-6 h-6 text-cyan-400" />
+                  </div>
+
+                  <h3 className="text-xl font-semibold text-white mb-3">
+                    {feature.title}
+                  </h3>
+
+                  <p className="text-gray-400 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );

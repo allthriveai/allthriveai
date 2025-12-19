@@ -28,7 +28,7 @@ class InvitationRequest(models.Model):
         ('microlearning', 'Microlearning through games'),
         ('challenges', 'Weekly community challenges'),
         ('investing', 'Finding AI projects to invest in'),
-        ('community', 'Connecting with other AI creators'),
+        ('community', 'Connecting with other AI curious people'),
     ]
 
     # Integration choices for portfolio import

@@ -276,7 +276,7 @@ endif
 
 export-tools:
 	@echo "Exporting tools to YAML..."
-	docker-compose exec web python manage.py export_tools
+	docker-compose exec -T web python manage.py export_tools
 
 refresh-tool-news:
 	@echo "Refreshing tool news..."
@@ -290,16 +290,16 @@ endif
 
 load-tools:
 	@echo "Loading tools from YAML..."
-	docker-compose exec web python manage.py seed_tools
+	docker-compose exec -T web python manage.py seed_tools
 
 # Task YAML commands
 export-tasks:
 	@echo "Exporting tasks to YAML..."
-	docker-compose exec web python manage.py export_tasks
+	docker-compose exec -T web python manage.py export_tasks
 
 load-tasks:
 	@echo "Loading tasks from YAML..."
-	docker-compose exec web python manage.py seed_tasks
+	docker-compose exec -T web python manage.py seed_tasks
 
 # UAT Scenarios YAML commands
 export-uat-scenarios:

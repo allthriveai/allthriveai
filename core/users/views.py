@@ -162,6 +162,7 @@ def onboarding_progress(request):
     # Import models for checking completion
     from allauth.socialaccount.models import SocialAccount
 
+    from core.avatars.models import UserAvatar
     from core.projects.models import Project, ProjectComment, ProjectLike
     from core.quizzes.models import QuizAttempt
     from core.referrals.models import Referral
@@ -187,7 +188,25 @@ def onboarding_progress(request):
         }
     )
 
-    # 2. Set up personalization
+    # 2. Create your AI avatar (Personalize path - teaches prompt engineering)
+    has_ai_avatar = UserAvatar.objects.filter(
+        user=user, creation_mode__in=['scratch', 'template', 'make_me'], deleted_at__isnull=True
+    ).exists()
+    checklist.append(
+        {
+            'id': 'create_avatar',
+            'title': 'Create your AI avatar',
+            'description': 'Design a unique avatar using AI prompts.',
+            'completed': has_ai_avatar,
+            'link': '/onboarding/avatar',
+            'points': 50,
+            'category': 'personalize',
+            'icon': 'user-circle',
+            'achievement': 'prompt_engineer',  # Links to Prompt Engineer achievement
+        }
+    )
+
+    # 3. Set up personalization
     # Check if user has customized any personalization settings (not just defaults)
     has_personalization = PersonalizationSettings.objects.filter(user=user).exists()
     personalization_complete = has_personalization
@@ -199,12 +218,12 @@ def onboarding_progress(request):
             'completed': personalization_complete,
             'link': '/account/settings/personalization',
             'points': 25,
-            'category': 'getting_started',
+            'category': 'personalize',
             'icon': 'sparkles',
         }
     )
 
-    # 3. Take a quiz
+    # 4. Take a quiz (Learn path)
     has_taken_quiz = QuizAttempt.objects.filter(user=user).exists()
     checklist.append(
         {
@@ -214,7 +233,7 @@ def onboarding_progress(request):
             'completed': has_taken_quiz,
             'link': '/quizzes',
             'points': 50,
-            'category': 'getting_started',
+            'category': 'learn',
             'icon': 'academic-cap',
         }
     )
@@ -380,11 +399,14 @@ def onboarding_progress(request):
     earned_points = sum(item['points'] for item in checklist if item['completed'])
 
     # Group by category for the UI
+    # New structure: Personalize (avatar), Play (battles), Learn (quizzes)
     categories = {
         'getting_started': {'title': 'Getting Started', 'icon': 'rocket', 'items': []},
+        'personalize': {'title': 'Personalize', 'icon': 'user-circle', 'items': []},
         'create': {'title': 'Create & Share', 'icon': 'sparkles', 'items': []},
         'engage': {'title': 'Engage', 'icon': 'heart', 'items': []},
-        'play': {'title': 'Play & Compete', 'icon': 'bolt', 'items': []},
+        'play': {'title': 'Play', 'icon': 'bolt', 'items': []},
+        'learn': {'title': 'Learn', 'icon': 'academic-cap', 'items': []},
         'connect': {'title': 'Connect & Grow', 'icon': 'users', 'items': []},
         'explore': {'title': 'Explore', 'icon': 'compass', 'items': []},
     }

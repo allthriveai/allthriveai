@@ -25,7 +25,7 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">Welcome to All Thrive</h2>
             <p className="text-slate-300 leading-relaxed">
-              By using All Thrive, you agree to these terms. We're building a community for AI creators
+              By using All Thrive, you agree to these terms. We're building a community for the AI curious
               to showcase their work, learn, and grow together. To keep this space positive and productive,
               we ask all members to follow these guidelines.
             </p>

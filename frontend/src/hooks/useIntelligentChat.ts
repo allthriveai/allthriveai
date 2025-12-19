@@ -89,13 +89,39 @@ export interface QuotaExceededInfo {
   upgradeUrl: string;
 }
 
+// Avatar template for onboarding
+export interface AvatarTemplate {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  starterPrompt: string;
+}
+
+// Path option for onboarding
+export interface PathOption {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  gradient: string;
+  path: string;
+}
+
 // Extended metadata for intelligent chat messages
 export interface IntelligentChatMetadata {
-  type?: 'text' | 'generating' | 'generated_image';
+  type?: 'text' | 'generating' | 'generated_image'
+       | 'onboarding_intro' | 'onboarding_avatar_prompt'
+       | 'onboarding_avatar_preview' | 'onboarding_path_selection';
   imageUrl?: string;
   filename?: string;
   sessionId?: number;
   iterationNumber?: number;
+  // Onboarding-specific fields
+  onboardingStep?: 'intro' | 'avatar-create' | 'avatar-preview' | 'choose-path';
+  avatarTemplates?: AvatarTemplate[];
+  pathOptions?: PathOption[];
+  avatarImageUrl?: string;
 }
 
 // Use the shared ChatMessage type with extended metadata
