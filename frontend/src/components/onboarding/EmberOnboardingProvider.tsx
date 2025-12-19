@@ -3,7 +3,7 @@
  *
  * Global provider for Ember's onboarding experience.
  * Ember is the friendly dragon guide for new AllThrive users.
- * Onboarding now happens in the intelligent chat (EmberHomePage/IntelligentChatPanel).
+ * Onboarding now happens in the intelligent chat (EmberHomePage/ChatSidebar).
  * This provider handles the banner for remaining adventures.
  */
 
@@ -78,7 +78,7 @@ export function EmberOnboardingProvider({ children }: EmberOnboardingProviderPro
     isAdventureComplete,
   };
 
-  // Onboarding modal is now replaced by in-chat onboarding in EmberHomePage/IntelligentChatPanel
+  // Onboarding modal is now replaced by in-chat onboarding in EmberHomePage/ChatSidebar
   return (
     <EmberOnboardingContext.Provider value={contextValue}>
       {children}

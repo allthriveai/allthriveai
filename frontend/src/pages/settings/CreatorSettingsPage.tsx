@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
-import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
+import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/models';
 import {
@@ -458,7 +458,7 @@ export default function CreatorSettingsPage() {
       </SettingsLayout>
 
       {/* Product Creation Chat Tray */}
-      <IntelligentChatPanel
+      <ChatSidebar
         isOpen={isProductChatOpen}
         onClose={() => setIsProductChatOpen(false)}
         conversationId="product-creation"

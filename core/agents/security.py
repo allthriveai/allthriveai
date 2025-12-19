@@ -229,10 +229,102 @@ class RateLimiter:
     - Per-user project creation limits
     - IP-based limits for anonymous users
     - Sliding window rate limiting
+    - WebSocket connection limits
+
+    Note: Rate limiting is disabled in DEBUG mode for local development.
     """
 
+    # WebSocket security limits
+    MAX_CONNECTIONS_PER_USER = 5  # Max concurrent WebSocket connections per user
+    MAX_MESSAGE_SIZE = 32 * 1024  # 32KB max message size
+    CONNECTION_RATE_LIMIT = 10  # Max new connections per minute per user
+
     def __init__(self):
+        from django.conf import settings
+
         self.cache = cache
+        self._is_debug = getattr(settings, 'DEBUG', False)
+
+    def _skip_rate_limit(self) -> bool:
+        """Check if rate limiting should be skipped (e.g., in development)."""
+        return self._is_debug
+
+    def check_websocket_connection_limit(self, user_id: int) -> tuple[bool, str]:
+        """
+        Check if user has exceeded WebSocket connection limit.
+
+        Returns:
+            (is_allowed: bool, error_message: str)
+        """
+        if self._skip_rate_limit():
+            return True, ''
+
+        key = f'ws_connections:user:{user_id}'
+        count = self.cache.get(key, 0)
+
+        if count >= self.MAX_CONNECTIONS_PER_USER:
+            logger.warning(f'[SECURITY] User {user_id} exceeded WebSocket connection limit: {count}')
+            return False, f'Maximum {self.MAX_CONNECTIONS_PER_USER} concurrent connections allowed'
+
+        return True, ''
+
+    def increment_websocket_connection(self, user_id: int) -> None:
+        """Increment WebSocket connection count for a user."""
+        if self._skip_rate_limit():
+            return
+
+        key = f'ws_connections:user:{user_id}'
+        count = self.cache.get(key, 0)
+        # Set with 24h expiry as a safety net (connections should decrement on disconnect)
+        self.cache.set(key, count + 1, timeout=86400)
+
+    def decrement_websocket_connection(self, user_id: int) -> None:
+        """Decrement WebSocket connection count for a user."""
+        if self._skip_rate_limit():
+            return
+
+        key = f'ws_connections:user:{user_id}'
+        count = self.cache.get(key, 0)
+        if count > 0:
+            self.cache.set(key, count - 1, timeout=86400)
+
+    def check_connection_rate_limit(self, user_id: int) -> tuple[bool, int]:
+        """
+        Check if user is connecting too frequently.
+
+        Returns:
+            (is_allowed: bool, retry_after_seconds: int)
+        """
+        if self._skip_rate_limit():
+            return True, 0
+
+        key = f'ws_rate:user:{user_id}'
+        count = self.cache.get(key, 0)
+
+        if count >= self.CONNECTION_RATE_LIMIT:
+            logger.warning(f'[SECURITY] User {user_id} exceeded connection rate limit')
+            return False, 60  # Retry after 1 minute
+
+        # Increment with 1 minute window
+        if count == 0:
+            self.cache.set(key, 1, timeout=60)
+        else:
+            self.cache.incr(key)
+
+        return True, 0
+
+    def validate_message_size(self, message: str) -> tuple[bool, str]:
+        """
+        Validate WebSocket message size.
+
+        Returns:
+            (is_valid: bool, error_message: str)
+        """
+        message_bytes = len(message.encode('utf-8'))
+        if message_bytes > self.MAX_MESSAGE_SIZE:
+            logger.warning(f'[SECURITY] Message size exceeded: {message_bytes} bytes')
+            return False, f'Message too large (max {self.MAX_MESSAGE_SIZE // 1024}KB)'
+        return True, ''
 
     def check_message_rate_limit(self, user_id: int) -> tuple[bool, int]:
         """
@@ -241,6 +333,9 @@ class RateLimiter:
         Returns:
             (is_allowed: bool, retry_after_seconds: int)
         """
+        if self._skip_rate_limit():
+            return True, 0
+
         key = f'rate_limit:messages:user:{user_id}'
         count = self.cache.get(key, 0)
         limit = 50  # 50 messages per hour
@@ -264,6 +359,9 @@ class RateLimiter:
         Returns:
             (is_allowed: bool, retry_after_seconds: int)
         """
+        if self._skip_rate_limit():
+            return True, 0
+
         key = f'rate_limit:projects:user:{user_id}'
         count = self.cache.get(key, 0)
         limit = 10  # 10 projects per hour
@@ -287,6 +385,9 @@ class RateLimiter:
         Returns:
             (is_allowed: bool, retry_after_seconds: int)
         """
+        if self._skip_rate_limit():
+            return True, 0
+
         key = f'rate_limit:ip:{ip_address}'
         count = self.cache.get(key, 0)
         limit = 20  # 20 requests per hour for anonymous users

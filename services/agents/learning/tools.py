@@ -1032,6 +1032,273 @@ def record_learning_event(
         return {'success': False, 'error': str(e)}
 
 
+# =============================================================================
+# CONVERSATIONAL LEARNING SESSION TOOLS
+# =============================================================================
+
+# Default fallback topics when user has no activity data
+DEFAULT_FALLBACK_TOPICS = [
+    {
+        'topic': 'AI Agents',
+        'topic_slug': 'ai-agents',
+        'topic_display': 'AI Agents',
+        'reason': 'popular',
+        'reason_display': 'Popular topic',
+    },
+    {
+        'topic': 'Prompt Engineering',
+        'topic_slug': 'prompts-templates',
+        'topic_display': 'Prompt Engineering',
+        'reason': 'popular',
+        'reason_display': 'Popular topic',
+    },
+    {
+        'topic': 'RAG (Retrieval Augmented Generation)',
+        'topic_slug': 'rag',
+        'topic_display': 'RAG',
+        'reason': 'popular',
+        'reason_display': 'Popular topic',
+    },
+]
+
+
+def _run_async(coro):
+    """
+    Run async coroutine from sync context safely.
+
+    Handles the deprecation of asyncio.get_event_loop() in Python 3.10+
+    and works correctly whether there's a running loop or not.
+    """
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop - safe to use asyncio.run()
+        return asyncio.run(coro)
+    else:
+        # There's a running loop - need to run in a thread
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            future = pool.submit(asyncio.run, coro)
+            return future.result()
+
+
+class StartLearningSessionInput(BaseModel):
+    """Input for start_learning_session tool."""
+
+    model_config = {'extra': 'allow'}
+
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
+
+
+class SetLearningTopicInput(BaseModel):
+    """Input for set_learning_topic tool."""
+
+    model_config = {'extra': 'allow'}
+
+    topic: str = Field(description='The topic the user wants to learn about')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
+
+
+class GetLearningContentInput(BaseModel):
+    """Input for get_learning_content tool."""
+
+    model_config = {'extra': 'allow'}
+
+    topic: str = Field(description='The topic to get content for')
+    modality: str = Field(
+        description='Learning modality: video, long-reads, microlearning, quiz-challenges, games, or projects'
+    )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
+
+
+@tool(args_schema=StartLearningSessionInput)
+def start_learning_session(
+    state: dict | None = None,
+) -> dict:
+    """
+    Start an interactive learning session by asking the user what they want to learn.
+
+    Use this when users want to learn something or are ready for a learning session.
+    Returns personalized topic suggestions based on their activity, goals, and knowledge gaps.
+
+    Examples:
+    - "I want to learn"
+    - "What should I study?"
+    - "Teach me something"
+    - "Start a learning session"
+
+    Returns topic suggestions and a prompt to ask the user what they'd like to learn.
+    """
+    from core.learning_paths.services import LearningContentService
+
+    user_id = state.get('user_id') if state else None
+    logger.info(f'start_learning_session called: user_id={user_id}')
+
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    try:
+        # Get personalized topic suggestions
+        suggestions = _run_async(LearningContentService.get_topic_suggestions(user_id, limit=5))
+
+        # Add fallback suggestions if not enough from user data
+        if len(suggestions) < 3:
+            existing_slugs = {s.get('topic_slug') for s in suggestions}
+            for fb in DEFAULT_FALLBACK_TOPICS:
+                if fb['topic_slug'] not in existing_slugs and len(suggestions) < 5:
+                    suggestions.append(fb.copy())
+
+        return {
+            'success': True,
+            'session_started': True,
+            'topic_suggestions': suggestions,
+            'quick_actions': ['review', 'continue', 'explore'],
+            'prompt': 'What would you like to learn about today?',
+            'message': 'I have some suggestions based on your learning journey. What interests you?',
+        }
+
+    except Exception as e:
+        logger.error(f'start_learning_session error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+@tool(args_schema=SetLearningTopicInput)
+def set_learning_topic(
+    topic: str,
+    state: dict | None = None,
+) -> dict:
+    """
+    Set the learning topic and get available modalities (learning formats).
+
+    Use this after the user picks a topic to show them HOW they want to learn.
+    Only shows modalities that have actual content - empty ones are hidden.
+
+    Examples:
+    - User says "I want to learn about RAG"
+    - User picks a topic from suggestions
+    - User asks about a specific concept
+
+    Returns available modalities with content counts and a prompt for the user to choose.
+    """
+    from core.learning_paths.services import LearningContentService
+
+    user_id = state.get('user_id') if state else None
+    logger.info(f'set_learning_topic called: topic={topic}, user_id={user_id}')
+
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    try:
+        # Get available modalities for this topic
+        modalities = _run_async(LearningContentService.get_available_modalities(topic, user_id))
+
+        # Clean display name
+        topic_display = topic.replace('-', ' ').title()
+
+        if not modalities:
+            # No existing content - AI will explain
+            return {
+                'success': True,
+                'topic': topic,
+                'topic_display': topic_display,
+                'modality_options': [],
+                'has_content': False,
+                'prompt': (
+                    f"I don't have specific content on {topic_display} yet, "
+                    'but I can explain it to you! Would you like me to teach you about it?'
+                ),
+                'message': f"Let me explain {topic_display} myself since I don't have dedicated content yet.",
+            }
+
+        # Format modality options with emojis
+        modality_emojis = {
+            'video': '📹',
+            'long-reads': '📚',
+            'microlearning': '⚡',
+            'quiz-challenges': '🎯',
+            'games': '🎮',
+            'projects': '🔧',
+        }
+
+        formatted_options = []
+        for m in modalities:
+            emoji = modality_emojis.get(m['modality'], '📖')
+            formatted_options.append(
+                {
+                    **m,
+                    'emoji': emoji,
+                    'label': f"{emoji} {m['display']} ({m['available_count']} available)",
+                }
+            )
+
+        return {
+            'success': True,
+            'topic': topic,
+            'topic_display': topic_display,
+            'modality_options': formatted_options,
+            'has_content': True,
+            'prompt': f'Great choice! How would you like to learn about {topic_display} today?',
+            'message': f'I found several ways you can learn about {topic_display}.',
+        }
+
+    except Exception as e:
+        logger.error(f'set_learning_topic error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+@tool(args_schema=GetLearningContentInput)
+def get_learning_content(
+    topic: str,
+    modality: str,
+    state: dict | None = None,
+) -> dict:
+    """
+    Get content matching the topic and modality, or AI context for fallback.
+
+    Use this after the user picks both a topic AND a modality.
+    Returns actual content items if available, or provides context for AI-generated explanation.
+    Automatically logs content gaps when content is insufficient.
+
+    Valid modalities: video, long-reads, microlearning, quiz-challenges, games, projects
+
+    Examples:
+    - User says "I'll watch a video" (after picking topic)
+    - User wants to take a quiz on a topic
+    - User prefers reading articles
+
+    Returns content items with URLs, or AI context if no content exists.
+    """
+    from core.learning_paths.services import LearningContentService
+
+    user_id = state.get('user_id') if state else None
+    logger.info(f'get_learning_content called: topic={topic}, modality={modality}, user_id={user_id}')
+
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    # Validate modality
+    valid_modalities = ['video', 'long-reads', 'microlearning', 'quiz-challenges', 'games', 'projects']
+    if modality not in valid_modalities:
+        return {
+            'success': False,
+            'error': f'Invalid modality. Choose from: {", ".join(valid_modalities)}',
+        }
+
+    try:
+        # Get content from LearningContentService
+        result = _run_async(LearningContentService.get_content(topic, modality, user_id))
+
+        result['success'] = True
+        return result
+
+    except Exception as e:
+        logger.error(f'get_learning_content error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
 # Tools that need state injection (for user context)
 TOOLS_NEEDING_STATE = {
     'get_learning_progress',
@@ -1043,6 +1310,10 @@ TOOLS_NEEDING_STATE = {
     'get_due_reviews',
     'deliver_micro_lesson',
     'record_learning_event',
+    # Conversational learning session tools
+    'start_learning_session',
+    'set_learning_topic',
+    'get_learning_content',
 }
 
 # All learning tools
@@ -1060,6 +1331,10 @@ LEARNING_TOOLS = [
     get_due_reviews,
     deliver_micro_lesson,
     record_learning_event,
+    # Conversational learning session tools (3 new)
+    start_learning_session,
+    set_learning_topic,
+    get_learning_content,
 ]
 
 # Tool lookup by name

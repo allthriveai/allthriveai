@@ -274,12 +274,23 @@ class SideQuest(models.Model):
     )
 
     # Topic-based progression (Phase 2 enhancement)
+    # DEPRECATED: Use topic_taxonomy instead. This field will be removed in a future migration.
     topic = models.CharField(
         max_length=50,
         choices=TOPIC_CHOICES,
         blank=True,
         default='',
-        help_text='Specific topic this quest belongs to (empty = universal quest)',
+        help_text='DEPRECATED: Use topic_taxonomy instead.',
+    )
+    # Topic taxonomy (proper FK relationship)
+    topic_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='side_quests',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topic taxonomy this quest belongs to (null = universal quest)',
     )
     skill_level = models.CharField(
         max_length=20,

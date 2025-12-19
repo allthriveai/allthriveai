@@ -44,7 +44,9 @@ class Taxonomy(models.Model):
     - 'goal'     -> user goals (e.g., "Learn New Skills", "Start a Business")
     - 'industry' -> industry verticals (e.g., "Healthcare", "Finance")
     - 'interest' -> user interests (e.g., "AI & Machine Learning", "Design")
-    - 'skill'    -> technical skills (e.g., "Python", "React")
+    - 'skill'    -> technical skills (e.g., "Python", "React") - supports hierarchy via parent
+    - 'modality' -> learning modalities (e.g., "Video", "Microlearning", "Games")
+    - 'outcome'  -> learning outcomes (e.g., "Build a RAG pipeline")
     """
 
     class TaxonomyType(models.TextChoices):
@@ -55,9 +57,21 @@ class Taxonomy(models.Model):
         INDUSTRY = 'industry', 'Industry'
         INTEREST = 'interest', 'Interest'
         SKILL = 'skill', 'Skill'
+        MODALITY = 'modality', 'Learning Modality'
+        OUTCOME = 'outcome', 'Learning Outcome'
 
     taxonomy_type = models.CharField(
-        max_length=10, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True
+        max_length=15, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True
+    )
+
+    # Parent for hierarchical taxonomies (e.g., skill hierarchy)
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='children',
+        help_text='Parent taxonomy for hierarchical structures (e.g., ML -> Neural Networks)',
     )
 
     # Common fields

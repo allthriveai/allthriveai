@@ -43,6 +43,7 @@ class QuizSerializer(serializers.ModelSerializer):
     created_by = UserSerializer(read_only=True)
     tools = ToolListSerializer(many=True, read_only=True)
     categories = TaxonomySerializer(many=True, read_only=True)
+    topics_taxonomy = TaxonomySerializer(many=True, read_only=True)
     user_has_attempted = serializers.SerializerMethodField()
     user_best_score = serializers.SerializerMethodField()
     user_attempt_count = serializers.SerializerMethodField()
@@ -58,6 +59,7 @@ class QuizSerializer(serializers.ModelSerializer):
             'description',
             'topic',
             'topics',
+            'topics_taxonomy',
             'tools',
             'categories',
             'difficulty',

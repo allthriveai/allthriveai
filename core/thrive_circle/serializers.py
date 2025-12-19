@@ -5,6 +5,7 @@ import sys
 
 from rest_framework import serializers
 
+from core.taxonomy.serializers import TaxonomySerializer
 from core.users.models import User
 
 from .models import (
@@ -227,6 +228,7 @@ class SideQuestSerializer(serializers.ModelSerializer):
     quest_type_display = serializers.CharField(source='get_quest_type_display', read_only=True)
     difficulty_display = serializers.CharField(source='get_difficulty_display', read_only=True)
     topic_display = serializers.CharField(source='get_topic_display', read_only=True, allow_null=True)
+    topic_taxonomy = TaxonomySerializer(read_only=True)
     skill_level_display = serializers.CharField(source='get_skill_level_display', read_only=True, allow_null=True)
     is_available = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
@@ -248,6 +250,7 @@ class SideQuestSerializer(serializers.ModelSerializer):
             'category_slug',
             'topic',
             'topic_display',
+            'topic_taxonomy',
             'skill_level',
             'skill_level_display',
             'requirements',

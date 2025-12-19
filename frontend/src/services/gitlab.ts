@@ -1,6 +1,7 @@
 import { api } from './api';
 import type { ApiResponse } from '@/types/api';
 import type { Project } from '@/types/models';
+import { logError } from '@/utils/errorHandler';
 
 /**
  * Enhanced error with additional context for imports
@@ -49,7 +50,7 @@ export async function fetchGitLabProjects(): Promise<GitLabProject[]> {
     const projects = response.data.data?.repositories || [];
     return projects;
   } catch (error: any) {
-    console.error('Failed to fetch GitLab projects:', error);
+    logError('gitlab.fetchGitLabProjects', error);
 
     // Handle specific error cases
     if (error.response?.status === 401) {
@@ -74,7 +75,7 @@ export async function checkGitLabConnection(): Promise<boolean> {
     const data = response.data.data || response.data;
     return data?.connected ?? false;
   } catch (error) {
-    console.error('Failed to check GitLab connection:', error);
+    logError('gitlab.checkGitLabConnection', error);
     return false;
   }
 }

@@ -1,5 +1,6 @@
 import { api } from './api';
 import type { ApiResponse } from '@/types/api';
+import { logError } from '@/utils/errorHandler';
 
 /**
  * Enhanced error with additional context for imports
@@ -48,7 +49,7 @@ export async function checkFigmaConnection(): Promise<boolean> {
     const data = response.data.data || response.data;
     return data?.connected ?? false;
   } catch (error) {
-    console.error('Failed to check Figma connection:', error);
+    logError('figma.checkFigmaConnection', error);
     return false;
   }
 }
@@ -66,7 +67,7 @@ export async function getFigmaUserInfo(): Promise<FigmaUser | null> {
 
     return response.data.data?.user || null;
   } catch (error: any) {
-    console.error('Failed to fetch Figma user info:', error);
+    logError('figma.getFigmaUserInfo', error);
 
     if (error.response?.status === 401) {
       throw new Error('Please connect your Figma account first.');
@@ -91,7 +92,7 @@ export async function getFigmaFilePreview(fileKey: string): Promise<FigmaFilePre
 
     return response.data.data!;
   } catch (error: any) {
-    console.error('Failed to fetch Figma file preview:', error);
+    logError('figma.getFigmaFilePreview', error);
 
     if (error.response?.status === 401) {
       throw new FigmaImportError('Please connect your Figma account first.', {

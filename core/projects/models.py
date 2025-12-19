@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -153,12 +152,13 @@ class Project(models.Model):
         default=False,
         help_text='If True, categories are hidden from public display but still used for filtering',
     )
-    # User-generated topics (free-form, moderated)
-    topics = ArrayField(
-        models.CharField(max_length=50),
+    # Topic taxonomies (proper FK relationships)
+    topics = models.ManyToManyField(
+        Taxonomy,
         blank=True,
-        default=list,
-        help_text='User-generated topics (moderated for inappropriate content)',
+        related_name='topic_projects',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topic taxonomies for this project',
     )
     # Structured layout blocks for the project page (cover, tags, text/image blocks)
     content = models.JSONField(default=dict, blank=True)

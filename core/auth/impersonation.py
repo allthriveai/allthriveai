@@ -10,6 +10,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db.models import Q
+from django_ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -102,6 +103,21 @@ def can_impersonate(admin_user, target_user):
     return True, None
 
 
+# Maximum impersonation session duration (hours)
+MAX_IMPERSONATION_HOURS = 8
+
+
+def _get_ratelimit_key(group, request):
+    """
+    Custom rate limit key function that skips rate limiting in DEBUG mode.
+    Returns None in DEBUG mode to skip rate limiting.
+    """
+    if settings.DEBUG:
+        return None  # Skip rate limiting in development
+    return f'user:{request.user.id}' if request.user.is_authenticated else f'ip:{request.META.get("REMOTE_ADDR")}'
+
+
+@ratelimit(key=_get_ratelimit_key, rate='10/h', method='POST', block=True)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_impersonation(request):
@@ -109,6 +125,8 @@ def start_impersonation(request):
     Start impersonating another user.
 
     POST /api/v1/admin/impersonate/start/
+
+    Rate limit: 10 requests per hour per user
 
     Body:
     {
@@ -388,7 +406,10 @@ def impersonation_status(request):
     GET /api/v1/admin/impersonate/status/
 
     Returns whether user is currently impersonating someone.
+    Also enforces server-side session timeout for security.
     """
+    from django.utils import timezone
+
     impersonation_value = request.COOKIES.get(IMPERSONATION_COOKIE)
 
     # Debug logging (can be removed in production)
@@ -405,6 +426,29 @@ def impersonation_status(request):
         admin_user = User.objects.get(id=int(admin_id))
         log = ImpersonationLog.objects.get(id=int(session_id))
 
+        # Enforce server-side session timeout
+        session_duration = timezone.now() - log.started_at
+        if session_duration > timedelta(hours=MAX_IMPERSONATION_HOURS):
+            # Session expired - force end it
+            log.end_session()
+            SecureLogger.log_action(
+                action='Impersonation session expired (server-side timeout)',
+                user_id=admin_user.id,
+                username=admin_user.username,
+                details={
+                    'session_id': session_id,
+                    'duration_hours': session_duration.total_seconds() / 3600,
+                },
+                level='warning',
+            )
+            return Response(
+                {
+                    'is_impersonating': False,
+                    'error': 'Impersonation session has expired',
+                    'expired': True,
+                }
+            )
+
         return Response(
             {
                 'is_impersonating': True,
@@ -418,6 +462,7 @@ def impersonation_status(request):
                 },
                 'session_id': log.id,
                 'started_at': log.started_at,
+                'expires_at': log.started_at + timedelta(hours=MAX_IMPERSONATION_HOURS),
             }
         )
     except (ValueError, User.DoesNotExist, ImpersonationLog.DoesNotExist) as e:

@@ -29,6 +29,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     is_promoted = serializers.SerializerMethodField()  # Computed based on expiration
     tools_details = serializers.SerializerMethodField()  # Custom ordering based on tools_order
     categories_details = serializers.SerializerMethodField()
+    topics_details = serializers.SerializerMethodField()  # Taxonomy topic details
 
     class Meta:
         model = Project
@@ -55,6 +56,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'categories_details',
             'hide_categories',
             'topics',
+            'topics_taxonomy',
+            'topics_details',
             'heart_count',
             'is_liked_by_user',
             'content',
@@ -70,6 +73,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_liked_by_user',
             'tools_details',
             'categories_details',
+            'topics_details',
             'is_promoted',
             'promoted_at',
             'created_at',
@@ -261,6 +265,11 @@ class ProjectSerializer(serializers.ModelSerializer):
         categories = obj.categories.order_by('name')
         return TaxonomySerializer(categories, many=True).data
 
+    def get_topics_details(self, obj):
+        """Get topic taxonomies ordered by name."""
+        topics = obj.topics_taxonomy.order_by('name')
+        return TaxonomySerializer(topics, many=True).data
+
     def get_is_promoted(self, obj):
         """Check if the project is currently promoted (not expired).
 
@@ -342,6 +351,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'external_url': 'externalUrl',
             'tools_details': 'toolsDetails',
             'categories_details': 'categoriesDetails',
+            'topics_taxonomy': 'topicsTaxonomy',
+            'topics_details': 'topicsDetails',
             'user_tags': 'userTags',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
@@ -406,6 +417,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     tools_details = serializers.SerializerMethodField()
     # Categories details for displaying category badges (needed for rss_article cards)
     categories_details = serializers.SerializerMethodField()
+    # Topic taxonomy details for displaying topic badges
+    topics_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -426,6 +439,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'categories',  # IDs for filtering
             'categories_details',  # Full category objects for displaying badges
             'topics',
+            'topics_taxonomy',  # IDs for filtering
+            'topics_details',  # Full topic taxonomy objects for displaying badges
             'heart_count',
             'is_liked_by_user',
             'published_date',
@@ -469,6 +484,11 @@ class ProjectCardSerializer(serializers.ModelSerializer):
         """Get categories ordered by name for displaying category badges."""
         categories = obj.categories.order_by('name')
         return TaxonomySerializer(categories, many=True).data
+
+    def get_topics_details(self, obj):
+        """Get topic taxonomies ordered by name for displaying topic badges."""
+        topics = obj.topics_taxonomy.order_by('name')
+        return TaxonomySerializer(topics, many=True).data
 
     def get_content(self, obj):
         """Return minimal content for card rendering.
@@ -592,6 +612,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'external_url': 'externalUrl',
             'tools_details': 'toolsDetails',
             'categories_details': 'categoriesDetails',
+            'topics_taxonomy': 'topicsTaxonomy',
+            'topics_details': 'topicsDetails',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
             'published_date': 'publishedDate',

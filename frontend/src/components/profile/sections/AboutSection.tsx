@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { MapPinIcon, UserIcon } from '@heroicons/react/24/outline';
+import { sanitizeHtml } from '@/utils/sanitize';
 import type { AboutSectionContent } from '@/types/profileSections';
 import type { ProfileUser } from './ProfileSectionRenderer';
 
@@ -78,7 +79,7 @@ export function AboutSection({ content, user, isEditing, onUpdate }: AboutSectio
       ) : bio ? (
         <div
           className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: bio }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(bio) }}
         />
       ) : (
         <p className="text-gray-500 dark:text-gray-400 italic">

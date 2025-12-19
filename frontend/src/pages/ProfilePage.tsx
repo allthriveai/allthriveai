@@ -30,6 +30,7 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTemplatePicker } from '@/components/profile/ProfileTemplatePicker';
 import { AvatarFocalPointEditor } from '@/components/profile/AvatarFocalPointEditor';
 import { logError, parseApiError } from '@/utils/errorHandler';
+import { sanitizeHtml } from '@/utils/sanitize';
 import { ProfileSections, type ProfileUser } from '@/components/profile/sections';
 import type { SocialLinksUpdate } from '@/components/profile/sections/LinksSection';
 import type { ProfileSection, ProfileSectionType, ProfileSectionContent, ProfileTemplate } from '@/types/profileSections';
@@ -1604,7 +1605,7 @@ export default function ProfilePage() {
                         <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">About</h4>
                         <div
                           className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none"
-                          dangerouslySetInnerHTML={{ __html: displayUser.bio }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayUser.bio) }}
                         />
                       </div>
                     )}

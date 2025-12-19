@@ -60,6 +60,18 @@ export interface WebSocketMessage {
     params?: Record<string, unknown>;
     auto_execute?: boolean;
     requires_confirmation?: boolean;
+    // Inline game fields
+    game_type?: 'snake' | 'quiz' | 'random';
+    game_config?: {
+      difficulty?: 'easy' | 'medium' | 'hard';
+    };
+    // Learning content fields
+    has_content?: boolean;
+    source_type?: string;
+    content_type?: string;
+    topic?: string;
+    topic_display?: string;
+    items?: LearningContentItem[];
   };
   // Quota exceeded fields
   reason?: string;
@@ -108,11 +120,50 @@ export interface PathOption {
   path: string;
 }
 
+// Game types for inline games
+export type InlineGameType = 'snake' | 'quiz' | 'random';
+
+// Learning content item from backend
+export interface LearningContentItem {
+  id: string;
+  title: string;
+  slug?: string;
+  description?: string;
+  url?: string;
+  thumbnail?: string;
+  featured_image_url?: string;
+  // Author info (for user avatar display)
+  author_username?: string;
+  author_avatar_url?: string;
+  // Project-specific
+  key_techniques?: string[];
+  complexity_level?: string;
+  quality_score?: number;
+  // Video-specific
+  duration_seconds?: number;
+  view_count?: number;
+  source_name?: string;
+  published_at?: string;
+  // Quiz-specific
+  difficulty?: string;
+  question_count?: number;
+  estimated_time?: number;
+  // Lesson-specific
+  concept_name?: string;
+  lesson_type?: string;
+  estimated_minutes?: number;
+  content_preview?: string;
+  // Game-specific
+  type?: string;
+  game_id?: string;
+}
+
 // Extended metadata for intelligent chat messages
 export interface IntelligentChatMetadata {
   type?: 'text' | 'generating' | 'generated_image'
        | 'onboarding_intro' | 'onboarding_avatar_prompt'
-       | 'onboarding_avatar_preview';
+       | 'onboarding_avatar_preview' | 'inline_game'
+       | 'learning_content';
   imageUrl?: string;
   filename?: string;
   sessionId?: number;
@@ -121,6 +172,21 @@ export interface IntelligentChatMetadata {
   onboardingStep?: 'intro' | 'avatar-create' | 'avatar-preview' | 'complete';
   avatarTemplates?: AvatarTemplate[];
   avatarImageUrl?: string;
+  // Inline game fields
+  gameType?: InlineGameType;
+  gameConfig?: {
+    difficulty?: 'easy' | 'medium' | 'hard';
+  };
+  // Learning content fields
+  learningContent?: {
+    topic: string;
+    topicDisplay: string;
+    contentType: string;
+    sourceType: string;
+    items: LearningContentItem[];
+    hasContent: boolean;
+    message?: string;
+  };
 }
 
 // Use the shared ChatMessage type with extended metadata
@@ -458,6 +524,65 @@ export function useIntelligentChat({
                   requires_confirmation: data.output.requires_confirmation,
                 };
                 onOrchestrationAction(orchestrationAction);
+              }
+              // Check for inline game launch
+              if (data.tool === 'launch_inline_game' && data.output?.game_type) {
+                const gameMessageId = `inline-game-${Date.now()}`;
+                setMessages((prev) => {
+                  // Check for duplicate
+                  if (prev.some(m => m.id === gameMessageId)) {
+                    return prev;
+                  }
+                  const newMessages = [
+                    ...prev,
+                    {
+                      id: gameMessageId,
+                      content: '', // Game is rendered via metadata
+                      sender: 'assistant' as const,
+                      timestamp: new Date(),
+                      metadata: {
+                        type: 'inline_game' as const,
+                        gameType: data.output?.game_type,
+                        gameConfig: data.output?.game_config,
+                      },
+                    },
+                  ];
+                  return newMessages.slice(-MAX_MESSAGES);
+                });
+                seenMessageIdsRef.current.add(gameMessageId);
+              }
+              // Check for learning content results (projects, videos, quizzes, etc.)
+              if (data.tool === 'get_learning_content' && data.output?.items && data.output.items.length > 0) {
+                const learningContentId = `learning-content-${Date.now()}`;
+                setMessages((prev) => {
+                  // Check for duplicate
+                  if (prev.some(m => m.id === learningContentId)) {
+                    return prev;
+                  }
+                  const newMessages = [
+                    ...prev,
+                    {
+                      id: learningContentId,
+                      content: '', // Content is rendered via metadata
+                      sender: 'assistant' as const,
+                      timestamp: new Date(),
+                      metadata: {
+                        type: 'learning_content' as const,
+                        learningContent: {
+                          topic: data.output?.topic || '',
+                          topicDisplay: data.output?.topic_display || data.output?.topic || '',
+                          contentType: data.output?.content_type || 'projects',
+                          sourceType: data.output?.source_type || 'curated',
+                          items: data.output?.items || [],
+                          hasContent: data.output?.has_content ?? true,
+                          message: data.output?.message,
+                        },
+                      },
+                    },
+                  ];
+                  return newMessages.slice(-MAX_MESSAGES);
+                });
+                seenMessageIdsRef.current.add(learningContentId);
               }
               break;
 

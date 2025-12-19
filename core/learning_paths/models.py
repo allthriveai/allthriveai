@@ -61,7 +61,18 @@ class UserLearningPath(models.Model):
     }
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_paths')
+    # DEPRECATED: Use topic_taxonomy instead. This field will be removed in a future migration.
     topic = models.CharField(max_length=50, choices=TOPIC_CHOICES)
+    # Topic taxonomy (proper FK relationship)
+    topic_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='learning_paths',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topic taxonomy for this learning path',
+    )
 
     # Calculated skill level based on activity
     current_skill_level = models.CharField(max_length=20, choices=SKILL_LEVEL_CHOICES, default='beginner')
@@ -355,10 +366,21 @@ class Concept(models.Model):
     description = models.TextField(blank=True)
 
     # Link to topic (matches UserLearningPath.TOPIC_CHOICES)
+    # DEPRECATED: Use topic_taxonomy instead. This field will be removed in a future migration.
     topic = models.CharField(
         max_length=50,
         db_index=True,
-        help_text='Learning path topic this concept belongs to',
+        help_text='DEPRECATED: Use topic_taxonomy instead.',
+    )
+    # Topic taxonomy (proper FK relationship)
+    topic_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='concepts',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topic taxonomy this concept belongs to',
     )
 
     # Optional link to a specific tool
@@ -859,3 +881,300 @@ class LearningEvent(models.Model):
 
     def __str__(self):
         return f'{self.user.username}: {self.event_type} at {self.created_at}'
+
+
+# ============================================================================
+# CONTENT GAP - Track unmet content requests
+# ============================================================================
+
+
+class ContentGap(models.Model):
+    """
+    Track when users ask for content that doesn't exist.
+
+    Used to prioritize content creation based on demand.
+    When users request topic+modality combinations that have insufficient content,
+    we log it here for content strategy decisions.
+    """
+
+    class GapType(models.TextChoices):
+        MISSING_TOPIC = 'missing_topic', 'Missing Topic'
+        MODALITY_GAP = 'modality_gap', 'Modality Gap'
+        DEPTH_GAP = 'depth_gap', 'Depth Gap'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending Review'
+        ACKNOWLEDGED = 'acknowledged', 'Acknowledged'
+        IN_PROGRESS = 'in_progress', 'Content In Progress'
+        RESOLVED = 'resolved', 'Resolved'
+        DECLINED = 'declined', 'Declined'
+
+    # What was requested
+    # DEPRECATED: Use topic_taxonomy instead. This field will be removed in a future migration.
+    topic = models.CharField(
+        max_length=200,
+        db_index=True,
+        help_text='DEPRECATED: Original topic text requested by user.',
+    )
+    # DEPRECATED: Use topic_taxonomy instead. This field will be removed in a future migration.
+    topic_normalized = models.CharField(
+        max_length=200,
+        db_index=True,
+        help_text='DEPRECATED: Normalized/slugified version for deduplication.',
+    )
+    # Topic taxonomy (proper FK relationship)
+    topic_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='content_gaps',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topic taxonomy for this content gap',
+    )
+    modality = models.CharField(
+        max_length=30,
+        db_index=True,
+        help_text='Learning modality requested (video, quiz, etc.)',
+    )
+    gap_type = models.CharField(
+        max_length=20,
+        choices=GapType.choices,
+        default=GapType.MISSING_TOPIC,
+        db_index=True,
+    )
+
+    # Partial matches (if any)
+    matched_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='gap_requests',
+        help_text='Closest matching taxonomy item (if partial match)',
+    )
+
+    # Frequency tracking
+    request_count = models.PositiveIntegerField(
+        default=1,
+        db_index=True,
+        help_text='Number of times this has been requested',
+    )
+    unique_user_count = models.PositiveIntegerField(
+        default=1,
+        help_text='Number of unique users who requested this',
+    )
+    results_returned = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of results returned when gap was detected',
+    )
+
+    first_requested_at = models.DateTimeField(auto_now_add=True)
+    last_requested_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    # First requester context
+    first_requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='content_gap_requests',
+    )
+
+    # Resolution tracking
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    resolution_notes = models.TextField(blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    # Metadata
+    context = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Additional context: {conversation_id, user_level, etc.}',
+    )
+
+    class Meta:
+        unique_together = ['topic_normalized', 'modality']
+        ordering = ['-request_count', '-last_requested_at']
+        verbose_name = 'Content Gap'
+        verbose_name_plural = 'Content Gaps'
+        indexes = [
+            models.Index(fields=['status', '-request_count']),
+            models.Index(fields=['gap_type', '-request_count']),
+            models.Index(fields=['modality', '-request_count']),
+        ]
+
+    def __str__(self):
+        return f'{self.topic} / {self.modality} ({self.request_count} requests)'
+
+
+# ============================================================================
+# LEARNING OUTCOME - What users will achieve
+# ============================================================================
+
+
+class LearningOutcome(models.Model):
+    """
+    What learners will be able to do after completing learning content.
+
+    Uses Bloom's Taxonomy verbs to ensure measurability.
+    """
+
+    class BloomLevel(models.TextChoices):
+        REMEMBER = 'remember', 'Remember'
+        UNDERSTAND = 'understand', 'Understand'
+        APPLY = 'apply', 'Apply'
+        ANALYZE = 'analyze', 'Analyze'
+        EVALUATE = 'evaluate', 'Evaluate'
+        CREATE = 'create', 'Create'
+
+    class ProficiencyLevel(models.TextChoices):
+        BEGINNER = 'beginner', 'Beginner'
+        INTERMEDIATE = 'intermediate', 'Intermediate'
+        ADVANCED = 'advanced', 'Advanced'
+        EXPERT = 'expert', 'Expert'
+
+    # Core outcome definition
+    verb = models.CharField(
+        max_length=50,
+        help_text='Action verb (e.g., "build", "explain", "analyze")',
+    )
+    description = models.TextField(
+        help_text='Full outcome statement (e.g., "Build a RAG pipeline using LangChain")',
+    )
+
+    # Bloom's taxonomy classification
+    bloom_level = models.CharField(
+        max_length=20,
+        choices=BloomLevel.choices,
+        default=BloomLevel.APPLY,
+        db_index=True,
+    )
+
+    # Link to skill taxonomy
+    skill = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.CASCADE,
+        related_name='learning_outcomes',
+        limit_choices_to={'taxonomy_type': 'skill'},
+        help_text='The skill this outcome develops',
+    )
+
+    # Proficiency gained
+    proficiency_gained = models.CharField(
+        max_length=20,
+        choices=ProficiencyLevel.choices,
+        default=ProficiencyLevel.BEGINNER,
+        help_text='Proficiency level achieved when mastering this outcome',
+    )
+
+    # Measurability
+    assessment_criteria = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='How to verify mastery: [{criterion, evidence_type}, ...]',
+    )
+
+    # Time investment
+    estimated_hours = models.FloatField(
+        default=1.0,
+        help_text='Estimated hours to achieve this outcome',
+    )
+
+    # Prerequisites
+    prerequisites = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        blank=True,
+        related_name='unlocks',
+        help_text='Outcomes that should be achieved first',
+    )
+
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['skill', 'bloom_level', 'verb']
+        verbose_name = 'Learning Outcome'
+        verbose_name_plural = 'Learning Outcomes'
+        indexes = [
+            models.Index(fields=['skill', 'is_active']),
+            models.Index(fields=['bloom_level', 'proficiency_gained']),
+        ]
+
+    def __str__(self):
+        return f'{self.verb.title()} - {self.description[:50]}'
+
+
+# ============================================================================
+# USER SKILL PROFICIENCY - Track user skills
+# ============================================================================
+
+
+class UserSkillProficiency(models.Model):
+    """
+    Track user proficiency in specific skills from the taxonomy.
+
+    Different from UserConceptMastery which tracks atomic concepts.
+    Skills are broader categories (e.g., "Python", "Prompt Engineering").
+    """
+
+    class ProficiencyLevel(models.TextChoices):
+        NONE = 'none', 'None'
+        BEGINNER = 'beginner', 'Beginner'
+        INTERMEDIATE = 'intermediate', 'Intermediate'
+        ADVANCED = 'advanced', 'Advanced'
+        EXPERT = 'expert', 'Expert'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='skill_proficiencies',
+    )
+
+    skill = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.CASCADE,
+        related_name='user_proficiencies',
+        limit_choices_to={'taxonomy_type': 'skill'},
+    )
+
+    proficiency_level = models.CharField(
+        max_length=20,
+        choices=ProficiencyLevel.choices,
+        default=ProficiencyLevel.NONE,
+        db_index=True,
+    )
+
+    # Learning outcomes achieved for this skill
+    outcomes_achieved = models.ManyToManyField(
+        LearningOutcome,
+        blank=True,
+        related_name='users_achieved',
+    )
+
+    is_self_assessed = models.BooleanField(
+        default=True,
+        help_text='Whether this was self-assessed vs system-calculated',
+    )
+    first_assessed_at = models.DateTimeField(auto_now_add=True)
+    last_updated_at = models.DateTimeField(auto_now=True)
+    last_practiced_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ['user', 'skill']
+        verbose_name = 'User Skill Proficiency'
+        verbose_name_plural = 'User Skill Proficiencies'
+        indexes = [
+            models.Index(fields=['user', 'proficiency_level']),
+            models.Index(fields=['skill', 'proficiency_level']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.skill.name} ({self.proficiency_level})'

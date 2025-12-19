@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
 import { RightAboutPanel } from '@/components/about';
 import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalendarPanel';
-import { IntelligentChatPanel } from '@/components/chat/IntelligentChatPanel';
+import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
 import { Footer } from '@/components/landing/Footer';
@@ -83,7 +83,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
-  const [addProjectWelcomeMode, setAddProjectWelcomeMode] = useState(false);
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
 
@@ -140,7 +139,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setAboutOpen(false);
     setEventsOpen(false);
     setAddProjectOpen(false);
-    setAddProjectWelcomeMode(false);
     setCommentPanelOpen(false);
     setCommentPanelProject(null);
   }, [location.pathname]);
@@ -208,7 +206,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       const { projectId, projectTitle } = event.detail;
       setArchitectureRegenerateContext({ projectId, projectTitle });
       setAddProjectOpen(true);
-      setAddProjectWelcomeMode(false);
       setAboutOpen(false);
       setEventsOpen(false);
     };
@@ -249,7 +246,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       }
       // Open Ember chat panel
       setAddProjectOpen(true);
-      setAddProjectWelcomeMode(false);
       setChatContext('default');
       setAboutOpen(false);
       setEventsOpen(false);
@@ -265,14 +261,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   };
 
   const handleOpenAddProject = useCallback((options: boolean | OpenChatOptions = false) => {
-    // Handle backwards compatibility - boolean means welcomeMode
+    // Handle backwards compatibility - boolean means welcomeMode (now ignored)
     const opts: OpenChatOptions = typeof options === 'boolean'
       ? { welcomeMode: options }
       : options;
 
     // Open Ember chat panel with context-aware quick actions
     setAddProjectOpen(true);
-    setAddProjectWelcomeMode(opts.welcomeMode ?? false);
     setChatContext(opts.context ?? 'default');
     setAboutOpen(false);
     setEventsOpen(false);
@@ -280,7 +275,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);
-    setAddProjectWelcomeMode(false);
     setArchitectureRegenerateContext(null);
   };
 
@@ -352,7 +346,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
         {/* Ember Chat Panel - unified AI assistant with context-aware quick actions */}
         {addProjectOpen && (
-          <IntelligentChatPanel
+          <ChatSidebar
             isOpen={addProjectOpen}
             onClose={handleCloseAddProject}
             conversationId={
@@ -361,7 +355,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
                 : conversationId
             }
             context={chatContext}
-            welcomeMode={addProjectWelcomeMode}
             architectureRegenerateContext={architectureRegenerateContext}
             learningSetupContext={learningSetupContext}
           />

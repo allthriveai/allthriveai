@@ -75,6 +75,16 @@ class GetFunActivitiesInput(BaseModel):
     )
 
 
+class LaunchInlineGameInput(BaseModel):
+    """Input for launch_inline_game tool."""
+
+    game_type: str = Field(
+        default='random',
+        description='Type of game to launch: snake, quiz, or random (picks one for user)',
+    )
+    difficulty: str = Field(default='medium', description='Difficulty level for quiz games: easy, medium, or hard')
+
+
 # =============================================================================
 # Navigation Tools
 # =============================================================================
@@ -463,6 +473,59 @@ def get_fun_activities(surprise_me: bool = False, state: dict = None) -> dict:
 
 
 # =============================================================================
+# Inline Game Tools
+# =============================================================================
+
+
+INLINE_GAME_TYPES = ['snake', 'quiz']
+
+
+@tool(args_schema=LaunchInlineGameInput)
+def launch_inline_game(game_type: str = 'random', difficulty: str = 'medium', state: dict = None) -> dict:
+    """
+    Launch a mini-game directly in the chat sidebar.
+
+    Use this when users want quick, instant fun without leaving the chat.
+    Great for "surprise me", "I want something fun", or "let's play a game".
+
+    Available games:
+    - snake: A compact version of Context Snake - collect tokens to grow!
+    - quiz: Quick AI trivia question with instant feedback
+    - random: Pick one for the user (adds surprise element)
+
+    This embeds the game directly in the chat as an interactive card.
+    No navigation needed - the user can play right there and continue chatting.
+
+    Args:
+        game_type: Type of game to launch (snake, quiz, or random)
+        difficulty: Difficulty level for quiz (easy, medium, hard)
+
+    Returns:
+        Action command that embeds the game in chat.
+    """
+    logger.info(f'Launch inline game tool called: game_type={game_type}, difficulty={difficulty}')
+
+    # Validate game type
+    actual_game_type = game_type
+    if game_type == 'random' or game_type not in INLINE_GAME_TYPES:
+        actual_game_type = INLINE_GAME_TYPES[secrets.randbelow(len(INLINE_GAME_TYPES))]
+
+    # Validate difficulty
+    valid_difficulties = ['easy', 'medium', 'hard']
+    if difficulty not in valid_difficulties:
+        difficulty = 'medium'
+
+    return {
+        'success': True,
+        'game_type': actual_game_type,
+        'game_config': {
+            'difficulty': difficulty,
+        },
+        'message': f"Let's play! Here's a quick {actual_game_type} game for you:",
+    }
+
+
+# =============================================================================
 # Tool Registration
 # =============================================================================
 
@@ -473,6 +536,7 @@ ORCHESTRATION_TOOLS = [
     show_toast,
     trigger_action,
     get_fun_activities,
+    launch_inline_game,
 ]
 
 ORCHESTRATION_TOOLS_BY_NAME = {tool.name: tool for tool in ORCHESTRATION_TOOLS}

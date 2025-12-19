@@ -1,4 +1,5 @@
 import type { User } from '@/types/models';
+import { sanitizeHtml } from '@/utils/sanitize';
 import {
   FireIcon,
   TrophyIcon,
@@ -33,7 +34,7 @@ export function ProfileSidebar({ user, projectCount, showcaseCount }: ProfileSid
           </h3>
           <div
             className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: user.bio }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(user.bio) }}
           />
         </div>
       )}

@@ -40,10 +40,18 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lamb
 
 # AWS ECS/ALB health checks use container private IPs (10.x.x.x) in the Host header.
 # We handle this with HealthCheckMiddleware which bypasses ALLOWED_HOSTS for health paths.
-# Additionally, allow wildcard for ECS environments where needed.
+# For ECS environments, we add specific allowed patterns instead of wildcard for security.
 if config('ECS_ALLOW_ALL_HOSTS', default=False, cast=bool):
-    # In ECS behind ALB, ALB handles host validation. Container can accept all hosts.
-    ALLOWED_HOSTS = ['*']
+    # In ECS behind ALB, add ALB health check IPs and known domains
+    # SECURITY: Never use ['*'] - it allows host header injection attacks
+    # Instead, explicitly list allowed hosts including internal IPs for health checks
+    ECS_ADDITIONAL_HOSTS = config(
+        'ECS_ADDITIONAL_HOSTS',
+        default='',
+        cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
+    )
+    # Add ECS-specific hosts (10.x.x.x handled by HealthCheckMiddleware)
+    ALLOWED_HOSTS = ALLOWED_HOSTS + ECS_ADDITIONAL_HOSTS
 
 # Health check paths that bypass ALLOWED_HOSTS validation
 HEALTH_CHECK_PATHS = ['/api/v1/health/', '/health/', '/healthz/', '/ready/']
@@ -782,6 +790,21 @@ MINIO_BUCKET_NAME = config('MINIO_BUCKET_NAME', default='allthrive-media')
 # Media files configuration (uploaded by users)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'  # Fallback for local development without MinIO
+
+# File upload security limits
+# These protect against denial-of-service attacks via large uploads
+DATA_UPLOAD_MAX_MEMORY_SIZE = config(
+    'DATA_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int
+)  # 10MB max for in-memory upload
+FILE_UPLOAD_MAX_MEMORY_SIZE = config(
+    'FILE_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int
+)  # 10MB before temp file is used
+DATA_UPLOAD_MAX_NUMBER_FILES = config('DATA_UPLOAD_MAX_NUMBER_FILES', default=20, cast=int)  # Max files per request
+DATA_UPLOAD_MAX_NUMBER_FIELDS = config('DATA_UPLOAD_MAX_NUMBER_FIELDS', default=1000, cast=int)  # Max form fields
+
+# Maximum allowed file size for user uploads (enforced in views)
+MAX_UPLOAD_SIZE_MB = config('MAX_UPLOAD_SIZE_MB', default=25, cast=int)  # 25MB max file size
+MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024  # In bytes
 
 # Custom User Model (points to users subdomain where User is defined)
 AUTH_USER_MODEL = 'users.User'

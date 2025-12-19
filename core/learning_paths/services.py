@@ -22,11 +22,13 @@ from django.utils import timezone
 
 from .models import (
     Concept,
+    ContentGap,
     LearnerProfile,
     LearningEvent,
     MicroLesson,
     ProjectLearningMetadata,
     UserConceptMastery,
+    UserLearningPath,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,8 +53,23 @@ class LearnerMemory:
     def _cache_key(cls, user_id: int) -> str:
         return f'{cls.CACHE_PREFIX}{user_id}'
 
+    # Default profile for anonymous/missing users
+    DEFAULT_PROFILE = {
+        'profile': {
+            'preferred_learning_style': 'mixed',
+            'current_difficulty_level': 'beginner',
+            'preferred_session_length': 5,
+            'learning_streak_days': 0,
+            'total_lessons_completed': 0,
+            'total_concepts_completed': 0,
+            'allow_proactive_suggestions': True,
+        },
+        'recent_masteries': [],
+        'streak_days': 0,
+    }
+
     @classmethod
-    async def get_profile(cls, user_id: int) -> dict:
+    async def get_profile(cls, user_id: int | None) -> dict:
         """
         Get learner profile from cache or database.
 
@@ -60,21 +77,32 @@ class LearnerMemory:
         - profile: LearnerProfile fields
         - recent_masteries: Recent concept masteries
         - streak_days: Current streak
+
+        If user_id is None or invalid, returns a default anonymous profile.
         """
-        cache_key = cls._cache_key(user_id)
+        # Handle None or invalid user_id
+        if not user_id:
+            logger.debug('get_profile called with no user_id, returning default profile')
+            return cls.DEFAULT_PROFILE.copy()
 
-        # Try cache first
-        cached = cache.get(cache_key)
-        if cached:
-            return json.loads(cached)
+        try:
+            cache_key = cls._cache_key(user_id)
 
-        # Fall back to database
-        profile_data = await cls._load_from_db(user_id)
+            # Try cache first
+            cached = cache.get(cache_key)
+            if cached:
+                return json.loads(cached)
 
-        # Cache for future requests
-        cache.set(cache_key, json.dumps(profile_data), cls.CACHE_TTL)
+            # Fall back to database
+            profile_data = await cls._load_from_db(user_id)
 
-        return profile_data
+            # Cache for future requests
+            cache.set(cache_key, json.dumps(profile_data), cls.CACHE_TTL)
+
+            return profile_data
+        except Exception as e:
+            logger.warning(f'Error fetching learner profile for user {user_id}: {e}')
+            return cls.DEFAULT_PROFILE.copy()
 
     @classmethod
     @sync_to_async
@@ -87,12 +115,14 @@ class LearnerMemory:
         recent_masteries = list(
             UserConceptMastery.objects.filter(user_id=user_id)
             .exclude(mastery_level='unknown')
-            .select_related('concept')
+            .select_related('concept', 'concept__topic_taxonomy')
             .order_by('-updated_at')[:10]
             .values(
                 'concept__name',
                 'concept__slug',
                 'concept__topic',
+                'concept__topic_taxonomy__slug',
+                'concept__topic_taxonomy__name',
                 'mastery_level',
                 'mastery_score',
             )
@@ -803,3 +833,713 @@ class StructuredLearningPathGenerator:
 
         # Return the enriched path
         return cls.get_user_path(user_id)
+
+
+# ============================================================================
+# CONTENT GAP SERVICE - Track unmet content requests
+# ============================================================================
+
+
+class ContentGapService:
+    """
+    Track and manage content gaps for prioritizing content creation.
+
+    When users request topic+modality combinations that return insufficient content,
+    we log it here to inform content strategy.
+    """
+
+    GAP_THRESHOLD = 3  # Log gap if < 3 results returned
+
+    @classmethod
+    @sync_to_async
+    def record_gap(
+        cls,
+        topic: str,
+        modality: str,
+        results_count: int,
+        user_id: int | None = None,
+        gap_type: str = 'missing_topic',
+        context: dict | None = None,
+    ) -> ContentGap | None:
+        """
+        Record a content gap request.
+
+        Only records if results_count is below threshold.
+        Increments count if gap already exists.
+        """
+        from django.utils.text import slugify
+
+        if results_count >= cls.GAP_THRESHOLD:
+            return None
+
+        normalized = slugify(topic.lower().strip())[:200]
+
+        try:
+            gap, created = ContentGap.objects.get_or_create(
+                topic_normalized=normalized,
+                modality=modality,
+                defaults={
+                    'topic': topic[:200],
+                    'gap_type': gap_type,
+                    'results_returned': results_count,
+                    'first_requested_by_id': user_id,
+                    'context': context or {},
+                },
+            )
+
+            if not created:
+                # Increment request count
+                ContentGap.objects.filter(id=gap.id).update(
+                    request_count=F('request_count') + 1,
+                    last_requested_at=timezone.now(),
+                )
+                gap.refresh_from_db()
+
+            logger.info(f'Recorded content gap: {topic}/{modality} (count: {gap.request_count})')
+            return gap
+
+        except Exception as e:
+            logger.warning(f'Failed to record content gap: {e}')
+            return None
+
+    @classmethod
+    @sync_to_async
+    def get_priority_gaps(cls, limit: int = 20) -> list[dict]:
+        """Get top priority gaps for content creation."""
+        gaps = ContentGap.objects.filter(status='pending').order_by('-unique_user_count', '-request_count')[:limit]
+
+        return [
+            {
+                'id': g.id,
+                'topic': g.topic,
+                'modality': g.modality,
+                'gap_type': g.gap_type,
+                'request_count': g.request_count,
+                'unique_user_count': g.unique_user_count,
+                'first_requested_at': g.first_requested_at.isoformat(),
+                'last_requested_at': g.last_requested_at.isoformat(),
+            }
+            for g in gaps
+        ]
+
+    @classmethod
+    @sync_to_async
+    def resolve_gap(cls, gap_id: int, resolution_notes: str = '') -> bool:
+        """Mark a content gap as resolved."""
+        try:
+            ContentGap.objects.filter(id=gap_id).update(
+                status='resolved',
+                resolved_at=timezone.now(),
+                resolution_notes=resolution_notes,
+            )
+            return True
+        except Exception as e:
+            logger.error(f'Failed to resolve content gap {gap_id}: {e}')
+            return False
+
+
+# ============================================================================
+# LEARNING CONTENT SERVICE - Unified content discovery
+# ============================================================================
+
+
+class LearningContentService:
+    """
+    Unified content discovery service with modality-aware routing.
+
+    Provides:
+    - Topic suggestions based on user activity, goals, and gaps
+    - Available modalities for a topic (only those with content)
+    - Content matching topic + modality with AI fallback
+    """
+
+    # Modality definitions
+    MODALITY_CHOICES = [
+        ('video', 'Watch a Video', 'Video tutorials and demos'),
+        ('long-reads', 'Read an Article', 'In-depth articles and docs'),
+        ('microlearning', 'Quick Lesson', 'Short 5-10 min lessons'),
+        ('quiz-challenges', 'Take a Quiz', 'Test your knowledge'),
+        ('games', 'Play a Game', 'Interactive learning games'),
+        ('projects', 'Study a Project', 'Learn from examples'),
+    ]
+
+    # Map modalities to content sources
+    MODALITY_CONTENT_MAP = {
+        'video': ['youtube', 'video_projects'],
+        'long-reads': ['rss_articles', 'micro_lessons'],
+        'microlearning': ['micro_lessons'],
+        'quiz-challenges': ['quizzes', 'side_quests'],
+        'games': ['games'],
+        'projects': ['projects'],
+    }
+
+    @classmethod
+    async def get_topic_suggestions(cls, user_id: int, limit: int = 5) -> list[dict]:
+        """
+        Get balanced topic suggestions from multiple signals.
+
+        Sources (balanced mix):
+        - 40% from knowledge gaps (low mastery concepts)
+        - 40% from active learning paths
+        - 20% from due reviews (spaced repetition)
+        """
+        suggestions = []
+
+        # Get gap suggestions (concepts with low mastery)
+        gap_suggestions = await cls._get_gap_suggestions(user_id, limit=2)
+        suggestions.extend(gap_suggestions)
+
+        # Get path suggestions (active learning paths)
+        path_suggestions = await cls._get_path_suggestions(user_id, limit=2)
+        suggestions.extend(path_suggestions)
+
+        # Get review suggestions (due for spaced repetition)
+        review_suggestions = await cls._get_review_suggestions(user_id, limit=1)
+        suggestions.extend(review_suggestions)
+
+        # Deduplicate and limit
+        seen_topics = set()
+        unique_suggestions = []
+        for s in suggestions:
+            topic_key = s.get('topic_slug') or s.get('topic')
+            if topic_key and topic_key not in seen_topics:
+                seen_topics.add(topic_key)
+                unique_suggestions.append(s)
+
+        return unique_suggestions[:limit]
+
+    @classmethod
+    @sync_to_async
+    def _get_gap_suggestions(cls, user_id: int, limit: int = 2) -> list[dict]:
+        """Get suggestions based on knowledge gaps."""
+        # Find concepts where user has low mastery
+        low_mastery = (
+            UserConceptMastery.objects.filter(user_id=user_id, mastery_level__in=['unknown', 'aware', 'learning'])
+            .select_related('concept')
+            .order_by('mastery_score')[:limit]
+        )
+
+        suggestions = []
+        for m in low_mastery:
+            suggestions.append(
+                {
+                    'topic': m.concept.name,
+                    'topic_slug': m.concept.slug,
+                    'topic_display': m.concept.name,
+                    'reason': 'knowledge_gap',
+                    'reason_display': 'You could use more practice here',
+                    'mastery_level': m.mastery_level,
+                }
+            )
+
+        return suggestions
+
+    @classmethod
+    @sync_to_async
+    def _get_path_suggestions(cls, user_id: int, limit: int = 2) -> list[dict]:
+        """Get suggestions based on active learning paths."""
+        # Get user's active learning paths
+        paths = (
+            UserLearningPath.objects.filter(user_id=user_id)
+            .select_related('topic_taxonomy')
+            .order_by('-last_activity_at')[:limit]
+        )
+
+        suggestions = []
+        for path in paths:
+            # Prefer taxonomy if available
+            if path.topic_taxonomy:
+                topic_slug = path.topic_taxonomy.slug
+                topic_display = path.topic_taxonomy.name
+            else:
+                topic_slug = path.topic
+                topic_display = path.get_topic_display()
+
+            suggestions.append(
+                {
+                    'topic': topic_slug,
+                    'topic_slug': topic_slug,
+                    'topic_display': topic_display,
+                    'reason': 'active_path',
+                    'reason_display': 'Continue your journey',
+                    'skill_level': path.current_skill_level,
+                    'progress': path.progress_percentage,
+                }
+            )
+
+        return suggestions
+
+    @classmethod
+    @sync_to_async
+    def _get_review_suggestions(cls, user_id: int, limit: int = 1) -> list[dict]:
+        """Get suggestions for concepts due for review."""
+        now = timezone.now()
+        due_reviews = (
+            UserConceptMastery.objects.filter(user_id=user_id, next_review_at__lte=now)
+            .select_related('concept', 'concept__topic_taxonomy')
+            .order_by('next_review_at')[:limit]
+        )
+
+        suggestions = []
+        for m in due_reviews:
+            # Prefer taxonomy if available
+            if m.concept.topic_taxonomy:
+                topic_display = m.concept.topic_taxonomy.name
+            else:
+                topic_display = m.concept.name
+
+            suggestions.append(
+                {
+                    'topic': m.concept.name,
+                    'topic_slug': m.concept.slug,
+                    'topic_display': topic_display,
+                    'reason': 'due_review',
+                    'reason_display': 'Time for a quick review!',
+                    'mastery_level': m.mastery_level,
+                }
+            )
+
+        return suggestions
+
+    @classmethod
+    async def get_available_modalities(cls, topic: str, user_id: int) -> list[dict]:
+        """
+        Get modalities that have content for this topic.
+
+        Only returns modalities with actual content (hides empty ones).
+        """
+        topic_slug = cls._normalize_topic(topic)
+        available = []
+
+        for modality, display, description in cls.MODALITY_CHOICES:
+            count = await cls._count_content(topic_slug, modality)
+            if count > 0:
+                available.append(
+                    {
+                        'modality': modality,
+                        'display': display,
+                        'description': description,
+                        'available_count': count,
+                    }
+                )
+
+        return available
+
+    @classmethod
+    def _normalize_topic(cls, topic: str) -> str:
+        """Normalize topic string to slug format."""
+        from django.utils.text import slugify
+
+        return slugify(topic.lower().strip())
+
+    @classmethod
+    @sync_to_async
+    def _count_content(cls, topic: str, modality: str) -> int:
+        """Count available content for topic+modality."""
+        count = 0
+
+        try:
+            if modality == 'video':
+                # Count YouTube videos and video projects
+                from core.integrations.youtube_feed_models import YouTubeFeedVideo
+
+                count += YouTubeFeedVideo.objects.filter(
+                    models.Q(tags__icontains=topic)
+                    | models.Q(project__title__icontains=topic)
+                    | models.Q(project__topics__icontains=topic)
+                ).count()
+
+            elif modality == 'quiz-challenges':
+                # Count quizzes
+                from core.quizzes.models import Quiz
+
+                count += (
+                    Quiz.objects.filter(
+                        is_published=True,
+                    )
+                    .filter(models.Q(topic__icontains=topic) | models.Q(topics__icontains=topic))
+                    .count()
+                )
+
+            elif modality in ('microlearning', 'long-reads'):
+                # Count micro lessons
+                count += (
+                    MicroLesson.objects.filter(
+                        is_active=True,
+                    )
+                    .filter(
+                        models.Q(concept__slug__icontains=topic)
+                        | models.Q(concept__name__icontains=topic)
+                        | models.Q(concept__topic__icontains=topic)
+                    )
+                    .count()
+                )
+
+            elif modality == 'projects':
+                # Count learning-eligible projects
+                count += (
+                    ProjectLearningMetadata.objects.filter(
+                        is_learning_eligible=True,
+                    )
+                    .filter(
+                        models.Q(key_techniques__icontains=topic)
+                        | models.Q(project__title__icontains=topic)
+                        | models.Q(project__topics__icontains=topic)
+                    )
+                    .count()
+                )
+
+            elif modality == 'games':
+                # Count game-related content
+                # Inline games are always available for certain topics
+                if topic in ['ai', 'quiz', 'trivia', 'knowledge', 'focus', 'break', 'fun', 'casual']:
+                    count += 1  # At least one inline game available
+                # Count game projects
+                count += (
+                    ProjectLearningMetadata.objects.filter(
+                        is_learning_eligible=True,
+                        project__topics__icontains='games',
+                    )
+                    .filter(models.Q(key_techniques__icontains=topic) | models.Q(project__title__icontains=topic))
+                    .count()
+                )
+
+        except Exception as e:
+            logger.warning(f'Error counting content for {topic}/{modality}: {e}')
+
+        return count
+
+    @classmethod
+    async def get_content(cls, topic: str, modality: str, user_id: int) -> dict:
+        """
+        Get content matching topic + modality.
+
+        Returns content if available, or AI context for fallback generation.
+        Logs content gap if insufficient content.
+        """
+        topic_slug = cls._normalize_topic(topic)
+        topic_display = topic.replace('-', ' ').title()
+
+        # Get topic display name if it's a known topic
+        for slug, display in UserLearningPath.TOPIC_CHOICES:
+            if slug == topic_slug:
+                topic_display = display
+                break
+
+        # Route to appropriate handler
+        handlers = {
+            'video': cls._get_video_content,
+            'quiz-challenges': cls._get_quiz_content,
+            'microlearning': cls._get_micro_lesson_content,
+            'long-reads': cls._get_micro_lesson_content,
+            'games': cls._get_games_content,
+            'projects': cls._get_project_content,
+        }
+
+        handler = handlers.get(modality, cls._get_micro_lesson_content)
+        result = await handler(topic_slug, user_id)
+
+        items = result.get('items', [])
+
+        # Log content gap if insufficient
+        if len(items) < ContentGapService.GAP_THRESHOLD:
+            await ContentGapService.record_gap(
+                topic=topic,
+                modality=modality,
+                results_count=len(items),
+                user_id=user_id,
+                gap_type='modality_gap' if len(items) > 0 else 'missing_topic',
+            )
+
+        # Build response
+        if items:
+            return {
+                'has_content': True,
+                'source_type': result.get('source_type', 'curated'),
+                'content_type': modality,
+                'items': items,
+                'topic': topic_slug,
+                'topic_display': topic_display,
+                'content_gap_logged': len(items) < ContentGapService.GAP_THRESHOLD,
+                'follow_up_prompts': [
+                    'Want me to summarize the key points?',
+                    'Ready to test your knowledge with a quiz?',
+                    'Would you like to explore a related topic?',
+                ],
+            }
+        else:
+            # AI fallback
+            profile_data = await LearnerMemory.get_profile(user_id)
+            difficulty = profile_data['profile']['current_difficulty_level']
+            learning_style = profile_data['profile']['preferred_learning_style']
+
+            guidance = {
+                'beginner': 'Use simple terms, analogies, and real-world examples. Avoid jargon.',
+                'intermediate': 'Include technical terms but explain them. Focus on practical application.',
+                'advanced': 'Be technical. Cover edge cases and advanced patterns.',
+            }.get(difficulty, 'Explain clearly and engagingly.')
+
+            modality_guidance = {
+                'video': 'Since they wanted video, make your explanation visual with step-by-step descriptions.',
+                'long-reads': 'Structure this like an article with clear sections and depth.',
+                'quiz-challenges': 'Since no quiz exists, offer to ask them some questions to test their knowledge.',
+                'projects': 'Guide them through a practical exercise they can try.',
+            }.get(modality, '')
+
+            return {
+                'has_content': False,
+                'source_type': 'ai_generated',
+                'content_type': modality,
+                'topic': topic_slug,
+                'topic_display': topic_display,
+                'content_gap_logged': True,
+                'ai_context': {
+                    'topic': topic_slug,
+                    'topic_display': topic_display,
+                    'modality': modality,
+                    'difficulty': difficulty,
+                    'learning_style': learning_style,
+                    'guidance': f'{guidance} {modality_guidance}'.strip(),
+                },
+                'message': (
+                    f"I don't have a specific {modality} on {topic_display} yet, " 'but let me help you learn about it!'
+                ),
+                'alternative_modalities': await cls.get_available_modalities(topic, user_id),
+                'follow_up_prompts': [
+                    'Would you like me to explain it another way?',
+                    'Want to try a different format instead?',
+                    'Should we explore a related topic?',
+                ],
+            }
+
+    @classmethod
+    @sync_to_async
+    def _get_video_content(cls, topic: str, user_id: int) -> dict:
+        """Query YouTube videos matching topic."""
+        try:
+            from core.integrations.youtube_feed_models import YouTubeFeedVideo
+
+            videos = list(
+                YouTubeFeedVideo.objects.filter(
+                    models.Q(project__topics__icontains=topic)
+                    | models.Q(tags__icontains=topic)
+                    | models.Q(project__title__icontains=topic)
+                )
+                .exclude(project__is_private=True)
+                .select_related('project', 'project__user')
+                .order_by('-view_count', '-published_at')[:5]
+            )
+
+            if videos:
+                return {
+                    'source_type': 'external',
+                    'items': [
+                        {
+                            'id': str(v.video_id),
+                            'title': v.project.title if v.project else v.title,
+                            'url': v.youtube_url,
+                            'thumbnail': v.thumbnail_url,
+                            'featured_image_url': v.thumbnail_url,
+                            'duration_seconds': v.duration_seconds if hasattr(v, 'duration_seconds') else None,
+                            'view_count': v.view_count,
+                            'source_name': v.channel_name if hasattr(v, 'channel_name') else 'YouTube',
+                            'author_username': v.project.user.username if v.project else None,
+                            'author_avatar_url': v.project.user.avatar_url if v.project else None,
+                            'published_at': v.published_at.isoformat() if v.published_at else None,
+                        }
+                        for v in videos
+                    ],
+                }
+        except Exception as e:
+            logger.warning(f'Error querying video content for {topic}: {e}')
+
+        return {'source_type': 'external', 'items': []}
+
+    @classmethod
+    @sync_to_async
+    def _get_quiz_content(cls, topic: str, user_id: int) -> dict:
+        """Query quizzes matching topic."""
+        try:
+            from core.quizzes.models import Quiz
+
+            quizzes = list(
+                Quiz.objects.filter(is_published=True)
+                .filter(
+                    models.Q(topic__icontains=topic)
+                    | models.Q(topics__icontains=topic)
+                    | models.Q(title__icontains=topic)
+                )
+                .order_by('difficulty', '-created_at')[:5]
+            )
+
+            if quizzes:
+                return {
+                    'source_type': 'curated',
+                    'items': [
+                        {
+                            'id': str(q.id),
+                            'title': q.title,
+                            'slug': q.slug,
+                            'description': q.description[:200] if q.description else '',
+                            'difficulty': q.difficulty,
+                            'question_count': q.question_count if hasattr(q, 'question_count') else 0,
+                            'estimated_time': q.estimated_time,
+                            'url': f'/quizzes/{q.slug}' if q.slug else f'/quizzes/{q.id}',
+                        }
+                        for q in quizzes
+                    ],
+                }
+        except Exception as e:
+            logger.warning(f'Error querying quiz content for {topic}: {e}')
+
+        return {'source_type': 'curated', 'items': []}
+
+    @classmethod
+    @sync_to_async
+    def _get_micro_lesson_content(cls, topic: str, user_id: int) -> dict:
+        """Query micro lessons matching topic."""
+        lessons = list(
+            MicroLesson.objects.filter(is_active=True)
+            .filter(
+                models.Q(concept__slug__icontains=topic)
+                | models.Q(concept__name__icontains=topic)
+                | models.Q(concept__topic__icontains=topic)
+                | models.Q(title__icontains=topic)
+            )
+            .select_related('concept')
+            .order_by('-positive_feedback_count', 'difficulty')[:5]
+        )
+
+        if lessons:
+            return {
+                'source_type': 'curated',
+                'items': [
+                    {
+                        'id': lesson.id,
+                        'title': lesson.title,
+                        'slug': lesson.slug,
+                        'concept_name': lesson.concept.name if lesson.concept else '',
+                        'lesson_type': lesson.lesson_type,
+                        'difficulty': lesson.difficulty,
+                        'estimated_minutes': lesson.estimated_minutes,
+                        'content_preview': lesson.content_template[:200] if lesson.content_template else '',
+                    }
+                    for lesson in lessons
+                ],
+            }
+
+        return {'source_type': 'curated', 'items': []}
+
+    @classmethod
+    @sync_to_async
+    def _get_project_content(cls, topic: str, user_id: int) -> dict:
+        """Query learning-eligible projects matching topic."""
+        metadatas = list(
+            ProjectLearningMetadata.objects.filter(is_learning_eligible=True)
+            .filter(
+                models.Q(key_techniques__icontains=topic)
+                | models.Q(project__title__icontains=topic)
+                | models.Q(project__topics__icontains=topic)
+            )
+            .select_related('project', 'project__user')
+            .order_by('-learning_quality_score')[:5]
+        )
+
+        if metadatas:
+            return {
+                'source_type': 'project',
+                'items': [
+                    {
+                        'id': str(m.project.id),
+                        'title': m.project.title,
+                        'slug': m.project.slug,
+                        'description': m.project.description[:200] if m.project.description else '',
+                        'featured_image_url': m.project.featured_image_url or '',
+                        'author_username': m.project.user.username,
+                        'author_avatar_url': m.project.user.avatar_url or '',
+                        'key_techniques': m.key_techniques,
+                        'complexity_level': m.complexity_level,
+                        'quality_score': m.learning_quality_score,
+                        'url': f'/{m.project.user.username}/{m.project.slug}',
+                    }
+                    for m in metadatas
+                ],
+            }
+
+        return {'source_type': 'project', 'items': []}
+
+    @classmethod
+    @sync_to_async
+    def _get_games_content(cls, topic: str, user_id: int) -> dict:
+        """
+        Query interactive games/experiences matching topic.
+
+        Returns games from projects with 'games-interactive' topic
+        or inline games if they match the learning topic.
+        """
+        # First check for inline games that might be relevant
+        inline_games = []
+        if topic in ['ai', 'quiz', 'trivia', 'knowledge']:
+            inline_games = [
+                {
+                    'id': 'quiz',
+                    'title': 'AI Knowledge Quiz',
+                    'type': 'inline_game',
+                    'description': 'Test your AI knowledge with fun trivia!',
+                    'game_id': 'quiz',
+                    'url': None,  # Inline games don't have URLs
+                }
+            ]
+        if topic in ['focus', 'break', 'fun', 'casual']:
+            inline_games.append(
+                {
+                    'id': 'snake',
+                    'title': 'Snake Game',
+                    'type': 'inline_game',
+                    'description': 'Take a fun break with classic Snake!',
+                    'game_id': 'snake',
+                    'url': None,
+                }
+            )
+
+        # Check for game projects in the database
+        try:
+            game_projects = list(
+                ProjectLearningMetadata.objects.filter(
+                    is_learning_eligible=True,
+                    project__topics__icontains='games',
+                )
+                .filter(
+                    models.Q(key_techniques__icontains=topic)
+                    | models.Q(project__title__icontains=topic)
+                    | models.Q(project__description__icontains=topic)
+                )
+                .select_related('project', 'project__user')
+                .order_by('-learning_quality_score')[:5]
+            )
+
+            project_items = [
+                {
+                    'id': str(m.project.id),
+                    'title': m.project.title,
+                    'slug': m.project.slug,
+                    'type': 'project_game',
+                    'description': m.project.description[:200] if m.project.description else '',
+                    'author_username': m.project.user.username,
+                    'url': f'/projects/{m.project.slug}',
+                }
+                for m in game_projects
+            ]
+        except Exception as e:
+            logger.warning(f'Error querying game projects for {topic}: {e}')
+            project_items = []
+
+        all_items = inline_games + project_items
+
+        if all_items:
+            return {
+                'source_type': 'games',
+                'items': all_items,
+            }
+
+        return {'source_type': 'games', 'items': []}

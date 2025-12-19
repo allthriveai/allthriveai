@@ -2,6 +2,8 @@
 
 from rest_framework import serializers
 
+from core.taxonomy.serializers import TaxonomySerializer
+
 from .models import (
     Concept,
     LearnerProfile,
@@ -17,6 +19,7 @@ class UserLearningPathSerializer(serializers.ModelSerializer):
     """Serializer for UserLearningPath model."""
 
     topic_display = serializers.CharField(source='get_topic_display', read_only=True)
+    topic_taxonomy = TaxonomySerializer(read_only=True)
     skill_level_display = serializers.CharField(source='get_current_skill_level_display', read_only=True)
     progress_percentage = serializers.IntegerField(read_only=True)
     points_to_next_level = serializers.IntegerField(read_only=True)
@@ -28,6 +31,7 @@ class UserLearningPathSerializer(serializers.ModelSerializer):
             'id',
             'topic',
             'topic_display',
+            'topic_taxonomy',
             'current_skill_level',
             'skill_level_display',
             'quizzes_completed',
@@ -169,6 +173,7 @@ class ConceptSerializer(serializers.ModelSerializer):
 
     tool_name = serializers.CharField(source='tool.name', read_only=True, allow_null=True)
     tool_slug = serializers.CharField(source='tool.slug', read_only=True, allow_null=True)
+    topic_taxonomy = TaxonomySerializer(read_only=True)
 
     class Meta:
         model = Concept
@@ -178,6 +183,7 @@ class ConceptSerializer(serializers.ModelSerializer):
             'slug',
             'description',
             'topic',
+            'topic_taxonomy',
             'tool_name',
             'tool_slug',
             'base_difficulty',
