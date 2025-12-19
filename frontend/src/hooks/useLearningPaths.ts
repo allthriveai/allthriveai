@@ -9,12 +9,25 @@ import {
   startLearningPath,
   getUserLearningPaths,
   getAllTopics,
+  getLearnerProfile,
+  updateLearnerProfile,
+  getLearningStats,
+  getConcepts,
+  getConceptMastery,
+  getStructuredPath,
+  completeLearningSetup,
 } from '@/services/learningPaths';
 import type {
   UserLearningPath,
   LearningPathDetail,
   TopicRecommendation,
   LearningPathTopic,
+  LearnerProfile,
+  Concept,
+  UserConceptMastery,
+  LearningStats,
+  StructuredPath,
+  LearningGoal,
 } from '@/types/models';
 
 // Query keys
@@ -26,6 +39,13 @@ export const learningPathKeys = {
   detail: (topic: string) => [...learningPathKeys.details(), topic] as const,
   recommendations: () => [...learningPathKeys.all, 'recommendations'] as const,
   topics: () => [...learningPathKeys.all, 'topics'] as const,
+  // New learning system keys
+  learnerProfile: () => [...learningPathKeys.all, 'learnerProfile'] as const,
+  learningStats: (days?: number) => [...learningPathKeys.all, 'stats', { days }] as const,
+  concepts: (topic?: string) => [...learningPathKeys.all, 'concepts', { topic }] as const,
+  conceptMastery: (topic?: string) => [...learningPathKeys.all, 'mastery', { topic }] as const,
+  // Structured path keys
+  structuredPath: () => [...learningPathKeys.all, 'structuredPath'] as const,
 };
 
 /**
@@ -98,6 +118,105 @@ export function useStartLearningPath() {
       queryClient.invalidateQueries({ queryKey: learningPathKeys.lists() });
       // Invalidate recommendations
       queryClient.invalidateQueries({ queryKey: learningPathKeys.recommendations() });
+    },
+  });
+}
+
+// =============================================================================
+// NEW LEARNING SYSTEM HOOKS
+// =============================================================================
+
+/**
+ * Get current user's learner profile
+ */
+export function useLearnerProfile(enabled: boolean = true) {
+  return useQuery<LearnerProfile, Error>({
+    queryKey: learningPathKeys.learnerProfile(),
+    queryFn: getLearnerProfile,
+    enabled,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Update learner profile
+ */
+export function useUpdateLearnerProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation<LearnerProfile, Error, Partial<LearnerProfile>>({
+    mutationFn: updateLearnerProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.learnerProfile() });
+    },
+  });
+}
+
+/**
+ * Get learning stats for the current user
+ */
+export function useLearningStats(days: number = 30, enabled: boolean = true) {
+  return useQuery<LearningStats, Error>({
+    queryKey: learningPathKeys.learningStats(days),
+    queryFn: () => getLearningStats(days),
+    enabled,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Get all available concepts
+ */
+export function useConcepts(topic?: string, enabled: boolean = true) {
+  return useQuery<Concept[], Error>({
+    queryKey: learningPathKeys.concepts(topic),
+    queryFn: () => getConcepts(topic),
+    enabled,
+    staleTime: 1000 * 60 * 30, // 30 minutes - concepts rarely change
+  });
+}
+
+/**
+ * Get user's concept mastery
+ */
+export function useConceptMastery(topic?: string, enabled: boolean = true) {
+  return useQuery<UserConceptMastery[], Error>({
+    queryKey: learningPathKeys.conceptMastery(topic),
+    queryFn: () => getConceptMastery(topic),
+    enabled,
+    staleTime: 1000 * 60 * 2, // 2 minutes - mastery changes more frequently
+  });
+}
+
+// =============================================================================
+// STRUCTURED LEARNING PATH HOOKS
+// =============================================================================
+
+/**
+ * Get user's personalized structured learning path with progress
+ */
+export function useStructuredPath(enabled: boolean = true) {
+  return useQuery<StructuredPath, Error>({
+    queryKey: learningPathKeys.structuredPath(),
+    queryFn: getStructuredPath,
+    enabled,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+/**
+ * Complete learning setup (cold-start) with a learning goal
+ */
+export function useCompleteLearningSetup() {
+  const queryClient = useQueryClient();
+
+  return useMutation<StructuredPath, Error, LearningGoal>({
+    mutationFn: completeLearningSetup,
+    onSuccess: () => {
+      // Invalidate structured path to get the newly generated path
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.structuredPath() });
+      // Also invalidate learner profile as it may have been updated
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.learnerProfile() });
     },
   });
 }

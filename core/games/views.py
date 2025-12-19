@@ -3,14 +3,22 @@
 import logging
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
 from core.games.models import GameScore
 from core.games.serializers import GameScoreSerializer, SubmitScoreSerializer
 
 logger = logging.getLogger(__name__)
+
+
+class GameScoreThrottle(UserRateThrottle):
+    """Rate limit game score submissions to prevent abuse."""
+
+    rate = '10/minute'  # Max 10 score submissions per minute per user
+
 
 # Points configuration per game
 GAME_POINTS_CONFIG = {
@@ -18,13 +26,18 @@ GAME_POINTS_CONFIG = {
         'base_points': 10,  # Points for playing
         'bonus_per_tokens': 5,  # Every N tokens collected = 1 bonus point
         'max_bonus': 50,  # Cap on bonus points
+        'max_score': 225,  # 15x15 grid = max possible tokens
     },
     'ethics_defender': {
         'base_points': 10,
         'bonus_per_score': 100,  # Every N score = 1 bonus point
         'max_bonus': 50,
+        'max_score': 10000,  # Reasonable max for ethics defender
     },
 }
+
+# Default max score for unknown games
+DEFAULT_MAX_SCORE = 1000
 
 
 def calculate_game_points(game: str, score: int) -> tuple[int, int]:
@@ -56,6 +69,7 @@ def calculate_game_points(game: str, score: int) -> tuple[int, int]:
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([GameScoreThrottle])
 def submit_score(request):
     """Submit a game score and award points."""
     serializer = SubmitScoreSerializer(data=request.data)
@@ -63,6 +77,24 @@ def submit_score(request):
 
     game = serializer.validated_data['game']
     score_value = serializer.validated_data['score']
+
+    # Validate score is within reasonable bounds to prevent cheating
+    config = GAME_POINTS_CONFIG.get(game, {})
+    max_score = config.get('max_score', DEFAULT_MAX_SCORE)
+    if score_value > max_score:
+        logger.warning(
+            'Suspicious game score rejected',
+            extra={
+                'user_id': request.user.id,
+                'game': game,
+                'score': score_value,
+                'max_allowed': max_score,
+            },
+        )
+        return Response(
+            {'error': f'Score exceeds maximum allowed value of {max_score}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     # Create the score record
     score = GameScore.objects.create(
@@ -72,7 +104,11 @@ def submit_score(request):
         metadata=serializer.validated_data.get('metadata', {}),
     )
 
-    # Calculate and award points
+    # Invalidate leaderboard cache if this might be a top score
+    # Only invalidate if score is potentially in top 100
+    GameScore.invalidate_leaderboard_cache(game)
+
+    # Calculate and award points in a single transaction
     base_points, bonus_points = calculate_game_points(game, score_value)
     total_points = base_points + bonus_points
 
@@ -82,20 +118,13 @@ def submit_score(request):
         'total': total_points,
     }
 
-    # Award base points for playing
-    if base_points > 0:
+    # Award all points in a single call to avoid partial updates
+    if total_points > 0:
+        game_name = game.replace('_', ' ').title()
         request.user.add_points(
-            base_points,
-            f'{game}_play',
-            f'Played {game.replace("_", " ").title()}',
-        )
-
-    # Award bonus points for performance
-    if bonus_points > 0:
-        request.user.add_points(
-            bonus_points,
-            f'{game}_bonus',
-            f'Score bonus: {score_value} tokens',
+            total_points,
+            f'{game}_score',
+            f'{game_name}: {score_value} tokens (+{base_points} play, +{bonus_points} bonus)',
         )
 
     logger.info(

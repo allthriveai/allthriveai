@@ -334,7 +334,7 @@ def suggest_next_activity(
         if paths:
             # Get the most common skill level
             skill_levels = [p.current_skill_level for p in paths]
-            if 'advanced' in skill_levels or 'master' in skill_levels:
+            if 'advanced' in skill_levels or 'expert' in skill_levels:
                 preferred_difficulty = 'advanced'
             elif 'intermediate' in skill_levels:
                 preferred_difficulty = 'intermediate'
@@ -464,16 +464,578 @@ def get_quiz_details(
         return {'success': False, 'error': str(e)}
 
 
+# =============================================================================
+# NEW ENHANCED LEARNING TOOLS
+# =============================================================================
+
+
+class GetLearnerProfileInput(BaseModel):
+    """Input for get_learner_profile tool."""
+
+    include_stats: bool = Field(default=True, description='Include learning statistics')
+
+
+class GetConceptMasteryInput(BaseModel):
+    """Input for get_concept_mastery tool."""
+
+    topic: str = Field(default='', description='Filter by topic slug (e.g., "ai-agents-multitool")')
+    concept_slug: str = Field(default='', description='Get mastery for a specific concept')
+
+
+class FindKnowledgeGapsInput(BaseModel):
+    """Input for find_knowledge_gaps tool."""
+
+    topic: str = Field(default='', description='Optional topic to filter by')
+    limit: int = Field(default=5, description='Maximum number of gaps to return')
+
+
+class GetDueReviewsInput(BaseModel):
+    """Input for get_due_reviews tool."""
+
+    limit: int = Field(default=5, description='Maximum number of reviews to return')
+
+
+class DeliverMicroLessonInput(BaseModel):
+    """Input for deliver_micro_lesson tool."""
+
+    concept_slug: str = Field(description='The concept to teach (slug from Concept model)')
+
+
+class RecordLearningEventInput(BaseModel):
+    """Input for record_learning_event tool."""
+
+    event_type: str = Field(
+        description='Type of event: lesson_viewed, concept_practiced, hint_used, explanation_requested, project_studied'
+    )
+    concept_slug: str = Field(default='', description='The concept this relates to')
+    was_successful: bool = Field(default=True, description='Whether the learning activity was successful')
+
+
+@tool(args_schema=GetLearnerProfileInput)
+def get_learner_profile(
+    include_stats: bool = True,
+    state: dict | None = None,
+) -> dict:
+    """
+    Get the user's learner profile including preferences and statistics.
+
+    Use this to understand the user's learning style and personalize interactions.
+
+    Examples:
+    - "What's my learning style?"
+    - "How long is my learning streak?"
+    - "Show me my learning stats"
+
+    Returns profile with preferences, streak info, and overall progress.
+    """
+    from core.learning_paths.models import LearnerProfile
+
+    logger.info(f'get_learner_profile called: include_stats={include_stats}')
+
+    user_id = state.get('user_id') if state else None
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    try:
+        profile, created = LearnerProfile.objects.get_or_create(user_id=user_id)
+
+        data = {
+            'success': True,
+            'is_new_learner': created,
+            'preferences': {
+                'learning_style': profile.preferred_learning_style,
+                'difficulty_level': profile.current_difficulty_level,
+                'session_length': profile.preferred_session_length,
+                'allow_proactive_suggestions': profile.allow_proactive_suggestions,
+            },
+        }
+
+        if include_stats:
+            data['stats'] = {
+                'learning_streak_days': profile.learning_streak_days,
+                'longest_streak_days': profile.longest_streak_days,
+                'total_lessons_completed': profile.total_lessons_completed,
+                'total_concepts_completed': profile.total_concepts_completed,
+                'total_learning_minutes': profile.total_learning_minutes,
+                'total_quizzes_completed': profile.total_quizzes_completed,
+            }
+
+        if created:
+            data['message'] = "Welcome! I've created your learner profile. Let me know your preferred learning style!"
+        else:
+            streak = profile.learning_streak_days
+            if streak > 0:
+                data['message'] = f'Great to see you! You have a {streak}-day learning streak going! 🔥'
+            else:
+                data['message'] = 'Welcome back! Ready to continue learning?'
+
+        return data
+
+    except Exception as e:
+        logger.error(f'get_learner_profile error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+@tool(args_schema=GetConceptMasteryInput)
+def get_concept_mastery(
+    topic: str = '',
+    concept_slug: str = '',
+    state: dict | None = None,
+) -> dict:
+    """
+    Get the user's mastery level for concepts they've practiced.
+
+    Use this to understand what the user knows well and what needs work.
+
+    Examples:
+    - "What do I know best?"
+    - "How's my understanding of RAG?"
+    - "What AI concepts do I know well?"
+
+    Returns proficiency levels with scores and practice history.
+    """
+    from core.learning_paths.models import Concept, UserConceptMastery
+
+    logger.info(f'get_concept_mastery called: topic={topic}, concept_slug={concept_slug}')
+
+    user_id = state.get('user_id') if state else None
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    try:
+        queryset = UserConceptMastery.objects.filter(user_id=user_id).select_related('concept')
+
+        if concept_slug:
+            queryset = queryset.filter(concept__slug=concept_slug)
+        if topic:
+            queryset = queryset.filter(concept__topic=topic)
+
+        masteries = list(queryset.order_by('-mastery_score')[:10])
+
+        if not masteries:
+            # Check if user has practiced any concepts
+            if concept_slug:
+                try:
+                    concept = Concept.objects.get(slug=concept_slug, is_active=True)
+                    return {
+                        'success': True,
+                        'mastery': None,
+                        'concept': {
+                            'name': concept.name,
+                            'slug': concept.slug,
+                            'topic': concept.topic,
+                            'difficulty': concept.base_difficulty,
+                        },
+                        'message': f"You haven't practiced '{concept.name}' yet. Would you like to start?",
+                    }
+                except Concept.DoesNotExist:
+                    return {'success': False, 'error': f"Concept '{concept_slug}' not found"}
+
+            return {
+                'success': True,
+                'masteries': [],
+                'message': (
+                    "You haven't practiced any concepts yet. " 'Try taking a quiz or asking me to explain something!'
+                ),
+            }
+
+        mastery_data = []
+        for m in masteries:
+            accuracy = round((m.times_correct / m.times_practiced) * 100, 1) if m.times_practiced > 0 else 0
+            mastery_data.append(
+                {
+                    'concept': m.concept.name,
+                    'concept_slug': m.concept.slug,
+                    'topic': m.concept.topic,
+                    'mastery_level': m.mastery_level,
+                    'mastery_score': round(m.mastery_score * 100, 1),
+                    'times_practiced': m.times_practiced,
+                    'accuracy_percentage': accuracy,
+                    'consecutive_correct': m.consecutive_correct,
+                    'due_for_review': m.next_review_at and m.next_review_at <= timezone.now()
+                    if hasattr(m, 'next_review_at') and m.next_review_at
+                    else False,
+                }
+            )
+
+        # Summarize
+        expert_count = sum(1 for m in mastery_data if m['mastery_level'] in ['expert', 'proficient'])
+
+        return {
+            'success': True,
+            'expert_count': expert_count,
+            'total_concepts': len(mastery_data),
+            'masteries': mastery_data,
+            'message': f"You've practiced {len(mastery_data)} concepts, with {expert_count} at expert level!",
+        }
+
+    except Exception as e:
+        logger.error(f'get_concept_mastery error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+# Import timezone for due review checks
+from django.utils import timezone  # noqa: E402
+
+
+@tool(args_schema=FindKnowledgeGapsInput)
+def find_knowledge_gaps(
+    topic: str = '',
+    limit: int = 5,
+    state: dict | None = None,
+) -> dict:
+    """
+    Find concepts where the user is struggling and needs more practice.
+
+    Use this to identify what the user should focus on improving.
+
+    Examples:
+    - "What should I work on?"
+    - "Where am I struggling?"
+    - "What are my weak areas?"
+
+    Returns concepts with low mastery that need attention.
+    """
+    from core.learning_paths.models import UserConceptMastery
+
+    logger.info(f'find_knowledge_gaps called: topic={topic}, limit={limit}')
+
+    user_id = state.get('user_id') if state else None
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    try:
+        queryset = UserConceptMastery.objects.filter(
+            user_id=user_id,
+            mastery_level__in=['unknown', 'aware', 'learning'],
+            times_practiced__gt=0,  # Only concepts they've tried
+        ).select_related('concept')
+
+        if topic:
+            queryset = queryset.filter(concept__topic=topic)
+
+        gaps = list(queryset.order_by('mastery_score')[:limit])
+
+        if not gaps:
+            return {
+                'success': True,
+                'gaps': [],
+                'message': "No knowledge gaps found! You're doing great, or you haven't practiced enough yet.",
+            }
+
+        gap_data = []
+        for m in gaps:
+            accuracy = round((m.times_correct / m.times_practiced) * 100, 1) if m.times_practiced > 0 else 0
+            gap_data.append(
+                {
+                    'concept': m.concept.name,
+                    'concept_slug': m.concept.slug,
+                    'topic': m.concept.topic,
+                    'mastery_level': m.mastery_level,
+                    'mastery_score': round(m.mastery_score * 100, 1),
+                    'times_practiced': m.times_practiced,
+                    'accuracy_percentage': accuracy,
+                    'suggestion': f"Practice '{m.concept.name}' more - your accuracy is {accuracy}%",
+                }
+            )
+
+        return {
+            'success': True,
+            'gap_count': len(gap_data),
+            'gaps': gap_data,
+            'message': f'Found {len(gap_data)} areas that could use more practice. Let me help you improve!',
+        }
+
+    except Exception as e:
+        logger.error(f'find_knowledge_gaps error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+@tool(args_schema=GetDueReviewsInput)
+def get_due_reviews(
+    limit: int = 5,
+    state: dict | None = None,
+) -> dict:
+    """
+    Get concepts that are due for spaced repetition review.
+
+    Use this to help users maintain their knowledge through timely reviews.
+
+    Examples:
+    - "What should I review?"
+    - "Any concepts due for review?"
+    - "Help me maintain my knowledge"
+
+    Returns concepts scheduled for review using spaced repetition.
+    """
+    from core.learning_paths.models import UserConceptMastery
+
+    logger.info(f'get_due_reviews called: limit={limit}')
+
+    user_id = state.get('user_id') if state else None
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    try:
+        now = timezone.now()
+        due_reviews = list(
+            UserConceptMastery.objects.filter(
+                user_id=user_id,
+                next_review_at__lte=now,
+            )
+            .select_related('concept')
+            .order_by('next_review_at')[:limit]
+        )
+
+        if not due_reviews:
+            return {
+                'success': True,
+                'reviews': [],
+                'message': "No reviews due right now! You're all caught up. 🎉",
+            }
+
+        review_data = []
+        for m in due_reviews:
+            days_overdue = (now - m.next_review_at).days if m.next_review_at else 0
+            review_data.append(
+                {
+                    'concept': m.concept.name,
+                    'concept_slug': m.concept.slug,
+                    'topic': m.concept.topic,
+                    'mastery_level': m.mastery_level,
+                    'days_overdue': max(0, days_overdue),
+                    'last_practiced': m.last_practiced.isoformat() if m.last_practiced else None,
+                }
+            )
+
+        return {
+            'success': True,
+            'review_count': len(review_data),
+            'reviews': review_data,
+            'message': (
+                f'You have {len(review_data)} concepts ready for review. ' 'A quick review will help you remember them!'
+            ),
+        }
+
+    except Exception as e:
+        logger.error(f'get_due_reviews error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+@tool(args_schema=DeliverMicroLessonInput)
+def deliver_micro_lesson(
+    concept_slug: str,
+    state: dict | None = None,
+) -> dict:
+    """
+    Deliver a micro-lesson for a specific concept.
+
+    Use this when a user wants to learn about a concept in a structured way.
+
+    Examples:
+    - "Teach me about prompt engineering"
+    - "Can you explain RAG in a lesson?"
+    - "I want to learn about AI agents"
+
+    Returns lesson content with follow-up prompts for engagement.
+    """
+    from core.learning_paths.models import Concept, LearnerProfile, MicroLesson
+
+    logger.info(f'deliver_micro_lesson called: concept_slug={concept_slug}')
+
+    user_id = state.get('user_id') if state else None
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    try:
+        # Get the concept
+        try:
+            concept = Concept.objects.get(slug=concept_slug, is_active=True)
+        except Concept.DoesNotExist:
+            # Try by name (fuzzy match)
+            concept = Concept.objects.filter(name__icontains=concept_slug, is_active=True).first()
+            if not concept:
+                return {
+                    'success': False,
+                    'error': f"Concept '{concept_slug}' not found. Try asking about a specific AI topic!",
+                }
+
+        # Get user's profile for personalization
+        profile, _ = LearnerProfile.objects.get_or_create(user_id=user_id)
+
+        # Look for existing micro-lessons
+        lesson = (
+            MicroLesson.objects.filter(concept=concept, difficulty=profile.current_difficulty_level)
+            .order_by('?')
+            .first()
+        )
+
+        if not lesson:
+            # Fall back to any difficulty lesson
+            lesson = MicroLesson.objects.filter(concept=concept).order_by('?').first()
+
+        if lesson:
+            # Return curated lesson
+            return {
+                'success': True,
+                'lesson_type': 'curated',
+                'concept': {
+                    'name': concept.name,
+                    'slug': concept.slug,
+                    'topic': concept.topic,
+                    'difficulty': concept.base_difficulty,
+                },
+                'lesson': {
+                    'title': lesson.title,
+                    'content': lesson.content_template,
+                    'difficulty': lesson.difficulty,
+                    'estimated_minutes': lesson.estimated_minutes,
+                    'follow_up_prompts': lesson.follow_up_prompts or [],
+                },
+                'personalization': {
+                    'learning_style': profile.preferred_learning_style,
+                    'difficulty_level': profile.current_difficulty_level,
+                },
+                'message': f"Here's a micro-lesson on '{concept.name}'!",
+            }
+
+        # No curated lesson - provide concept context for AI-generated lesson
+        return {
+            'success': True,
+            'lesson_type': 'ai_generated',
+            'concept': {
+                'name': concept.name,
+                'slug': concept.slug,
+                'topic': concept.topic,
+                'description': concept.description,
+                'difficulty': concept.base_difficulty,
+                'estimated_minutes': concept.estimated_minutes,
+                'keywords': concept.keywords or [],
+            },
+            'personalization': {
+                'learning_style': profile.preferred_learning_style,
+                'difficulty_level': profile.current_difficulty_level,
+            },
+            'guidance': {
+                'beginner': 'Use simple language, analogies, and real-world examples. Avoid jargon.',
+                'intermediate': 'Include some technical terms but explain them. Focus on practical application.',
+                'advanced': 'Be technical. Cover edge cases and advanced patterns.',
+            }.get(profile.current_difficulty_level, 'Explain clearly and engagingly.'),
+            'follow_up_prompts': [
+                'Want me to give you an example?',
+                'Should we try a quick practice question?',
+                f'Would you like to explore how this connects to other {concept.topic} concepts?',
+            ],
+            'message': f"Let me teach you about '{concept.name}'!",
+        }
+
+    except Exception as e:
+        logger.error(f'deliver_micro_lesson error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+@tool(args_schema=RecordLearningEventInput)
+def record_learning_event(
+    event_type: str,
+    concept_slug: str = '',
+    was_successful: bool = True,
+    state: dict | None = None,
+) -> dict:
+    """
+    Record a learning interaction for tracking progress.
+
+    Use this after helping the user learn something to track their progress.
+
+    Valid event types:
+    - lesson_viewed: User viewed a micro-lesson
+    - concept_practiced: User practiced a concept
+    - hint_used: User got a hint on a question
+    - explanation_requested: User asked for an explanation
+    - project_studied: User studied a project for learning
+
+    Returns confirmation of the recorded event.
+    """
+    from core.learning_paths.models import Concept, LearningEvent
+
+    logger.info(f'record_learning_event called: type={event_type}, concept={concept_slug}')
+
+    user_id = state.get('user_id') if state else None
+    if not user_id:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    valid_types = ['lesson_viewed', 'concept_practiced', 'hint_used', 'explanation_requested', 'project_studied']
+    if event_type not in valid_types:
+        return {'success': False, 'error': f'Invalid event type. Must be one of: {valid_types}'}
+
+    try:
+        concept = None
+        if concept_slug:
+            concept = Concept.objects.filter(slug=concept_slug, is_active=True).first()
+
+        # Calculate XP based on event type
+        xp_map = {
+            'lesson_viewed': 10,
+            'concept_practiced': 15,
+            'hint_used': 2,
+            'explanation_requested': 5,
+            'project_studied': 20,
+        }
+        xp = xp_map.get(event_type, 5)
+
+        # Adjust XP for unsuccessful attempts
+        if not was_successful:
+            xp = max(1, xp // 2)
+
+        LearningEvent.objects.create(
+            user_id=user_id,
+            event_type=event_type,
+            concept=concept,
+            was_successful=was_successful,
+            xp_earned=xp,
+            payload={'recorded_by': 'ember_tool'},
+        )
+
+        return {
+            'success': True,
+            'xp_earned': xp,
+            'event_type': event_type,
+            'concept': concept.name if concept else None,
+            'message': f'Recorded! You earned {xp} XP for your learning activity.',
+        }
+
+    except Exception as e:
+        logger.error(f'record_learning_event error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
 # Tools that need state injection (for user context)
-TOOLS_NEEDING_STATE = {'get_learning_progress', 'suggest_next_activity'}
+TOOLS_NEEDING_STATE = {
+    'get_learning_progress',
+    'suggest_next_activity',
+    # New enhanced tools
+    'get_learner_profile',
+    'get_concept_mastery',
+    'find_knowledge_gaps',
+    'get_due_reviews',
+    'deliver_micro_lesson',
+    'record_learning_event',
+}
 
 # All learning tools
 LEARNING_TOOLS = [
+    # Original 5 tools
     get_learning_progress,
     get_quiz_hint,
     explain_concept,
     suggest_next_activity,
     get_quiz_details,
+    # New enhanced learning tools (6 additional)
+    get_learner_profile,
+    get_concept_mastery,
+    find_knowledge_gaps,
+    get_due_reviews,
+    deliver_micro_lesson,
+    record_learning_event,
 ]
 
 # Tool lookup by name

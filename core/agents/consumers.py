@@ -160,6 +160,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 session_id = data.get('session_id')
                 reference_image_url = data.get('reference_image_url')
 
+                # Debug logging
+                logger.info(f'Avatar WS message: session_id={session_id}, reference_image_url={reference_image_url}')
+
                 if not session_id:
                     await self.send_error('session_id is required for avatar generation')
                     return

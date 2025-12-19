@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIntelligentChat, type OrchestrationAction } from '@/hooks/useIntelligentChat';
 import { useOrchestrationActions } from '@/hooks/useOrchestrationActions';
 import { useOnboardingChat } from '@/hooks/useOnboardingChat';
+import { useEmberOnboarding } from '@/hooks/useEmberOnboarding';
 import { ChatPlusMenu, type IntegrationType } from '@/components/chat/ChatPlusMenu';
 import {
   OnboardingIntroMessage,
@@ -25,20 +26,74 @@ import { ArrowRightIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDragon } from '@fortawesome/free-solid-svg-icons';
 
-// What Ember can actually do today - mapped to user intents
-// These map to real Ember tools: discovery, learning, project, profile, navigation
-const EMBER_CAPABILITIES = {
-  // Discovery tools: search_projects, get_recommendations, get_trending_projects
-  explore: { label: 'Explore', message: "Show me what's trending in AI" },
-  // Learning tools: get_learning_progress, suggest_next_activity, get_quiz_details
-  learn: { label: 'Learn', message: "I want to learn something new about AI" },
-  // Project tools: create_project, import_from_url
-  build: { label: 'Build', message: "I want to build something" },
-  // Profile tools: gather_user_data, generate_profile_sections, save_profile_sections
-  profile: { label: 'Set up my profile', message: "Help me set up my profile" },
-  // Orchestration: navigate_to_page - takes user to battles
-  play: { label: 'Play', message: "Take me to a game!" },
-};
+// Feeling options that show based on user's signup interests (excitedFeatures)
+// Each option maps to specific signup features and triggers different actions
+interface FeelingOption {
+  id: string;
+  label: string;
+  signupFeatures: string[]; // Which excitedFeatures trigger this option
+  message?: string; // Message to send to Ember
+  navigateTo?: string; // URL to navigate to instead of sending message
+}
+
+const FEELING_OPTIONS: FeelingOption[] = [
+  // portfolio → Share something I've been working on → Project tools
+  {
+    id: 'share',
+    label: 'Share something I\'ve been working on',
+    signupFeatures: ['portfolio'],
+    message: 'I want to share something I\'ve been working on',
+  },
+  // battles → Play a game → Navigate to /side-quests
+  {
+    id: 'play',
+    label: 'Play a game',
+    signupFeatures: ['battles'],
+    navigateTo: '/side-quests',
+  },
+  // challenges → See this week's challenge → Navigate to /challenge
+  {
+    id: 'challenge',
+    label: 'See this week\'s challenge',
+    signupFeatures: ['challenges'],
+    navigateTo: '/challenge',
+  },
+  // microlearning, learning → Learn something new → Learning tools
+  {
+    id: 'learn',
+    label: 'Learn something new',
+    signupFeatures: ['microlearning', 'learning'],
+    message: 'I want to learn something new about AI',
+  },
+  // marketplace → Sell a product or service → Coming soon
+  {
+    id: 'marketplace',
+    label: 'Sell a product or service',
+    signupFeatures: ['marketplace'],
+    message: 'I want to sell a product or service',
+  },
+  // investing → Explore what others are making → Navigate to explore feed
+  {
+    id: 'explore',
+    label: 'Explore what others are making',
+    signupFeatures: ['investing'],
+    navigateTo: '/explore?tab=new',
+  },
+  // community → Connect with others → Navigate to /thrive-circle
+  {
+    id: 'connect',
+    label: 'Connect with others',
+    signupFeatures: ['community'],
+    navigateTo: '/thrive-circle',
+  },
+  // personalize → Personalize my experience → Profile generation, quiz
+  {
+    id: 'personalize',
+    label: 'Personalize my experience',
+    signupFeatures: ['personalize'],
+    message: 'Help me personalize my AllThrive experience',
+  },
+];
 
 function EmberHomeContent() {
   const navigate = useNavigate();
@@ -93,6 +148,10 @@ function EmberHomeContent() {
   // Onboarding chat integration
   const onboarding = useOnboardingChat();
 
+  // Check if user has already personalized (to show different option)
+  const { isAdventureComplete } = useEmberOnboarding();
+  const hasPersonalized = isAdventureComplete('personalize');
+
   // Auto-scroll to bottom only when there are actual conversation messages
   useEffect(() => {
     // Only scroll if user has sent messages (not just the greeting)
@@ -140,64 +199,54 @@ function EmberHomeContent() {
     return 'Good evening';
   };
 
-  // Personalized options based on role + signup interests, mapped to Ember's real capabilities
-  const feelingOptions = useMemo(() => {
-    const role = user?.role || 'explorer';
-    const { explore, learn, build, profile, play } = EMBER_CAPABILITIES;
+  // Filter feeling options based on user's signup interests (excitedFeatures)
+  const feelingOptions = useMemo((): FeelingOption[] => {
+    // Helper to get option by id
+    const getOption = (id: string) => FEELING_OPTIONS.find((o) => o.id === id)!;
 
-    // Map signup features to Ember capabilities
-    const featureToCapability: Record<string, keyof typeof EMBER_CAPABILITIES> = {
-      portfolio: 'build',
-      battles: 'play',
-      challenges: 'play',
-      microlearning: 'explore',
-      learning: 'learn',
-      marketplace: 'build',
-      investing: 'explore',
-      community: 'profile',  // Community = connecting = having a good profile
-    };
+    // Filter options to those matching user's signup features
+    const matchingOptions = FEELING_OPTIONS.filter((option) =>
+      option.signupFeatures.some((feature) => excitedFeatures.includes(feature))
+    );
 
-    // Start with capabilities based on their signup interests
-    const selectedCapabilities = new Set<keyof typeof EMBER_CAPABILITIES>();
-
-    for (const feature of excitedFeatures) {
-      const capability = featureToCapability[feature];
-      if (capability) {
-        selectedCapabilities.add(capability);
-      }
+    // If user has no matching features, show defaults: play, explore, personalize/learn
+    if (matchingOptions.length === 0) {
+      const defaults = [getOption('play'), getOption('explore')];
+      // If already personalized, show "Learn something new" instead
+      defaults.push(hasPersonalized ? getOption('learn') : getOption('personalize'));
+      return defaults;
     }
 
-    // If they have preferences, build options from them
-    if (selectedCapabilities.size > 0) {
-      const options: { label: string; message: string }[] = [];
-      const caps = Array.from(selectedCapabilities);
-
-      // Add up to 2 from their preferences
-      for (let i = 0; i < Math.min(2, caps.length); i++) {
-        options.push(EMBER_CAPABILITIES[caps[i]]);
+    // If user has already personalized, remove that option and add "Learn" instead if not present
+    if (hasPersonalized) {
+      const filtered = matchingOptions.filter((o) => o.id !== 'personalize');
+      const hasLearn = filtered.some((o) => o.id === 'learn');
+      if (!hasLearn) {
+        filtered.push(getOption('learn'));
       }
-
-      // Add play if not already there and we have room
-      if (!selectedCapabilities.has('play') && options.length < 3) {
-        options.push(play);
-      }
-
-      return options;
+      return filtered;
     }
 
-    // Fallback based on role - always 3 options
-    switch (role) {
-      case 'creator':
-        return [build, profile, play];
-      case 'learner':
-        return [learn, explore, play];
-      case 'mentor':
-      case 'expert':
-        return [explore, profile, play];
-      default:
-        return [explore, profile, play];
+    // Otherwise, always include "Personalize my experience" if not already there
+    const hasPersonalizeOption = matchingOptions.some((o) => o.id === 'personalize');
+    if (!hasPersonalizeOption) {
+      matchingOptions.push(getOption('personalize'));
     }
-  }, [user?.role, excitedFeatures]);
+
+    return matchingOptions;
+  }, [excitedFeatures, hasPersonalized]);
+
+  // Handle clicking a feeling option - either navigate or send message
+  const handleFeelingClick = useCallback(
+    (option: FeelingOption) => {
+      if (option.navigateTo) {
+        navigate(option.navigateTo);
+      } else if (option.message) {
+        sendMessage(option.message);
+      }
+    },
+    [navigate, sendMessage]
+  );
 
   // Generate Ember's greeting message - focused on feelings, not features
   const greetingMessage = useMemo(() => {
@@ -363,8 +412,8 @@ function EmberHomeContent() {
                 <div className="flex flex-wrap gap-3 max-w-[85%]">
                   {feelingOptions.map((option, idx) => (
                     <button
-                      key={option.label}
-                      onClick={() => sendMessage(option.message)}
+                      key={option.id}
+                      onClick={() => handleFeelingClick(option)}
                       className="px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300
                         bg-gradient-to-r from-orange-500/10 to-amber-500/10
                         border border-orange-500/30

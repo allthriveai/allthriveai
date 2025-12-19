@@ -7,9 +7,24 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'me/learning-paths', views.MyLearningPathsViewSet, basename='my-learning-paths')
+router.register(r'concepts', views.ConceptViewSet, basename='concepts')
+router.register(r'me/concept-mastery', views.UserConceptMasteryViewSet, basename='my-concept-mastery')
 
 urlpatterns = [
     path('', include(router.urls)),
     path('users/<str:username>/learning-paths/', views.UserLearningPathsView.as_view(), name='user-learning-paths'),
     path('learning-paths/topics/', views.AllTopicsView.as_view(), name='all-topics'),
+    # New learning endpoints
+    path('me/learner-profile/', views.LearnerProfileView.as_view(), name='learner-profile'),
+    path('me/learning-events/', views.LearningEventsView.as_view(), name='learning-events'),
+    path('me/learning-stats/', views.LearningStatsView.as_view(), name='learning-stats'),
+    # Structured learning path endpoints
+    path('me/structured-path/', views.StructuredPathView.as_view(), name='structured-path'),
+    path('me/learning-setup/', views.LearningSetupView.as_view(), name='learning-setup'),
+    path('learning/projects/', views.ProjectLearningView.as_view(), name='learning-projects'),
+    path(
+        'learning/projects/<int:project_id>/used/',
+        views.RecordProjectLearningView.as_view(),
+        name='record-project-learning',
+    ),
 ]

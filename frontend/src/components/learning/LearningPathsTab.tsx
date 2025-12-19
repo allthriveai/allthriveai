@@ -77,9 +77,9 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
 
   const startPathMutation = useStartLearningPath();
 
-  // Separate active paths and mastered paths
-  const activePaths = paths?.filter(p => p.currentSkillLevel !== 'master') || [];
-  const masteredPaths = paths?.filter(p => p.currentSkillLevel === 'master') || [];
+  // Separate active paths and completed paths (expert level)
+  const activePaths = paths?.filter(p => p.currentSkillLevel !== 'expert') || [];
+  const completedPaths = paths?.filter(p => p.currentSkillLevel === 'expert') || [];
 
   const handleStartPath = async (topic: string) => {
     try {
@@ -242,17 +242,17 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
         </section>
       )}
 
-      {/* Mastered Topics */}
-      {masteredPaths.length > 0 && (
+      {/* Completed Topics (Expert Level) */}
+      {completedPaths.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-4">
             <FontAwesomeIcon icon={faTrophy} className="w-5 h-5 text-amber-500" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Mastered Topics
+              Completed Topics
             </h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-            {masteredPaths.map((path) => (
+            {completedPaths.map((path) => (
               <div
                 key={path.id}
                 className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-center"

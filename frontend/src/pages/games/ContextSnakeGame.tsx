@@ -9,6 +9,7 @@ import {
   faArrowLeft,
   faRotateRight,
   faWorm,
+  faStar,
 } from '@fortawesome/free-solid-svg-icons';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,12 +46,11 @@ const CONTEXT_FACTS = [
 export default function ContextSnakeGame() {
   // Auth and points
   const { isAuthenticated } = useAuth();
-  const [_showPointsEarned, setShowPointsEarned] = useState(false);
-  const [_pointsEarnedData, setPointsEarnedData] = useState<PointsAwarded | null>(null);
-  const _hasSubmittedRef = useRef(false);
+  const [showPointsEarned, setShowPointsEarned] = useState(false);
+  const [pointsEarnedData, setPointsEarnedData] = useState<PointsAwarded | null>(null);
+  const hasSubmittedRef = useRef(false);
 
-  // Game score hook - will be used when score submission is implemented
-  useGameScore({
+  const { submitScore, isSubmitting } = useGameScore({
     game: 'context_snake',
     isAuthenticated,
     onPointsAwarded: (points) => {

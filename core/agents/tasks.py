@@ -1241,8 +1241,6 @@ def _process_with_ember(
     Returns:
         Dict with processing results
     """
-    import asyncio
-
     from services.agents.ember import stream_ember_response
 
     logger.info(f'Processing with unified Ember agent: conversation={conversation_id}, onboarding={is_onboarding}')
@@ -1361,14 +1359,9 @@ def _process_with_ember(
                 },
             )
 
-    # Run the async function - create new event loop since we're in sync context
+    # Run the async function using centralized async runner
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(run_agent())
-        finally:
-            loop.close()
+        _run_async(run_agent())
     except Exception as e:
         logger.error(f'Ember agent error: {e}', exc_info=True)
         async_to_sync(channel_layer.group_send)(

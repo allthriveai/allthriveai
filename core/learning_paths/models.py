@@ -1,12 +1,20 @@
 """
 Learning Paths models.
 
-This module provides auto-generated learning paths that aggregate user's
-learning progress across topics, quizzes, and side quests.
+This module provides:
+- Auto-generated learning paths that aggregate user's learning progress
+- Concept-level mastery tracking with spaced repetition
+- Micro-lessons for conversational learning with Ember
+- Project-based learning metadata linking projects to concepts
+- Unified learning event stream for analytics and triggers
+
+See: /docs/AGENTIC_LEARNING_PATHS_PLAN.md
 """
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.utils import timezone
 
 
 class UserLearningPath(models.Model):
@@ -41,7 +49,7 @@ class UserLearningPath(models.Model):
         ('beginner', 'Beginner'),
         ('intermediate', 'Intermediate'),
         ('advanced', 'Advanced'),
-        ('master', 'Master'),
+        ('expert', 'Expert'),
     ]
 
     # Skill level thresholds (topic points required)
@@ -49,7 +57,7 @@ class UserLearningPath(models.Model):
         'beginner': 0,
         'intermediate': 200,
         'advanced': 500,
-        'master': 1000,
+        'expert': 1000,
     }
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_paths')
@@ -97,11 +105,11 @@ class UserLearningPath(models.Model):
     @property
     def points_to_next_level(self) -> int:
         """Calculate points needed to reach next skill level."""
-        levels = ['beginner', 'intermediate', 'advanced', 'master']
+        levels = ['beginner', 'intermediate', 'advanced', 'expert']
         current_idx = levels.index(self.current_skill_level)
 
         if current_idx >= len(levels) - 1:
-            return 0  # Already at master
+            return 0  # Already at expert
 
         next_level = levels[current_idx + 1]
         threshold = self.SKILL_THRESHOLDS[next_level]
@@ -109,8 +117,8 @@ class UserLearningPath(models.Model):
 
     @property
     def next_skill_level(self) -> str | None:
-        """Get the next skill level, or None if at master."""
-        levels = ['beginner', 'intermediate', 'advanced', 'master']
+        """Get the next skill level, or None if at expert."""
+        levels = ['beginner', 'intermediate', 'advanced', 'expert']
         current_idx = levels.index(self.current_skill_level)
 
         if current_idx >= len(levels) - 1:
@@ -119,8 +127,8 @@ class UserLearningPath(models.Model):
 
     def calculate_skill_level(self) -> str:
         """Calculate skill level based on topic points."""
-        if self.topic_points >= self.SKILL_THRESHOLDS['master']:
-            return 'master'
+        if self.topic_points >= self.SKILL_THRESHOLDS['expert']:
+            return 'expert'
         elif self.topic_points >= self.SKILL_THRESHOLDS['advanced']:
             return 'advanced'
         elif self.topic_points >= self.SKILL_THRESHOLDS['intermediate']:
@@ -144,3 +152,710 @@ class UserLearningPath(models.Model):
         """Get human-readable name for a topic slug."""
         topic_dict = dict(cls.TOPIC_CHOICES)
         return topic_dict.get(topic_slug, topic_slug)
+
+
+# ============================================================================
+# LEARNER PROFILE - Central adaptive learning profile
+# ============================================================================
+
+
+class LearnerProfile(models.Model):
+    """
+    Central learning profile that adapts over time.
+
+    Stores user preferences, streaks, and aggregate stats.
+    Auto-created when user first engages with learning features.
+    """
+
+    LEARNING_STYLE_CHOICES = [
+        ('visual', 'Visual'),
+        ('hands_on', 'Hands-On'),
+        ('conceptual', 'Conceptual'),
+        ('mixed', 'Mixed'),
+    ]
+
+    DIFFICULTY_LEVEL_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
+    # Learning goal choices for cold-start personalization
+    LEARNING_GOAL_CHOICES = [
+        ('build_projects', 'Build AI Projects'),
+        ('understand_concepts', 'Understand AI Concepts'),
+        ('career', 'Career Exploration'),
+        ('exploring', 'Just Exploring'),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='learner_profile',
+    )
+
+    # Learning preferences (inferred over time or set by user)
+    preferred_learning_style = models.CharField(
+        max_length=20,
+        choices=LEARNING_STYLE_CHOICES,
+        default='mixed',
+        help_text='Preferred learning style (inferred from behavior)',
+    )
+    current_difficulty_level = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_LEVEL_CHOICES,
+        default='beginner',
+        help_text='Current adaptive difficulty level',
+    )
+    preferred_session_length = models.IntegerField(
+        default=5,
+        help_text='Preferred learning session length in minutes',
+    )
+
+    # Notification preferences
+    allow_proactive_suggestions = models.BooleanField(
+        default=True,
+        help_text='Allow Ember to proactively suggest learning',
+    )
+    proactive_cooldown_minutes = models.IntegerField(
+        default=10,
+        help_text='Minimum minutes between proactive nudges',
+    )
+
+    # Streaks & engagement
+    learning_streak_days = models.IntegerField(
+        default=0,
+        help_text='Current consecutive days of learning activity',
+    )
+    longest_streak_days = models.IntegerField(
+        default=0,
+        help_text='Longest streak ever achieved',
+    )
+    last_learning_activity = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When user last completed a learning activity',
+    )
+    last_proactive_nudge = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When Ember last sent a proactive nudge',
+    )
+
+    # Aggregate stats
+    total_lessons_completed = models.IntegerField(default=0)
+    total_concepts_completed = models.IntegerField(default=0)
+    total_learning_minutes = models.IntegerField(default=0)
+    total_quizzes_completed = models.IntegerField(default=0)
+
+    # Structured learning path personalization
+    has_completed_path_setup = models.BooleanField(
+        default=False,
+        help_text='Whether user completed the cold-start learning path setup',
+    )
+    learning_goal = models.CharField(
+        max_length=30,
+        choices=LEARNING_GOAL_CHOICES,
+        blank=True,
+        help_text='User-selected learning goal from cold-start',
+    )
+    current_focus_topic = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text='Current topic the user is focusing on',
+    )
+    generated_path = models.JSONField(
+        null=True,
+        blank=True,
+        help_text='AI-generated personalized learning path structure',
+    )
+    path_generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the learning path was generated',
+    )
+    celebration_enabled = models.BooleanField(
+        default=True,
+        help_text='Whether to show milestone celebrations',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Learner Profile'
+        verbose_name_plural = 'Learner Profiles'
+
+    def __str__(self):
+        return f"{self.user.username}'s learning profile"
+
+    def update_streak(self):
+        """Update learning streak based on last activity."""
+        now = timezone.now()
+        if self.last_learning_activity:
+            days_since = (now.date() - self.last_learning_activity.date()).days
+            if days_since == 0:
+                # Same day, no change
+                pass
+            elif days_since == 1:
+                # Consecutive day, increment streak
+                self.learning_streak_days += 1
+                if self.learning_streak_days > self.longest_streak_days:
+                    self.longest_streak_days = self.learning_streak_days
+            else:
+                # Streak broken
+                self.learning_streak_days = 1
+        else:
+            # First activity
+            self.learning_streak_days = 1
+
+        self.last_learning_activity = now
+        self.save(
+            update_fields=[
+                'learning_streak_days',
+                'longest_streak_days',
+                'last_learning_activity',
+                'updated_at',
+            ]
+        )
+
+    def can_receive_nudge(self) -> bool:
+        """Check if enough time has passed for another proactive nudge."""
+        if not self.allow_proactive_suggestions:
+            return False
+        if not self.last_proactive_nudge:
+            return True
+        cooldown = timezone.timedelta(minutes=self.proactive_cooldown_minutes)
+        return timezone.now() - self.last_proactive_nudge >= cooldown
+
+
+# ============================================================================
+# CONCEPT - Knowledge graph node
+# ============================================================================
+
+
+class Concept(models.Model):
+    """
+    A learnable concept in the knowledge graph.
+
+    Concepts are atomic units of learning that can be:
+    - Linked to tools (e.g., "RAG" concept linked to LangChain tool)
+    - Part of a topic (e.g., "RAG" is part of "ai-agents-multitool" topic)
+    - Have prerequisites (e.g., "RAG" requires "embeddings" concept)
+    """
+
+    DIFFICULTY_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
+    name = models.CharField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=200, unique=True)
+    description = models.TextField(blank=True)
+
+    # Link to topic (matches UserLearningPath.TOPIC_CHOICES)
+    topic = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text='Learning path topic this concept belongs to',
+    )
+
+    # Optional link to a specific tool
+    tool = models.ForeignKey(
+        'tools.Tool',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='concepts',
+        help_text='Tool this concept is primarily about',
+    )
+
+    # Difficulty and time
+    base_difficulty = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_CHOICES,
+        default='beginner',
+    )
+    estimated_minutes = models.IntegerField(
+        default=5,
+        help_text='Estimated time to learn this concept',
+    )
+
+    # Prerequisites (for learning path ordering)
+    prerequisites = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        blank=True,
+        related_name='unlocks',
+        help_text='Concepts that should be learned before this one',
+    )
+
+    # SEO and discovery
+    keywords = ArrayField(
+        models.CharField(max_length=50),
+        blank=True,
+        default=list,
+        help_text='Keywords for search and matching',
+    )
+
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['topic', 'name']
+        indexes = [
+            models.Index(fields=['topic', 'is_active']),
+            models.Index(fields=['base_difficulty', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f'{self.name} ({self.topic})'
+
+
+# ============================================================================
+# USER CONCEPT MASTERY - Per-user progress tracking
+# ============================================================================
+
+
+class UserConceptMastery(models.Model):
+    """
+    Tracks user proficiency of each concept with spaced repetition.
+
+    Proficiency progresses through levels as user engages:
+    unknown → aware → learning → practicing → proficient → expert
+    """
+
+    MASTERY_LEVEL_CHOICES = [
+        ('unknown', 'Unknown'),
+        ('aware', 'Aware'),
+        ('learning', 'Learning'),
+        ('practicing', 'Practicing'),
+        ('proficient', 'Proficient'),
+        ('expert', 'Expert'),
+    ]
+
+    # Mastery score thresholds (0.0-1.0)
+    MASTERY_THRESHOLDS = {
+        'unknown': 0.0,
+        'aware': 0.1,
+        'learning': 0.3,
+        'practicing': 0.5,
+        'proficient': 0.7,
+        'expert': 0.9,
+    }
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='concept_masteries',
+    )
+    concept = models.ForeignKey(
+        Concept,
+        on_delete=models.CASCADE,
+        related_name='user_masteries',
+    )
+
+    # Current mastery
+    mastery_level = models.CharField(
+        max_length=20,
+        choices=MASTERY_LEVEL_CHOICES,
+        default='unknown',
+        db_index=True,
+    )
+    mastery_score = models.FloatField(
+        default=0.0,
+        help_text='Mastery score 0.0-1.0',
+    )
+
+    # Spaced repetition fields
+    last_practiced = models.DateTimeField(null=True, blank=True)
+    next_review_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When to review for spaced repetition',
+    )
+    consecutive_correct = models.IntegerField(
+        default=0,
+        help_text='Consecutive correct answers (for SR interval)',
+    )
+    consecutive_incorrect = models.IntegerField(
+        default=0,
+        help_text='Consecutive incorrect answers',
+    )
+
+    # Engagement tracking
+    times_practiced = models.IntegerField(default=0)
+    times_correct = models.IntegerField(default=0)
+    times_incorrect = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'concept']
+        verbose_name = 'User Concept Mastery'
+        verbose_name_plural = 'User Concept Masteries'
+        indexes = [
+            models.Index(fields=['user', 'mastery_level']),
+            models.Index(fields=['user', 'next_review_at']),
+            models.Index(fields=['concept', 'mastery_level']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.concept.name} ({self.mastery_level})'
+
+    def calculate_mastery_level(self) -> str:
+        """Calculate mastery level from score."""
+        for level in reversed(['expert', 'proficient', 'practicing', 'learning', 'aware', 'unknown']):
+            if self.mastery_score >= self.MASTERY_THRESHOLDS[level]:
+                return level
+        return 'unknown'
+
+    def update_after_practice(self, was_correct: bool) -> bool:
+        """
+        Update mastery after a practice attempt.
+        Returns True if mastery level changed.
+        """
+        self.times_practiced += 1
+        self.last_practiced = timezone.now()
+
+        if was_correct:
+            self.times_correct += 1
+            self.consecutive_correct += 1
+            self.consecutive_incorrect = 0
+            # Increase mastery score (diminishing returns)
+            increase = 0.1 * (1 - self.mastery_score)
+            self.mastery_score = min(1.0, self.mastery_score + increase)
+            # Extend review interval (spaced repetition)
+            days = min(30, 2**self.consecutive_correct)
+            self.next_review_at = timezone.now() + timezone.timedelta(days=days)
+        else:
+            self.times_incorrect += 1
+            self.consecutive_incorrect += 1
+            self.consecutive_correct = 0
+            # Decrease mastery score
+            decrease = 0.05 * self.mastery_score
+            self.mastery_score = max(0.0, self.mastery_score - decrease)
+            # Shorten review interval
+            self.next_review_at = timezone.now() + timezone.timedelta(days=1)
+
+        old_level = self.mastery_level
+        self.mastery_level = self.calculate_mastery_level()
+        self.save()
+
+        return old_level != self.mastery_level
+
+
+# ============================================================================
+# MICRO LESSON - Conversational learning content
+# ============================================================================
+
+
+class MicroLesson(models.Model):
+    """
+    Template for lessons Ember can deliver conversationally.
+
+    Lessons can be:
+    - Pre-authored (curated official content)
+    - AI-generated on-the-fly (stored for reuse)
+
+    Content supports markdown and template variables for personalization.
+    """
+
+    LESSON_TYPE_CHOICES = [
+        ('explanation', 'Explanation'),
+        ('example', 'Example'),
+        ('practice', 'Practice'),
+        ('tip', 'Quick Tip'),
+    ]
+
+    DIFFICULTY_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True)
+    concept = models.ForeignKey(
+        Concept,
+        on_delete=models.CASCADE,
+        related_name='lessons',
+    )
+
+    lesson_type = models.CharField(
+        max_length=20,
+        choices=LESSON_TYPE_CHOICES,
+        default='explanation',
+    )
+
+    # Content (supports markdown and template variables like {user_name})
+    content_template = models.TextField(
+        help_text='Lesson content with markdown support',
+    )
+
+    # Follow-up prompts Ember can use to continue conversation
+    follow_up_prompts = ArrayField(
+        models.CharField(max_length=500),
+        blank=True,
+        default=list,
+        help_text='Suggested follow-up questions/prompts',
+    )
+
+    # Metadata
+    difficulty = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_CHOICES,
+        default='beginner',
+    )
+    estimated_minutes = models.IntegerField(
+        default=3,
+        help_text='Estimated reading/completion time',
+    )
+    is_ai_generated = models.BooleanField(
+        default=False,
+        help_text='Whether this was AI-generated (vs curated)',
+    )
+
+    # Quality tracking
+    times_delivered = models.IntegerField(default=0)
+    positive_feedback_count = models.IntegerField(default=0)
+    negative_feedback_count = models.IntegerField(default=0)
+
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['concept', 'lesson_type', 'difficulty']
+        indexes = [
+            models.Index(fields=['concept', 'is_active']),
+            models.Index(fields=['is_ai_generated', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f'{self.title} ({self.concept.name})'
+
+    @property
+    def quality_score(self) -> float:
+        """Calculate quality score from feedback."""
+        total = self.positive_feedback_count + self.negative_feedback_count
+        if total == 0:
+            return 0.5
+        return self.positive_feedback_count / total
+
+
+# ============================================================================
+# PROJECT LEARNING METADATA - Projects as learning content
+# ============================================================================
+
+
+class ProjectLearningMetadata(models.Model):
+    """
+    Learning-specific metadata for highly-rated user projects.
+
+    Links projects to concepts they demonstrate, enabling:
+    - "Learn from @username's project" recommendations
+    - Project-based examples in Ember's teaching
+    - Creator XP rewards when their projects help others learn
+    """
+
+    COMPLEXITY_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
+    project = models.OneToOneField(
+        'core.Project',
+        on_delete=models.CASCADE,
+        related_name='learning_metadata',
+    )
+
+    # Concepts this project demonstrates
+    concepts = models.ManyToManyField(
+        Concept,
+        blank=True,
+        related_name='example_projects',
+        help_text='Concepts demonstrated by this project',
+    )
+
+    # Learning eligibility (calculated from project stats)
+    is_learning_eligible = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Meets quality threshold for learning content',
+    )
+    learning_quality_score = models.FloatField(
+        default=0.0,
+        db_index=True,
+        help_text='Quality score for ranking (0.0-1.0)',
+    )
+
+    # What makes this project educational
+    key_techniques = ArrayField(
+        models.CharField(max_length=100),
+        blank=True,
+        default=list,
+        help_text='Key techniques demonstrated (e.g., "RAG", "Streaming")',
+    )
+    complexity_level = models.CharField(
+        max_length=20,
+        choices=COMPLEXITY_CHOICES,
+        default='intermediate',
+    )
+    learning_summary = models.TextField(
+        blank=True,
+        help_text='AI-generated summary of what users can learn',
+    )
+
+    # Usage tracking
+    times_used_for_learning = models.IntegerField(
+        default=0,
+        help_text='How many times this project was used for learning',
+    )
+    last_used_for_learning = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-learning_quality_score']
+        verbose_name = 'Project Learning Metadata'
+        verbose_name_plural = 'Project Learning Metadata'
+        indexes = [
+            models.Index(fields=['is_learning_eligible', '-learning_quality_score']),
+        ]
+
+    def __str__(self):
+        return f'Learning metadata for {self.project.title}'
+
+    def calculate_eligibility(self):
+        """
+        Check if project qualifies as learning content.
+
+        Criteria:
+        - Has meaningful description (100+ chars)
+        - Has good engagement (views)
+        - Is public and not archived
+        """
+        project = self.project
+
+        has_description = len(project.description or '') >= 100
+        has_views = project.view_count >= 10
+        is_visible = not project.is_private and not project.is_archived
+        has_architecture = bool(getattr(project.content, 'get', lambda x: None)('architecture_diagram'))
+
+        self.is_learning_eligible = has_description and has_views and is_visible
+
+        # Calculate quality score
+        # - Description quality (0.3 weight)
+        # - Views normalized (0.3 weight)
+        # - Has architecture diagram (0.2 weight)
+        # - Has key techniques tagged (0.2 weight)
+        desc_score = min(len(project.description or '') / 500, 1.0) * 0.3
+        views_score = min(project.view_count / 100, 1.0) * 0.3
+        arch_score = (1.0 if has_architecture else 0.0) * 0.2
+        tech_score = (1.0 if self.key_techniques else 0.0) * 0.2
+
+        self.learning_quality_score = desc_score + views_score + arch_score + tech_score
+
+
+# ============================================================================
+# LEARNING EVENT - Unified event stream
+# ============================================================================
+
+
+class LearningEvent(models.Model):
+    """
+    Unified event stream for all learning activities.
+
+    Used for:
+    - Analytics and progress tracking
+    - Triggering celebrations and nudges
+    - Feeding the adaptive difficulty system
+    """
+
+    EVENT_TYPE_CHOICES = [
+        ('quiz_attempt', 'Quiz Attempt'),
+        ('quiz_completed', 'Quiz Completed'),
+        ('micro_lesson', 'Micro Lesson Viewed'),
+        ('concept_practiced', 'Concept Practiced'),
+        ('concept_completed', 'Concept Completed'),
+        ('skill_level_up', 'Skill Level Up'),
+        ('streak_milestone', 'Streak Milestone'),
+        ('project_learned_from', 'Learned from Project'),
+        ('tool_explored', 'Tool Explored'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='learning_events',
+    )
+    event_type = models.CharField(
+        max_length=30,
+        choices=EVENT_TYPE_CHOICES,
+        db_index=True,
+    )
+
+    # Optional links to related objects
+    concept = models.ForeignKey(
+        Concept,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='events',
+    )
+    lesson = models.ForeignKey(
+        MicroLesson,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='events',
+    )
+    project = models.ForeignKey(
+        'core.Project',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='learning_events',
+    )
+
+    # Event outcome
+    was_successful = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text='Whether the activity was successful (e.g., correct answer)',
+    )
+
+    # Flexible payload for event-specific data
+    payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Event-specific data (e.g., quiz_id, score, old_level, new_level)',
+    )
+
+    # XP earned from this event
+    xp_earned = models.IntegerField(
+        default=0,
+        help_text='XP points earned from this event',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['user', 'event_type', '-created_at']),
+            models.Index(fields=['event_type', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.event_type} at {self.created_at}'

@@ -1,8 +1,12 @@
 """Game models for tracking high scores and game sessions."""
 
+from django.core.cache import cache
 from django.db import models
 
 from core.users.models import User
+
+# Cache timeout for leaderboards (5 minutes)
+LEADERBOARD_CACHE_TIMEOUT = 300
 
 
 class GameScore(models.Model):
@@ -29,6 +33,12 @@ class GameScore(models.Model):
             models.Index(fields=['game', '-score']),
             models.Index(fields=['user', 'game']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(score__gte=0) & models.Q(score__lte=10000),
+                name='games_gamescore_valid_score_range',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.user.username} - {self.game}: {self.score}'
@@ -40,5 +50,35 @@ class GameScore(models.Model):
 
     @classmethod
     def get_leaderboard(cls, game, limit=10):
-        """Get top scores for a game."""
-        return cls.objects.filter(game=game).select_related('user').order_by('-score')[:limit]
+        """
+        Get top scores for a game with Redis caching.
+
+        Caches the top 100 scores for 5 minutes to reduce database load
+        at scale (100K+ users).
+        """
+        cache_key = f'game_leaderboard:{game}'
+
+        # Try to get from cache first
+        cached_ids = cache.get(cache_key)
+
+        if cached_ids is not None:
+            # Fetch from cache, but still need to get fresh user data
+            scores = list(cls.objects.filter(id__in=cached_ids[:limit]).select_related('user').order_by('-score'))
+            return scores
+
+        # Cache miss - fetch from database and cache the IDs
+        scores = list(
+            cls.objects.filter(game=game).select_related('user').order_by('-score')[:100]  # Cache top 100
+        )
+
+        # Cache just the IDs (lightweight)
+        score_ids = [s.id for s in scores]
+        cache.set(cache_key, score_ids, LEADERBOARD_CACHE_TIMEOUT)
+
+        return scores[:limit]
+
+    @classmethod
+    def invalidate_leaderboard_cache(cls, game):
+        """Invalidate the leaderboard cache for a game."""
+        cache_key = f'game_leaderboard:{game}'
+        cache.delete(cache_key)

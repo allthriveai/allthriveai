@@ -18,9 +18,7 @@ class GameScoreSerializer(serializers.ModelSerializer):
 
     def get_avatar_url(self, obj):
         """Get the user's avatar URL."""
-        if obj.user.avatar:
-            return obj.user.avatar.url
-        return None
+        return obj.user.avatar_url
 
 
 class SubmitScoreSerializer(serializers.Serializer):

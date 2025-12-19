@@ -508,14 +508,15 @@ Each agent type has defined capabilities for supervisor routing:
 - [x] Unified state injection pattern ✓
 - [x] Token usage tracking via AIUsageTracker ✓
 
-### Medium Priority
-- [ ] Remove supervisor routing entirely (migrate all chat modes)
-- [ ] Consolidate personalities → Ember only
-- [ ] Multiple event loop creation in Celery
+### Medium Priority - COMPLETED ✓
+- [x] Remove supervisor routing entirely (ALL chat modes now use Ember) ✓
+- [x] Consolidate personalities → Ember only ✓
+- [x] Multiple event loop creation → centralized `_run_async()` utility ✓
 
 ### Low Priority
 - [ ] Frontend mode props → context detection
 - [ ] Extract IntelligentChatPanel (1,738 lines)
+- [ ] Remove deprecated specialized agent prompt files (discovery, orchestration, etc.)
 
 ---
 
@@ -689,7 +690,20 @@ Once unified Ember is validated in production:
 4. Clean up fast-path detection (no longer needed with single agent)
 
 ### Future Tools (Not Yet Built)
-- `create_learning_path` - Build custom learning paths
+
+See [AGENTIC_LEARNING_PATHS_PLAN.md](/docs/AGENTIC_LEARNING_PATHS_PLAN.md) for enhanced learning tools:
+
+| Tool | Purpose |
+|------|---------|
+| `generate_micro_lesson` | Personalized lessons using 3-tier content hierarchy |
+| `start_conversational_quiz` | Interactive quiz sessions in chat |
+| `check_answer_and_explain` | Evaluate answers with adaptive difficulty |
+| `celebrate_learning_milestone` | Real-time celebrations for achievements |
+| `get_contextual_learning_nudge` | Proactive learning suggestions |
+| `get_projects_for_learning` | Find community projects demonstrating concepts |
+| `record_project_learning_usage` | Track when projects help users learn |
+
+Other future tools:
 - `update_account_settings` - Update profile via chat
 - `semantic_search` - Vector-powered search (Weaviate)
 
@@ -697,6 +711,7 @@ Once unified Ember is validated in production:
 
 ## Related Documentation
 
+- `/docs/AGENTIC_LEARNING_PATHS_PLAN.md` - Enhanced learning tools plan (aligned with unified architecture)
 - `/docs/evergreen-architecture/intelligent-chat-architecture.md` - Original design doc (Nov 2025)
 - `/docs/evergreen-architecture/07-WEBSOCKET-IMPLEMENTATION.md` - WebSocket details
 - `/docs/evergreen-architecture/04-AI-ARCHITECTURE.md` - AI provider architecture

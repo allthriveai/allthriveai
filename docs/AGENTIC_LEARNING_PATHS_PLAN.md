@@ -1,5 +1,11 @@
 # Agentic Learning Paths Implementation Plan
 
+**Last Updated:** 2025-12-18
+**Status:** Planning - Updated for Unified Ember Architecture
+**Depends On:** [05-UNIFIED-CHAT-ARCHITECTURE.md](./evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md)
+
+---
+
 ## Vision
 
 Transform Ember into a **proactive, adaptive learning mentor** that:
@@ -11,6 +17,11 @@ Transform Ember into a **proactive, adaptive learning mentor** that:
 
 ## Architecture Overview
 
+> **Updated for Unified Ember Agent** (see `05-UNIFIED-CHAT-ARCHITECTURE.md`)
+>
+> Ember is now a single unified agent with all ~27+ tools. Learning capabilities are
+> added directly to Ember's tool registry - no separate learning agent or orchestrator routing.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USER EXPERIENCE                          │
@@ -21,15 +32,21 @@ Transform Ember into a **proactive, adaptive learning mentor** that:
 └─────────────────────────────────────────────────────────────────┘
                               ↓ WebSocket
 ┌─────────────────────────────────────────────────────────────────┐
-│                     BACKEND AGENTS                              │
+│                   UNIFIED EMBER AGENT                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  Orchestrator → Learning Intent Detection → Ember Learning Agent│
-│                                                ↓                │
-│                              [Adaptive Difficulty + Memory]     │
-│                                                ↓                │
-│                              [Micro-Lesson Generator (LLM)]     │
-│                                                ↓                │
-│                              [Project Content Ranker]           │
+│  services/agents/ember/                                         │
+│  ├── agent.py        # LangGraph agent + stream_ember_response  │
+│  ├── prompts.py      # System prompts (includes learning mentor)│
+│  └── tools.py        # ALL tools including enhanced learning    │
+│                                                                 │
+│  Ember Tools (~30+ total):                                      │
+│  ├── Discovery (5)   - search, recommendations, trending        │
+│  ├── Learning (10+)  - lessons, quizzes, progress, celebrations │
+│  ├── Project (10)    - create, import, analyze                  │
+│  ├── Orchestration (5) - navigate, highlight, toast             │
+│  └── Profile (3)     - gather, generate, save                   │
+│                                                                 │
+│  Tool Selection: LLM decides which tools to call (no routing)   │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -41,6 +58,33 @@ Transform Ember into a **proactive, adaptive learning mentor** that:
 │  [Redis Cache]     [PostgreSQL]       [Celery Tasks]            │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## Current State vs This Plan
+
+### What Already Exists in Ember
+
+The unified Ember agent (`/services/agents/ember/`) already has **5 basic learning tools**:
+
+| Tool | Purpose | Status |
+|------|---------|--------|
+| `get_learning_progress` | User's learning paths with skill levels and points | ✅ Exists |
+| `get_quiz_hint` | Hint for quiz question WITHOUT revealing answer | ✅ Exists |
+| `explain_concept` | Explain topic at user's skill level | ✅ Exists |
+| `suggest_next_activity` | Recommend next quiz based on progress | ✅ Exists |
+| `get_quiz_details` | Detailed info about a specific quiz | ✅ Exists |
+
+### What This Plan Adds
+
+| Category | New Capability |
+|----------|----------------|
+| **Data Models** | LearnerProfile, Concept, UserConceptMastery, ProjectLearningMetadata |
+| **Services** | LearnerMemory (Redis), AdaptiveDifficulty, MicroLessonService, ProjectLearningService |
+| **Enhanced Tools** | `generate_micro_lesson`, `start_conversational_quiz`, `check_answer_and_explain`, `celebrate_learning_milestone`, `get_contextual_learning_nudge`, `get_projects_for_learning`, `record_project_learning_usage` |
+| **Proactive System** | Real-time celebrations, contextual nudges via WebSocket |
+| **3-Tier Content** | Curated → Community Projects → AI-generated lessons |
+| **Frontend** | Learning message types, celebration animations, /learn page redesign |
+
+---
 
 ## Content Hierarchy (3-Tier Hybrid)
 
@@ -393,51 +437,62 @@ POST /api/v1/admin/projects/sync-eligibility/     # Recalculate learning eligibi
 
 ---
 
-## Phase 2: AI Agent Enhancement
+## Phase 2: Ember Prompt & Tool Enhancement
 
-### Enhanced Learning Agent
+> **Unified Architecture Note:** Learning capabilities are added to the existing Ember agent
+> in `/services/agents/ember/`. No separate learning agent is created.
+
+### Enhanced Ember System Prompt
+
+The learning mentor behaviors are added to Ember's system prompt in `services/agents/ember/prompts.py`:
 
 ```python
-# services/agents/ember_learning/agent.py
+# services/agents/ember/prompts.py (append to EMBER_SYSTEM_PROMPT)
 
-EMBER_LEARNING_PROMPT = """You are Ember, a warm and wise AI learning mentor.
+EMBER_LEARNING_MENTOR_ADDITIONS = """
+## Learning Mentor Mode
 
-## Your Personality
+When users want to learn or you detect learning opportunities:
+
+### Your Teaching Personality
 - Warm and encouraging - celebrate every success
 - Patient - never make users feel bad about not knowing
 - Adaptive - adjust explanations to their level
 - Proactive - notice opportunities to help learn
 
-## Proactive Behaviors
+### Proactive Behaviors
 1. **Real-time celebration**: "You just learned about {concept}! That's awesome!"
 2. **Contextual nudges**: "I noticed you were looking at Midjourney - want to learn about AI image generation?"
 3. **Gap filling**: "You did great on that quiz, but I noticed {concept} was tricky. Want me to explain it?"
 
-## Teaching Approach
+### Teaching Approach
 - Use the Socratic method - guide discovery through questions
 - Break complex concepts into digestible pieces
 - Use analogies and real-world examples
 - Always offer a "next step" without being pushy
+- Reference highly-rated community projects as real-world examples
 """
-
-class EmberLearningState(TypedDict):
-    messages: Annotated[Sequence[BaseMessage], add_messages]
-    user_id: int
-    learner_profile: dict | None
-    current_topic: str | None
-    session_intent: str | None  # 'learning' | 'exploring' | 'chatting'
-    difficulty_level: str
-    should_suggest_learning: bool
 ```
 
-### New Learning Tools
+### New Learning Tools (Add to Ember Registry)
+
+These tools are added to `services/agents/ember/tools.py` alongside existing tools:
 
 ```python
-# services/agents/ember_learning/tools.py
+# services/agents/ember/tools.py (add to EMBER_TOOLS list)
+
+# === ENHANCED LEARNING TOOLS ===
+# (These extend the existing 5 learning tools)
 
 @tool
 def generate_micro_lesson(topic: str, skill_level: str, format: str = 'conversational') -> dict:
-    """Generate a personalized micro-lesson on any topic."""
+    """Generate a personalized micro-lesson on any topic.
+
+    Uses 3-tier content hierarchy:
+    1. Curated official content (if available)
+    2. Highly-rated community projects demonstrating the concept
+    3. AI-generated explanation personalized to skill level
+    """
 
 @tool
 def start_conversational_quiz(topic: str, question_count: int = 3) -> dict:
@@ -448,21 +503,55 @@ def check_answer_and_explain(session_id: str, answer: str) -> dict:
     """Evaluate answer, provide explanation, adjust difficulty."""
 
 @tool
-def celebrate_learning_milestone(user_id: int, milestone_type: str, details: dict) -> dict:
-    """Generate celebration message for skill learned, streak, level up."""
+def celebrate_learning_milestone(milestone_type: str, details: dict, state: dict = None) -> dict:
+    """Generate celebration message for skill learned, streak, level up.
+
+    Args:
+        milestone_type: 'skill_learned' | 'streak' | 'level_up' | 'quiz_completed'
+        details: Context about the milestone
+        state: Injected by tool_node (contains user_id, username)
+    """
 
 @tool
-def get_contextual_learning_nudge(user_id: int, current_page: str, recent_actions: list) -> dict:
-    """Generate context-aware learning suggestion."""
+def get_contextual_learning_nudge(current_page: str, recent_actions: list, state: dict = None) -> dict:
+    """Generate context-aware learning suggestion based on user activity.
+
+    Args:
+        current_page: Where the user currently is
+        recent_actions: List of recent user actions (tool views, project views, etc.)
+        state: Injected by tool_node (contains user_id)
+    """
+
+@tool
+def get_projects_for_learning(concept_slug: str, limit: int = 3) -> dict:
+    """Get highly-rated community projects that demonstrate a concept.
+
+    Returns projects that are learning-eligible (4+ stars, good documentation).
+    """
+
+@tool
+def record_project_learning_usage(project_id: int, state: dict = None) -> dict:
+    """Record when user learns from a project (awards XP to creator)."""
+
+# Update TOOLS_NEEDING_STATE
+TOOLS_NEEDING_STATE.update({
+    'celebrate_learning_milestone',
+    'get_contextual_learning_nudge',
+    'record_project_learning_usage',
+})
 ```
 
 ### Proactive Trigger System
 
 ```python
-# services/agents/ember_learning/triggers.py
+# core/learning/triggers.py (new file, called from Celery tasks)
 
 class ProactiveTriggers:
-    """When Ember should proactively engage about learning."""
+    """When Ember should proactively engage about learning.
+
+    Triggers are evaluated by Celery tasks and push messages via WebSocket
+    to the frontend, where Ember can display contextual nudges.
+    """
 
     TRIGGER_TYPES = {
         'skill_learned': {'cooldown': 0, 'priority': 10},      # Immediate celebration
@@ -474,7 +563,11 @@ class ProactiveTriggers:
 
     @classmethod
     async def evaluate(cls, user_id: int, trigger_type: str, context: dict) -> dict | None:
-        """Check if trigger should fire (respecting cooldowns)."""
+        """Check if trigger should fire (respecting cooldowns and user preferences)."""
+
+    @classmethod
+    async def send_nudge_via_websocket(cls, user_id: int, nudge: dict):
+        """Push nudge to user's active WebSocket connection."""
 ```
 
 ---
@@ -647,35 +740,37 @@ Transform the placeholder page into a learning discovery hub:
 
 ## Implementation Order (Chat-First MVP)
 
-### Sprint 1: Backend Foundation (3-4 days)
+> **Note:** Sprint timelines removed per project conventions. Focus on what needs to be done.
+
+### Sprint 1: Backend Foundation
 1. Create `core/learning/` Django app with models (LearnerProfile, Concept, UserConceptMastery, ProjectLearningMetadata)
 2. Create migrations and seed initial concepts from tools/topics
 3. Implement `LearnerMemory` service with Redis caching
 4. Add API endpoints for profile and events
 5. Extend existing quiz completion to emit learning events
 
-### Sprint 2: Agent Enhancement (3-4 days)
-1. Enhance learning agent with new tools (generate_micro_lesson, conversational_quiz)
-2. Implement `MicroLessonService` with 3-tier hierarchy (curated → projects → AI)
-3. Add `ProactiveTriggers` system for real-time celebrations and contextual nudges
-4. Integrate learner profile into agent context
-5. Update supervisor routing for learning intent
+### Sprint 2: Ember Tool Enhancement
+1. Add new learning tools to `services/agents/ember/tools.py` (generate_micro_lesson, conversational_quiz, etc.)
+2. Update `TOOLS_NEEDING_STATE` for tools requiring user context
+3. Implement `MicroLessonService` with 3-tier hierarchy (curated → projects → AI)
+4. Add `ProactiveTriggers` system in `core/learning/triggers.py`
+5. Enhance `EMBER_SYSTEM_PROMPT` with learning mentor personality in `services/agents/ember/prompts.py`
 
-### Sprint 3: Chat UI (4-5 days)
+### Sprint 3: Chat UI
 1. Add new message types to `LearningChatMetadata`
 2. Create `useLearningChat` hook
 3. Build core components: `LessonConceptCard`, `EmbeddedQuizCard`, `ProgressCelebration`
 4. Extend `IntelligentChatPanel` to render learning messages
 5. Wire up WebSocket events for learning flow
 
-### Sprint 4: Project-Based Learning (3-4 days)
+### Sprint 4: Project-Based Learning
 1. Implement `ProjectLearningService` for syncing project eligibility
 2. Build `ProjectLearningCard` component for chat
 3. Add "Learn from Projects" section to `/learn` page
 4. Create `LearningImpactStats` for creators (your projects helped X people learn)
 5. Add admin UI for tagging projects with concepts
 
-### Sprint 5: /learn Page & Polish (3-4 days)
+### Sprint 5: /learn Page & Polish
 1. Redesign `/learn` page with embedded Ember chat
 2. Add "Continue Learning" banner
 3. Integrate learning paths display with progress visualization
@@ -687,25 +782,30 @@ Transform the placeholder page into a learning discovery hub:
 ## Critical Files to Modify
 
 ### Backend
+
+> **Unified Architecture:** All agent changes go in `/services/agents/ember/`. No separate learning agent.
+
 | File | Changes |
 |------|---------|
-| `core/learning/models.py` | New - All learning models |
-| `core/learning/services.py` | New - LearnerMemory, AdaptiveDifficulty, MicroLessonService |
-| `core/learning/views.py` | New - API endpoints |
-| `services/agents/learning/agent.py` | Enhance with new tools and proactive behaviors |
-| `services/agents/learning/tools.py` | Add micro-lesson, quiz, celebration tools |
-| `services/agents/orchestrator/supervisor.py` | Enhanced learning intent detection |
-| `core/quizzes/models.py` | Add signal to emit learning events on completion |
+| `core/learning/models.py` | **New** - LearnerProfile, Concept, UserConceptMastery, ProjectLearningMetadata |
+| `core/learning/services.py` | **New** - LearnerMemory, AdaptiveDifficulty, MicroLessonService, ProjectLearningService |
+| `core/learning/triggers.py` | **New** - ProactiveTriggers for real-time celebrations/nudges |
+| `core/learning/views.py` | **New** - API endpoints for learner profile, progress, events |
+| `services/agents/ember/tools.py` | **Extend** - Add enhanced learning tools (micro-lesson, quiz, celebration) |
+| `services/agents/ember/prompts.py` | **Extend** - Add learning mentor personality to system prompt |
+| `core/quizzes/models.py` | **Extend** - Add signal to emit learning events on completion |
+| `core/agents/tasks.py` | **Extend** - Handle new learning WebSocket events (celebration, nudge) |
 
 ### Frontend
 | File | Changes |
 |------|---------|
-| `frontend/src/types/chat.ts` | Extend with learning message types |
-| `frontend/src/hooks/useLearningChat.ts` | New - Learning state management |
-| `frontend/src/hooks/useIntelligentChat.ts` | Handle new WebSocket events |
-| `frontend/src/components/chat/IntelligentChatPanel.tsx` | Render learning message types |
-| `frontend/src/components/chat/learning/*.tsx` | New - All learning components |
-| `frontend/src/pages/LearnPage.tsx` | Redesign with Ember integration |
+| `frontend/src/types/chat.ts` | **Extend** - Add learning message types to metadata |
+| `frontend/src/hooks/useLearningChat.ts` | **New** - Learning state management hook |
+| `frontend/src/hooks/useIntelligentChat.ts` | **Extend** - Handle learning WebSocket events |
+| `frontend/src/components/chat/IntelligentChatPanel.tsx` | **Extend** - Render learning message components |
+| `frontend/src/components/chat/learning/*.tsx` | **New** - LessonCard, QuizCard, CelebrationCard, etc. |
+| `frontend/src/components/learning/projects/*.tsx` | **New** - ProjectLearningCard, CreatorAttribution |
+| `frontend/src/pages/LearnPage.tsx` | **Redesign** - Embedded Ember chat + learning paths
 
 ---
 

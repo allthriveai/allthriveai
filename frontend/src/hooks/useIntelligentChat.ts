@@ -112,15 +112,14 @@ export interface PathOption {
 export interface IntelligentChatMetadata {
   type?: 'text' | 'generating' | 'generated_image'
        | 'onboarding_intro' | 'onboarding_avatar_prompt'
-       | 'onboarding_avatar_preview' | 'onboarding_path_selection';
+       | 'onboarding_avatar_preview';
   imageUrl?: string;
   filename?: string;
   sessionId?: number;
   iterationNumber?: number;
   // Onboarding-specific fields
-  onboardingStep?: 'intro' | 'avatar-create' | 'avatar-preview' | 'choose-path';
+  onboardingStep?: 'intro' | 'avatar-create' | 'avatar-preview' | 'complete';
   avatarTemplates?: AvatarTemplate[];
-  pathOptions?: PathOption[];
   avatarImageUrl?: string;
 }
 

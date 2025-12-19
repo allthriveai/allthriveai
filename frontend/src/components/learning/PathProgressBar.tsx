@@ -16,14 +16,14 @@ const SKILL_THRESHOLDS = {
   beginner: 0,
   intermediate: 200,
   advanced: 500,
-  master: 1000,
+  expert: 1000,
 };
 
 const levelColors: Record<LearningPathSkillLevel, string> = {
   beginner: 'bg-emerald-500',
   intermediate: 'bg-blue-500',
   advanced: 'bg-purple-500',
-  master: 'bg-amber-500',
+  expert: 'bg-amber-500',
 };
 
 export function PathProgressBar({
@@ -32,11 +32,11 @@ export function PathProgressBar({
   pointsToNextLevel,
 }: PathProgressBarProps) {
   // Calculate progress within current level
-  const levels: LearningPathSkillLevel[] = ['beginner', 'intermediate', 'advanced', 'master'];
+  const levels: LearningPathSkillLevel[] = ['beginner', 'intermediate', 'advanced', 'expert'];
   const currentLevelIndex = levels.indexOf(currentLevel);
   const currentThreshold = SKILL_THRESHOLDS[currentLevel];
   const nextLevel = levels[currentLevelIndex + 1] as LearningPathSkillLevel | undefined;
-  const nextThreshold = nextLevel ? SKILL_THRESHOLDS[nextLevel] : SKILL_THRESHOLDS.master;
+  const nextThreshold = nextLevel ? SKILL_THRESHOLDS[nextLevel] : SKILL_THRESHOLDS.expert;
 
   const pointsInCurrentLevel = topicPoints - currentThreshold;
   const pointsNeededForLevel = nextThreshold - currentThreshold;
@@ -65,7 +65,7 @@ export function PathProgressBar({
           </span>
         ) : (
           <span className="text-amber-600 dark:text-amber-400 font-medium">
-            Mastered!
+            Expert!
           </span>
         )}
       </div>
