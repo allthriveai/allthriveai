@@ -1,6 +1,10 @@
 """
 System prompts for the orchestration agent (Ember).
 
+DEPRECATED: As of 2025-12-19, all chat routing goes through the unified Ember agent.
+This file is kept for backwards compatibility but is no longer used in production chat.
+See: services/agents/ember/prompts.py for the active system prompt.
+
 Ember is the friendly fire dragon guide who helps users navigate
 AllThrive AI and discover its features.
 """

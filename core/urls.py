@@ -495,6 +495,8 @@ urlpatterns = [
     path('admin/tasks/', include('core.tasks.urls')),
     # UAT scenarios tracker
     path('admin/uat-scenarios/', include('core.uat_scenarios.urls')),
+    # Educational games
+    path('games/', include('core.games.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

@@ -41,6 +41,7 @@ export interface OnboardingChatState {
   avatarPrompt: string;
   generatedAvatarUrl: string | null;
   selectedPath: string | null;
+  referenceImageUrl: string | null;
 }
 
 export function useOnboardingChat({
@@ -64,6 +65,7 @@ export function useOnboardingChat({
     avatarPrompt: '',
     generatedAvatarUrl: null,
     selectedPath: null,
+    referenceImageUrl: null,
   });
 
   // Avatar generation
@@ -179,17 +181,31 @@ export function useOnboardingChat({
     setState((prev) => ({ ...prev, avatarPrompt: prompt }));
   }, []);
 
+  const handleReferenceImageChange = useCallback((url: string | null) => {
+    setState((prev) => ({ ...prev, referenceImageUrl: url }));
+  }, []);
+
   const handleGenerateAvatar = useCallback(async () => {
     if (!state.avatarPrompt.trim()) return;
 
     // Start avatar session if not already started
-    // Use 'template' mode if a template was selected, otherwise 'scratch'
-    const creationMode = state.selectedTemplate ? 'template' : 'scratch';
-    const session = await startSession(creationMode, state.selectedTemplate || undefined);
-    if (session) {
-      generateAvatar(state.avatarPrompt);
+    // Use 'make_me' mode if a reference image is provided, 'template' if template selected, otherwise 'scratch'
+    let creationMode: 'scratch' | 'template' | 'make_me' = 'scratch';
+    if (state.referenceImageUrl) {
+      creationMode = 'make_me';
+    } else if (state.selectedTemplate && state.selectedTemplate !== 'make_me') {
+      creationMode = 'template';
     }
-  }, [state.avatarPrompt, state.selectedTemplate, startSession, generateAvatar]);
+
+    const session = await startSession(
+      creationMode,
+      state.selectedTemplate || undefined,
+      state.referenceImageUrl || undefined
+    );
+    if (session) {
+      generateAvatar(state.avatarPrompt, state.referenceImageUrl || undefined);
+    }
+  }, [state.avatarPrompt, state.selectedTemplate, state.referenceImageUrl, startSession, generateAvatar]);
 
   const handleSkipAvatar = useCallback(() => {
     abandonSession();
@@ -266,6 +282,7 @@ export function useOnboardingChat({
     avatarPrompt: state.avatarPrompt,
     generatedAvatarUrl: state.generatedAvatarUrl,
     selectedPath: state.selectedPath,
+    referenceImageUrl: state.referenceImageUrl,
     username,
 
     // Avatar generation state
@@ -281,6 +298,7 @@ export function useOnboardingChat({
     // Avatar creation handlers
     handleSelectTemplate,
     handlePromptChange,
+    handleReferenceImageChange,
     handleGenerateAvatar,
     handleSkipAvatar,
 

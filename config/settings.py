@@ -31,6 +31,11 @@ BETA_MODE = config('BETA_MODE', default=False, cast=bool)
 # Usage is ALWAYS tracked regardless of this setting for analytics purposes
 CREDIT_PACK_ENFORCEMENT_ENABLED = config('CREDIT_PACK_ENFORCEMENT_ENABLED', default=False, cast=bool)
 
+# Unified Ember Agent: Routes EmberHomePage conversations to single agent with all tools
+# When True: Conversations starting with 'ember-' use unified Ember agent (no supervisor routing)
+# When False: Uses multi-agent orchestrator with supervisor routing (default)
+USE_UNIFIED_EMBER = config('USE_UNIFIED_EMBER', default=True, cast=bool)
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # AWS ECS/ALB health checks use container private IPs (10.x.x.x) in the Host header.
@@ -94,6 +99,7 @@ INSTALLED_APPS = [
     'core.tasks',  # Admin task tracker for team coordination
     'core.uat_scenarios',  # UAT scenario tracking for QA
     'core.avatars',  # AI-generated user avatars
+    'core.games',  # Educational mini-games
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

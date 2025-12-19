@@ -19,6 +19,7 @@ class AgentType(str, Enum):
     IMAGE_GENERATION = 'image_generation'
     SUPPORT = 'support'
     ORCHESTRATION = 'orchestration'  # Site navigation, UI highlighting, action triggers
+    EMBER = 'ember'  # Unified agent with all tools (replaces multi-agent routing)
 
 
 @dataclass
@@ -196,6 +197,14 @@ AGENT_CAPABILITIES = {
             'challenges',
             'side quest',
         ],
+    ),
+    AgentType.EMBER: AgentCapability(
+        agent_type=AgentType.EMBER,
+        name='Ember (Unified Assistant)',
+        description='Unified AI assistant with access to ALL tools - discovery, learning, project creation, '
+        'navigation, and profile management. Single agent that handles any request without routing overhead.',
+        can_handoff_to=[],  # Ember handles everything, no handoffs needed
+        keywords=[],  # Ember is selected via feature flag, not keywords
     ),
 }
 

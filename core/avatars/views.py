@@ -20,9 +20,9 @@ from .serializers import (
 
 
 class AvatarGenerationThrottle(UserRateThrottle):
-    """Rate limit avatar generation to 10 per minute."""
+    """Rate limit avatar generation to 60 per minute (increased for dev)."""
 
-    rate = '10/min'
+    rate = '60/min'
 
 
 # Allowed domains for reference images (prevent SSRF)

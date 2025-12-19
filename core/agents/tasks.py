@@ -38,6 +38,39 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+# =============================================================================
+# Async Utilities for Celery Tasks
+# =============================================================================
+
+
+def _run_async(coro):
+    """
+    Run an async coroutine from sync Celery task context.
+
+    This is the single place where we create event loops for async agent execution.
+    Using a dedicated function ensures consistent handling and makes it easier
+    to swap out implementations (e.g., for better Celery integration).
+
+    Note: asyncio.run() would be ideal but can conflict with channels_redis
+    which expects to manage its own event loop. We create a new loop to isolate
+    our async code from any existing loop state.
+
+    Args:
+        coro: Async coroutine to execute
+
+    Returns:
+        Result from the coroutine
+    """
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 def _get_user_friendly_error(exception: Exception) -> str:
     """
     Convert technical exceptions into user-friendly error messages.
@@ -374,48 +407,26 @@ def _process_with_orchestrator(
     Returns:
         Dict with processing results
     """
-    import asyncio
-
-    from services.agents.orchestrator import orchestrate_request
-    from services.agents.orchestrator.handoff import AgentType
-    from services.agents.orchestrator.supervisor import get_supervisor
-
     logger.info(f'Processing with orchestrator: conversation={conversation_id}')
 
     result = {'project_created': False, 'intent': 'orchestrated'}
 
-    # Fast-path: Architecture regeneration conversations go directly to project agent
-    # These are triggered from the architecture section's regenerate button
-    if is_architecture_conversation:
-        logger.info('Fast-path: Architecture regeneration - using project agent directly')
-        result['intent'] = 'architecture-regeneration'
-        return _process_with_langgraph_agent(
-            conversation_id=conversation_id,
-            message=message,
-            user=user,
-            channel_name=channel_name,
-            channel_layer=channel_layer,
-        )
+    # ==========================================================================
+    # UNIFIED EMBER AGENT ROUTING
+    # ==========================================================================
+    # All requests now go to the unified Ember agent which has all 27 tools.
+    # Only exception: Image generation uses Gemini (different provider).
+    # ==========================================================================
 
-    # Fast-path: Check for uploaded image/video files - route to project agent
-    # Uploaded files appear as markdown links like [image: filename.png](http://localhost:9000/...)
-    # or [video: filename.mp4](http://localhost:9000/...)
-    # CRITICAL: Uploaded files should ALWAYS go to project agent, NOT image generation!
-    uploaded_media_pattern = r'\[(image|video):\s*[^\]]+\]\(https?://[^)]+\)'
-    if re.search(uploaded_media_pattern, message, re.IGNORECASE):
-        logger.info('Fast-path: Media upload detected - routing to project agent for project creation')
-        result['intent'] = 'project-creation'
-        return _process_with_langgraph_agent(
-            conversation_id=conversation_id,
-            message=message,
-            user=user,
-            channel_name=channel_name,
-            channel_layer=channel_layer,
-        )
-
-    # Fast-path: Check for obvious image generation requests to skip supervisor LLM call
-    # This routes directly to Gemini without using OpenAI for routing
     message_lower = message.lower()
+
+    # Check for uploaded media files FIRST - these should NOT trigger image generation
+    # Uploaded files appear as markdown links like [image: filename.png](http://localhost:9000/...)
+    uploaded_media_pattern = r'\[(image|video):\s*[^\]]+\]\(https?://[^)]+\)'
+    has_uploaded_media = bool(re.search(uploaded_media_pattern, message, re.IGNORECASE))
+
+    # Image generation keywords - routes to Gemini 2.0 Flash (different provider)
+    # ONLY if no uploaded media is present
     image_keywords = [
         'create an image',
         'create an infographic',
@@ -429,8 +440,8 @@ def _process_with_orchestrator(
         'create image',
         'create infographic',
     ]
-    if any(keyword in message_lower for keyword in image_keywords):
-        logger.info('Fast-path: Routing directly to image generation (Gemini)')
+    if not has_uploaded_media and any(keyword in message_lower for keyword in image_keywords):
+        logger.info('Routing to image generation (Gemini 2.0 Flash)')
         result['intent'] = 'image_generation'
         return _process_image_generation(
             conversation_id=conversation_id,
@@ -440,289 +451,23 @@ def _process_with_orchestrator(
             channel_layer=channel_layer,
         )
 
-    # Get orchestration plan first to determine routing
-    supervisor = get_supervisor(user_id=user.id)
-    plan = supervisor.create_plan(message, conversation_history)
-
-    # Log the plan
-    logger.info(f'Orchestration plan: type={plan.plan_type}, agents={[a.get("agent") for a in plan.agents]}')
-
-    # For project/product conversations, override to project-creation if plan suggests support
-    if (is_project_conversation or is_product_conversation) and plan.primary_agent == AgentType.SUPPORT:
-        # Use the existing project agent directly
-        logger.info('Project conversation - using project agent directly')
-        result['intent'] = 'project-creation'
-        return _process_with_langgraph_agent(
-            conversation_id=conversation_id,
-            message=message,
-            user=user,
-            channel_name=channel_name,
-            channel_layer=channel_layer,
-        )
-
-    # For single-agent plans, use optimized direct routing
-    if plan.is_single_agent and plan.primary_agent:
-        agent = plan.primary_agent
-        result['intent'] = agent.value
-
-        if agent == AgentType.PROJECT:
-            return _process_with_langgraph_agent(
-                conversation_id=conversation_id,
-                message=message,
-                user=user,
-                channel_name=channel_name,
-                channel_layer=channel_layer,
-            )
-        elif agent == AgentType.IMAGE_GENERATION:
-            return _process_image_generation(
-                conversation_id=conversation_id,
-                message=message,
-                user=user,
-                channel_name=channel_name,
-                channel_layer=channel_layer,
-            )
-        elif agent == AgentType.DISCOVERY:
-            return _process_with_discovery_agent(
-                conversation_id=conversation_id,
-                message=message,
-                user=user,
-                channel_name=channel_name,
-                channel_layer=channel_layer,
-            )
-        elif agent == AgentType.LEARNING:
-            return _process_with_learning_agent(
-                conversation_id=conversation_id,
-                message=message,
-                user=user,
-                channel_name=channel_name,
-                channel_layer=channel_layer,
-            )
-        elif agent == AgentType.ORCHESTRATION:
-            return _process_with_orchestration_agent(
-                conversation_id=conversation_id,
-                message=message,
-                user=user,
-                channel_name=channel_name,
-                channel_layer=channel_layer,
-            )
-        else:
-            # Support fallback
-            return _process_with_ai_provider(
-                conversation_id=conversation_id,
-                message=message,
-                user_id=user.id,
-                intent='support',
-                channel_name=channel_name,
-                channel_layer=channel_layer,
-            )
-
-    # Multi-agent workflow - use the full orchestrator
-    logger.info(f'Executing multi-agent workflow: {len(plan.agents)} agents')
-
-    async def run_orchestrator():
-        """Async function to run the orchestrator and stream to WebSocket."""
-        from channels.layers import get_channel_layer as get_async_channel_layer
-
-        async_channel_layer = get_async_channel_layer()
-
-        try:
-            async for event in orchestrate_request(
-                user_message=message,
-                user_id=user.id,
-                username=user.username,
-                session_id=conversation_id,
-                conversation_history=conversation_history,
-            ):
-                event_type = event.get('type')
-
-                if event_type == 'orchestration_start':
-                    # Notify frontend that orchestration is analyzing the request
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'orchestration_start',
-                            'message': event.get('message', 'Analyzing your request...'),
-                            'conversation_id': conversation_id,
-                        },
-                    )
-                    logger.info('Orchestration started')
-
-                elif event_type == 'token':
-                    chunk_content = event.get('content', '')
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'chunk',
-                            'chunk': chunk_content,
-                            'conversation_id': conversation_id,
-                        },
-                    )
-
-                elif event_type == 'agent_error':
-                    # An agent failed but workflow is continuing
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'agent_error',
-                            'agent': event.get('agent', ''),
-                            'error': event.get('error', 'Agent encountered an issue'),
-                            'conversation_id': conversation_id,
-                        },
-                    )
-                    logger.warning(f'Agent error (continuing): {event.get("agent")} - {event.get("error")}')
-
-                elif event_type == 'agent_step':
-                    # Notify frontend about agent transitions
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'agent_step',
-                            'step': event.get('step'),
-                            'total': event.get('total'),
-                            'agent': event.get('agent'),
-                            'task': event.get('task'),
-                            'conversation_id': conversation_id,
-                        },
-                    )
-                    logger.info(f'Agent step {event.get("step")}/{event.get("total")}: {event.get("agent")}')
-
-                elif event_type == 'tool_start':
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'tool_start',
-                            'tool': event.get('tool', ''),
-                            'conversation_id': conversation_id,
-                        },
-                    )
-
-                elif event_type == 'tool_end':
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'tool_end',
-                            'tool': event.get('tool', ''),
-                            'output': event.get('output', {}),
-                            'conversation_id': conversation_id,
-                        },
-                    )
-
-                elif event_type == 'synthesis_start':
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'synthesis_start',
-                            'message': event.get('message', 'Combining results...'),
-                            'conversation_id': conversation_id,
-                        },
-                    )
-
-                elif event_type == 'route_to_image_generation':
-                    # Special case: orchestrator wants to invoke image generation
-                    # This is handled outside the async context
-                    nonlocal result
-                    result['route_to_image'] = True
-                    result['image_message'] = event.get('message', message)
-
-                elif event_type == 'complete':
-                    logger.info('Orchestrator completed')
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'completed',
-                            'conversation_id': conversation_id,
-                        },
-                    )
-
-                elif event_type == 'error':
-                    error_msg = event.get('message', 'Unknown error')
-                    logger.error(f'Orchestrator error: {error_msg}')
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'chunk',
-                            'chunk': 'I encountered an issue processing your request. Please try again.',
-                            'conversation_id': conversation_id,
-                        },
-                    )
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'completed',
-                            'conversation_id': conversation_id,
-                        },
-                    )
-
-        except Exception as e:
-            logger.error(f'Orchestrator streaming error: {e}', exc_info=True)
-            await async_channel_layer.group_send(
-                channel_name,
-                {
-                    'type': 'chat.message',
-                    'event': 'chunk',
-                    'chunk': 'I encountered an issue. Please try again.',
-                    'conversation_id': conversation_id,
-                },
-            )
-            await async_channel_layer.group_send(
-                channel_name,
-                {
-                    'type': 'chat.message',
-                    'event': 'completed',
-                    'conversation_id': conversation_id,
-                },
-            )
-
-    # Run the async orchestrator
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(run_orchestrator())
-        finally:
-            loop.close()
-    except Exception as e:
-        logger.error(f'Orchestrator error: {e}', exc_info=True)
-        async_to_sync(channel_layer.group_send)(
-            channel_name,
-            {
-                'type': 'chat.message',
-                'event': 'chunk',
-                'chunk': 'I encountered an issue. Please try again.',
-                'conversation_id': conversation_id,
-            },
-        )
-        async_to_sync(channel_layer.group_send)(
-            channel_name,
-            {
-                'type': 'chat.message',
-                'event': 'completed',
-                'conversation_id': conversation_id,
-            },
-        )
-
-    # Handle image generation routing if flagged
-    if result.get('route_to_image'):
-        image_result = _process_image_generation(
-            conversation_id=conversation_id,
-            message=result.get('image_message', message),
-            user=user,
-            channel_name=channel_name,
-            channel_layer=channel_layer,
-        )
-        result.update(image_result)
-
-    return result
+    # Everything else → Unified Ember agent (has all 27 tools)
+    # - Discovery tools (search, recommend, trending, similar, details)
+    # - Learning tools (progress, hints, explain, suggest, quiz)
+    # - Project tools (create, import, media, scrape, architecture)
+    # - Orchestration tools (navigate, highlight, toast, tray, trigger)
+    # - Profile tools (gather, generate, save)
+    is_ember_conversation = conversation_id.startswith('ember-')
+    logger.info(f'Routing to unified Ember agent (is_ember_conversation={is_ember_conversation})')
+    result['intent'] = 'ember-unified'
+    return _process_with_ember(
+        conversation_id=conversation_id,
+        message=message,
+        user=user,
+        channel_name=channel_name,
+        channel_layer=channel_layer,
+        is_onboarding=is_ember_conversation,  # Only EmberHomePage conversations are onboarding
+    )
 
 
 def _process_with_langgraph_agent(
@@ -1452,6 +1197,186 @@ def _process_with_orchestration_agent(
                 'type': 'chat.message',
                 'event': 'chunk',
                 'chunk': "I'm Ember, your site guide! I encountered an issue. Please try again.",
+                'conversation_id': conversation_id,
+            },
+        )
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'completed',
+                'conversation_id': conversation_id,
+            },
+        )
+
+    return {}
+
+
+def _process_with_ember(
+    conversation_id: str,
+    message: str,
+    user,
+    channel_name: str,
+    channel_layer,
+    is_onboarding: bool = False,
+) -> dict:
+    """
+    Process message using the unified Ember agent with all tools.
+
+    This agent has access to ALL tools:
+    - Discovery (5 tools) - search, recommend, trending, similar, details
+    - Learning (5 tools) - progress, hints, explain, suggest, quiz details
+    - Project (10+ tools) - create, import, media, scrape, architecture
+    - Orchestration (5 tools) - navigate, highlight, toast, tray, trigger
+    - Profile (3 tools) - gather, generate, save
+
+    Args:
+        conversation_id: Unique conversation identifier
+        message: Sanitized user message
+        user: User object
+        channel_name: Redis channel for WebSocket
+        channel_layer: Django Channels layer
+        is_onboarding: Whether this is an onboarding conversation
+
+    Returns:
+        Dict with processing results
+    """
+    import asyncio
+
+    from services.agents.ember import stream_ember_response
+
+    logger.info(f'Processing with unified Ember agent: conversation={conversation_id}, onboarding={is_onboarding}')
+
+    async def run_agent():
+        """Async function to stream agent response and send to WebSocket."""
+        from channels.layers import get_channel_layer as get_async_channel_layer
+
+        async_channel_layer = get_async_channel_layer()
+
+        try:
+            async for event in stream_ember_response(
+                user_message=message,
+                user_id=user.id,
+                username=user.username,
+                session_id=conversation_id,
+                is_onboarding=is_onboarding,
+            ):
+                event_type = event.get('type')
+
+                if event_type == 'token':
+                    # Stream text chunk to WebSocket
+                    chunk_content = event.get('content', '')
+                    logger.debug(
+                        f'[EMBER] Sending chunk to {channel_name}: {chunk_content[:50]}...'
+                        if len(str(chunk_content)) > 50
+                        else f'[EMBER] Sending chunk: {chunk_content}'
+                    )
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'chunk',
+                            'chunk': chunk_content,
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+                elif event_type == 'tool_start':
+                    # Notify frontend that a tool is being called
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'tool_start',
+                            'tool': event.get('tool', ''),
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    logger.info(f'Ember tool started: {event.get("tool")}')
+
+                elif event_type == 'tool_end':
+                    # Notify frontend that tool completed
+                    tool_output = event.get('output', {})
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'tool_end',
+                            'tool': event.get('tool', ''),
+                            'output': tool_output,
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    logger.info(f'Ember tool ended: {event.get("tool")}')
+
+                elif event_type == 'complete':
+                    logger.info('Ember agent completed')
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'completed',
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+                elif event_type == 'error':
+                    error_msg = event.get('message', 'Unknown error')
+                    logger.error(f'Ember agent error: {error_msg}')
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'chunk',
+                            'chunk': "I'm Ember, and I encountered an issue. Let me try that again!",
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'completed',
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+        except Exception as e:
+            logger.error(f'Ember agent streaming error: {e}', exc_info=True)
+            await async_channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'chunk',
+                    'chunk': "I'm Ember! I encountered an issue. Please try again.",
+                    'conversation_id': conversation_id,
+                },
+            )
+            await async_channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'completed',
+                    'conversation_id': conversation_id,
+                },
+            )
+
+    # Run the async function - create new event loop since we're in sync context
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(run_agent())
+        finally:
+            loop.close()
+    except Exception as e:
+        logger.error(f'Ember agent error: {e}', exc_info=True)
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'chunk',
+                'chunk': "I'm Ember! I encountered an issue. Please try again.",
                 'conversation_id': conversation_id,
             },
         )

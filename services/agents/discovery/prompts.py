@@ -1,4 +1,10 @@
-"""System prompts for the discovery agent."""
+"""
+System prompts for the discovery agent.
+
+DEPRECATED: As of 2025-12-19, all chat routing goes through the unified Ember agent.
+This file is kept for backwards compatibility but is no longer used in production chat.
+See: services/agents/ember/prompts.py for the active system prompt.
+"""
 
 DISCOVERY_SYSTEM_PROMPT = (
     """You are an AI discovery assistant for AllThrive AI, """

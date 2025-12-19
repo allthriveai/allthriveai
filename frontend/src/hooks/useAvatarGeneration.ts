@@ -109,199 +109,197 @@ export function useAvatarGeneration({
   }, []);
 
   // Connect to WebSocket for a session
+  // Returns a promise that resolves when connected or rejects on error
   const connectWebSocket = useCallback(
-    async (session: AvatarGenerationSession) => {
-      if (!isAuthenticated || authLoading) {
-        return;
-      }
+    (session: AvatarGenerationSession): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        if (!isAuthenticated || authLoading) {
+          reject(new Error('Not authenticated'));
+          return;
+        }
 
-      // Close existing connection
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+        // Close existing connection
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
 
-      clearTimers();
-      setState((prev) => ({ ...prev, isConnecting: true, error: null }));
+        clearTimers();
+        setState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
-      // Fetch connection token using api service
-      let connectionToken: string;
-      try {
-        const response = await api.post<{ connectionToken: string }>('/auth/ws-connection-token/', {
-          connectionId: `ws-${session.conversationId}-${Date.now()}`,
-        });
-        connectionToken = response.data.connectionToken;
-      } catch (error) {
-        console.error('[Avatar WebSocket] Failed to fetch connection token:', error);
-        setState((prev) => ({
-          ...prev,
-          isConnecting: false,
-          error: 'Failed to connect. Please try again.',
-        }));
-        onError?.('Failed to connect. Please try again.');
-        return;
-      }
+        // Fetch connection token using api service
+        api
+          .post<{ connectionToken: string }>('/auth/ws-connection-token/', {
+            connectionId: `ws-${session.conversationId}-${Date.now()}`,
+          })
+          .then((response) => {
+            const connectionToken = response.data.connectionToken;
 
-      // Connect with token - use conversationId which already has avatar- prefix
-      const wsUrl = buildWebSocketUrl(`/ws/chat/${session.conversationId}/`, {
-        connection_token: connectionToken,
-      });
+            // Connect with token - use conversationId which already has avatar- prefix
+            const wsUrl = buildWebSocketUrl(`/ws/chat/${session.conversationId}/`, {
+              connection_token: connectionToken,
+            });
 
-      logWebSocketUrl(wsUrl, '[Avatar WebSocket] Creating connection');
+            logWebSocketUrl(wsUrl, '[Avatar WebSocket] Creating connection');
 
-      try {
-        const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(wsUrl);
 
-        // Connection timeout
-        connectionTimeoutRef.current = setTimeout(() => {
-          if (ws.readyState !== WebSocket.OPEN) {
-            ws.close();
+            // Connection timeout
+            connectionTimeoutRef.current = setTimeout(() => {
+              if (ws.readyState !== WebSocket.OPEN) {
+                ws.close();
+                setState((prev) => ({
+                  ...prev,
+                  isConnecting: false,
+                  error: 'Connection timeout',
+                }));
+                onError?.('Connection timeout. Please try again.');
+                reject(new Error('Connection timeout'));
+              }
+            }, CONNECTION_TIMEOUT);
+
+            ws.onopen = () => {
+              if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
+              }
+              setState((prev) => ({
+                ...prev,
+                isConnected: true,
+                isConnecting: false,
+              }));
+              reconnectAttemptsRef.current = 0;
+              startHeartbeat();
+              resolve(); // Resolve when connected
+            };
+
+            ws.onmessage = (event) => {
+              try {
+                const data: AvatarWebSocketMessage = JSON.parse(event.data);
+
+                if (data.event === 'pong') return;
+
+                switch (data.event) {
+                  case 'connected':
+                    // Connection confirmed
+                    break;
+
+                  case 'avatar_task_queued':
+                    setState((prev) => ({ ...prev, isGenerating: true }));
+                    break;
+
+                  case 'avatar_generating':
+                    setState((prev) => ({ ...prev, isGenerating: true }));
+                    break;
+
+                  case 'avatar_generated':
+                    // New iteration generated
+                    if (data.imageUrl && data.iterationId) {
+                      const iteration: AvatarGenerationIteration = {
+                        id: data.iterationId,
+                        prompt: '', // Will be filled from session refresh
+                        imageUrl: data.imageUrl,
+                        order: (data.iterationNumber || 1) - 1,
+                        isSelected: false,
+                        generationTimeMs: null,
+                        createdAt: new Date().toISOString(),
+                      };
+
+                      setState((prev) => ({
+                        ...prev,
+                        currentIteration: iteration,
+                        isGenerating: false,
+                        session: prev.session
+                          ? {
+                              ...prev.session,
+                              iterations: [...prev.session.iterations, iteration],
+                              status: 'ready',
+                            }
+                          : null,
+                      }));
+
+                      onAvatarGenerated?.(iteration);
+                    }
+                    break;
+
+                  case 'avatar_error':
+                    setState((prev) => ({
+                      ...prev,
+                      isGenerating: false,
+                      error: data.error || 'Generation failed',
+                    }));
+                    onError?.(data.error || 'Generation failed. Please try again.');
+                    break;
+
+                  case 'error':
+                    setState((prev) => ({
+                      ...prev,
+                      isGenerating: false,
+                      error: data.error || 'An error occurred',
+                    }));
+                    onError?.(data.error || 'An error occurred');
+                    break;
+
+                  default:
+                    break;
+                }
+              } catch (error) {
+                console.error('Failed to parse WebSocket message:', error);
+              }
+            };
+
+            ws.onerror = (error) => {
+              console.error('Avatar WebSocket error:', error);
+              setState((prev) => ({
+                ...prev,
+                isConnected: false,
+                isConnecting: false,
+              }));
+              reject(new Error('WebSocket error'));
+            };
+
+            ws.onclose = () => {
+              setState((prev) => ({
+                ...prev,
+                isConnected: false,
+                isConnecting: false,
+                isGenerating: false,
+              }));
+              clearTimers();
+
+              // Auto-reconnect if not intentional - use ref to avoid stale closure
+              if (
+                !intentionalCloseRef.current &&
+                reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS
+              ) {
+                const delay = Math.min(
+                  INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current),
+                  MAX_RECONNECT_DELAY
+                );
+                reconnectTimeoutRef.current = setTimeout(() => {
+                  reconnectAttemptsRef.current += 1;
+                  // Use ref instead of state to avoid stale closure
+                  const currentSession = sessionRef.current;
+                  if (currentSession) {
+                    connectWebSocket(currentSession);
+                  }
+                }, delay);
+              }
+            };
+
+            wsRef.current = ws;
+          })
+          .catch((error) => {
+            console.error('[Avatar WebSocket] Failed to fetch connection token:', error);
             setState((prev) => ({
               ...prev,
               isConnecting: false,
-              error: 'Connection timeout',
+              error: 'Failed to connect. Please try again.',
             }));
-            onError?.('Connection timeout. Please try again.');
-          }
-        }, CONNECTION_TIMEOUT);
-
-        ws.onopen = () => {
-          if (connectionTimeoutRef.current) {
-            clearTimeout(connectionTimeoutRef.current);
-            connectionTimeoutRef.current = null;
-          }
-          setState((prev) => ({
-            ...prev,
-            isConnected: true,
-            isConnecting: false,
-          }));
-          reconnectAttemptsRef.current = 0;
-          startHeartbeat();
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data: AvatarWebSocketMessage = JSON.parse(event.data);
-
-            if (data.event === 'pong') return;
-
-            switch (data.event) {
-              case 'connected':
-                // Connection confirmed
-                break;
-
-              case 'avatar_task_queued':
-                setState((prev) => ({ ...prev, isGenerating: true }));
-                break;
-
-              case 'avatar_generating':
-                setState((prev) => ({ ...prev, isGenerating: true }));
-                break;
-
-              case 'avatar_generated':
-                // New iteration generated
-                if (data.imageUrl && data.iterationId) {
-                  const iteration: AvatarGenerationIteration = {
-                    id: data.iterationId,
-                    prompt: '', // Will be filled from session refresh
-                    imageUrl: data.imageUrl,
-                    order: (data.iterationNumber || 1) - 1,
-                    isSelected: false,
-                    generationTimeMs: null,
-                    createdAt: new Date().toISOString(),
-                  };
-
-                  setState((prev) => ({
-                    ...prev,
-                    currentIteration: iteration,
-                    isGenerating: false,
-                    session: prev.session
-                      ? {
-                          ...prev.session,
-                          iterations: [...prev.session.iterations, iteration],
-                          status: 'ready',
-                        }
-                      : null,
-                  }));
-
-                  onAvatarGenerated?.(iteration);
-                }
-                break;
-
-              case 'avatar_error':
-                setState((prev) => ({
-                  ...prev,
-                  isGenerating: false,
-                  error: data.error || 'Generation failed',
-                }));
-                onError?.(data.error || 'Generation failed. Please try again.');
-                break;
-
-              case 'error':
-                setState((prev) => ({
-                  ...prev,
-                  isGenerating: false,
-                  error: data.error || 'An error occurred',
-                }));
-                onError?.(data.error || 'An error occurred');
-                break;
-
-              default:
-                break;
-            }
-          } catch (error) {
-            console.error('Failed to parse WebSocket message:', error);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('Avatar WebSocket error:', error);
-          setState((prev) => ({
-            ...prev,
-            isConnected: false,
-            isConnecting: false,
-          }));
-        };
-
-        ws.onclose = () => {
-          setState((prev) => ({
-            ...prev,
-            isConnected: false,
-            isConnecting: false,
-            isGenerating: false,
-          }));
-          clearTimers();
-
-          // Auto-reconnect if not intentional - use ref to avoid stale closure
-          if (
-            !intentionalCloseRef.current &&
-            reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS
-          ) {
-            const delay = Math.min(
-              INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current),
-              MAX_RECONNECT_DELAY
-            );
-            reconnectTimeoutRef.current = setTimeout(() => {
-              reconnectAttemptsRef.current += 1;
-              // Use ref instead of state to avoid stale closure
-              const currentSession = sessionRef.current;
-              if (currentSession) {
-                connectWebSocket(currentSession);
-              }
-            }, delay);
-          }
-        };
-
-        wsRef.current = ws;
-      } catch (error) {
-        console.error('Failed to create WebSocket:', error);
-        setState((prev) => ({
-          ...prev,
-          isConnecting: false,
-          error: 'Failed to connect',
-        }));
-        onError?.('Failed to connect');
-      }
+            onError?.('Failed to connect. Please try again.');
+            reject(error);
+          });
+      });
     },
     [isAuthenticated, authLoading, clearTimers, startHeartbeat, onError, onAvatarGenerated]
   );

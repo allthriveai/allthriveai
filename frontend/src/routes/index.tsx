@@ -38,6 +38,7 @@ import { ChallengePage } from '@/pages/challenges';
 import ThriveCirclePage from '@/pages/ThriveCirclePage';
 import SideQuestsPage from '@/pages/SideQuestsPage';
 import EthicsDefenderGame from '@/pages/games/EthicsDefenderGame';
+import ContextSnakeGame from '@/pages/games/ContextSnakeGame';
 import PricingPage from '@/pages/PricingPage';
 import CheckoutPage from '@/pages/CheckoutPage';
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
@@ -346,6 +347,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <EthicsDefenderGame />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Context Snake Game - protected */}
+      <Route
+        path="/play/context-snake"
+        element={
+          <ProtectedRoute>
+            <ContextSnakeGame />
           </ProtectedRoute>
         }
       />

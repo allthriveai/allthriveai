@@ -1514,6 +1514,8 @@ export function IntelligentChatPanel({
           isGenerating={onboarding.isAvatarGenerating}
           isConnecting={onboarding.isAvatarConnecting}
           error={onboarding.avatarError}
+          referenceImageUrl={onboarding.referenceImageUrl || undefined}
+          onReferenceImageChange={onboarding.handleReferenceImageChange}
         />
       );
     }

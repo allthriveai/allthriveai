@@ -2,10 +2,12 @@
  * AvatarTemplateSelector - Avatar creation UI for onboarding
  *
  * Shows template buttons and prompt input for avatar generation.
+ * Supports photo upload for "Make Me" style avatar generation.
  * Uses typewriter effect for Ember's messages with orange theme.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { DragEvent, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -14,8 +16,10 @@ import {
   faRobot,
   faUserAstronaut,
   faRocket,
+  faCamera,
 } from '@fortawesome/free-solid-svg-icons';
-import { SparklesIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { SparklesIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { uploadImage } from '@/services/upload';
 import type { AvatarTemplate } from '@/hooks/useIntelligentChat';
 
 // Map icon names to actual icons
@@ -157,6 +161,8 @@ interface AvatarTemplateSelectorProps {
   isGenerating: boolean;
   isConnecting: boolean;
   error: string | null;
+  referenceImageUrl?: string;
+  onReferenceImageChange?: (url: string | null) => void;
 }
 
 export function AvatarTemplateSelector({
@@ -170,8 +176,15 @@ export function AvatarTemplateSelector({
   isGenerating,
   isConnecting,
   error,
+  referenceImageUrl,
+  onReferenceImageChange,
 }: AvatarTemplateSelectorProps) {
   const [dialogueStep, setDialogueStep] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(referenceImageUrl || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dialogue lines with typewriter effects
   const line1 = useTypewriter("Let's create your avatar!", 25, 200, true);
@@ -220,6 +233,87 @@ export function AvatarTemplateSelector({
     line2.skip();
     line3.skip();
     setDialogueStep(3);
+  };
+
+  // File upload handlers
+  const handleFileUpload = useCallback(async (file: File) => {
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setUploadError('Please upload a JPG, PNG, or WebP image');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('Image must be smaller than 10MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const response = await uploadImage(file, 'avatar-references', true);
+      setPreviewUrl(response.url);
+      onReferenceImageChange?.(response.url);
+      // Clear template selection when photo is uploaded
+      onSelectTemplate('make_me');
+      onPromptChange('Create an avatar that looks like me in this photo');
+    } catch (err) {
+      console.error('Upload failed:', err);
+      setUploadError('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  }, [onReferenceImageChange, onSelectTemplate, onPromptChange]);
+
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPreviewUrl(null);
+    onReferenceImageChange?.(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    // Reset to scratch mode
+    if (selectedTemplate === 'make_me') {
+      onSelectTemplate('');
+      onPromptChange('');
+    }
   };
 
   const showControls = dialogueStep >= 3;
@@ -291,6 +385,15 @@ export function AvatarTemplateSelector({
             animate={{ opacity: 1, y: 0 }}
             className="mt-5 ml-16 space-y-4"
           >
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
             {/* Template shortcuts */}
             <div>
               <p className="text-orange-200/60 text-base mb-3">Quick start with a template:</p>
@@ -307,6 +410,11 @@ export function AvatarTemplateSelector({
                         } else {
                           onSelectTemplate(template.id);
                           onPromptChange(template.starterPrompt);
+                          // Clear photo if selecting a template
+                          if (previewUrl) {
+                            setPreviewUrl(null);
+                            onReferenceImageChange?.(null);
+                          }
                         }
                       }}
                       className={`
@@ -324,6 +432,70 @@ export function AvatarTemplateSelector({
                   );
                 })}
               </div>
+            </div>
+
+            {/* Photo upload section */}
+            <div>
+              <p className="text-orange-200/60 text-base mb-3">Or upload your photo:</p>
+              {previewUrl ? (
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img
+                      src={previewUrl}
+                      alt="Your uploaded photo"
+                      className="w-24 h-24 rounded object-cover border-2 border-orange-500/30"
+                    />
+                    <button
+                      onClick={handleRemovePhoto}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors"
+                      aria-label="Remove photo"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-orange-100 text-base">Photo uploaded!</p>
+                    <p className="text-orange-200/60 text-sm">We'll create an avatar based on your photo</p>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onDragEnter={handleDragEnter}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`
+                    relative cursor-pointer rounded border-2 border-dashed p-6 transition-all
+                    flex flex-col items-center justify-center gap-3
+                    ${isDragging
+                      ? 'border-orange-500 bg-orange-500/10'
+                      : 'border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-500/5'
+                    }
+                    ${isUploading ? 'opacity-50 pointer-events-none' : ''}
+                  `}
+                >
+                  {isUploading ? (
+                    <>
+                      <ArrowPathIcon className="w-8 h-8 text-orange-400 animate-spin" />
+                      <p className="text-orange-200/80 text-base">Uploading...</p>
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faCamera} className="text-2xl text-orange-400" />
+                      <div className="text-center">
+                        <p className="text-orange-100 text-base">
+                          {isDragging ? 'Drop your photo here' : 'Drag & drop your photo'}
+                        </p>
+                        <p className="text-orange-200/60 text-sm mt-1">or click to browse</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {uploadError && (
+                <p className="text-red-400 text-sm mt-2">{uploadError}</p>
+              )}
             </div>
 
             {/* Prompt input */}
