@@ -151,17 +151,35 @@ def get_checkpointer(use_postgres: bool = True):
     return _checkpointer
 
 
+class CheckpointerError(Exception):
+    """Raised when checkpointer initialization fails."""
+
+    pass
+
+
+# Flag to track if tables have been set up (set once per worker process)
+_tables_initialized = False
+
+
 @asynccontextmanager
-async def get_async_checkpointer():
+async def get_async_checkpointer(allow_fallback: bool = False):
     """
     Get async checkpointer for use with async LangGraph operations.
     Uses AsyncPostgresSaver for persistent conversation memory.
 
     This is a context manager that ensures proper cleanup of the connection pool.
 
+    IMPORTANT: This function does NOT silently fall back to MemorySaver by default.
+    At 100k users, silent fallback would cause widespread data loss without alerting
+    operators. Set allow_fallback=True only for non-critical paths.
+
     NOTE: We create a fresh connection pool each time because Celery
     creates a new event loop per task, and connection pools are bound
     to the event loop they were created in.
+
+    Args:
+        allow_fallback: If True, falls back to MemorySaver on error (NOT recommended
+                       for production). If False (default), raises CheckpointerError.
 
     Usage:
         async with get_async_checkpointer() as checkpointer:
@@ -170,9 +188,14 @@ async def get_async_checkpointer():
         # Pool automatically closed after context exits
 
     Yields:
-        AsyncPostgresSaver instance or MemorySaver fallback
+        AsyncPostgresSaver instance
+
+    Raises:
+        CheckpointerError: If PostgreSQL connection fails and allow_fallback=False
     """
+    global _tables_initialized
     pool = None
+
     try:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
         from psycopg_pool import AsyncConnectionPool
@@ -181,31 +204,54 @@ async def get_async_checkpointer():
 
         # Create async connection pool for this event loop
         # autocommit=True is required for setup() to work with CREATE INDEX CONCURRENTLY
-        pool = AsyncConnectionPool(conninfo=conn_string, min_size=1, max_size=5, kwargs={'autocommit': True})
+        pool = AsyncConnectionPool(
+            conninfo=conn_string,
+            min_size=1,
+            max_size=5,
+            timeout=30,  # Connection timeout
+            kwargs={'autocommit': True},
+        )
         await pool.open()
 
         # Create async checkpointer
         checkpointer = AsyncPostgresSaver(pool)
 
-        # Setup tables (creates if not exist) - safe to call multiple times
-        await checkpointer.setup()
+        # Setup tables only once per worker process (not every request)
+        # This significantly reduces DB load at scale
+        if not _tables_initialized:
+            await checkpointer.setup()
+            _tables_initialized = True
+            logger.info('LangGraph checkpoint tables initialized')
+        else:
+            logger.debug('AsyncPostgresSaver ready (tables already initialized)')
 
-        logger.debug('AsyncPostgresSaver ready for this request')
         yield checkpointer
 
     except ValueError as e:
         # Configuration error - this is critical in production
-        logger.error(f'Database configuration error for async checkpointer: {e}')
-        logger.warning('Falling back to MemorySaver - conversation state will not persist!')
-        from langgraph.checkpoint.memory import MemorySaver
+        error_msg = f'Database configuration error for async checkpointer: {e}'
+        logger.error(error_msg)
 
-        yield MemorySaver()
+        if allow_fallback:
+            logger.warning('FALLBACK ENABLED: Using MemorySaver - conversation state will not persist!')
+            from langgraph.checkpoint.memory import MemorySaver
+
+            yield MemorySaver()
+        else:
+            raise CheckpointerError(error_msg) from e
+
     except Exception as e:
-        logger.error(f'Failed to initialize AsyncPostgresSaver: {e}', exc_info=True)
-        logger.warning('Falling back to MemorySaver')
-        from langgraph.checkpoint.memory import MemorySaver
+        error_msg = f'Failed to initialize AsyncPostgresSaver: {e}'
+        logger.error(error_msg, exc_info=True)
 
-        yield MemorySaver()
+        if allow_fallback:
+            logger.warning('FALLBACK ENABLED: Using MemorySaver - conversation state will not persist!')
+            from langgraph.checkpoint.memory import MemorySaver
+
+            yield MemorySaver()
+        else:
+            raise CheckpointerError(error_msg) from e
+
     finally:
         # Always close the pool if it was created
         if pool is not None:

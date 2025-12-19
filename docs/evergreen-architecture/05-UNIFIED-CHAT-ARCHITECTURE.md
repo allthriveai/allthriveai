@@ -11,7 +11,7 @@
 AllThrive AI's intelligent chat system uses a **unified architecture** on both frontend and backend:
 
 - **Frontend**: Single `ChatCore` component with render props pattern, consumed by two layouts
-- **Backend**: Unified Ember agent with access to all ~27 tools
+- **Backend**: Unified Ember agent with access to all 38 tools
 
 ### Key Design Principles
 - **One backend, two UIs**: Same WebSocket connection, different visual presentations
@@ -20,10 +20,11 @@ AllThrive AI's intelligent chat system uses a **unified architecture** on both f
 - **Clean separation**: Core logic separated from UI components
 
 ### Key Stats
-- **Total Tools:** 27 (2-3% of context window, ~3,000 tokens)
+- **Total Tools:** 38 across 5 categories
 - **Architecture:** Single unified Ember agent (no supervisor routing)
 - **Token Tracking:** Full usage tracking via `AIUsageTracker`
 - **Frontend:** ChatCore + 2 layouts (EmbeddedChatLayout, SidebarChatLayout)
+- **Scalability Settings:** Max 50 context messages, 30s tool timeout, 10 max iterations
 
 ---
 
@@ -47,6 +48,7 @@ frontend/src/components/chat/
 │   ├── GameMessage.tsx            # Inline game renderer
 │   ├── OnboardingMessage.tsx      # Onboarding step router
 │   ├── GeneratingImageMessage.tsx # Image generation progress
+│   ├── LearningContentMessage.tsx # Learning content (videos, quizzes, projects)
 │   └── index.ts
 │
 ├── integrations/                  # Integration flow components
@@ -63,14 +65,28 @@ frontend/src/components/chat/
 │   └── index.ts
 │
 ├── onboarding/                    # Onboarding UI components
-│   ├── OnboardingIntroMessage.tsx
-│   ├── AvatarTemplateSelector.tsx
-│   ├── AvatarPreviewMessage.tsx
+│   ├── OnboardingIntroMessage.tsx # Welcome message with typewriter
+│   ├── AvatarTemplateSelector.tsx # Avatar template picker
+│   ├── AvatarPreviewMessage.tsx   # Generated avatar preview
+│   ├── PathSelectionMessage.tsx   # User path selection
+│   ├── LearningGoalSelectionMessage.tsx # Learning goals picker
+│   └── index.ts
+│
+├── games/                         # Inline game components
+│   ├── MiniSnakeGame.tsx          # Snake game implementation
+│   ├── QuickQuiz.tsx              # Quick quiz implementation
+│   ├── ChatGameCard.tsx           # Game card wrapper
+│   └── index.ts
+│
+├── cards/                         # Content cards
+│   ├── LearningTeaserCard.tsx     # Learning content teaser
 │   └── index.ts
 │
 ├── ChatSidebar.tsx                # Public sidebar component
 ├── ChatPlusMenu.tsx               # Plus menu for integrations
 ├── ChatErrorBoundary.tsx          # Error boundary wrapper
+├── ChatInterface.tsx              # Legacy chat interface
+├── GeneratedImageMessage.tsx      # Generated image display (root level)
 └── index.ts                       # Public exports
 ```
 
@@ -200,15 +216,24 @@ Backend (Django Channels + Celery)
     ├── services/agents/ember/
     │   ├── agent.py               # LangGraph agent + streaming
     │   ├── prompts.py             # System prompts
-    │   └── tools.py               # Unified tool registry (~27 tools)
+    │   └── tools.py               # Unified tool registry (38 tools)
     │
     └── Tool Categories:
         ├── Discovery (5 tools)    # Search, recommendations
-        ├── Learning (5 tools)     # Quiz help, progress
-        ├── Project (10 tools)     # Create, import projects
-        ├── Orchestration (5 tools)# Navigation, UI control
+        ├── Learning (14 tools)    # Quiz help, progress, mentorship, sessions
+        ├── Project (9 tools)      # Create, import projects
+        ├── Orchestration (7 tools)# Navigation, UI control, games
         └── Profile (3 tools)      # Profile generation
 ```
+
+### Scalability Configuration
+
+| Setting | Default | Location |
+|---------|---------|----------|
+| `EMBER_MAX_TOOL_ITERATIONS` | 10 | Django settings |
+| `EMBER_MAX_CONTEXT_MESSAGES` | 50 | Django settings |
+| `EMBER_TOOL_EXECUTION_TIMEOUT` | 30s | Django settings |
+| `EMBER_DEFAULT_MODEL` | gpt-4o-mini | AI gateway config |
 
 ### WebSocket Protocol
 
@@ -251,58 +276,88 @@ ws://backend:8000/ws/chat/{conversation_id}/
 
 ## Tool Reference
 
-### Discovery Agent (5 tools)
+### Discovery Tools (5 tools)
 
-| Tool | Description |
-|------|-------------|
-| `search_projects` | Find projects by keyword, category, or tags |
-| `get_recommendations` | Personalized project suggestions |
-| `find_similar_projects` | Find projects similar to a given project |
-| `get_trending_projects` | Get trending projects from day/week/month |
-| `get_project_details` | Get detailed info about a specific project |
+| Tool | Description | Needs State |
+|------|-------------|-------------|
+| `search_projects` | Find projects by keyword, category, or tags | No |
+| `get_recommendations` | Personalized project suggestions | **Yes** |
+| `find_similar_projects` | Find projects similar to a given project | No |
+| `get_trending_projects` | Get trending projects from day/week/month | No |
+| `get_project_details` | Get detailed info about a specific project | No |
 
-### Learning Agent (5 tools)
+### Learning Tools (14 tools)
 
-| Tool | Description |
-|------|-------------|
-| `get_learning_progress` | User's learning paths with skill levels |
-| `get_quiz_hint` | Hint for quiz question WITHOUT revealing answer |
-| `explain_concept` | Explain topic at user's skill level |
-| `suggest_next_activity` | Recommend next quiz based on progress |
-| `get_quiz_details` | Detailed info about a specific quiz |
+#### Core Learning (5 tools)
+| Tool | Description | Needs State |
+|------|-------------|-------------|
+| `get_learning_progress` | User's learning paths with skill levels | **Yes** |
+| `get_quiz_hint` | Hint for quiz question WITHOUT revealing answer | No |
+| `explain_concept` | Explain topic at user's skill level | No |
+| `suggest_next_activity` | Recommend next quiz based on progress | **Yes** |
+| `get_quiz_details` | Detailed info about a specific quiz | No |
 
-### Project Agent (10 tools)
+#### Enhanced Mentorship (6 tools)
+| Tool | Description | Needs State |
+|------|-------------|-------------|
+| `get_learner_profile` | Understand user's learning style, streak, preferences | **Yes** |
+| `get_concept_mastery` | See what concepts user has mastered or is learning | **Yes** |
+| `find_knowledge_gaps` | Identify areas where user needs more practice | **Yes** |
+| `get_due_reviews` | Concepts ready for spaced repetition review | **Yes** |
+| `deliver_micro_lesson` | Teach a concept with personalized content | **Yes** |
+| `record_learning_event` | Track learning interactions (lessons, practice, etc.) | **Yes** |
 
-| Tool | Description |
-|------|-------------|
-| `create_project` | Create a new project with metadata |
-| `import_from_url` | Unified URL import (GitHub, YouTube, etc.) |
-| `import_github_project` | Import GitHub repo with full AI analysis |
-| `scrape_webpage_for_project` | Scrape any webpage and create project |
-| `create_media_project` | Unified media handling |
-| `create_project_from_screenshot` | Create project by analyzing screenshot |
-| `create_product` | Create marketplace product |
-| `extract_url_info` | Extract and categorize URLs from text |
-| `fetch_github_metadata` | Fetch GitHub repository metadata |
-| `regenerate_architecture_diagram` | Regenerate project's Mermaid diagram |
+#### Conversational Sessions (3 tools)
+| Tool | Description | Needs State |
+|------|-------------|-------------|
+| `start_learning_session` | Begin interactive learning by asking what to learn | **Yes** |
+| `set_learning_topic` | After user picks topic, show available formats | **Yes** |
+| `get_learning_content` | Get content (videos, quizzes, articles) or AI fallback | **Yes** |
 
-### Orchestration Agent (5 tools)
+### Project Tools (9 tools)
 
-| Tool | Description |
-|------|-------------|
-| `navigate_to_page` | Navigate user to a page (auto-executes) |
-| `highlight_element` | Highlight UI element with animation |
-| `open_tray` | Open slide-out panel |
-| `show_toast` | Show notification |
-| `trigger_action` | Trigger site action |
+| Tool | Description | Needs State |
+|------|-------------|-------------|
+| `create_project` | Create a new project with metadata | **Yes** |
+| `import_from_url` | Unified URL import (GitHub, YouTube, etc.) | **Yes** |
+| `import_github_project` | Import GitHub repo with full AI analysis | **Yes** |
+| `scrape_webpage_for_project` | Scrape any webpage and create project | **Yes** |
+| `create_media_project` | Unified media handling (images, videos, AI content) | **Yes** |
+| `create_project_from_screenshot` | Create project by analyzing screenshot | **Yes** |
+| `create_product` | Create marketplace product | **Yes** |
+| `extract_url_info` | Extract and categorize URLs from text | No |
+| `regenerate_architecture_diagram` | Regenerate project's Mermaid diagram | **Yes** |
 
-### Profile Agent (3 tools)
+*Note: `import_video_project` is deprecated (use `create_media_project`), `fetch_github_metadata` is internal only.*
 
-| Tool | Description |
-|------|-------------|
-| `gather_user_data` | Gather comprehensive user data |
-| `generate_profile_sections` | Generate profile sections |
-| `save_profile_sections` | Save generated sections to profile |
+### Orchestration Tools (7 tools)
+
+| Tool | Description | Needs State |
+|------|-------------|-------------|
+| `navigate_to_page` | Navigate user to a page (auto-executes) | No |
+| `highlight_element` | Highlight UI element with animation | No |
+| `open_tray` | Open slide-out panel (chat, quest, comments, etc.) | No |
+| `show_toast` | Show notification with variant | No |
+| `trigger_action` | Trigger site action (start_battle, create_project, etc.) | No |
+| `get_fun_activities` | List available fun activities on AllThrive | No |
+| `launch_inline_game` | Embed mini-game in chat (snake, quiz, random) | No |
+
+### Profile Tools (3 tools)
+
+| Tool | Description | Needs State |
+|------|-------------|-------------|
+| `gather_user_data` | Gather comprehensive user data | **Yes** |
+| `generate_profile_sections` | Generate profile sections | **Yes** |
+| `save_profile_sections` | Save generated sections to profile | **Yes** |
+
+### State Injection
+
+Tools marked with **"Needs State"** receive a `state` dict injected with:
+- `user_id`: The authenticated user's ID
+- `username`: The user's username
+- `session_id`: The WebSocket session ID
+
+This is handled automatically by `create_tool_node_with_state_injection()` in `ember/agent.py`.
 
 ---
 
@@ -312,19 +367,34 @@ ws://backend:8000/ws/chat/{conversation_id}/
 |---------|-------------------|-------------------|
 | WebSocket chat | ✅ | ✅ |
 | Streaming responses | ✅ | ✅ |
-| Tool execution | ✅ | ✅ |
+| Tool execution (38 tools) | ✅ | ✅ |
 | GitHub integration | ✅ | ✅ |
 | GitLab integration | ✅ | ✅ |
 | Figma integration | ✅ | ✅ |
 | YouTube import | ✅ | ✅ |
 | Nano Banana (image gen) | ✅ | ✅ |
-| Inline games | ✅ | ✅ |
+| Inline games (snake, quiz) | ✅ | ✅ |
 | Onboarding flow | ✅ | ✅ |
 | Orchestration actions | ✅ | ✅ |
 | Quota management | ✅ | ✅ |
+| Learning content display | ✅ | ✅ |
+| File uploads (drag & drop) | ✅ | ✅ |
 | Context-aware actions | via feeling pills | via quick actions |
 | Typewriter greeting | ✅ | ❌ |
 | Connection status | ✅ | ✅ |
+
+### File Upload Constraints
+
+| Constraint | Value |
+|------------|-------|
+| Max attachments per message | 5 |
+| Max message length | 10,000 characters |
+| Max image size | 50MB |
+| Max video size | 500MB |
+| Max document size | 100MB |
+| Supported image types | JPEG, PNG, GIF, WebP |
+| Supported video types | MP4, WebM |
+| Supported document types | PDF, Word, Excel, PowerPoint, ZIP |
 
 ---
 
@@ -352,7 +422,7 @@ This provides:
 
 ## File Locations
 
-### Frontend (New Unified Architecture)
+### Frontend (Core Components)
 
 | Component | Location |
 |-----------|----------|
@@ -360,13 +430,61 @@ This provides:
 | ChatMessageList | `frontend/src/components/chat/core/ChatMessageList.tsx` |
 | ChatInputArea | `frontend/src/components/chat/core/ChatInputArea.tsx` |
 | Types | `frontend/src/components/chat/core/types.ts` |
+
+### Frontend (Layouts)
+
+| Component | Location |
+|-----------|----------|
 | EmbeddedChatLayout | `frontend/src/components/chat/layouts/EmbeddedChatLayout.tsx` |
 | SidebarChatLayout | `frontend/src/components/chat/layouts/SidebarChatLayout.tsx` |
+
+### Frontend (Messages)
+
+| Component | Location |
+|-----------|----------|
+| AssistantMessage | `frontend/src/components/chat/messages/AssistantMessage.tsx` |
+| UserMessage | `frontend/src/components/chat/messages/UserMessage.tsx` |
+| LoadingMessage | `frontend/src/components/chat/messages/LoadingMessage.tsx` |
+| GameMessage | `frontend/src/components/chat/messages/GameMessage.tsx` |
+| OnboardingMessage | `frontend/src/components/chat/messages/OnboardingMessage.tsx` |
+| OrchestrationPrompt | `frontend/src/components/chat/messages/OrchestrationPrompt.tsx` |
+| QuotaExceededBanner | `frontend/src/components/chat/messages/QuotaExceededBanner.tsx` |
+| GeneratingImageMessage | `frontend/src/components/chat/messages/GeneratingImageMessage.tsx` |
+| LearningContentMessage | `frontend/src/components/chat/messages/LearningContentMessage.tsx` |
+
+### Frontend (Integrations)
+
+| Component | Location |
+|-----------|----------|
 | useIntegrationFlow | `frontend/src/components/chat/integrations/useIntegrationFlow.ts` |
 | GitHubFlow | `frontend/src/components/chat/integrations/GitHubFlow.tsx` |
 | GitLabFlow | `frontend/src/components/chat/integrations/GitLabFlow.tsx` |
 | FigmaFlow | `frontend/src/components/chat/integrations/FigmaFlow.tsx` |
-| Message components | `frontend/src/components/chat/messages/` |
+| IntegrationPicker | `frontend/src/components/chat/integrations/IntegrationPicker.tsx` |
+
+### Frontend (Onboarding)
+
+| Component | Location |
+|-----------|----------|
+| OnboardingIntroMessage | `frontend/src/components/chat/onboarding/OnboardingIntroMessage.tsx` |
+| AvatarTemplateSelector | `frontend/src/components/chat/onboarding/AvatarTemplateSelector.tsx` |
+| AvatarPreviewMessage | `frontend/src/components/chat/onboarding/AvatarPreviewMessage.tsx` |
+| PathSelectionMessage | `frontend/src/components/chat/onboarding/PathSelectionMessage.tsx` |
+| LearningGoalSelectionMessage | `frontend/src/components/chat/onboarding/LearningGoalSelectionMessage.tsx` |
+
+### Frontend (Games)
+
+| Component | Location |
+|-----------|----------|
+| MiniSnakeGame | `frontend/src/components/chat/games/MiniSnakeGame.tsx` |
+| QuickQuiz | `frontend/src/components/chat/games/QuickQuiz.tsx` |
+| ChatGameCard | `frontend/src/components/chat/games/ChatGameCard.tsx` |
+
+### Frontend (Cards)
+
+| Component | Location |
+|-----------|----------|
+| LearningTeaserCard | `frontend/src/components/chat/cards/LearningTeaserCard.tsx` |
 
 ### Frontend (Hooks)
 
@@ -376,15 +494,67 @@ This provides:
 | useOnboardingChat | `frontend/src/hooks/useOnboardingChat.ts` |
 | useOrchestrationActions | `frontend/src/hooks/useOrchestrationActions.ts` |
 
-### Backend
+### Backend (Ember Agent)
 
 | Component | Location |
 |-----------|----------|
 | Ember Agent | `services/agents/ember/agent.py` |
 | Ember Prompts | `services/agents/ember/prompts.py` |
-| Ember Tools | `services/agents/ember/tools.py` |
+| Ember Tools Registry | `services/agents/ember/tools.py` |
+
+### Backend (Specialized Tool Modules)
+
+| Component | Location |
+|-----------|----------|
+| Discovery Tools | `services/agents/discovery/tools.py` |
+| Learning Tools | `services/agents/learning/tools.py` |
+| Project Tools | `services/agents/project/tools.py` |
+| Orchestration Tools | `services/agents/orchestration/tools.py` |
+| Profile Tools | `services/agents/profile/tools.py` |
+
+### Backend (Infrastructure)
+
+| Component | Location |
+|-----------|----------|
 | Chat Consumer | `core/agents/consumers.py` |
 | Chat Tasks | `core/agents/tasks.py` |
+| WebSocket Routing | `core/agents/routing.py` |
+| Security (Prompt Injection) | `core/agents/security.py` |
+| Metrics | `core/agents/metrics.py` |
+| Checkpointer | `services/agents/auth/checkpointer.py` |
+
+---
+
+## Data Flow: Message → Response
+
+```
+1. User sends message via WebSocket
+   └─► ChatConsumer.receive() validates & queues
+
+2. Celery task process_chat_message_task()
+   ├─► Validate user exists
+   ├─► Check quota (check_and_reserve_ai_request)
+   ├─► Security filter (PromptInjectionFilter)
+   ├─► Send "processing_started" event
+   └─► Route to _process_with_orchestrator()
+
+3. Orchestrator routing
+   ├─► Image generation keywords? → Gemini 2.0 Flash
+   └─► Everything else → stream_ember_response()
+
+4. Ember agent (LangGraph)
+   ├─► Build message history (max 50 messages)
+   ├─► LLM with tools bound (gpt-4o-mini)
+   ├─► Stream chunks via Redis Pub/Sub
+   ├─► Execute tools with state injection
+   └─► Max 10 iterations, 30s timeout per tool
+
+5. Frontend receives events
+   ├─► chunk: Stream text into message
+   ├─► tool_start/tool_end: Show tool status
+   ├─► completed: Mark response done
+   └─► Special: inline_game, learning_content, orchestration actions
+```
 
 ---
 
@@ -396,8 +566,8 @@ The following components are kept for backward compatibility but should be migra
 
 | Legacy | New Replacement |
 |--------|-----------------|
+| `ChatInterface.tsx` | `ChatCore.tsx` + layouts |
 | `IntelligentChatPanel.tsx` | `ChatSidebar.tsx` + `SidebarChatLayout.tsx` |
-| `EmberHomePage.tsx` | `EmberHomePageV2.tsx` |
 
 ### Migration Steps
 
@@ -408,8 +578,63 @@ The following components are kept for backward compatibility but should be migra
 
 ---
 
+## Testing Checklist
+
+### Core Functionality
+- [ ] WebSocket connection/reconnection
+- [ ] Message streaming (chunks appear in real-time)
+- [ ] Tool execution with status indicators
+- [ ] Error handling (quota, timeouts, failures)
+- [ ] File upload (images, videos, documents)
+- [ ] Drag-and-drop attachments
+
+### Discovery Tools (5)
+- [ ] `search_projects` - Search by keyword
+- [ ] `get_recommendations` - Personalized suggestions
+- [ ] `find_similar_projects` - Similar project matching
+- [ ] `get_trending_projects` - Trending feed
+- [ ] `get_project_details` - Project deep dive
+
+### Learning Tools (14)
+- [ ] `get_learning_progress` - User stats
+- [ ] `get_quiz_hint` - Quiz hints (no answers!)
+- [ ] `explain_concept` - Concept explanations
+- [ ] `start_learning_session` → `set_learning_topic` → `get_learning_content` flow
+- [ ] `deliver_micro_lesson` - AI teaching
+- [ ] `record_learning_event` - Progress tracking
+
+### Project Tools (9)
+- [ ] `import_from_url` - GitHub URL
+- [ ] `import_from_url` - YouTube URL
+- [ ] `import_from_url` - Generic webpage
+- [ ] `create_media_project` - Uploaded image/video
+- [ ] `create_project` - From scratch
+- [ ] `create_product` - Marketplace item
+- [ ] `regenerate_architecture_diagram` - Diagram fix
+
+### Orchestration Tools (7)
+- [ ] `navigate_to_page` - Navigation works
+- [ ] `highlight_element` - UI highlighting
+- [ ] `open_tray` - Panel opening
+- [ ] `show_toast` - Notifications
+- [ ] `launch_inline_game` - Snake/quiz game in chat
+- [ ] `trigger_action` - Start battle/quiz
+
+### Profile Tools (3)
+- [ ] `gather_user_data` - Data collection
+- [ ] `generate_profile_sections` - AI generation
+- [ ] `save_profile_sections` - Save to profile
+
+### Integration Flows
+- [ ] GitHub OAuth + repo import
+- [ ] Figma OAuth + file import
+- [ ] YouTube video import
+- [ ] Onboarding flow with avatar generation
+
+---
+
 ## Related Documentation
 
-- `/docs/AGENTIC_LEARNING_PATHS_PLAN.md` - Enhanced learning tools plan
 - `/docs/evergreen-architecture/07-WEBSOCKET-IMPLEMENTATION.md` - WebSocket details
 - `/docs/evergreen-architecture/04-AI-ARCHITECTURE.md` - AI provider architecture
+- `/docs/evergreen-architecture/06-TAXONOMY-SYSTEM.md` - Taxonomy and tools directory

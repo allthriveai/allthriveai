@@ -269,24 +269,44 @@ class RateLimiter:
         return True, ''
 
     def increment_websocket_connection(self, user_id: int) -> None:
-        """Increment WebSocket connection count for a user."""
+        """Increment WebSocket connection count for a user using atomic operation."""
         if self._skip_rate_limit():
             return
 
         key = f'ws_connections:user:{user_id}'
-        count = self.cache.get(key, 0)
-        # Set with 24h expiry as a safety net (connections should decrement on disconnect)
-        self.cache.set(key, count + 1, timeout=86400)
+        try:
+            # Try atomic increment first (works if key exists)
+            new_count = self.cache.incr(key)
+            # Reset TTL on successful increment
+            self.cache.touch(key, 86400)
+            logger.debug(f'WebSocket connections for user {user_id}: {new_count}')
+        except ValueError:
+            # Key doesn't exist, create it atomically
+            # Use add() to prevent race condition if another worker creates it
+            if self.cache.add(key, 1, timeout=86400):
+                logger.debug(f'Created WebSocket connection counter for user {user_id}')
+            else:
+                # Another worker created it, increment
+                self.cache.incr(key)
 
     def decrement_websocket_connection(self, user_id: int) -> None:
-        """Decrement WebSocket connection count for a user."""
+        """Decrement WebSocket connection count for a user using atomic operation."""
         if self._skip_rate_limit():
             return
 
         key = f'ws_connections:user:{user_id}'
-        count = self.cache.get(key, 0)
-        if count > 0:
-            self.cache.set(key, count - 1, timeout=86400)
+        try:
+            # Atomic decrement
+            new_count = self.cache.decr(key)
+            if new_count <= 0:
+                # Clean up key when no connections (prevents stale keys)
+                self.cache.delete(key)
+                logger.debug(f'Removed WebSocket connection counter for user {user_id}')
+            else:
+                logger.debug(f'WebSocket connections for user {user_id}: {new_count}')
+        except ValueError:
+            # Key doesn't exist, nothing to decrement
+            logger.debug(f'No WebSocket connection counter to decrement for user {user_id}')
 
     def check_connection_rate_limit(self, user_id: int) -> tuple[bool, int]:
         """

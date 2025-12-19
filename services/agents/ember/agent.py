@@ -15,10 +15,12 @@ Scalability considerations:
 import asyncio
 import logging
 import time
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from typing import Annotated, TypedDict
 
 from django.conf import settings
+from django.core.cache import cache
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
@@ -46,25 +48,107 @@ MAX_CONTEXT_MESSAGES = getattr(settings, 'EMBER_MAX_CONTEXT_MESSAGES', 50)
 # Tool execution timeout in seconds (prevents hanging on slow tools)
 TOOL_EXECUTION_TIMEOUT = getattr(settings, 'EMBER_TOOL_EXECUTION_TIMEOUT', 30)
 
+# Maximum in-memory locks to keep (LRU eviction for memory safety at scale)
+# At 100k users, we limit to 10k locks (~1MB memory) and use Redis for distributed locking
+MAX_THREAD_LOCKS = getattr(settings, 'EMBER_MAX_THREAD_LOCKS', 10000)
+
+# Redis lock timeout for distributed locking (seconds)
+REDIS_LOCK_TIMEOUT = getattr(settings, 'EMBER_REDIS_LOCK_TIMEOUT', 120)
+
 # Concurrency locks for thread_id to prevent race conditions
-# when multiple requests come in for the same conversation
-_thread_locks: dict[str, asyncio.Lock] = {}
+# Uses OrderedDict for LRU eviction to prevent unbounded memory growth
+_thread_locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
+_thread_locks_mutex = asyncio.Lock()
 
 
-def _get_thread_lock(thread_id: str) -> asyncio.Lock:
+async def _get_thread_lock(thread_id: str) -> asyncio.Lock:
     """
-    Get or create an async lock for a specific thread_id.
+    Get or create an async lock for a specific thread_id with LRU eviction.
 
     This prevents concurrent requests to the same conversation from
     causing race conditions or corrupted state in the checkpointer.
 
-    Note: In a multi-worker environment (Celery/Gunicorn), this only
-    protects within a single worker process. For true distributed
-    locking, use Redis-based locks.
+    Memory safety: Uses LRU eviction to cap memory at MAX_THREAD_LOCKS.
+    At 100k users, this prevents unbounded memory growth.
+
+    Note: For true distributed locking across multiple workers,
+    use _acquire_distributed_lock() instead.
     """
-    if thread_id not in _thread_locks:
-        _thread_locks[thread_id] = asyncio.Lock()
-    return _thread_locks[thread_id]
+    async with _thread_locks_mutex:
+        if thread_id in _thread_locks:
+            # Move to end (most recently used)
+            _thread_locks.move_to_end(thread_id)
+            return _thread_locks[thread_id]
+
+        # Create new lock
+        lock = asyncio.Lock()
+        _thread_locks[thread_id] = lock
+
+        # LRU eviction: remove oldest entries if over limit
+        while len(_thread_locks) > MAX_THREAD_LOCKS:
+            oldest_key = next(iter(_thread_locks))
+            del _thread_locks[oldest_key]
+            logger.debug(f'Evicted thread lock for memory: {oldest_key}')
+
+        return lock
+
+
+@asynccontextmanager
+async def _acquire_distributed_lock(thread_id: str, timeout: int = REDIS_LOCK_TIMEOUT):
+    """
+    Acquire a distributed lock via Redis for cross-worker safety.
+
+    This ensures only one worker processes a given thread_id at a time,
+    even across multiple Celery workers or Gunicorn processes.
+
+    Args:
+        thread_id: The conversation thread ID to lock
+        timeout: Lock timeout in seconds (auto-releases if holder crashes)
+
+    Yields:
+        True if lock acquired, raises exception if not
+
+    Raises:
+        RuntimeError: If lock cannot be acquired within timeout
+    """
+    lock_key = f'ember:lock:{thread_id}'
+    lock_value = f'{time.time()}:{id(asyncio.current_task())}'
+
+    # Try to acquire lock with Redis SETNX
+    acquired = False
+    start_time = time.time()
+
+    try:
+        # Use Redis SET NX EX for atomic lock acquisition
+        acquired = cache.add(lock_key, lock_value, timeout=timeout)
+
+        if not acquired:
+            # Lock held by another worker, wait with exponential backoff
+            wait_time = 0.1
+            while time.time() - start_time < timeout:
+                await asyncio.sleep(wait_time)
+                acquired = cache.add(lock_key, lock_value, timeout=timeout)
+                if acquired:
+                    break
+                wait_time = min(wait_time * 2, 2.0)  # Max 2 second wait
+
+        if not acquired:
+            logger.warning(f'Failed to acquire distributed lock for {thread_id} after {timeout}s')
+            raise RuntimeError(f'Could not acquire lock for conversation {thread_id}')
+
+        logger.debug(f'Acquired distributed lock for {thread_id}')
+        yield True
+
+    finally:
+        if acquired:
+            # Only release if we still hold the lock (check value)
+            try:
+                current_value = cache.get(lock_key)
+                if current_value == lock_value:
+                    cache.delete(lock_key)
+                    logger.debug(f'Released distributed lock for {thread_id}')
+            except Exception as e:
+                logger.warning(f'Error releasing distributed lock for {thread_id}: {e}')
 
 
 def get_default_model() -> str:
@@ -73,6 +157,128 @@ def get_default_model() -> str:
 
     # Use the default OpenAI model from settings.AI_MODELS
     return get_model_for_purpose('openai', 'default')
+
+
+def _get_user_friendly_error(exception: Exception) -> str:
+    """
+    Convert technical exceptions into user-friendly error messages.
+
+    This is critical for production at scale - users should never see
+    raw stack traces or technical error messages.
+
+    Args:
+        exception: The exception that occurred
+
+    Returns:
+        A user-friendly error message string
+    """
+    from services.agents.auth.checkpointer import CheckpointerError
+
+    error_str = str(exception).lower()
+    exception_type = type(exception).__name__
+
+    # Database/Checkpointer errors - critical for conversation memory
+    if isinstance(exception, CheckpointerError):
+        logger.critical(f'CheckpointerError: Conversation memory unavailable: {exception}')
+        return "I'm having trouble remembering our conversation. Please refresh the page and try again."
+
+    # Distributed lock timeout
+    if isinstance(exception, RuntimeError) and 'lock' in error_str:
+        return "I'm a bit busy right now. Please wait a moment and try again."
+
+    # OpenAI / AI provider errors
+    if 'rate limit' in error_str or 'ratelimit' in error_str:
+        return 'I need a moment to catch my breath. Please try again in a few seconds.'
+
+    if 'quota' in error_str or 'insufficient_quota' in error_str:
+        return "I'm taking a short break. Please try again in a few minutes."
+
+    if 'invalid_api_key' in error_str or 'authentication' in error_str:
+        logger.critical(f'AI API authentication error: {exception}')
+        return "I'm having a technical issue. Our team has been notified."
+
+    if 'context_length_exceeded' in error_str or ('token' in error_str and 'limit' in error_str):
+        return 'Your message is quite long. Could you try a shorter version?'
+
+    if 'content_filter' in error_str or 'responsibleaipolicyviolation' in error_str:
+        return "I can't help with that particular request. Is there something else I can assist with?"
+
+    # Network errors
+    if 'timeout' in error_str or 'timed out' in error_str:
+        return "I'm taking longer than expected. Please try again."
+
+    if 'connection' in error_str and ('refused' in error_str or 'error' in error_str):
+        logger.critical(f'Connection error: {exception}')
+        return "I'm having trouble connecting. Please try again in a moment."
+
+    # Database errors
+    if 'database' in error_str or 'postgresql' in error_str or 'psycopg' in error_str:
+        logger.critical(f'Database error in chat agent: {exception}')
+        return "I'm having trouble with my memory. Please refresh and try again."
+
+    # Redis errors
+    if 'redis' in error_str or 'cache' in error_str:
+        logger.warning(f'Redis/cache error in chat agent: {exception}')
+        return "I'm experiencing a temporary issue. Please try again."
+
+    # Generic fallback - don't expose technical details
+    logger.error(f'Unhandled chat error type ({exception_type}): {exception}')
+    return 'I ran into an unexpected issue. Please try again, and let us know if it continues.'
+
+
+def _serialize_tool_output(output) -> dict:
+    """
+    Serialize tool output to ensure it's JSON-compatible for Redis channels.
+
+    LangGraph tool events can return various types including ToolMessage objects
+    which cannot be serialized by Redis. This function converts any output to
+    a plain dict that can be safely serialized.
+
+    Args:
+        output: Raw tool output (could be dict, ToolMessage, string, etc.)
+
+    Returns:
+        JSON-serializable dict
+    """
+    from langchain_core.messages import ToolMessage
+
+    # Handle ToolMessage objects
+    if isinstance(output, ToolMessage):
+        return {
+            'content': output.content if isinstance(output.content, str | dict | list) else str(output.content),
+            'tool_call_id': getattr(output, 'tool_call_id', None),
+            'name': getattr(output, 'name', None),
+        }
+
+    # Handle dict with nested non-serializable objects
+    if isinstance(output, dict):
+        serialized = {}
+        for key, value in output.items():
+            if isinstance(value, ToolMessage):
+                serialized[key] = _serialize_tool_output(value)
+            elif hasattr(value, '__dict__'):
+                # Convert objects with __dict__ to their dict representation
+                try:
+                    serialized[key] = dict(value.__dict__)
+                except Exception:
+                    serialized[key] = str(value)
+            else:
+                serialized[key] = value
+        return serialized
+
+    # Handle string output
+    if isinstance(output, str):
+        return {'content': output}
+
+    # Handle list output
+    if isinstance(output, list):
+        return {'items': [_serialize_tool_output(item) for item in output]}
+
+    # Fallback: convert to string
+    try:
+        return {'content': str(output)}
+    except Exception:
+        return {'content': 'Tool output could not be serialized'}
 
 
 # =============================================================================
@@ -530,85 +736,88 @@ async def stream_ember_response(
     total_tool_calls = 0
     input_tokens = 0
 
-    # Get lock for this thread_id to prevent concurrent writes
-    thread_lock = _get_thread_lock(session_id)
-
     try:
-        # Acquire lock to prevent concurrent requests to same conversation
-        async with thread_lock:
-            # Get async agent with checkpointer for conversation memory
-            # Context manager ensures connection pool is cleaned up
-            async with _get_async_agent() as agent:
-                # Use session_id as thread_id for persistent conversation state
-                config = {
-                    'configurable': {
-                        'thread_id': session_id,
-                        'user_id': user_id,
+        # Acquire distributed lock to prevent concurrent requests across workers
+        # This is critical at scale (100k users) to prevent checkpoint corruption
+        async with _acquire_distributed_lock(session_id):
+            # Also acquire local lock for same-worker safety
+            thread_lock = await _get_thread_lock(session_id)
+            async with thread_lock:
+                # Get async agent with checkpointer for conversation memory
+                # Context manager ensures connection pool is cleaned up
+                async with _get_async_agent() as agent:
+                    # Use session_id as thread_id for persistent conversation state
+                    config = {
+                        'configurable': {
+                            'thread_id': session_id,
+                            'user_id': user_id,
+                        }
                     }
-                }
 
-                # Create input state - only the new message
-                # The checkpointer automatically manages conversation history
-                input_state = {
-                    'messages': [HumanMessage(content=user_message)],
-                    'user_id': user_id,
-                    'username': username,
-                    'session_id': session_id,
-                    'is_onboarding': is_onboarding,
-                    'conversation_id': session_id,
-                }
+                    # Create input state - only the new message
+                    # The checkpointer automatically manages conversation history
+                    input_state = {
+                        'messages': [HumanMessage(content=user_message)],
+                        'user_id': user_id,
+                        'username': username,
+                        'session_id': session_id,
+                        'is_onboarding': is_onboarding,
+                        'conversation_id': session_id,
+                    }
 
-                # Track processed events to avoid duplicates
-                processed_tool_calls = set()
-                processed_stream_runs = set()
-                current_stream_run_id = None
+                    # Track processed events to avoid duplicates
+                    processed_tool_calls = set()
+                    processed_stream_runs = set()
+                    current_stream_run_id = None
 
-                # Stream agent execution with astream_events
-                async for event in agent.astream_events(input_state, config, version='v1'):
-                    kind = event['event']
-                    run_id = event.get('run_id', '')
-
-                    # Stream LLM tokens
-                    if kind == 'on_chat_model_stream':
-                        # Track run_id to prevent duplicate streams from multiple nodes
-                        if run_id:
-                            if run_id in processed_stream_runs and run_id != current_stream_run_id:
-                                continue
-                            if current_stream_run_id is None:
-                                current_stream_run_id = run_id
-                                processed_stream_runs.add(run_id)
-                            elif run_id != current_stream_run_id:
-                                continue
-
-                        chunk = event.get('data', {}).get('chunk')
-                        if chunk and hasattr(chunk, 'content') and chunk.content:
-                            content = chunk.content
-                            if isinstance(content, str):
-                                total_output_content += content
-                                yield {'type': 'token', 'content': content}
-
-                    # Tool execution started
-                    elif kind == 'on_tool_start':
-                        tool_name = event.get('name', '')
+                    # Stream agent execution with astream_events
+                    async for event in agent.astream_events(input_state, config, version='v1'):
+                        kind = event['event']
                         run_id = event.get('run_id', '')
 
-                        # Skip if already processed
-                        if run_id in processed_tool_calls:
-                            continue
-                        processed_tool_calls.add(run_id)
+                        # Stream LLM tokens
+                        if kind == 'on_chat_model_stream':
+                            # Track run_id to prevent duplicate streams from multiple nodes
+                            if run_id:
+                                if run_id in processed_stream_runs and run_id != current_stream_run_id:
+                                    continue
+                                if current_stream_run_id is None:
+                                    current_stream_run_id = run_id
+                                    processed_stream_runs.add(run_id)
+                                elif run_id != current_stream_run_id:
+                                    continue
 
-                        total_tool_calls += 1
-                        yield {'type': 'tool_start', 'tool': tool_name}
+                            chunk = event.get('data', {}).get('chunk')
+                            if chunk and hasattr(chunk, 'content') and chunk.content:
+                                content = chunk.content
+                                if isinstance(content, str):
+                                    total_output_content += content
+                                    yield {'type': 'token', 'content': content}
 
-                    # Tool execution completed
-                    elif kind == 'on_tool_end':
-                        tool_name = event.get('name', '')
-                        output = event.get('data', {}).get('output', {})
-                        yield {'type': 'tool_end', 'tool': tool_name, 'output': output}
+                        # Tool execution started
+                        elif kind == 'on_tool_start':
+                            tool_name = event.get('name', '')
+                            run_id = event.get('run_id', '')
 
-                    # Reset stream tracking when entering new nodes
-                    elif kind == 'on_chain_start':
-                        current_stream_run_id = None
+                            # Skip if already processed
+                            if run_id in processed_tool_calls:
+                                continue
+                            processed_tool_calls.add(run_id)
+
+                            total_tool_calls += 1
+                            yield {'type': 'tool_start', 'tool': tool_name}
+
+                        # Tool execution completed
+                        elif kind == 'on_tool_end':
+                            tool_name = event.get('name', '')
+                            raw_output = event.get('data', {}).get('output', {})
+                            # Serialize output to ensure it's JSON-compatible for Redis
+                            output = _serialize_tool_output(raw_output)
+                            yield {'type': 'tool_end', 'tool': tool_name, 'output': output}
+
+                        # Reset stream tracking when entering new nodes
+                        elif kind == 'on_chain_start':
+                            current_stream_run_id = None
 
         # Track usage on successful completion (after context managers exit)
         latency_ms = int((time.time() - start_time) * 1000)
@@ -627,6 +836,8 @@ async def stream_ember_response(
         yield {'type': 'complete'}
 
     except Exception as e:
+        # Convert exception to user-friendly message
+        user_message = _get_user_friendly_error(e)
         logger.error(f'Ember streaming error: {e}', exc_info=True)
 
         # Track usage on error
@@ -644,7 +855,7 @@ async def stream_ember_response(
             is_onboarding=is_onboarding,
             tool_calls_count=total_tool_calls,
         )
-        yield {'type': 'error', 'message': str(e)}
+        yield {'type': 'error', 'message': user_message}
 
 
 def invoke_ember(
