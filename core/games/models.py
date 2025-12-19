@@ -55,6 +55,8 @@ class GameScore(models.Model):
 
         Caches the top 100 scores for 5 minutes to reduce database load
         at scale (100K+ users).
+
+        Preserves cache order to ensure consistent leaderboard rankings.
         """
         cache_key = f'game_leaderboard:{game}'
 
@@ -62,16 +64,17 @@ class GameScore(models.Model):
         cached_ids = cache.get(cache_key)
 
         if cached_ids is not None:
-            # Fetch from cache, but still need to get fresh user data
-            scores = list(cls.objects.filter(id__in=cached_ids[:limit]).select_related('user').order_by('-score'))
+            # Fetch from cache while preserving the cached order
+            cached_ids = cached_ids[:limit]
+            scores_dict = {s.id: s for s in cls.objects.filter(id__in=cached_ids).select_related('user')}
+            # Preserve original order from cache (important for rankings)
+            scores = [scores_dict[sid] for sid in cached_ids if sid in scores_dict]
             return scores
 
         # Cache miss - fetch from database and cache the IDs
-        scores = list(
-            cls.objects.filter(game=game).select_related('user').order_by('-score')[:100]  # Cache top 100
-        )
+        scores = list(cls.objects.filter(game=game).select_related('user').order_by('-score', '-created_at')[:100])
 
-        # Cache just the IDs (lightweight)
+        # Cache just the IDs (lightweight) - order is preserved in the list
         score_ids = [s.id for s in scores]
         cache.set(cache_key, score_ids, LEADERBOARD_CACHE_TIMEOUT)
 

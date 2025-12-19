@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
-from .models import AvatarGenerationSession, UserAvatar
+from .models import AvatarGenerationIteration, AvatarGenerationSession, UserAvatar
 from .serializers import (
     AvatarGenerationSessionCreateSerializer,
     AvatarGenerationSessionSerializer,
@@ -38,7 +38,12 @@ ALLOWED_IMAGE_DOMAINS = {
 
 
 def is_safe_url(url: str) -> bool:
-    """Validate that a URL is safe to fetch (prevents SSRF attacks)."""
+    """Validate that a URL is safe to fetch (prevents SSRF attacks).
+
+    Uses strict domain matching to prevent bypass attacks like:
+    - malicious-s3.amazonaws.com (would match via endswith)
+    - evil.com.localhost (would match localhost)
+    """
     if not url:
         return True  # No URL is safe
 
@@ -47,12 +52,25 @@ def is_safe_url(url: str) -> bool:
         # Must be http or https
         if parsed.scheme not in ('http', 'https'):
             return False
+
         # Check domain against allowlist
         hostname = parsed.hostname or ''
-        # Allow subdomains of allowed domains
+        hostname = hostname.lower()  # Normalize to lowercase
+
         for allowed in ALLOWED_IMAGE_DOMAINS:
-            if hostname == allowed or hostname.endswith('.' + allowed):
+            allowed = allowed.lower()
+            if hostname == allowed:
+                # Exact match
                 return True
+            # Check for valid subdomain: must be preceded by a dot only
+            # e.g., "cdn.s3.amazonaws.com" is valid, "malicious-s3.amazonaws.com" is not
+            if hostname.endswith('.' + allowed):
+                # Ensure the character before the allowed domain is only a dot
+                # This prevents "evil-s3.amazonaws.com" from matching "s3.amazonaws.com"
+                prefix = hostname[: -len(allowed) - 1]
+                # Prefix should be a valid subdomain (alphanumeric and hyphens, separated by dots)
+                if prefix and all(part and part[0].isalnum() and part[-1].isalnum() for part in prefix.split('.')):
+                    return True
         return False
     except Exception:
         return False
@@ -236,7 +254,7 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(AvatarGenerationSessionSerializer(session).data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], throttle_classes=[AvatarGenerationThrottle])
     def accept(self, request, pk=None):
         """
         Accept an iteration and save it as the user's avatar.
@@ -246,6 +264,14 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
         iteration_id = request.data.get('iteration_id')
         if not iteration_id:
             return Response({'detail': 'iteration_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate iteration_id is a positive integer
+        try:
+            iteration_id = int(iteration_id)
+            if iteration_id <= 0:
+                raise ValueError('iteration_id must be positive')
+        except (TypeError, ValueError):
+            return Response({'detail': 'iteration_id must be a positive integer.'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             # Lock the session to prevent race conditions
@@ -261,7 +287,7 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
 
             try:
                 iteration = session.iterations.get(id=iteration_id)
-            except session.iterations.model.DoesNotExist:
+            except AvatarGenerationIteration.DoesNotExist:
                 return Response({'detail': 'Iteration not found in this session.'}, status=status.HTTP_404_NOT_FOUND)
 
             # Mark iteration as selected

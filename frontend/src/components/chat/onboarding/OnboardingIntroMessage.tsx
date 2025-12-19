@@ -44,7 +44,7 @@ function useTypewriter(text: string, speed: number = 30, startDelay: number = 0,
       clearTimeout(startTimeout);
       if (intervalId) clearInterval(intervalId);
     };
-  }, [enabled]); // Only re-run when enabled changes
+  }, [text, speed, startDelay, enabled]);
 
   const skip = useCallback(() => {
     setDisplayedText(text);

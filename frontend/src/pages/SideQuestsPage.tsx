@@ -346,150 +346,6 @@ export default function SideQuestsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Context Snake Game Card */}
-              <Link
-                to="/play/context-snake"
-                className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(20, 184, 166, 0.05))',
-                  border: '1px solid rgba(34, 211, 238, 0.3)',
-                }}
-              >
-                {/* Animated Background Glow */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.3), transparent 70%)',
-                  }}
-                />
-
-                {/* Grid Background */}
-                <div
-                  className="absolute inset-0 opacity-20"
-                  style={{
-                    backgroundImage: `
-                      linear-gradient(to right, rgba(34, 211, 238, 0.3) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgba(34, 211, 238, 0.3) 1px, transparent 1px)
-                    `,
-                    backgroundSize: '20px 20px',
-                  }}
-                />
-
-                <div className="relative p-5">
-                  {/* Game Icon */}
-                  <div className="w-14 h-14 rounded-xl mb-4 flex items-center justify-center bg-gradient-to-br from-cyan-500/30 to-teal-500/20 border border-cyan-500/30">
-                    <FontAwesomeIcon icon={faWorm} className="text-2xl text-cyan-400" />
-                  </div>
-
-                  {/* Game Info */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-bold text-xl text-white group-hover:text-cyan-300 transition-colors">
-                      Context Snake
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 animate-pulse">
-                      NEW
-                    </span>
-                  </div>
-
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    Collect tokens. Watch your context grow. Learn why bigger isn't always better.
-                  </p>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faGamepad} className="text-cyan-400" />
-                      <span className="text-gray-400">Classic Snake</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faBrain} className="text-pink-400" />
-                      <span className="text-gray-400">Context Windows</span>
-                    </div>
-                  </div>
-
-                  {/* Play Button Overlay */}
-                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-cyan-500/30 border border-cyan-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
-                    <FontAwesomeIcon icon={faPlay} className="text-cyan-300 text-sm ml-0.5" />
-                  </div>
-                </div>
-              </Link>
-
-              {/* Ethics Defender Game Card */}
-              <Link
-                to="/play/ethics-defender"
-                className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.05))',
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                }}
-              >
-                {/* Animated Background Glow */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.3), transparent 70%)',
-                  }}
-                />
-
-                {/* Starfield Background */}
-                <div className="absolute inset-0 overflow-hidden">
-                  {[...Array(20)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute rounded-full bg-white animate-pulse"
-                      style={{
-                        width: Math.random() * 2 + 1 + 'px',
-                        height: Math.random() * 2 + 1 + 'px',
-                        left: Math.random() * 100 + '%',
-                        top: Math.random() * 100 + '%',
-                        animationDelay: Math.random() * 2 + 's',
-                        animationDuration: Math.random() * 2 + 1 + 's',
-                        opacity: Math.random() * 0.5 + 0.2,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="relative p-5">
-                  {/* Game Icon */}
-                  <div className="w-14 h-14 rounded-xl mb-4 flex items-center justify-center bg-gradient-to-br from-violet-500/30 to-blue-500/20 border border-violet-500/30">
-                    <FontAwesomeIcon icon={faShieldAlt} className="text-2xl text-violet-400" />
-                  </div>
-
-                  {/* Game Info */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-bold text-xl text-white group-hover:text-violet-300 transition-colors">
-                      Ethics Defender
-                    </h3>
-                  </div>
-
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    Defend the galaxy from AI ethics threats! Shoot the correct answers to earn rewards while learning about AI bias, privacy, and more.
-                  </p>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faRocket} className="text-cyan-400" />
-                      <span className="text-gray-400">Space Shooter</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faBrain} className="text-pink-400" />
-                      <span className="text-gray-400">AI Ethics</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
-                      <span className="text-amber-400 font-medium">+50 pts</span>
-                    </div>
-                  </div>
-
-                  {/* Play Button Overlay */}
-                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-violet-500/30 border border-violet-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
-                    <FontAwesomeIcon icon={faPlay} className="text-violet-300 text-sm ml-0.5" />
-                  </div>
-                </div>
-              </Link>
-
               {/* Prompt Battle Game Card - Neon Glass Style */}
               <Link
                 to="/play/prompt-battles"
@@ -583,6 +439,150 @@ export default function SideQuestsPage() {
                   {/* Play Button Overlay */}
                   <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-pink-500/20 border border-pink-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110 shadow-[0_0_15px_rgba(236,72,153,0.3)]">
                     <FontAwesomeIcon icon={faPlay} className="text-pink-300 text-sm ml-0.5" />
+                  </div>
+                </div>
+              </Link>
+
+              {/* Ethics Defender Game Card */}
+              <Link
+                to="/play/ethics-defender"
+                className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.05))',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                }}
+              >
+                {/* Animated Background Glow */}
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.3), transparent 70%)',
+                  }}
+                />
+
+                {/* Starfield Background */}
+                <div className="absolute inset-0 overflow-hidden">
+                  {[...Array(20)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute rounded-full bg-white animate-pulse"
+                      style={{
+                        width: Math.random() * 2 + 1 + 'px',
+                        height: Math.random() * 2 + 1 + 'px',
+                        left: Math.random() * 100 + '%',
+                        top: Math.random() * 100 + '%',
+                        animationDelay: Math.random() * 2 + 's',
+                        animationDuration: Math.random() * 2 + 1 + 's',
+                        opacity: Math.random() * 0.5 + 0.2,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <div className="relative p-5">
+                  {/* Game Icon */}
+                  <div className="w-14 h-14 rounded-xl mb-4 flex items-center justify-center bg-gradient-to-br from-violet-500/30 to-blue-500/20 border border-violet-500/30">
+                    <FontAwesomeIcon icon={faShieldAlt} className="text-2xl text-violet-400" />
+                  </div>
+
+                  {/* Game Info */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-bold text-xl text-white group-hover:text-violet-300 transition-colors">
+                      Ethics Defender
+                    </h3>
+                  </div>
+
+                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+                    Defend the galaxy from AI ethics threats! Shoot the correct answers to earn rewards while learning about AI bias, privacy, and more.
+                  </p>
+
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faRocket} className="text-cyan-400" />
+                      <span className="text-gray-400">Space Shooter</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faBrain} className="text-pink-400" />
+                      <span className="text-gray-400">AI Ethics</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
+                      <span className="text-amber-400 font-medium">+50 pts</span>
+                    </div>
+                  </div>
+
+                  {/* Play Button Overlay */}
+                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-violet-500/30 border border-violet-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
+                    <FontAwesomeIcon icon={faPlay} className="text-violet-300 text-sm ml-0.5" />
+                  </div>
+                </div>
+              </Link>
+
+              {/* Context Snake Game Card */}
+              <Link
+                to="/play/context-snake"
+                className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(20, 184, 166, 0.05))',
+                  border: '1px solid rgba(34, 211, 238, 0.3)',
+                }}
+              >
+                {/* Animated Background Glow */}
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.3), transparent 70%)',
+                  }}
+                />
+
+                {/* Grid Background */}
+                <div
+                  className="absolute inset-0 opacity-20"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(to right, rgba(34, 211, 238, 0.3) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(34, 211, 238, 0.3) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '20px 20px',
+                  }}
+                />
+
+                <div className="relative p-5">
+                  {/* Game Icon */}
+                  <div className="w-14 h-14 rounded-xl mb-4 flex items-center justify-center bg-gradient-to-br from-cyan-500/30 to-teal-500/20 border border-cyan-500/30">
+                    <FontAwesomeIcon icon={faWorm} className="text-2xl text-cyan-400" />
+                  </div>
+
+                  {/* Game Info */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-bold text-xl text-white group-hover:text-cyan-300 transition-colors">
+                      Context Snake
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 animate-pulse">
+                      NEW
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+                    Collect tokens. Watch your context grow. Learn why bigger isn't always better.
+                  </p>
+
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faGamepad} className="text-cyan-400" />
+                      <span className="text-gray-400">Classic Snake</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faBrain} className="text-pink-400" />
+                      <span className="text-gray-400">Context Windows</span>
+                    </div>
+                  </div>
+
+                  {/* Play Button Overlay */}
+                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-cyan-500/30 border border-cyan-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
+                    <FontAwesomeIcon icon={faPlay} className="text-cyan-300 text-sm ml-0.5" />
                   </div>
                 </div>
               </Link>

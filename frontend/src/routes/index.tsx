@@ -1,4 +1,17 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+
+// Loading component for lazy-loaded routes
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-slate-400 text-sm">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 // Redirect component that preserves query parameters
 function RedirectWithQuery({ to }: { to: string }) {
@@ -12,65 +25,96 @@ function BattleRedirect() {
   const location = useLocation();
   return <Navigate to={`/play/prompt-battles/${battleId}${location.search}`} replace />;
 }
+
 import { ProtectedRoute, setGuestBattleId, clearGuestBattleId, getGuestBattleId } from './ProtectedRoute';
 
 // Re-export guest helpers for use elsewhere
 export { setGuestBattleId, clearGuestBattleId, getGuestBattleId };
+
+// =============================================================================
+// Lazy-loaded page components for code splitting
+// Critical pages (landing, auth) are loaded immediately for fast initial load
+// =============================================================================
+
+// Critical path - load immediately
 import LandingPage from '@/pages/LandingPage';
-import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
-import ProfilePage from '@/pages/ProfilePage';
-import ProjectDetailPage from '@/pages/ProjectDetailPage';
-import AccountSettingsPage from '@/pages/AccountSettingsPage';
-import ActivitySettingsPage from '@/pages/ActivitySettingsPage';
-import BattlesSettingsPage from '@/pages/BattlesSettingsPage';
-import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
-import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
-import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
-import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
-import CreatorSettingsPage from '@/pages/settings/CreatorSettingsPage';
-import PrivacySettingsPage from '@/pages/settings/PrivacySettingsPage';
-import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
-import StyleGuidePage from '@/pages/StyleGuidePage';
-import NeonGlassStyleguide from '@/pages/NeonGlassStyleguide';
-import QuizListPage from '@/pages/quizzes/QuizListPage';
-import QuizPage from '@/pages/quizzes/QuizPage';
-import LearnPage from '@/pages/LearnPage';
-import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
-import ToolDetailPage from '@/pages/ToolDetailPage';
-import { ExplorePage } from '@/pages/ExplorePage';
-import { BattlesLobbyPage, BattlePage, BattleInvitePage } from '@/pages/battles';
-import { ChallengePage } from '@/pages/challenges';
-import ThriveCirclePage from '@/pages/ThriveCirclePage';
-import SideQuestsPage from '@/pages/SideQuestsPage';
-import EthicsDefenderGame from '@/pages/games/EthicsDefenderGame';
-import ContextSnakeGame from '@/pages/games/ContextSnakeGame';
-import PricingPage from '@/pages/PricingPage';
-import CheckoutPage from '@/pages/CheckoutPage';
-import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
-import PerksPage from '@/pages/PerksPage';
-import MarketplacePage from '@/pages/MarketplacePage';
-import OnboardingPage from '@/pages/OnboardingPage';
-import EmberHomePage from '@/pages/EmberHomePage';
-import VendorDashboardPage from '@/pages/VendorDashboardPage';
-import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
-import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
-import AdminPromptChallengePromptsPage from '@/pages/admin/PromptChallengePromptsPage';
-import AdminImpersonatePage from '@/pages/admin/ImpersonatePage';
-import AdminCircleManagementPage from '@/pages/admin/CircleManagementPage';
-import AdminTasksPage from '@/pages/admin/TasksPage';
-import AdminUATScenariosPage from '@/pages/admin/UATScenariosPage';
-import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
-import ExtensionPage from '@/pages/ExtensionPage';
-import PitchDeckPage from '@/pages/PitchDeckPage';
-import PromoPage from '@/pages/PromoPage';
-import PromoVideoPage from '@/pages/PromoVideoPage';
-import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
-import TermsOfServicePage from '@/pages/TermsOfServicePage';
+
+// Core pages - lazy loaded
+const EmberHomePage = lazy(() => import('@/pages/EmberHomePage'));
+const AboutPage = lazy(() => import('@/pages/AboutPage'));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const ProjectDetailPage = lazy(() => import('@/pages/ProjectDetailPage'));
+
+// Settings pages - lazy loaded (rarely accessed)
+const AccountSettingsPage = lazy(() => import('@/pages/AccountSettingsPage'));
+const ActivitySettingsPage = lazy(() => import('@/pages/ActivitySettingsPage'));
+const BattlesSettingsPage = lazy(() => import('@/pages/BattlesSettingsPage'));
+const IntegrationsSettingsPage = lazy(() => import('@/pages/settings/IntegrationsSettingsPage'));
+const PersonalizationSettingsPage = lazy(() => import('@/pages/settings/PersonalizationSettingsPage'));
+const NotificationsSettingsPage = lazy(() => import('@/pages/settings/NotificationsSettingsPage'));
+const BillingSettingsPage = lazy(() => import('@/pages/settings/BillingSettingsPage'));
+const CreatorSettingsPage = lazy(() => import('@/pages/settings/CreatorSettingsPage'));
+const PrivacySettingsPage = lazy(() => import('@/pages/settings/PrivacySettingsPage'));
+const ReferralsPage = lazy(() => import('@/pages/settings/ReferralsPage'));
+
+// Feature pages - lazy loaded
+const StyleGuidePage = lazy(() => import('@/pages/StyleGuidePage'));
+const NeonGlassStyleguide = lazy(() => import('@/pages/NeonGlassStyleguide'));
+const QuizListPage = lazy(() => import('@/pages/quizzes/QuizListPage'));
+const QuizPage = lazy(() => import('@/pages/quizzes/QuizPage'));
+const LearnPage = lazy(() => import('@/pages/LearnPage'));
+const ToolDirectoryPage = lazy(() => import('@/pages/ToolDirectoryPage'));
+const ToolDetailPage = lazy(() => import('@/pages/ToolDetailPage'));
+const ExplorePage = lazy(() => import('@/pages/ExplorePage').then((m) => ({ default: m.ExplorePage })));
+const ThriveCirclePage = lazy(() => import('@/pages/ThriveCirclePage'));
+const SideQuestsPage = lazy(() => import('@/pages/SideQuestsPage'));
+const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
+
+// Battle pages - lazy loaded
+const BattlesLobbyPage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattlesLobbyPage })));
+const BattlePage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattlePage })));
+const BattleInvitePage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattleInvitePage })));
+const ChallengePage = lazy(() => import('@/pages/challenges').then((m) => ({ default: m.ChallengePage })));
+
+// Games - lazy loaded
+const EthicsDefenderGame = lazy(() => import('@/pages/games/EthicsDefenderGame'));
+const ContextSnakeGame = lazy(() => import('@/pages/games/ContextSnakeGame'));
+
+// Commerce pages - lazy loaded
+const PricingPage = lazy(() => import('@/pages/PricingPage'));
+const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
+const CheckoutSuccessPage = lazy(() => import('@/pages/CheckoutSuccessPage'));
+const PerksPage = lazy(() => import('@/pages/PerksPage'));
+const MarketplacePage = lazy(() => import('@/pages/MarketplacePage'));
+
+// Admin pages - lazy loaded (admin only)
+const VendorDashboardPage = lazy(() => import('@/pages/VendorDashboardPage'));
+const AdminAnalyticsPage = lazy(() => import('@/pages/AdminAnalyticsPage'));
+const AdminInvitationsPage = lazy(() => import('@/pages/admin/InvitationsPage'));
+const AdminPromptChallengePromptsPage = lazy(() => import('@/pages/admin/PromptChallengePromptsPage'));
+const AdminImpersonatePage = lazy(() => import('@/pages/admin/ImpersonatePage'));
+const AdminCircleManagementPage = lazy(() => import('@/pages/admin/CircleManagementPage'));
+const AdminTasksPage = lazy(() => import('@/pages/admin/TasksPage'));
+const AdminUATScenariosPage = lazy(() => import('@/pages/admin/UATScenariosPage'));
+
+// Extension pages - lazy loaded
+const ExtensionAuthPage = lazy(() => import('@/pages/ExtensionAuthPage'));
+const ExtensionPage = lazy(() => import('@/pages/ExtensionPage'));
+
+// Marketing/promo pages - lazy loaded
+const PitchDeckPage = lazy(() => import('@/pages/PitchDeckPage'));
+const PromoPage = lazy(() => import('@/pages/PromoPage'));
+const PromoVideoPage = lazy(() => import('@/pages/PromoVideoPage'));
+
+// Legal pages - lazy loaded
+const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('@/pages/TermsOfServicePage'));
 
 export function AppRoutes() {
   return (
+    <Suspense fallback={<PageLoader />}>
     <Routes>
       {/* Landing page - public, redirects authenticated users to /home */}
       <Route path="/" element={<LandingPage />} />
@@ -505,5 +549,6 @@ export function AppRoutes() {
       {/* 404 catch-all */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
   );
 }

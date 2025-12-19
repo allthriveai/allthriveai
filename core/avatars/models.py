@@ -78,22 +78,31 @@ class UserAvatar(BaseModel):
         self._enforce_avatar_limit()
 
     def _enforce_avatar_limit(self):
-        """Delete oldest non-current avatars if user has more than MAX_AVATARS."""
-        # Filter out soft-deleted avatars
-        user_avatars = UserAvatar.objects.filter(user=self.user, deleted_at__isnull=True).order_by('-created_at')
-        avatar_count = user_avatars.count()
+        """Delete oldest non-current avatars if user has more than MAX_AVATARS.
 
-        if avatar_count > self.MAX_AVATARS:
-            # Get IDs of avatars to keep (newest MAX_AVATARS, prioritizing current)
-            current_avatar = user_avatars.filter(is_current=True).first()
-            avatars_to_keep = list(user_avatars[: self.MAX_AVATARS].values_list('id', flat=True))
+        Uses select_for_update to prevent race conditions when multiple
+        avatars are created concurrently.
+        """
+        from django.db import transaction
 
-            # Ensure current avatar is always kept
-            if current_avatar and current_avatar.id not in avatars_to_keep:
-                avatars_to_keep[-1] = current_avatar.id
+        with transaction.atomic():
+            # Lock the user's avatars to prevent race conditions
+            # Order by is_current DESC so current avatar is first, then by newest
+            user_avatars = list(
+                UserAvatar.objects.select_for_update()
+                .filter(user=self.user, deleted_at__isnull=True)
+                .order_by('-is_current', '-created_at')
+                .values_list('id', flat=True)
+            )
 
-            # Soft delete avatars not in the keep list
-            UserAvatar.objects.filter(user=self.user, deleted_at__isnull=True).exclude(id__in=avatars_to_keep).delete()
+            if len(user_avatars) > self.MAX_AVATARS:
+                # Keep the first MAX_AVATARS (current avatar will be first due to ordering)
+                avatars_to_keep = set(user_avatars[: self.MAX_AVATARS])
+                avatars_to_delete = [aid for aid in user_avatars if aid not in avatars_to_keep]
+
+                # Soft delete excess avatars
+                if avatars_to_delete:
+                    UserAvatar.objects.filter(id__in=avatars_to_delete).delete()
 
     def set_as_current(self):
         """Set this avatar as the user's current avatar."""

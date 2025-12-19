@@ -79,6 +79,72 @@ class GetFunActivitiesInput(BaseModel):
 # Navigation Tools
 # =============================================================================
 
+# Allowed navigation paths (static paths only - user profiles handled separately)
+ALLOWED_NAVIGATION_PATHS = {
+    '/explore',
+    '/battles',
+    '/play/prompt-battles',
+    '/challenges',
+    '/play/side-quests',
+    '/play/context-snake',
+    '/play/ethics-defender',
+    '/quizzes',
+    '/tools',
+    '/thrive-circle',
+    '/onboarding',
+    '/account/settings',
+    '/home',
+    '/learn',
+}
+
+# Paths that can have dynamic segments (prefixes)
+ALLOWED_PATH_PREFIXES = (
+    '/quizzes/',
+    '/tools/',
+    '/challenges/',
+    '/play/prompt-battles/',
+    '/explore?',
+)
+
+
+def _is_valid_navigation_path(path: str) -> bool:
+    """Validate that a navigation path is allowed.
+
+    Prevents navigation to admin routes, internal paths, or arbitrary URLs.
+    """
+    if not path or not path.startswith('/'):
+        return False
+
+    # Normalize path
+    path_lower = path.lower().strip()
+
+    # Block obviously dangerous paths
+    blocked_patterns = ['/admin', '/api/', '/internal/', '..', '<', '>', 'javascript:', 'data:']
+    if any(pattern in path_lower for pattern in blocked_patterns):
+        return False
+
+    # Check exact matches
+    if path in ALLOWED_NAVIGATION_PATHS:
+        return True
+
+    # Check prefix matches (for dynamic routes like /quizzes/slug)
+    for prefix in ALLOWED_PATH_PREFIXES:
+        if path_lower.startswith(prefix):
+            return True
+
+    # Allow user profile paths (single segment after /)
+    # e.g., /username but not /username/something (except known patterns)
+    path_parts = path.strip('/').split('/')
+    if len(path_parts) == 1 and path_parts[0]:
+        # Single segment - treat as username (frontend will validate)
+        return True
+
+    # Allow project paths: /{username}/{project}
+    if len(path_parts) == 2 and all(part and not part.startswith('_') for part in path_parts):
+        return True
+
+    return False
+
 
 @tool(args_schema=NavigateInput)
 def navigate_to_page(path: str, message: str = '', state: dict = None) -> dict:
@@ -108,6 +174,16 @@ def navigate_to_page(path: str, message: str = '', state: dict = None) -> dict:
         Action command for frontend to execute
     """
     logger.info(f'Navigate tool called: path={path}')
+
+    # Validate path to prevent navigation to unauthorized pages
+    if not _is_valid_navigation_path(path):
+        logger.warning(f'Blocked navigation to unauthorized path: {path}')
+        return {
+            'action': 'error',
+            'message': 'Navigation to that page is not allowed.',
+            'auto_execute': False,
+        }
+
     return {
         'action': 'navigate',
         'path': path,

@@ -3,12 +3,48 @@
 from django.db import migrations, models
 
 
+def validate_no_duplicate_conversation_ids(apps, schema_editor):
+    """
+    Validate and fix duplicate conversation_ids before adding unique constraint.
+
+    This prevents migration failures if duplicates exist in production.
+    """
+    AvatarGenerationSession = apps.get_model('avatars', 'AvatarGenerationSession')
+
+    # Find duplicate conversation_ids
+    from django.db.models import Count
+
+    duplicates = (
+        AvatarGenerationSession.objects.values('conversation_id').annotate(count=Count('id')).filter(count__gt=1)
+    )
+
+    for dup in duplicates:
+        conversation_id = dup['conversation_id']
+        # Get all sessions with this conversation_id, ordered by created_at (keep newest)
+        sessions = list(AvatarGenerationSession.objects.filter(conversation_id=conversation_id).order_by('-created_at'))
+
+        # Keep the first (newest), make others unique by appending -dup-{id}
+        for session in sessions[1:]:
+            session.conversation_id = f'{conversation_id}-dup-{session.id}'
+            session.save(update_fields=['conversation_id'])
+
+
+def reverse_noop(apps, schema_editor):
+    """No-op reverse migration - duplicates can remain unique."""
+    pass
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ('avatars', '0002_migrate_existing_avatars'),
     ]
 
     operations = [
+        # First, fix any duplicate conversation_ids
+        migrations.RunPython(
+            validate_no_duplicate_conversation_ids,
+            reverse_noop,
+        ),
         migrations.RemoveIndex(
             model_name='avatargenerationsession',
             name='avatars_ava_convers_595c90_idx',

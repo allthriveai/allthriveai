@@ -76,7 +76,15 @@ class AvatarGenerationSessionAdmin(admin.ModelAdmin):
     inlines = [AvatarGenerationIterationInline]
     ordering = ('-created_at',)
 
-    @admin.display(description='Iterations')
+    def get_queryset(self, request):
+        """Optimize queryset to avoid N+1 queries on iteration_count."""
+        from django.db.models import Count
+
+        qs = super().get_queryset(request)
+        return qs.annotate(_iteration_count=Count('iterations'))
+
+    @admin.display(description='Iterations', ordering='_iteration_count')
     def iteration_count(self, obj):
         """Display the number of iterations in this session."""
-        return obj.iterations.count()
+        # Use the annotated count if available, otherwise fall back to query
+        return getattr(obj, '_iteration_count', obj.iterations.count())

@@ -27,6 +27,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
+import { ChatErrorBoundary } from './ChatErrorBoundary';
 import { GeneratedImageMessage } from './GeneratedImageMessage';
 import {
   OnboardingIntroMessage,
@@ -1183,11 +1184,13 @@ export function IntelligentChatPanel({
     if (learningSetupContext?.needsSetup) {
       return (
         <div className="flex flex-col justify-start h-full px-4 pt-4 overflow-y-auto">
-          <LearningGoalSelectionMessage
-            onSelectGoal={learningSetupContext.onSelectGoal}
-            onSkip={learningSetupContext.onSkip}
-            isPending={learningSetupContext.isPending}
-          />
+          <ChatErrorBoundary resetKey={conversationId}>
+            <LearningGoalSelectionMessage
+              onSelectGoal={learningSetupContext.onSelectGoal}
+              onSkip={learningSetupContext.onSkip}
+              isPending={learningSetupContext.isPending}
+            />
+          </ChatErrorBoundary>
         </div>
       );
     }
@@ -1538,13 +1541,15 @@ export function IntelligentChatPanel({
     if (messageType === 'generated_image' && message.metadata?.imageUrl) {
       return (
         <div className="flex justify-start">
-          <GeneratedImageMessage
-            imageUrl={message.metadata.imageUrl}
-            filename={message.metadata.filename || 'nano-banana-image.png'}
-            sessionId={message.metadata.sessionId}
-            iterationNumber={message.metadata.iterationNumber}
-            onCreateProject={message.metadata.sessionId ? handleCreateProjectFromImage : undefined}
-          />
+          <ChatErrorBoundary inline resetKey={message.id}>
+            <GeneratedImageMessage
+              imageUrl={message.metadata.imageUrl}
+              filename={message.metadata.filename || 'nano-banana-image.png'}
+              sessionId={message.metadata.sessionId}
+              iterationNumber={message.metadata.iterationNumber}
+              onCreateProject={message.metadata.sessionId ? handleCreateProjectFromImage : undefined}
+            />
+          </ChatErrorBoundary>
         </div>
       );
     }
@@ -1552,43 +1557,49 @@ export function IntelligentChatPanel({
     // Handle onboarding intro message
     if (messageType === 'onboarding_intro') {
       return (
-        <OnboardingIntroMessage
-          username={onboarding.username}
-          onContinue={onboarding.handleIntroComplete}
-          onSkip={onboarding.handleIntroSkip}
-        />
+        <ChatErrorBoundary resetKey={conversationId}>
+          <OnboardingIntroMessage
+            username={onboarding.username}
+            onContinue={onboarding.handleIntroComplete}
+            onSkip={onboarding.handleIntroSkip}
+          />
+        </ChatErrorBoundary>
       );
     }
 
     // Handle onboarding avatar prompt
     if (messageType === 'onboarding_avatar_prompt') {
       return (
-        <AvatarTemplateSelector
-          selectedTemplate={onboarding.selectedTemplate}
-          onSelectTemplate={onboarding.handleSelectTemplate}
-          prompt={onboarding.avatarPrompt}
-          onPromptChange={onboarding.handlePromptChange}
-          onGenerate={onboarding.handleGenerateAvatar}
-          onSkip={onboarding.handleSkipAvatar}
-          isGenerating={onboarding.isAvatarGenerating}
-          isConnecting={onboarding.isAvatarConnecting}
-          error={onboarding.avatarError}
-          referenceImageUrl={onboarding.referenceImageUrl || undefined}
-          onReferenceImageChange={onboarding.handleReferenceImageChange}
-        />
+        <ChatErrorBoundary resetKey={conversationId}>
+          <AvatarTemplateSelector
+            selectedTemplate={onboarding.selectedTemplate}
+            onSelectTemplate={onboarding.handleSelectTemplate}
+            prompt={onboarding.avatarPrompt}
+            onPromptChange={onboarding.handlePromptChange}
+            onGenerate={onboarding.handleGenerateAvatar}
+            onSkip={onboarding.handleSkipAvatar}
+            isGenerating={onboarding.isAvatarGenerating}
+            isConnecting={onboarding.isAvatarConnecting}
+            error={onboarding.avatarError}
+            referenceImageUrl={onboarding.referenceImageUrl || undefined}
+            onReferenceImageChange={onboarding.handleReferenceImageChange}
+          />
+        </ChatErrorBoundary>
       );
     }
 
     // Handle onboarding avatar preview
     if (messageType === 'onboarding_avatar_preview' && message.metadata?.avatarImageUrl) {
       return (
-        <AvatarPreviewMessage
-          imageUrl={message.metadata.avatarImageUrl}
-          onAccept={onboarding.handleAcceptAvatar}
-          onRefine={onboarding.handleRefineAvatar}
-          onSkip={onboarding.handleSkipPreview}
-          isAccepting={onboarding.isAvatarSaving}
-        />
+        <ChatErrorBoundary resetKey={conversationId}>
+          <AvatarPreviewMessage
+            imageUrl={message.metadata.avatarImageUrl}
+            onAccept={onboarding.handleAcceptAvatar}
+            onRefine={onboarding.handleRefineAvatar}
+            onSkip={onboarding.handleSkipPreview}
+            isAccepting={onboarding.isAvatarSaving}
+          />
+        </ChatErrorBoundary>
       );
     }
 
@@ -1753,11 +1764,13 @@ export function IntelligentChatPanel({
         learningSetupContext?.needsSetup ? (
           // Learning setup mode - show learning goal selection in the message area
           <div className="flex flex-col justify-start h-full px-4 pt-4 overflow-y-auto">
-            <LearningGoalSelectionMessage
-              onSelectGoal={learningSetupContext.onSelectGoal}
-              onSkip={learningSetupContext.onSkip}
-              isPending={learningSetupContext.isPending}
-            />
+            <ChatErrorBoundary resetKey={conversationId}>
+              <LearningGoalSelectionMessage
+                onSelectGoal={learningSetupContext.onSelectGoal}
+                onSkip={learningSetupContext.onSkip}
+                isPending={learningSetupContext.isPending}
+              />
+            </ChatErrorBoundary>
           </div>
         ) : showIntegrationPicker ? (
           <>
