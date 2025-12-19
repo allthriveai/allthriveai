@@ -32,7 +32,7 @@ const adventures: Adventure[] = [
     shortTitle: 'Battle',
     icon: faGamepad,
     gradient: 'from-violet-500 to-purple-600',
-    path: '/battles',
+    path: '/play/prompt-battles',
   },
   {
     id: 'add_project',

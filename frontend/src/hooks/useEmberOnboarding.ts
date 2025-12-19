@@ -24,7 +24,7 @@ const STORAGE_KEY = 'ember_onboarding';
 
 // Dev mode: Force onboarding to always show for testing
 // Set to true to always show onboarding, false for normal behavior
-const DEV_FORCE_ONBOARDING = import.meta.env.DEV && true;
+const DEV_FORCE_ONBOARDING = import.meta.env.DEV && false;
 
 if (DEV_FORCE_ONBOARDING) {
   console.log('[EmberOnboarding] DEV MODE: Forcing onboarding to always show');
@@ -77,7 +77,8 @@ export function useEmberOnboarding() {
   const publicPages = ['/', '/about', '/tools', '/login', '/signup', '/privacy', '/terms'];
   const isOnPublicPage = publicPages.includes(location.pathname) ||
     location.pathname.startsWith('/@') || // Profile pages
-    location.pathname.startsWith('/battles/') || // Battle share pages
+    location.pathname.startsWith('/play/prompt-battles/') || // Battle share pages
+    location.pathname.startsWith('/battles/') || // Legacy battle share pages
     location.pathname.startsWith('/styleguide');
 
   // Load state when user changes

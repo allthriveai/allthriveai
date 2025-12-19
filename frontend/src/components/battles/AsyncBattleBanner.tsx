@@ -55,7 +55,7 @@ export function AsyncBattleBanner() {
     setIsStarting(true);
     const result = await startTurn(mostUrgentBattle.id);
     if (result.success) {
-      navigate(`/battles/${mostUrgentBattle.id}`);
+      navigate(`/play/prompt-battles/${mostUrgentBattle.id}`);
       // Don't reset isStarting - component will unmount on navigation
       return;
     }
@@ -81,7 +81,8 @@ export function AsyncBattleBanner() {
   // Don't show banner on battles pages (they have their own UI)
   // Don't show if no urgent battles or dismissed
   if (
-    location.pathname.startsWith('/battles') ||
+    location.pathname.startsWith('/play/prompt-battles') ||
+    location.pathname.startsWith('/battles') || // Legacy route
     !hasUrgentBattle ||
     !mostUrgentBattle ||
     isDismissed

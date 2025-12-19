@@ -19,6 +19,7 @@ import {
   faArrowRight,
   faClock,
   faGraduationCap,
+  faRotate,
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -280,11 +281,13 @@ function TopicSectionCard({ topic, defaultExpanded = false }: TopicSectionCardPr
 /**
  * Main StructuredLearningPath component
  */
-interface StructuredLearningPathProps {
+export interface StructuredLearningPathProps {
   pathData: StructuredPath;
+  onResetPath?: () => void;
+  isResetting?: boolean;
 }
 
-export function StructuredLearningPath({ pathData }: StructuredLearningPathProps) {
+export function StructuredLearningPath({ pathData, onResetPath, isResetting }: StructuredLearningPathProps) {
   // Find the topic that contains the current focus
   const currentTopicSlug = pathData.currentFocus?.topicSlug || '';
   const currentTopicName = pathData.currentFocus?.topicName || '';
@@ -317,6 +320,19 @@ export function StructuredLearningPath({ pathData }: StructuredLearningPathProps
         ))}
       </div>
 
+      {/* Change Learning Goal button */}
+      {onResetPath && (
+        <div className="mt-8 pt-6 border-t border-gray-700/50">
+          <button
+            onClick={onResetPath}
+            disabled={isResetting}
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+          >
+            <FontAwesomeIcon icon={faRotate} className={isResetting ? 'animate-spin' : ''} />
+            {isResetting ? 'Resetting...' : 'Change Learning Goal'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

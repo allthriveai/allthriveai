@@ -1,9 +1,16 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 
 // Redirect component that preserves query parameters
 function RedirectWithQuery({ to }: { to: string }) {
   const location = useLocation();
   return <Navigate to={`${to}${location.search}`} replace />;
+}
+
+// Redirect component for battle routes - preserves battleId
+function BattleRedirect() {
+  const { battleId } = useParams();
+  const location = useLocation();
+  return <Navigate to={`/play/prompt-battles/${battleId}${location.search}`} replace />;
 }
 import { ProtectedRoute, setGuestBattleId, clearGuestBattleId, getGuestBattleId } from './ProtectedRoute';
 
@@ -183,9 +190,9 @@ export function AppRoutes() {
         }
       />
 
-      {/* Battles - new matchmaking UI */}
+      {/* Prompt Battles - primary routes under /play */}
       <Route
-        path="/battles"
+        path="/play/prompt-battles"
         element={
           <ProtectedRoute>
             <BattlesLobbyPage />
@@ -193,22 +200,27 @@ export function AppRoutes() {
         }
       />
       {/* Battle detail page - public for completed battles, requires auth for active */}
-      <Route path="/battles/:battleId" element={<BattlePage />} />
+      <Route path="/play/prompt-battles/:battleId" element={<BattlePage />} />
       {/* Battle invitation link (from SMS) - public so users can see invitation before login */}
       <Route path="/battle/invite/:token" element={<BattleInvitePage />} />
 
-      {/* Play routes - legacy, redirects to new battles */}
+      {/* Legacy /battles routes - redirect to /play/prompt-battles */}
+      <Route
+        path="/battles"
+        element={<Navigate to="/play/prompt-battles" replace />}
+      />
+      <Route
+        path="/battles/:battleId"
+        element={<BattleRedirect />}
+      />
+      {/* Legacy /play/prompt-battle (singular) routes */}
       <Route
         path="/play/prompt-battle"
-        element={<Navigate to="/battles" replace />}
+        element={<Navigate to="/play/prompt-battles" replace />}
       />
       <Route
         path="/play/prompt-battle/:battleId"
-        element={
-          <ProtectedRoute>
-            <BattlePage />
-          </ProtectedRoute>
-        }
+        element={<BattleRedirect />}
       />
 
       {/* Weekly Challenges */}

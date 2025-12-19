@@ -51,6 +51,8 @@ def _detect_url_domain_type(url: str) -> str:
 class CreateProjectInput(BaseModel):
     """Input for create_project tool."""
 
+    model_config = {'extra': 'allow'}
+
     title: str = Field(description='The title/name of the project')
     project_type: str = Field(description='Type of project: github_repo, image_collection, prompt, or other')
     description: str = Field(default='', description='Description of the project (optional)')
@@ -61,6 +63,7 @@ class CreateProjectInput(BaseModel):
     topics: list[str] = Field(default_factory=list, description='Topics/tags for the project')
     stars: int = Field(default=0, description='GitHub star count (for display)')
     forks: int = Field(default=0, description='GitHub fork count (for display)')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class FetchGitHubMetadataInput(BaseModel):
@@ -78,6 +81,8 @@ class ExtractURLInfoInput(BaseModel):
 class ImportGitHubProjectInput(BaseModel):
     """Input for import_github_project tool."""
 
+    model_config = {'extra': 'allow'}
+
     url: str = Field(description='GitHub repository URL (e.g., https://github.com/user/repo)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
     is_private: bool = Field(default=True, description='Whether to mark the project as private (hidden from public)')
@@ -85,20 +90,26 @@ class ImportGitHubProjectInput(BaseModel):
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class CreateProductInput(BaseModel):
     """Input for create_product tool."""
+
+    model_config = {'extra': 'allow'}
 
     title: str = Field(description='The title/name of the product')
     product_type: str = Field(description='Type of product: course, prompt_pack, template, or ebook')
     description: str = Field(default='', description='Description of the product (optional)')
     price: float = Field(default=0.0, description='Price in USD (0 for free)')
     source_url: str = Field(default='', description='Source URL if imported from YouTube/external')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class ScrapeWebpageInput(BaseModel):
     """Input for scrape_webpage_for_project tool."""
+
+    model_config = {'extra': 'allow'}
 
     url: str = Field(description='The URL of the webpage to scrape (e.g., https://example.com/project)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
@@ -107,10 +118,13 @@ class ScrapeWebpageInput(BaseModel):
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class ImportVideoProjectInput(BaseModel):
     """Input for import_video_project tool."""
+
+    model_config = {'extra': 'allow'}
 
     video_url: str = Field(description='The S3/MinIO URL of the uploaded video file')
     filename: str = Field(description='Original filename of the video (e.g., "my-tutorial.mp4")')
@@ -119,6 +133,7 @@ class ImportVideoProjectInput(BaseModel):
     tool_hint: str = Field(default='', description='Tool mentioned by user (e.g., "Runway", "Midjourney", "Pika")')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
     is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class CreateMediaProjectInput(BaseModel):
@@ -132,6 +147,8 @@ class CreateMediaProjectInput(BaseModel):
 
     CRITICAL: If file_url is present, it's ALWAYS an import, NEVER generation.
     """
+
+    model_config = {'extra': 'allow'}
 
     # For GENERATION (Gemini) - user wants to create new content
     generate_prompt: str | None = Field(
@@ -179,10 +196,14 @@ class CreateMediaProjectInput(BaseModel):
 
     is_showcase: bool = Field(default=True, description='Whether to add to showcase tab')
     is_private: bool = Field(default=True, description='Whether to mark as private')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class ImportFromURLInput(BaseModel):
     """Input for import_from_url unified tool."""
+
+    # Allow extra fields for runtime state injection
+    model_config = {'extra': 'allow'}
 
     url: str = Field(description='Any URL to import (GitHub, YouTube, Figma, or any webpage)')
     is_owned: bool | None = Field(
@@ -202,10 +223,15 @@ class ImportFromURLInput(BaseModel):
             'Use when user explicitly chooses to clip instead of connecting GitHub.'
         ),
     )
+    # State is injected at runtime by the agent, not provided by the LLM
+    # Note: This field is required for runtime injection to work with tool.invoke()
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class RegenerateArchitectureDiagramInput(BaseModel):
     """Input for regenerate_architecture_diagram tool."""
+
+    model_config = {'extra': 'allow'}
 
     project_id: int = Field(description='The ID of the project to update')
     architecture_description: str = Field(
@@ -214,10 +240,13 @@ class RegenerateArchitectureDiagramInput(BaseModel):
             'Should describe the main components and how they connect to each other.'
         )
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class CreateProjectFromScreenshotInput(BaseModel):
     """Input for create_project_from_screenshot tool - fallback when URL scraping fails."""
+
+    model_config = {'extra': 'allow'}
 
     screenshot_url: str = Field(description='The S3/MinIO URL of the uploaded screenshot image')
     screenshot_filename: str = Field(description='Original filename of the screenshot (e.g., "screenshot.png")')
@@ -231,6 +260,7 @@ class CreateProjectFromScreenshotInput(BaseModel):
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 # Tools
@@ -1992,15 +2022,22 @@ def import_from_url(
 
     User = get_user_model()
 
+    # Debug logging for import_from_url
+    logger.info(f'import_from_url called with url={url}, state={state}')
+
     # Validate state / user context
     if not state or 'user_id' not in state:
+        logger.warning(f'import_from_url: state validation failed - state={state}')
         return {'success': False, 'error': 'User not authenticated'}
 
     user_id = state['user_id']
+    logger.info(f'import_from_url: Looking up user_id={user_id}')
 
     try:
         user = User.objects.get(id=user_id)
+        logger.info(f'import_from_url: Found user {user.username}')
     except User.DoesNotExist:
+        logger.warning(f'import_from_url: User {user_id} not found in database')
         return {'success': False, 'error': 'User not found'}
 
     # NOTE: We intentionally don't cache project creation results.
@@ -2045,11 +2082,12 @@ def import_from_url(
             state=state,
         )
     else:
-        # Generic handler - needs ownership info for non-auto-detectable domains
+        # Generic handler - default to owned if not specified
+        # (most users sharing URLs are sharing their own projects)
         result = _handle_generic_import(
             url=url,
             user=user,
-            is_owned=is_owned,
+            is_owned=is_owned if is_owned is not None else True,
             is_showcase=is_showcase,
             is_private=is_private,
             state=state,

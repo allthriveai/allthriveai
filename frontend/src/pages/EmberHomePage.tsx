@@ -44,12 +44,12 @@ const FEELING_OPTIONS: FeelingOption[] = [
     signupFeatures: ['portfolio'],
     message: 'I want to share something I\'ve been working on',
   },
-  // battles → Play a game → Navigate to /side-quests
+  // battles → Play a game → Navigate to /play/side-quests
   {
     id: 'play',
     label: 'Play a game',
     signupFeatures: ['battles'],
-    navigateTo: '/side-quests',
+    navigateTo: '/play/side-quests',
   },
   // challenges → See this week's challenge → Navigate to /challenge
   {
@@ -77,7 +77,7 @@ const FEELING_OPTIONS: FeelingOption[] = [
     id: 'explore',
     label: 'Explore what others are making',
     signupFeatures: ['investing'],
-    navigateTo: '/explore?tab=new',
+    navigateTo: '/explore?tab=trending',
   },
   // community → Connect with others → Navigate to /thrive-circle
   {
@@ -101,6 +101,8 @@ function EmberHomeContent() {
   const [inputValue, setInputValue] = useState('');
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
   const [excitedFeatures, setExcitedFeatures] = useState<string[]>([]);
 
   // Fetch user's personalization settings on mount
@@ -152,13 +154,46 @@ function EmberHomeContent() {
   const { isAdventureComplete } = useEmberOnboarding();
   const hasPersonalized = isAdventureComplete('personalize');
 
-  // Auto-scroll to bottom only when there are actual conversation messages
+  // Check if user is near the bottom of the chat
+  const isNearBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    const threshold = 150; // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  }, []);
+
+  // Handle scroll to track if user has scrolled up
+  const handleScroll = useCallback(() => {
+    setUserHasScrolledUp(!isNearBottom());
+  }, [isNearBottom]);
+
+  // Auto-scroll to bottom only when user hasn't scrolled up
   useEffect(() => {
-    // Only scroll if user has sent messages (not just the greeting)
-    if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0 && !userHasScrolledUp) {
+      const container = messagesContainerRef.current;
+      if (container) {
+        // Use direct scrollTop assignment for smoother behavior during streaming
+        container.scrollTop = container.scrollHeight;
+      }
     }
-  }, [messages, isLoading]);
+  }, [messages, userHasScrolledUp]);
+
+  // Reset scroll state when user sends a new message
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.sender === 'user') {
+        setUserHasScrolledUp(false);
+        // Scroll to bottom when user sends a message
+        setTimeout(() => {
+          const container = messagesContainerRef.current;
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          }
+        }, 50);
+      }
+    }
+  }, [messages.length]);
 
   // Ensure page starts at top on mount
   useEffect(() => {
@@ -209,12 +244,9 @@ function EmberHomeContent() {
       option.signupFeatures.some((feature) => excitedFeatures.includes(feature))
     );
 
-    // If user has no matching features, show defaults: play, explore, personalize/learn
+    // If user has no matching features, show defaults: play, explore, share
     if (matchingOptions.length === 0) {
-      const defaults = [getOption('play'), getOption('explore')];
-      // If already personalized, show "Learn something new" instead
-      defaults.push(hasPersonalized ? getOption('learn') : getOption('personalize'));
-      return defaults;
+      return [getOption('play'), getOption('explore'), getOption('share')];
     }
 
     // If user has already personalized, remove that option and add "Learn" instead if not present
@@ -248,11 +280,24 @@ function EmberHomeContent() {
     [navigate, sendMessage]
   );
 
-  // Generate Ember's greeting message - focused on feelings, not features
+  // Generate Ember's greeting message - rotate through different messages
   const greetingMessage = useMemo(() => {
     const name = user?.firstName || user?.username || 'there';
     const greeting = getGreeting();
-    return `${greeting}, ${name}! How are you feeling about AI today? Whether you're curious, excited, or maybe a little overwhelmed - I'm here to help you thrive.`;
+
+    // Variety of greeting messages to rotate through
+    const greetingTemplates = [
+      `${greeting}, ${name}! What's on your mind today?`,
+      `${greeting}, ${name}! Ready to create something amazing?`,
+      `${greeting}, ${name}! What would you like to explore?`,
+      `${greeting}, ${name}! I'm here whenever you need me.`,
+      `${greeting}, ${name}! What can I help you with today?`,
+      `${greeting}, ${name}! Let's make something happen.`,
+    ];
+
+    // Pick a random greeting (changes each session)
+    const randomIndex = Math.floor(Math.random() * greetingTemplates.length);
+    return greetingTemplates[randomIndex];
   }, [user?.firstName, user?.username]);
 
   // Typewriter effect for the greeting
@@ -358,7 +403,11 @@ function EmberHomeContent() {
       {/* Chat Container - matches header/footer max-w-7xl */}
       <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto py-6">
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto py-6"
+        >
           {/* Messages List */}
           <div className="space-y-4">
             {/* Onboarding step - shown when onboarding is active */}

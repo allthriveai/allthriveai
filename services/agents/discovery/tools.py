@@ -26,7 +26,10 @@ class SearchProjectsInput(BaseModel):
 class GetRecommendationsInput(BaseModel):
     """Input for get_recommendations tool."""
 
+    model_config = {'extra': 'allow'}
+
     limit: int = Field(default=5, description='Number of recommendations to return (1-10)')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class FindSimilarInput(BaseModel):

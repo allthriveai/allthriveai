@@ -177,3 +177,10 @@ export async function completeLearningSetup(learningGoal: LearningGoal): Promise
   });
   return response.data;
 }
+
+/**
+ * Reset the learning setup to allow re-selecting a learning goal
+ */
+export async function resetLearningSetup(): Promise<void> {
+  await api.delete('/me/learning-setup/');
+}

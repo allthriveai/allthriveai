@@ -126,7 +126,7 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
     switch (action.trigger_action) {
       case 'start_battle':
         // Navigate to battles with opponent pre-selected
-        navigate('/battles', { state: { opponent: action.params?.opponent_username } });
+        navigate('/play/prompt-battles', { state: { opponent: action.params?.opponent_username } });
         break;
       case 'create_project':
         // Dispatch event to open project creation

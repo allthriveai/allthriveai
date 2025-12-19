@@ -69,7 +69,7 @@ export function BattleNotificationProvider({ children }: BattleNotificationProvi
   // Handle when our invitation is accepted by the opponent
   const handleInvitationAccepted = useCallback(
     (battleId: number, _opponent: { id: number; username: string }) => {
-      navigate(`/battles/${battleId}`);
+      navigate(`/play/prompt-battles/${battleId}`);
     },
     [navigate]
   );
@@ -164,7 +164,7 @@ export function BattleNotificationProvider({ children }: BattleNotificationProvi
       if (invitation) {
         acceptInvitationWs(invitationId);
         // Navigate to battle page
-        navigate(`/battles/${invitation.battleId}`);
+        navigate(`/play/prompt-battles/${invitation.battleId}`);
       }
     },
     [acceptInvitationWs, pendingInvitations, navigate]

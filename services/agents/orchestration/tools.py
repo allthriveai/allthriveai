@@ -14,6 +14,7 @@ The `requires_confirmation` flag shows a confirmation dialog first.
 """
 
 import logging
+import secrets
 
 from langchain.tools import tool
 from pydantic import BaseModel, Field
@@ -64,6 +65,14 @@ class TriggerActionInput(BaseModel):
         description='Action to trigger: start_battle, create_project, start_quiz, view_profile, or open_project'
     )
     params: dict = Field(default_factory=dict, description='Parameters for the action (e.g., username, quiz_id)')
+
+
+class GetFunActivitiesInput(BaseModel):
+    """Input for get_fun_activities tool."""
+
+    surprise_me: bool = Field(
+        default=False, description='If true, returns a single random activity recommendation instead of all options'
+    )
 
 
 # =============================================================================
@@ -274,6 +283,110 @@ def trigger_action(action: str, params: dict = None, state: dict = None) -> dict
 
 
 # =============================================================================
+# Fun Activities Tool
+# =============================================================================
+
+
+@tool(args_schema=GetFunActivitiesInput)
+def get_fun_activities(surprise_me: bool = False, state: dict = None) -> dict:
+    """
+    Get a list of fun activities available on AllThrive, or a surprise recommendation.
+
+    Use this when users say things like:
+    - "I want to do something fun"
+    - "Surprise me!"
+    - "What can we do together?"
+    - "I'm bored, what should I do?"
+    - "Show me something cool"
+
+    Activities include games, battles, quests, quizzes, and creative tools.
+
+    Args:
+        surprise_me: If True, returns a single random activity recommendation.
+                    If False, returns all available activities for user to choose.
+
+    Returns:
+        Dictionary with activities or a single surprise recommendation.
+    """
+    logger.info(f'Get fun activities tool called: surprise_me={surprise_me}')
+
+    # Define all fun activities with their details
+    activities = [
+        {
+            'name': 'Prompt Battle',
+            'description': 'Challenge Pip (our AI bot) or another user to a creative prompt battle!',
+            'path': '/battles',
+            'action': 'start_battle',
+            'emoji': '⚔️',
+            'fun_factor': 'Competitive & creative',
+        },
+        {
+            'name': 'Context Snake',
+            'description': 'Play a fun snake game where you collect AI concepts while avoiding obstacles!',
+            'path': '/play/context-snake',
+            'action': 'navigate',
+            'emoji': '🐍',
+            'fun_factor': 'Quick arcade fun',
+        },
+        {
+            'name': 'Side Quests',
+            'description': 'Complete mini-adventures to earn rewards and discover new features!',
+            'path': '/play/side-quests',
+            'action': 'navigate',
+            'emoji': '🗺️',
+            'fun_factor': 'Exploration & rewards',
+        },
+        {
+            'name': 'AI Quiz',
+            'description': 'Test your AI knowledge with interactive quizzes and learn something new!',
+            'path': '/quizzes',
+            'action': 'start_quiz',
+            'emoji': '🧠',
+            'fun_factor': 'Learn while playing',
+        },
+        {
+            'name': 'Create an Infographic',
+            'description': 'Use Nano Banana to create a fun infographic about any topic!',
+            'path': None,  # Handled in chat
+            'action': 'create_infographic',
+            'emoji': '🍌',
+            'fun_factor': 'Creative & visual',
+        },
+        {
+            'name': 'Weekly Challenge',
+            'description': 'Join the current weekly challenge and compete with the community!',
+            'path': '/challenges',
+            'action': 'navigate',
+            'emoji': '🏆',
+            'fun_factor': 'Community competition',
+        },
+        {
+            'name': 'Explore Trending',
+            'description': "Discover what's hot - trending projects, battles, and creators!",
+            'path': '/explore?sort=trending',
+            'action': 'navigate',
+            'emoji': '🔥',
+            'fun_factor': 'Discovery & inspiration',
+        },
+    ]
+
+    if surprise_me:
+        # Pick a random activity for "surprise me" mode (non-cryptographic, just for fun)
+        choice = activities[secrets.randbelow(len(activities))]
+        return {
+            'surprise': True,
+            'recommendation': choice,
+            'message': f"How about {choice['emoji']} {choice['name']}? {choice['description']}",
+        }
+    else:
+        return {
+            'surprise': False,
+            'activities': activities,
+            'message': 'Here are some fun things we can do together! Pick one that sounds exciting:',
+        }
+
+
+# =============================================================================
 # Tool Registration
 # =============================================================================
 
@@ -283,6 +396,7 @@ ORCHESTRATION_TOOLS = [
     open_tray,
     show_toast,
     trigger_action,
+    get_fun_activities,
 ]
 
 ORCHESTRATION_TOOLS_BY_NAME = {tool.name: tool for tool in ORCHESTRATION_TOOLS}

@@ -20,7 +20,7 @@ export function BattlesLobbyPage() {
   // Quest tracking for page visit
   const { trackPage } = useQuestTracking();
   useEffect(() => {
-    trackPage('/battles', 'Prompt Battles');
+    trackPage('/play/prompt-battles', 'Prompt Battles');
   }, [trackPage]);
 
   const handleError = useCallback((error: string) => {
@@ -34,7 +34,7 @@ export function BattlesLobbyPage() {
   const handleMatchFound = useCallback(
     (data: MatchFoundData) => {
       // Navigate to the battle
-      navigate(`/battles/${data.battleId}`);
+      navigate(`/play/prompt-battles/${data.battleId}`);
     },
     [navigate]
   );

@@ -218,7 +218,7 @@ export function MatchmakingScreen({
         setMessageCopied(false);
         // Navigate to battle page so sender can fill out their prompt
         if (generatedBattleId) {
-          navigate(`/battles/${generatedBattleId}`);
+          navigate(`/play/prompt-battles/${generatedBattleId}`);
         }
       }, 800);
     }
@@ -294,8 +294,8 @@ export function MatchmakingScreen({
               Battles
             </span>
           </h1>
-          <p className="text-gray-600 dark:text-slate-400 text-lg">
-            Battle to become a better prompt engineer
+          <p className="text-gray-600 dark:text-slate-400 text-lg max-w-md mx-auto">
+            Go head-to-head writing prompts to generate AI images. An AI judge picks the winner based on creativity, clarity, and how well your image matches the prompt challenge!
           </p>
         </motion.div>
 

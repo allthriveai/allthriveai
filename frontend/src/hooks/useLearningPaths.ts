@@ -16,6 +16,7 @@ import {
   getConceptMastery,
   getStructuredPath,
   completeLearningSetup,
+  resetLearningSetup,
 } from '@/services/learningPaths';
 import type {
   UserLearningPath,
@@ -216,6 +217,23 @@ export function useCompleteLearningSetup() {
       // Invalidate structured path to get the newly generated path
       queryClient.invalidateQueries({ queryKey: learningPathKeys.structuredPath() });
       // Also invalidate learner profile as it may have been updated
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.learnerProfile() });
+    },
+  });
+}
+
+/**
+ * Reset learning setup to allow re-selecting a learning goal
+ */
+export function useResetLearningSetup() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, void>({
+    mutationFn: resetLearningSetup,
+    onSuccess: () => {
+      // Invalidate structured path to reflect reset state
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.structuredPath() });
+      // Also invalidate learner profile
       queryClient.invalidateQueries({ queryKey: learningPathKeys.learnerProfile() });
     },
   });

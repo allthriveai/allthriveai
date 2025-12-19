@@ -30,7 +30,7 @@ export const defaultPathOptions: PathOption[] = [
     description: 'Test your skills in prompt battles and challenges.',
     icon: 'faGamepad',
     gradient: 'from-violet-500 to-purple-600',
-    path: '/battles',
+    path: '/play/prompt-battles',
   },
   {
     id: 'learn',

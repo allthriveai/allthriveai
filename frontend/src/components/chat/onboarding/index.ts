@@ -9,5 +9,6 @@
 export { OnboardingIntroMessage } from './OnboardingIntroMessage';
 export { AvatarTemplateSelector, defaultAvatarTemplates } from './AvatarTemplateSelector';
 export { AvatarPreviewMessage } from './AvatarPreviewMessage';
+export { LearningGoalSelectionMessage, learningGoalOptions } from './LearningGoalSelectionMessage';
 // Note: PathSelectionMessage is kept for potential future use but not exported
 // Note: ProfileSetupMessage has been removed - profile generation handled via Ember chat

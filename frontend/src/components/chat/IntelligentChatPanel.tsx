@@ -3,7 +3,27 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFigma, faGithub, faGitlab, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { faStar, faCodeBranch, faSpinner, faFolderPlus, faLightbulb, faMagnifyingGlass, faCheck, faPlug, faPencil } from '@fortawesome/free-solid-svg-icons';
+import {
+  faStar,
+  faCodeBranch,
+  faSpinner,
+  faFolderPlus,
+  faMagnifyingGlass,
+  faCheck,
+  faPlug,
+  faPencil,
+  faDragon,
+  faGraduationCap,
+  faQuestion,
+  faChartLine,
+  faArrowRight,
+  faFire,
+  faCopy,
+  faUpload,
+  faLifeRing,
+  faCompass,
+  faGamepad,
+} from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { ChatInterface } from './ChatInterface';
 import { ChatPlusMenu, type IntegrationType } from './ChatPlusMenu';
@@ -12,6 +32,7 @@ import {
   OnboardingIntroMessage,
   AvatarTemplateSelector,
   AvatarPreviewMessage,
+  LearningGoalSelectionMessage,
 } from './onboarding';
 import { useIntelligentChat, type ChatMessage, type QuotaExceededInfo, type OrchestrationAction } from '@/hooks/useIntelligentChat';
 import { useOnboardingChat } from '@/hooks/useOnboardingChat';
@@ -36,20 +57,67 @@ import {
   getFigmaFilePreview,
 } from '@/services/figma';
 import { uploadFile, uploadImage } from '@/services/upload';
+import type { LearningGoal } from '@/types/models';
 
 interface ArchitectureRegenerateContext {
   projectId: number;
   projectTitle: string;
 }
 
+interface LearningSetupContext {
+  needsSetup: boolean;
+  onSelectGoal: (goal: LearningGoal) => void;
+  onSkip: () => void;
+  isPending: boolean;
+}
+
+// Chat context determines which quick actions to show
+type ChatContext = 'learn' | 'explore' | 'project' | 'default';
+
+// Context-aware quick actions for different page contexts
+const CONTEXT_QUICK_ACTIONS: Record<ChatContext, Array<{ label: string; icon: string | typeof faDragon; prompt: string }>> = {
+  learn: [
+    { label: 'Learn AI Basics', icon: faGraduationCap, prompt: 'Help me understand AI basics' },
+    { label: 'Quiz Me', icon: faQuestion, prompt: 'Give me a quiz to test my knowledge' },
+    { label: 'My Progress', icon: faChartLine, prompt: "What's my learning progress?" },
+    { label: 'What Next?', icon: faArrowRight, prompt: 'What should I learn next?' },
+  ],
+  explore: [
+    { label: 'Trending Projects', icon: faFire, prompt: "What's trending this week?" },
+    { label: 'Find Projects', icon: faMagnifyingGlass, prompt: 'Help me find projects about...' },
+    { label: 'Recommend For Me', icon: faStar, prompt: 'Recommend projects based on my interests' },
+    { label: 'Similar Projects', icon: faCopy, prompt: 'Find projects similar to...' },
+  ],
+  project: [
+    { label: 'Paste a URL', icon: faFolderPlus, prompt: 'I want to add a new project to my profile' },
+    { label: 'Make Infographic', icon: 'banana', prompt: 'I want to create an infographic' },
+    { label: 'From GitHub', icon: faGithub, prompt: 'Import from GitHub' },
+    { label: 'Upload Media', icon: faUpload, prompt: 'I want to upload files' },
+  ],
+  default: [
+    { label: 'I need help', icon: faLifeRing, prompt: 'I need help with something' },
+    { label: "I don't know what to do next", icon: faCompass, prompt: "I'm not sure what to do next. Can you help me figure out my next step?" },
+    { label: 'I want to do something fun', icon: faGamepad, prompt: 'I want to do something fun! What can we do together?' },
+  ],
+};
+
+// Context-aware greeting messages
+const CONTEXT_GREETINGS: Record<ChatContext, string> = {
+  learn: 'What would you like to learn today?',
+  explore: 'What are you looking for?',
+  project: 'What would you like to create?',
+  default: "Hey! What's on your mind?",
+};
+
 interface IntelligentChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
   conversationId?: string;
+  context?: ChatContext; // Page context for context-aware quick actions
   welcomeMode?: boolean; // Show onboarding welcome message for new users
-  supportMode?: boolean; // Start with help questions panel visible
   productCreationMode?: boolean; // Start in product creation context
   architectureRegenerateContext?: ArchitectureRegenerateContext | null; // Context for architecture diagram regeneration
+  learningSetupContext?: LearningSetupContext | null; // Context for learning goal setup
 }
 
 /**
@@ -66,14 +134,15 @@ export function IntelligentChatPanel({
   isOpen,
   onClose,
   conversationId = 'default-conversation',
-  supportMode = false,
+  context = 'default',
   productCreationMode = false,
   architectureRegenerateContext = null,
+  learningSetupContext = null,
 }: IntelligentChatPanelProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState<string | undefined>();
-  const [hasInteracted, setHasInteracted] = useState(supportMode || !!architectureRegenerateContext); // If support mode or architecture mode, mark as interacted
+  const [hasInteracted, setHasInteracted] = useState(!!architectureRegenerateContext); // If architecture mode, mark as interacted
   const [quotaExceeded, setQuotaExceeded] = useState<QuotaExceededInfo | null>(null);
   const [architectureInitialMessageSent, setArchitectureInitialMessageSent] = useState(false);
 
@@ -123,9 +192,6 @@ export function IntelligentChatPanel({
       setHasInteracted(true);
     }
   }, [searchParams, setSearchParams]);
-
-  // Support mode state - no longer shows FAQ panel, just direct chat
-  const isSupportMode = supportMode;
 
   // Handle project creation - redirect to the new project page
   const handleProjectCreated = useCallback((projectUrl: string) => {
@@ -1112,24 +1178,21 @@ export function IntelligentChatPanel({
 
   // Empty state when no messages
   const renderEmptyState = () => {
-    if (messages.length > 0 || hasInteracted) return null;
-
-    // Support mode - simple chat-first experience
-    if (isSupportMode) {
+    // Learning setup mode takes priority - show learning goal selection
+    // This should show even if there are messages (to force learning goal setup)
+    if (learningSetupContext?.needsSetup) {
       return (
-        <div className="flex flex-col items-center justify-center h-full text-center px-6">
-          <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-4">
-            <span className="text-3xl">💬</span>
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-            How can we help?
-          </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-sm">
-            Ask me anything about All Thrive. I'm here to help with your questions, troubleshooting, or feedback.
-          </p>
+        <div className="flex flex-col justify-start h-full px-4 pt-4 overflow-y-auto">
+          <LearningGoalSelectionMessage
+            onSelectGoal={learningSetupContext.onSelectGoal}
+            onSkip={learningSetupContext.onSkip}
+            isPending={learningSetupContext.isPending}
+          />
         </div>
       );
     }
+
+    if (messages.length > 0 || hasInteracted) return null;
 
     // Welcome mode for new users after onboarding
     // Temporarily disabled - re-enable once onboarding flow is revised
@@ -1240,73 +1303,70 @@ export function IntelligentChatPanel({
       );
     }
 
-    // Default empty state - conversational greeting with quick actions
-    const quickActions: Array<{ label: string; icon: string | import('@fortawesome/fontawesome-svg-core').IconDefinition; prompt: string }> = [
-      { label: 'Paste in a URL', icon: faFolderPlus, prompt: 'I want to add a new project to my profile' },
-      { label: 'Make an infographic', icon: 'banana', prompt: 'I want to create an infographic' },
-      { label: 'Brainstorm ideas', icon: faLightbulb, prompt: 'Help me brainstorm some ideas' },
-      { label: 'Find something', icon: faMagnifyingGlass, prompt: 'Help me find something on All Thrive' },
-    ];
+    // Context-aware empty state with Ember branding
+    const quickActions = CONTEXT_QUICK_ACTIONS[context] || CONTEXT_QUICK_ACTIONS.default;
+    const greeting = CONTEXT_GREETINGS[context] || CONTEXT_GREETINGS.default;
 
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-6">
+        {/* Ember Avatar */}
         <div className="mb-4">
-          <img
-            src="/all-thrvie-logo.png"
-            alt="All Thrive"
-            className="w-12 h-12 rounded-full object-cover"
-          />
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 border border-orange-500/30 flex items-center justify-center">
+            <FontAwesomeIcon
+              icon={faDragon}
+              className="w-8 h-8 text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]"
+            />
+          </div>
         </div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-          Hey! How can I help you today?
+          {greeting}
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-sm">
-          I'm here to assist with your projects and ideas.
+          I'm Ember, your AI guide. Pick an option or just ask me anything!
         </p>
 
-        {/* All action buttons in a 3x2 grid */}
-        <div className="grid grid-cols-3 gap-2 w-full max-w-md">
+        {/* Context-aware quick action buttons - single column for feelings, 2x2 for features */}
+        <div className={`w-full max-w-sm ${context === 'default' ? 'flex flex-col gap-3' : 'grid grid-cols-2 gap-3'}`}>
           {quickActions.map((action) => (
             <button
               key={action.label}
               onClick={() => handleSendMessage(action.prompt)}
-              className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors border border-slate-200 dark:border-slate-700 min-h-[72px]"
+              className={`flex items-center gap-3 px-4 py-3 text-left bg-slate-100 dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-400/50 rounded-xl transition-all border border-slate-200 dark:border-slate-700 ${context !== 'default' ? 'flex-col text-center justify-center min-h-[80px]' : ''}`}
             >
               {action.icon === 'banana' ? (
-                <span className="text-lg">🍌</span>
+                <span className={context === 'default' ? 'text-xl' : 'text-2xl'}>🍌</span>
+              ) : typeof action.icon === 'string' ? (
+                <span className={context === 'default' ? 'text-xl' : 'text-2xl'}>{action.icon}</span>
               ) : (
-                <FontAwesomeIcon icon={action.icon as any} className="w-5 h-5 text-primary-500" />
+                <FontAwesomeIcon icon={action.icon} className={`text-orange-400 ${context === 'default' ? 'w-5 h-5' : 'w-6 h-6'}`} />
               )}
-              <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">{action.label}</span>
+              <span className="text-slate-700 dark:text-slate-300 text-sm font-medium leading-tight">{action.label}</span>
             </button>
           ))}
-          <button
-            onClick={handleOpenIntegrationPicker}
-            className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors border border-slate-200 dark:border-slate-700 min-h-[72px]"
-          >
-            <FontAwesomeIcon icon={faPlug} className="w-5 h-5 text-primary-500" />
-            <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">Connect an Integration</span>
-          </button>
-          <button
-            onClick={() => {
-              setHasInteracted(true);
-              sendMessage("I want to create a new project manually. Help me get started.");
-            }}
-            className="flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors border border-slate-200 dark:border-slate-700 min-h-[72px]"
-          >
-            <FontAwesomeIcon icon={faPencil} className="w-5 h-5 text-primary-500" />
-            <span className="text-slate-700 dark:text-slate-300 text-xs leading-tight">Create Manually</span>
-          </button>
-          <button
-            onClick={() => {
-              setHasInteracted(true);
-              sendMessage("I want to upload files by dragging and dropping them");
-            }}
-            className="col-span-3 flex flex-col items-center justify-center gap-1.5 px-3 py-3 text-center text-sm bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors border-2 border-dashed border-slate-300 dark:border-slate-600 min-h-[72px]"
-          >
-            <span className="text-slate-400 dark:text-slate-500 text-xs leading-tight">Drag and drop any image or video to make a project</span>
-          </button>
         </div>
+
+        {/* Additional actions for project context only */}
+        {context === 'project' && (
+          <div className="mt-4 flex gap-3 w-full max-w-sm">
+            <button
+              onClick={handleOpenIntegrationPicker}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+            >
+              <FontAwesomeIcon icon={faPlug} className="w-4 h-4 text-slate-500" />
+              <span className="text-slate-600 dark:text-slate-400">Integrations</span>
+            </button>
+            <button
+              onClick={() => {
+                setHasInteracted(true);
+                sendMessage("I want to create a new project manually. Help me get started.");
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+            >
+              <FontAwesomeIcon icon={faPencil} className="w-4 h-4 text-slate-500" />
+              <span className="text-slate-600 dark:text-slate-400">Create Manually</span>
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -1630,14 +1690,19 @@ export function IntelligentChatPanel({
       header={
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <img
-              src="/all-thrvie-logo.png"
-              alt="All Thrive"
-              className="h-6 w-auto"
-            />
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              All Thrive AI Chat
-            </h2>
+            {/* Ember Avatar */}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 border border-orange-500/30 flex items-center justify-center">
+              <FontAwesomeIcon
+                icon={faDragon}
+                className="w-5 h-5 text-orange-400 drop-shadow-[0_0_6px_rgba(249,115,22,0.5)]"
+              />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Ember
+              </h2>
+              <span className="text-xs text-orange-400">Your AI Guide</span>
+            </div>
 
             {/* Connection status indicator */}
             <div
@@ -1685,7 +1750,16 @@ export function IntelligentChatPanel({
       customContent={
         // Only pass customContent when there's actually custom UI to show
         // Otherwise let ChatInterface render the messages normally
-        showIntegrationPicker ? (
+        learningSetupContext?.needsSetup ? (
+          // Learning setup mode - show learning goal selection in the message area
+          <div className="flex flex-col justify-start h-full px-4 pt-4 overflow-y-auto">
+            <LearningGoalSelectionMessage
+              onSelectGoal={learningSetupContext.onSelectGoal}
+              onSkip={learningSetupContext.onSkip}
+              isPending={learningSetupContext.isPending}
+            />
+          </div>
+        ) : showIntegrationPicker ? (
           <>
             {renderQuotaExceeded()}
             {renderPendingActionConfirmation()}

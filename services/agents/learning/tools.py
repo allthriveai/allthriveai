@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 class GetLearningProgressInput(BaseModel):
     """Input for get_learning_progress tool."""
 
+    model_config = {'extra': 'allow'}
+
     topic: str = Field(default='', description='Optional topic to filter by (e.g., "ai-agents-multitool")')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class GetQuizHintInput(BaseModel):
@@ -37,7 +40,10 @@ class ExplainConceptInput(BaseModel):
 class SuggestNextActivityInput(BaseModel):
     """Input for suggest_next_activity tool."""
 
+    model_config = {'extra': 'allow'}
+
     topic: str = Field(default='', description='Optional topic preference')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class GetQuizDetailsInput(BaseModel):
@@ -472,43 +478,61 @@ def get_quiz_details(
 class GetLearnerProfileInput(BaseModel):
     """Input for get_learner_profile tool."""
 
+    model_config = {'extra': 'allow'}
+
     include_stats: bool = Field(default=True, description='Include learning statistics')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class GetConceptMasteryInput(BaseModel):
     """Input for get_concept_mastery tool."""
 
+    model_config = {'extra': 'allow'}
+
     topic: str = Field(default='', description='Filter by topic slug (e.g., "ai-agents-multitool")')
     concept_slug: str = Field(default='', description='Get mastery for a specific concept')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class FindKnowledgeGapsInput(BaseModel):
     """Input for find_knowledge_gaps tool."""
 
+    model_config = {'extra': 'allow'}
+
     topic: str = Field(default='', description='Optional topic to filter by')
     limit: int = Field(default=5, description='Maximum number of gaps to return')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class GetDueReviewsInput(BaseModel):
     """Input for get_due_reviews tool."""
 
+    model_config = {'extra': 'allow'}
+
     limit: int = Field(default=5, description='Maximum number of reviews to return')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class DeliverMicroLessonInput(BaseModel):
     """Input for deliver_micro_lesson tool."""
 
+    model_config = {'extra': 'allow'}
+
     concept_slug: str = Field(description='The concept to teach (slug from Concept model)')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class RecordLearningEventInput(BaseModel):
     """Input for record_learning_event tool."""
+
+    model_config = {'extra': 'allow'}
 
     event_type: str = Field(
         description='Type of event: lesson_viewed, concept_practiced, hint_used, explanation_requested, project_studied'
     )
     concept_slug: str = Field(default='', description='The concept this relates to')
     was_successful: bool = Field(default=True, description='Whether the learning activity was successful')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 @tool(args_schema=GetLearnerProfileInput)

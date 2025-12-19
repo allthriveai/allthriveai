@@ -9,9 +9,8 @@ import {
   Bars3Icon,
   SunIcon,
   MoonIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon } from '@fortawesome/free-solid-svg-icons';
 import { getMenuSections } from './menuData';
 import { NavDropdown } from './NavDropdown';
 import { MobileMenu } from './MobileMenu';
@@ -151,28 +150,25 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
               </button>
 
-              {/* Ember Button - Opens sidebar chat (except on /home where chat is embedded) */}
+              {/* Chat Button - Opens sidebar chat (except on /home where chat is embedded) */}
               {isAuthenticated && (
                 <button
                   onClick={() => onMenuClick('Chat')}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-orange-400/30 text-white"
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-slate-900"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(245, 158, 11, 0.2))',
-                    boxShadow: '0 2px 8px rgba(251, 146, 60, 0.15)',
+                    background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                    boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(251, 146, 60, 0.3), 0 0 20px rgba(251, 146, 60, 0.2)';
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(251, 146, 60, 0.3), rgba(245, 158, 11, 0.3))';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 211, 238, 0.25), 0 2px 8px rgba(74, 222, 128, 0.15)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(251, 146, 60, 0.15)';
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(245, 158, 11, 0.2))';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(34, 211, 238, 0.15)';
                   }}
-                  aria-label="Chat with Ember"
-                  title="Chat with Ember"
+                  aria-label="Open chat"
                 >
-                  <FontAwesomeIcon icon={faDragon} className="w-4 h-4 text-orange-400" />
-                  <span className="hidden sm:inline text-orange-300">Chat</span>
+                  <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                  <span className="hidden md:inline">Chat</span>
                 </button>
               )}
 

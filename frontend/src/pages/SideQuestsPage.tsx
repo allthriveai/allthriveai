@@ -313,7 +313,7 @@ export default function SideQuestsPage() {
           <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
           <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-green-500/10 dark:bg-green-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
-          <div className="relative max-w-6xl mx-auto px-6 h-full flex flex-col justify-center">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
               <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-green-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-green-400 bg-clip-text text-transparent">Side Quests</span>
             </h1>
@@ -324,7 +324,7 @@ export default function SideQuestsPage() {
         </header>
 
         {/* Main Content Container */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
           {/* Success notification */}
           {successMessage && (
             <div className="bg-green-500/10 dark:bg-green-500/10 border border-green-500/30 dark:border-green-500/30 rounded-lg p-3 flex items-center justify-between" role="alert">
@@ -489,6 +489,103 @@ export default function SideQuestsPage() {
                   </div>
                 </div>
               </Link>
+
+              {/* Prompt Battle Game Card - Neon Glass Style */}
+              <Link
+                to="/play/prompt-battles"
+                className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(34, 211, 238, 0.08))',
+                  border: '1px solid rgba(236, 72, 153, 0.3)',
+                }}
+              >
+                {/* Animated Background Glow */}
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.25), transparent 70%)',
+                  }}
+                />
+
+                {/* Diagonal clash lines */}
+                <div
+                  className="absolute inset-0 opacity-10"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(135deg, rgba(34, 211, 238, 0.4) 1px, transparent 1px),
+                      linear-gradient(225deg, rgba(236, 72, 153, 0.4) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '30px 30px',
+                  }}
+                />
+
+                {/* Player glow effects */}
+                <div className="absolute top-1/3 left-4 w-16 h-16 rounded-full bg-cyan-500/20 blur-xl" />
+                <div className="absolute top-1/3 right-4 w-16 h-16 rounded-full bg-pink-500/20 blur-xl" />
+
+                <div className="relative p-5">
+                  {/* VS Battle Display - Centered */}
+                  <div className="flex items-center justify-center gap-3 mb-4">
+                    {/* Player 1 Avatar */}
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-2 border-cyan-400/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.3), rgba(34, 211, 238, 0.1))',
+                      }}
+                    >
+                      <span className="text-cyan-300">P1</span>
+                    </div>
+
+                    {/* VS with lightning */}
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center border border-pink-400/40 shadow-[0_0_10px_rgba(236,72,153,0.2)]"
+                      style={{
+                        background: 'rgba(236, 72, 153, 0.15)',
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faBolt} className="text-pink-400 text-sm" />
+                    </div>
+
+                    {/* Player 2 Avatar */}
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-2 border-pink-400/50 shadow-[0_0_15px_rgba(236,72,153,0.3)]"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(236, 72, 153, 0.1))',
+                      }}
+                    >
+                      <span className="text-pink-300">P2</span>
+                    </div>
+                  </div>
+
+                  {/* Game Info */}
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <h3 className="font-bold text-lg text-white group-hover:text-pink-300 transition-colors text-center">
+                      Image Prompt Battle
+                    </h3>
+                  </div>
+
+                  <p className="text-sm text-gray-400 mb-4 text-center">
+                    Challenge friends to head-to-head prompt battles
+                  </p>
+
+                  {/* Stats */}
+                  <div className="flex items-center justify-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faUsers} className="text-pink-400" />
+                      <span className="text-gray-400">1v1</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
+                      <span className="text-amber-400 font-medium">+200 pts</span>
+                    </div>
+                  </div>
+
+                  {/* Play Button Overlay */}
+                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-pink-500/20 border border-pink-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110 shadow-[0_0_15px_rgba(236,72,153,0.3)]">
+                    <FontAwesomeIcon icon={faPlay} className="text-pink-300 text-sm ml-0.5" />
+                  </div>
+                </div>
+              </Link>
             </div>
           </section>
 
@@ -618,11 +715,14 @@ export default function SideQuestsPage() {
             </section>
           )}
 
-          {/* Quest Paths - Game Library */}
+          {/* Side Quests - Game Library */}
           <section>
-            <div className="flex items-center gap-3 mb-4">
-              <FontAwesomeIcon icon={faCompass} className="text-cyan-400" />
-              <h2 className="text-lg font-bold text-default">Quest Paths</h2>
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-1">
+                <FontAwesomeIcon icon={faCompass} className="text-cyan-400" />
+                <h2 className="text-lg font-bold text-default">Side Quests</h2>
+              </div>
+              <p className="text-sm text-muted ml-8">Get points as you meet other people and interact with All Thrive</p>
             </div>
 
             {isLoadingCategories || isLoading ? (

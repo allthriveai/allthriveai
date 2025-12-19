@@ -77,13 +77,18 @@ VALID_SECTION_TYPES = {
 class GatherUserDataInput(BaseModel):
     """Input for gather_user_data tool."""
 
+    model_config = {'extra': 'allow'}
+
     include_projects: bool = Field(default=True, description='Whether to include project details')
     include_achievements: bool = Field(default=True, description='Whether to include achievement data')
     include_interests: bool = Field(default=True, description='Whether to include interests/tags')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class GenerateProfileSectionsInput(BaseModel):
     """Input for generate_profile_sections tool."""
+
+    model_config = {'extra': 'allow'}
 
     template: str = Field(
         default='',
@@ -107,12 +112,16 @@ class GenerateProfileSectionsInput(BaseModel):
             'Write 2-3 sentences capturing who they are and what they do.'
         ),
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class SaveProfileSectionsInput(BaseModel):
     """Input for save_profile_sections tool."""
 
+    model_config = {'extra': 'allow'}
+
     sections: list[dict] = Field(description='Profile sections to save')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 # =============================================================================

@@ -472,8 +472,8 @@ export function ExplorePage() {
 
         return (
         <div className="px-4 sm:px-6 lg:px-8 py-8">
-            {/* Header */}
-            <div className="mb-6">
+            {/* Header - constrained width */}
+            <div className="max-w-7xl mx-auto mb-6">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Explore
               </h1>
@@ -482,8 +482,8 @@ export function ExplorePage() {
               </p>
             </div>
 
-            {/* Combined Glass Card with Tabs and Search */}
-            <div className="glass-subtle rounded border border-gray-200 dark:border-gray-700 p-6 mb-6 relative z-20">
+            {/* Combined Glass Card with Tabs and Search - constrained width */}
+            <div className="max-w-7xl mx-auto glass-subtle rounded border border-gray-200 dark:border-gray-700 p-6 mb-6 relative z-20">
               {/* Tab Navigation */}
               <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
 

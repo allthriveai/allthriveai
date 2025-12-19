@@ -16,7 +16,7 @@ import { TopicTrayProvider } from '@/context/TopicTrayContext';
 import { ProjectPreviewTrayProvider, useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
-import type { Project, UserSideQuest } from '@/types/models';
+import type { Project, UserSideQuest, LearningGoal } from '@/types/models';
 
 // Constants
 const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
@@ -49,12 +49,28 @@ function MainScrollContainer({ children }: { children: ReactNode }) {
   );
 }
 
+interface LearningSetupContext {
+  needsSetup: boolean;
+  onSelectGoal: (goal: LearningGoal) => void;
+  onSkip: () => void;
+  isPending: boolean;
+}
+
+// Chat context determines which quick actions to show in the Ember chat
+type ChatContext = 'learn' | 'explore' | 'project' | 'default';
+
+interface OpenChatOptions {
+  welcomeMode?: boolean;
+  context?: ChatContext;
+}
+
 interface DashboardLayoutProps {
   children: ReactNode | ((props: {
     openChat: (menuItem: string) => void;
-    openAddProject: (welcomeMode?: boolean) => void;
+    openAddProject: (options?: boolean | OpenChatOptions) => void;
     openCommentPanel: (project: Project) => void;
     openQuestTray: (quest: UserSideQuest) => void;
+    setLearningSetupContext: (context: LearningSetupContext | null) => void;
   }) => ReactNode);
   openAboutPanel?: boolean;
   autoCollapseSidebar?: boolean;
@@ -68,7 +84,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [addProjectWelcomeMode, setAddProjectWelcomeMode] = useState(false);
-  const [chatSupportMode, setChatSupportMode] = useState(false);
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentPanelProject, setCommentPanelProject] = useState<Project | null>(null);
 
@@ -77,6 +92,12 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     projectId: number;
     projectTitle: string;
   } | null>(null);
+
+  // Learning setup context state
+  const [learningSetupContext, setLearningSetupContext] = useState<LearningSetupContext | null>(null);
+
+  // Chat context state - determines which quick actions to show in Ember chat
+  const [chatContext, setChatContext] = useState<ChatContext>('default');
 
   // Track if component has mounted to avoid closing panels on initial render
   const hasMounted = useRef(false);
@@ -96,10 +117,10 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const selectedQuestColors = getQuestColors(selectedQuest);
   const selectedQuestCategory = getQuestCategory(selectedQuest);
 
-  // Stable conversationId that doesn't change on every render
-  // This prevents the IntelligentChatPanel from reinitializing on parent re-renders
-  // Use 'chat-' prefix for general conversations (not 'project-' which forces project-creation mode)
-  const conversationId = useMemo(() => `chat-${Date.now()}`, []);
+  // Generate ember-prefixed conversation ID that routes to unified Ember agent
+  // The ID includes context so the backend knows which tools to prioritize
+  // Note: This changes when context changes, but the chat panel remounts anyway on close/open
+  const conversationId = useMemo(() => `ember-${chatContext}-${Date.now()}`, [chatContext]);
 
   // Auto-open about panel when prop is true
   useEffect(() => {
@@ -188,7 +209,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       setArchitectureRegenerateContext({ projectId, projectTitle });
       setAddProjectOpen(true);
       setAddProjectWelcomeMode(false);
-      setChatSupportMode(false);
       setAboutOpen(false);
       setEventsOpen(false);
     };
@@ -227,10 +247,10 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       if (location.pathname === '/home') {
         return;
       }
-      // Open chat panel in support mode (with help questions visible)
+      // Open Ember chat panel
       setAddProjectOpen(true);
-      setChatSupportMode(true);
       setAddProjectWelcomeMode(false);
+      setChatContext('default');
       setAboutOpen(false);
       setEventsOpen(false);
     }
@@ -244,11 +264,16 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setEventsOpen(false);
   };
 
-  const handleOpenAddProject = useCallback((welcomeMode: boolean = false) => {
-    // Open Add Project panel with 4 options (or welcome mode for new users)
+  const handleOpenAddProject = useCallback((options: boolean | OpenChatOptions = false) => {
+    // Handle backwards compatibility - boolean means welcomeMode
+    const opts: OpenChatOptions = typeof options === 'boolean'
+      ? { welcomeMode: options }
+      : options;
+
+    // Open Ember chat panel with context-aware quick actions
     setAddProjectOpen(true);
-    setAddProjectWelcomeMode(welcomeMode);
-    setChatSupportMode(false); // Reset support mode when opening normally
+    setAddProjectWelcomeMode(opts.welcomeMode ?? false);
+    setChatContext(opts.context ?? 'default');
     setAboutOpen(false);
     setEventsOpen(false);
   }, []);
@@ -256,7 +281,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);
     setAddProjectWelcomeMode(false);
-    setChatSupportMode(false);
     setArchitectureRegenerateContext(null);
   };
 
@@ -309,7 +333,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             <PendingBattleBanner />
             {/* Async Battle Banner - shows when user has an async battle where it's their turn */}
             <AsyncBattleBanner />
-            {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray }) : children}
+            {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray, setLearningSetupContext }) : children}
           </div>
           <Footer />
         </MainScrollContainer>
@@ -326,7 +350,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           onClose={handleCloseEvents}
         />
 
-        {/* Intelligent Chat Panel - only render when open so internal state resets on close */}
+        {/* Ember Chat Panel - unified AI assistant with context-aware quick actions */}
         {addProjectOpen && (
           <IntelligentChatPanel
             isOpen={addProjectOpen}
@@ -336,9 +360,10 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
                 ? `project-${architectureRegenerateContext.projectId}-architecture`
                 : conversationId
             }
+            context={chatContext}
             welcomeMode={addProjectWelcomeMode}
-            supportMode={chatSupportMode}
             architectureRegenerateContext={architectureRegenerateContext}
+            learningSetupContext={learningSetupContext}
           />
         )}
 

@@ -1,12 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { ColdStartOnboarding, StructuredLearningPath } from '@/components/learning';
-import { useStructuredPath } from '@/hooks/useLearningPaths';
+import { StructuredLearningPath } from '@/components/learning';
+import { useStructuredPath, useResetLearningSetup, useCompleteLearningSetup } from '@/hooks/useLearningPaths';
 import { useQuestTracking } from '@/hooks/useQuestTracking';
 import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGraduationCap, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { faGraduationCap, faArrowRight, faDragon } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
+import type { LearningGoal } from '@/types/models';
 
 /**
  * Guest view for unauthenticated users
@@ -93,10 +94,131 @@ function GuestLearnPage() {
 }
 
 /**
+ * Waiting for setup view - shown in main area while user sets learning goal in chat
+ */
+function WaitingForSetupView() {
+  return (
+    <div className="h-full flex items-center justify-center p-6">
+      <div className="text-center max-w-md">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-500/10 border border-orange-500/30 flex items-center justify-center">
+          <FontAwesomeIcon
+            icon={faDragon}
+            className="text-3xl text-orange-500 drop-shadow-[0_0_12px_rgba(249,115,22,0.6)]"
+          />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-3">
+          Let's Get Started!
+        </h2>
+        <p className="text-gray-400">
+          Chat with Ember in the panel to tell me what you'd like to learn. I'll create a personalized learning path just for you.
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-2 text-orange-400 text-sm">
+          <span className="animate-pulse">Check out the chat panel</span>
+          <FontAwesomeIcon icon={faArrowRight} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Authenticated user learning view with structured path
  */
-function AuthenticatedLearnPage() {
+interface OpenChatOptions {
+  welcomeMode?: boolean;
+  context?: 'learn' | 'explore' | 'project' | 'default';
+}
+
+interface AuthenticatedLearnPageProps {
+  openAddProject: (options?: boolean | OpenChatOptions) => void;
+  setLearningSetupContext: (context: {
+    needsSetup: boolean;
+    onSelectGoal: (goal: LearningGoal) => void;
+    onSkip: () => void;
+    isPending: boolean;
+  } | null) => void;
+}
+
+function AuthenticatedLearnPage({ openAddProject, setLearningSetupContext }: AuthenticatedLearnPageProps) {
   const { data: pathData, isLoading, error, refetch } = useStructuredPath();
+  const { mutate: resetSetup, isPending: isResetting } = useResetLearningSetup();
+  const { mutate: completeSetup, isPending: isSettingUp } = useCompleteLearningSetup();
+  const hasOpenedChat = useRef(false);
+  const hasSetContext = useRef(false);
+
+  // Handler for when user selects a learning goal in chat
+  const handleSelectGoal = useCallback((goal: LearningGoal) => {
+    completeSetup(goal, {
+      onSuccess: () => {
+        // Clear the learning setup context after successful setup
+        setLearningSetupContext(null);
+        refetch();
+      },
+    });
+  }, [completeSetup, setLearningSetupContext, refetch]);
+
+  // Handler for when user skips learning goal selection
+  const handleSkip = useCallback(() => {
+    completeSetup('exploring', {
+      onSuccess: () => {
+        setLearningSetupContext(null);
+        refetch();
+      },
+    });
+  }, [completeSetup, setLearningSetupContext, refetch]);
+
+  // Set up learning context in chat when user needs to set up their path
+  useEffect(() => {
+    if (!isLoading && pathData && !pathData.hasCompletedPathSetup && !hasSetContext.current) {
+      hasSetContext.current = true;
+      setLearningSetupContext({
+        needsSetup: true,
+        onSelectGoal: handleSelectGoal,
+        onSkip: handleSkip,
+        isPending: isSettingUp,
+      });
+    }
+  }, [isLoading, pathData, handleSelectGoal, handleSkip, isSettingUp, setLearningSetupContext]);
+
+  // Update pending state in context when it changes
+  useEffect(() => {
+    if (pathData && !pathData.hasCompletedPathSetup) {
+      setLearningSetupContext({
+        needsSetup: true,
+        onSelectGoal: handleSelectGoal,
+        onSkip: handleSkip,
+        isPending: isSettingUp,
+      });
+    }
+  }, [isSettingUp, pathData, handleSelectGoal, handleSkip, setLearningSetupContext]);
+
+  // Auto-open Ember chat on first load with learn context
+  useEffect(() => {
+    if (!hasOpenedChat.current && !isLoading) {
+      hasOpenedChat.current = true;
+      // Small delay to ensure layout is ready
+      setTimeout(() => {
+        openAddProject({ context: 'learn' });
+      }, 300);
+    }
+  }, [isLoading, openAddProject]);
+
+  // Handle reset - set up context again for chat
+  const handleResetPath = useCallback(() => {
+    resetSetup(undefined, {
+      onSuccess: () => {
+        hasSetContext.current = false;
+        refetch();
+      },
+    });
+  }, [resetSetup, refetch]);
+
+  // Clean up learning context when component unmounts
+  useEffect(() => {
+    return () => {
+      setLearningSetupContext(null);
+    };
+  }, [setLearningSetupContext]);
 
   if (isLoading) {
     return (
@@ -122,17 +244,19 @@ function AuthenticatedLearnPage() {
     );
   }
 
-  // Show cold start onboarding if user hasn't completed setup
+  // Show waiting view if user hasn't completed setup - they should use the chat
   if (pathData && !pathData.hasCompletedPathSetup) {
-    return (
-      <ColdStartOnboarding onComplete={() => refetch()} />
-    );
+    return <WaitingForSetupView />;
   }
 
   // Show the structured learning path
   if (pathData) {
     return (
-      <StructuredLearningPath pathData={pathData} />
+      <StructuredLearningPath
+        pathData={pathData}
+        onResetPath={handleResetPath}
+        isResetting={isResetting}
+      />
     );
   }
 
@@ -165,10 +289,13 @@ export default function LearnPage() {
 
   return (
     <DashboardLayout>
-      {() => (
+      {({ openAddProject, setLearningSetupContext }) => (
         <div className="h-full overflow-y-auto">
           {isAuthenticated ? (
-            <AuthenticatedLearnPage />
+            <AuthenticatedLearnPage
+              openAddProject={openAddProject}
+              setLearningSetupContext={setLearningSetupContext}
+            />
           ) : (
             <GuestLearnPage />
           )}

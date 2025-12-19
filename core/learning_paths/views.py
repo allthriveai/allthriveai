@@ -437,3 +437,18 @@ class LearningSetupView(APIView):
         )
 
         return Response(path_data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        """
+        DELETE /api/v1/me/learning-setup/
+
+        Reset the learning setup to allow re-selecting a learning goal.
+        """
+        profile, _ = LearnerProfile.objects.get_or_create(user=request.user)
+        profile.has_completed_path_setup = False
+        profile.learning_goal = ''
+        profile.generated_path = None
+        profile.path_generated_at = None
+        profile.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

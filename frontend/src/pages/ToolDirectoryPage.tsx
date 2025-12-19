@@ -118,7 +118,7 @@ function ToolDirectoryPageContent() {
             <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
             <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-yellow-500/10 dark:bg-yellow-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
-            <div className="relative max-w-6xl mx-auto px-8 h-full flex flex-col justify-center">
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
                 <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-yellow-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-yellow-400 bg-clip-text text-transparent">Tool Directory</span>
               </h1>
@@ -135,7 +135,7 @@ function ToolDirectoryPageContent() {
             </div>
           </header>
 
-          <div className="max-w-6xl mx-auto p-8 pb-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
 
             {/* Search Bar with Filters */}
             <div className="mb-6">

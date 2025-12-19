@@ -493,7 +493,8 @@ async def stream_ember_response(
 
             # Stream LLM response
             collected_content = ''
-            tool_calls = []
+            # Use dict to accumulate tool calls by index (streaming sends chunks)
+            tool_calls_by_index: dict = {}
 
             async for chunk in llm_with_tools.astream(full_messages):
                 # Handle content chunks
@@ -502,13 +503,60 @@ async def stream_ember_response(
                     total_output_content += chunk.content
                     yield {'type': 'token', 'content': chunk.content}
 
-                # Collect tool calls
-                if hasattr(chunk, 'tool_calls') and chunk.tool_calls:
-                    tool_calls.extend(chunk.tool_calls)
+                # Collect tool calls - accumulate by index for streaming
+                if hasattr(chunk, 'tool_call_chunks') and chunk.tool_call_chunks:
+                    # LangChain's tool_call_chunks format
+                    for tc_chunk in chunk.tool_call_chunks:
+                        idx = tc_chunk.get('index', 0)
+                        if idx not in tool_calls_by_index:
+                            tool_calls_by_index[idx] = {'name': '', 'args': '', 'id': ''}
+                        if tc_chunk.get('name'):
+                            tool_calls_by_index[idx]['name'] = tc_chunk['name']
+                        if tc_chunk.get('args'):
+                            tool_calls_by_index[idx]['args'] += tc_chunk['args']
+                        if tc_chunk.get('id'):
+                            tool_calls_by_index[idx]['id'] = tc_chunk['id']
                 elif hasattr(chunk, 'additional_kwargs'):
-                    tc = chunk.additional_kwargs.get('tool_calls', [])
-                    if tc:
-                        tool_calls.extend(tc)
+                    tc_list = chunk.additional_kwargs.get('tool_calls', [])
+                    for tc in tc_list:
+                        idx = tc.get('index', 0)
+                        if idx not in tool_calls_by_index:
+                            tool_calls_by_index[idx] = {'name': '', 'args': '', 'id': ''}
+                        # Handle OpenAI streaming format
+                        if 'function' in tc:
+                            func = tc['function']
+                            if func.get('name'):
+                                tool_calls_by_index[idx]['name'] = func['name']
+                            if func.get('arguments'):
+                                tool_calls_by_index[idx]['args'] += func['arguments']
+                        if tc.get('id'):
+                            tool_calls_by_index[idx]['id'] = tc['id']
+
+            # Convert accumulated tool calls to list and parse JSON args
+            import json
+
+            tool_calls = []
+            for idx in sorted(tool_calls_by_index.keys()):
+                tc = tool_calls_by_index[idx]
+                # Skip incomplete tool calls (no name)
+                if not tc['name']:
+                    continue
+                # Parse args from JSON string
+                args = tc['args']
+                if isinstance(args, str) and args:
+                    try:
+                        args = json.loads(args)
+                    except json.JSONDecodeError:
+                        args = {}
+                else:
+                    args = {}
+                tool_calls.append(
+                    {
+                        'name': tc['name'],
+                        'args': args,
+                        'id': tc['id'] or f'call_{idx}',
+                    }
+                )
 
             # Track tool calls for usage
             total_tool_calls += len(tool_calls)
@@ -564,6 +612,7 @@ async def stream_ember_response(
                 # Inject state if needed
                 if tool_name in TOOLS_NEEDING_STATE:
                     tool_args_copy['state'] = state
+                    logger.info(f'Injecting state into {tool_name}: user_id={state.get("user_id")}')
 
                 # Execute tool with timeout protection
                 exec_result = await _execute_tool_with_timeout(tool, tool_args_copy, TOOL_EXECUTION_TIMEOUT)

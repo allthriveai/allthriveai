@@ -8,14 +8,14 @@
 
 ## Executive Summary
 
-AllThrive AI's intelligent chat system uses a **unified Ember agent** with access to all ~27 tools. The `/home` EmberHomePage uses this new architecture by default, while other chat modes fall back to the legacy multi-agent orchestrator.
+AllThrive AI's intelligent chat system uses a **unified Ember agent** with access to all ~27 tools. **All sidebar chats now use Ember by default**, with context-aware quick actions based on the current page (Learn, Explore, Project, etc.).
 
 ### Key Stats
 - **Total Tools:** 27 (2-3% of context window, ~3,000 tokens)
 - **Architecture:** Single unified Ember agent (no supervisor routing)
 - **Token Tracking:** Full usage tracking via `AIUsageTracker`
 - **Feature Flag:** `USE_UNIFIED_EMBER = True` (enabled by default)
-- **Legacy Support:** Multi-agent orchestrator still available for non-Ember conversations
+- **Context-Aware:** Quick actions change based on page context (learn, explore, project, default)
 
 ---
 
@@ -264,11 +264,12 @@ ws://backend:8000/ws/chat/{conversation_id}/
 ```
 
 **Conversation ID Patterns:**
-- `project-{id}` - Project creation flow
+- `ember-learn-{timestamp}` - Learn page context (learning quick actions)
+- `ember-explore-{timestamp}` - Explore page context (discovery quick actions)
+- `ember-project-{timestamp}` - Project page context (project quick actions)
+- `ember-default-{timestamp}` - Default context (general quick actions)
 - `project-{id}-architecture` - Architecture regeneration
-- `product-{id}` - Product creation flow
 - `avatar-{session_id}` - Avatar generation
-- `{timestamp}` - General chat
 
 ### Events: Backend → Frontend
 
@@ -674,20 +675,33 @@ cau_data = AIUsageTracker.get_cau(days=30)
 
 ## Future Roadmap
 
-### Current State (Phase 3 Complete)
+### Current State (Phase 4 Complete)
 
 - ✅ Unified Ember agent created with all 27 tools
 - ✅ EmberHomePage (`/home`) uses unified agent by default
 - ✅ Token usage tracking for analytics and billing
 - ✅ Scalability features (timeouts, truncation, limits)
+- ✅ **All sidebar chats use Ember** (IntelligentChatPanel)
+- ✅ **Context-aware quick actions** based on page (learn, explore, project, default)
+- ✅ **Ember branding** in chat header (dragon avatar, "Your AI Guide")
 
-### Phase 4: Full Migration (Next)
+### Phase 4: Full Migration (COMPLETE ✓)
 
-Once unified Ember is validated in production:
-1. Route all IntelligentChatPanel conversations to Ember (remove `ember-` prefix check)
-2. Remove supervisor routing entirely from `tasks.py`
-3. Deprecate specialized agent processors (`_process_with_discovery_agent`, etc.)
-4. Clean up fast-path detection (no longer needed with single agent)
+All sidebar chats now use unified Ember agent:
+1. ✅ All IntelligentChatPanel conversations route to Ember (ember-{context}-{timestamp} pattern)
+2. ✅ Context-aware quick actions (learn, explore, project, default)
+3. ✅ Ember branding in chat header (dragon avatar, "Your AI Guide")
+4. ✅ DashboardLayout passes context to IntelligentChatPanel
+5. ✅ LearnPage opens chat with `context: 'learn'` for learning-specific quick actions
+
+**Context-Aware Quick Actions:**
+
+| Context | Quick Actions |
+|---------|---------------|
+| `learn` | Learn AI Basics, Quiz Me, My Progress, What Next? |
+| `explore` | Trending Projects, Find Projects, Recommend For Me, Similar Projects |
+| `project` | Paste a URL, Make Infographic, From GitHub, Upload Media |
+| `default` | Paste a URL, Make Infographic, Brainstorm, Find Something |
 
 ### Future Tools (Not Yet Built)
 

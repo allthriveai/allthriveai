@@ -135,7 +135,7 @@ export function RecentBattlesSection({ content, user, isEditing, onUpdate }: Rec
             return (
               <Link
                 key={battle.id}
-                to={`/battles/${battle.challenge.slug}`}
+                to={`/play/prompt-battles/${battle.challenge.slug}`}
                 className="group block p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 transition-all hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-3">

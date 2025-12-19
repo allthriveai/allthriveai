@@ -39,7 +39,7 @@ EMBER_TOOLS = [
     *LEARNING_TOOLS,
     # Project (10+ tools) - Create, import, media, scrape, architecture
     *PROJECT_TOOLS,
-    # Orchestration (5 tools) - Navigate, highlight, toast, tray, trigger
+    # Orchestration (6 tools) - Navigate, highlight, toast, tray, trigger, fun activities
     *ORCHESTRATION_TOOLS,
     # Profile (3 tools) - Gather data, generate sections, save sections
     *PROFILE_TOOLS,

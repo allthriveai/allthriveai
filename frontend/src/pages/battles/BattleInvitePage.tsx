@@ -58,7 +58,7 @@ export function BattleInvitePage() {
 
         // If invitation already accepted, redirect to the battle
         if (response.data.already_accepted && response.data.battle_id) {
-          navigate(`/battles/${response.data.battle_id}`);
+          navigate(`/play/prompt-battles/${response.data.battle_id}`);
           return;
         }
 
@@ -84,7 +84,7 @@ export function BattleInvitePage() {
       // Navigate to the battle
       const battleId = response.data?.id;
       if (battleId) {
-        navigate(`/battles/${battleId}`);
+        navigate(`/play/prompt-battles/${battleId}`);
       } else {
         console.error('No battle ID in response:', response.data);
         setError('Failed to join battle - please try again');
@@ -123,7 +123,7 @@ export function BattleInvitePage() {
       if (battleId) {
         // Store battle ID so guest can return to it later
         setGuestBattleId(battleId);
-        navigate(`/battles/${battleId}`);
+        navigate(`/play/prompt-battles/${battleId}`);
       } else {
         console.error('No battle ID in response:', response.data);
         setError('Failed to join battle - please try again');
@@ -190,7 +190,7 @@ export function BattleInvitePage() {
                   Ask your friend to send you a new challenge link, or start your own battle and invite them!
                 </p>
                 <div className="space-y-3">
-                  <button onClick={() => navigate('/battles')} className="btn-primary w-full">
+                  <button onClick={() => navigate('/play/prompt-battles')} className="btn-primary w-full">
                     Start a New Battle
                   </button>
                   <button
@@ -214,7 +214,7 @@ export function BattleInvitePage() {
                   They may have started a different battle or changed their mind. You can challenge them back or find another opponent!
                 </p>
                 <div className="space-y-3">
-                  <button onClick={() => navigate('/battles')} className="btn-primary w-full">
+                  <button onClick={() => navigate('/play/prompt-battles')} className="btn-primary w-full">
                     Start Your Own Battle
                   </button>
                   <button
@@ -232,7 +232,7 @@ export function BattleInvitePage() {
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2">Invitation Error</h2>
                 <p className="text-slate-400 mb-6">{error}</p>
-                <button onClick={() => navigate('/battles')} className="btn-primary">
+                <button onClick={() => navigate('/play/prompt-battles')} className="btn-primary">
                   Go to Battles
                 </button>
               </>
@@ -306,9 +306,11 @@ export function BattleInvitePage() {
               </motion.div>
 
               <h1 className="text-2xl font-bold text-white mb-2">
-                You've Been Challenged<br />to a Prompt Battle
+                You've Been Challenged to an<br />Image Generation Prompt Battle!
               </h1>
-              <p className="text-slate-400">How are your prompt engineering skills?</p>
+              <p className="text-slate-400 max-w-xs mx-auto">
+                Write prompts to generate AI images. An AI judge compares the results and picks a winner!
+              </p>
             </div>
 
             {/* Challenger info */}

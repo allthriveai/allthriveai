@@ -450,13 +450,13 @@ function FeaturedBattleCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                navigate('/battles');
+                navigate('/play/prompt-battles');
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   e.stopPropagation();
-                  navigate('/battles');
+                  navigate('/play/prompt-battles');
                 }
               }}
               className="px-2 py-0.5 text-xs bg-gradient-to-r from-cyan-500/20 to-violet-500/20 text-cyan-400 rounded border border-cyan-500/30 hover:from-cyan-500/30 hover:to-violet-500/30 hover:text-cyan-300 transition-colors cursor-pointer"

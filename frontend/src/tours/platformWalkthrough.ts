@@ -69,7 +69,7 @@ export const platformWalkthroughTour: TourDefinition = {
     {
       id: 'explore',
       title: 'Explore',
-      targetPath: '/battles', // After explore, go to battles
+      targetPath: '/play/prompt-battles', // After explore, go to battles
       dialogue: [
         "The Explore page is where the magic happens!",
         "Discover amazing projects, AI tools, and talented creators.",

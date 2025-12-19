@@ -10,7 +10,6 @@ import {
   faUserGroup,
   faGift,
   faCalendar,
-  faComments,
   faWandSparkles,
   faIdCard,
   faCog,
@@ -70,7 +69,6 @@ export const getMenuSections = (
       { label: 'Your Thrive Circle', path: '/thrive-circle', icon: faUserGroup },
       { label: 'Perks', path: '/perks', icon: faGift },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar'), icon: faCalendar },
-      { label: 'Chat', onClick: () => onMenuClick('Chat'), icon: faComments },
     ],
   },
   {
@@ -96,7 +94,6 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   "This Week's Challenge": (path) => path === '/challenges' || path.startsWith('/challenges/') || path === '/this-weeks-challenge',
   'Side Quests': (path) => path === '/play/side-quests',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
-  'Chat': (_, search) => search.includes('chat='),
   'Account Settings': (path, search) => path === '/account/settings' && !search,
   'Onboarding': (path) => path === '/onboarding',
   'My Profile': (path, search, username) =>

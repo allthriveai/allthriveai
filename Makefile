@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db create-youtube-agent
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db create-youtube-agent regenerate-battle-images regenerate-user-images
 
 help:
 	@echo "Available commands:"
@@ -55,6 +55,8 @@ help:
 	@echo "  make aws-load-uat-scenarios - Load UAT scenarios on AWS production"
 	@echo "  make refresh-tool-news - Refresh What's New for tools (TOOL=slug, LIMIT=n, DRY_RUN=1)"
 	@echo "  make create-youtube-agent - Create YouTube feed agent (CHANNEL_URL, SOURCE_NAME required)"
+	@echo "  make regenerate-battle-images - Regenerate battle images (USER=username, DRY_RUN=1)"
+	@echo "  make regenerate-user-images - Regenerate user article hero images (USER=username, STYLE=dark_academia)"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
@@ -287,6 +289,22 @@ else ifdef LIMIT
 else
 	docker-compose exec -T web python manage.py refresh_tool_news $(if $(DRY_RUN),--dry-run,)
 endif
+
+# Image regeneration commands
+regenerate-battle-images:
+	@echo "Regenerating battle images from saved prompts..."
+ifdef USER
+	docker-compose exec -T web python manage.py regenerate_battle_images --user $(USER) $(if $(DRY_RUN),--dry-run,) $(if $(LIMIT),--limit $(LIMIT),)
+else
+	docker-compose exec -T web python manage.py regenerate_battle_images $(if $(DRY_RUN),--dry-run,) $(if $(LIMIT),--limit $(LIMIT),)
+endif
+
+regenerate-user-images:
+ifndef USER
+	$(error USER is required. Usage: make regenerate-user-images USER=username [STYLE=dark_academia] [DRY_RUN=1])
+endif
+	@echo "Regenerating article hero images for $(USER)..."
+	docker-compose exec -T web python manage.py regenerate_user_images $(USER) $(if $(STYLE),--style $(STYLE),) $(if $(DRY_RUN),--dry-run,)
 
 load-tools:
 	@echo "Loading tools from YAML..."
