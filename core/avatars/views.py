@@ -200,10 +200,16 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
         ).first()
 
         if existing:
-            return Response(
-                {'detail': 'You already have an active session.', 'session_id': existing.id},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # Auto-abandon 'ready' sessions (user wants to try again)
+            if existing.status == 'ready':
+                existing.status = 'abandoned'
+                existing.save(update_fields=['status', 'updated_at'])
+            else:
+                # Block if still generating
+                return Response(
+                    {'detail': 'You already have an active session.', 'session_id': existing.id},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         serializer = AvatarGenerationSessionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

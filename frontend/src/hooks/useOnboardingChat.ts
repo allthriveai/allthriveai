@@ -1,12 +1,11 @@
 /**
  * useOnboardingChat Hook
  *
- * Orchestrates the onboarding flow within the intelligent chat:
+ * Orchestrates the simplified onboarding flow:
  * 1. Shows intro message with typewriter effect
  * 2. Avatar creation with templates and prompt input
  * 3. Avatar preview with accept/refine/skip options
- * 4. Path selection (Play/Learn/Personalize)
- * 5. Completes onboarding and transitions to normal chat
+ * 4. Completes onboarding → user lands on feelings-first home chat
  *
  * Integrates with:
  * - useEmberOnboarding for persistence
@@ -14,20 +13,17 @@
  * - useAuth for user info
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useEmberOnboarding, type AdventureId } from '@/hooks/useEmberOnboarding';
+import { useEmberOnboarding } from '@/hooks/useEmberOnboarding';
 import { useAvatarGeneration } from '@/hooks/useAvatarGeneration';
-import type { ChatMessage, AvatarTemplate, PathOption, IntelligentChatMetadata } from '@/hooks/useIntelligentChat';
+import type { ChatMessage, AvatarTemplate, IntelligentChatMetadata } from '@/hooks/useIntelligentChat';
 import { defaultAvatarTemplates } from '@/components/chat/onboarding/AvatarTemplateSelector';
-import { defaultPathOptions } from '@/components/chat/onboarding/PathSelectionMessage';
 
 export type OnboardingStep =
   | 'intro'
   | 'avatar-create'
   | 'avatar-preview'
-  | 'choose-path'
   | 'complete';
 
 export interface UseOnboardingChatOptions {
@@ -40,7 +36,6 @@ export interface OnboardingChatState {
   selectedTemplate: string | null;
   avatarPrompt: string;
   generatedAvatarUrl: string | null;
-  selectedPath: string | null;
   referenceImageUrl: string | null;
 }
 
@@ -49,7 +44,6 @@ export function useOnboardingChat({
   onAvatarSaved,
 }: UseOnboardingChatOptions = {}) {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const {
     shouldShowModal: shouldShowOnboarding,
     markModalSeen,
@@ -64,9 +58,14 @@ export function useOnboardingChat({
     selectedTemplate: null,
     avatarPrompt: '',
     generatedAvatarUrl: null,
-    selectedPath: null,
     referenceImageUrl: null,
   });
+
+  // Use ref to always have latest referenceImageUrl (avoids stale closure issues)
+  const referenceImageUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    referenceImageUrlRef.current = state.referenceImageUrl;
+  }, [state.referenceImageUrl]);
 
   // Avatar generation
   const {
@@ -114,7 +113,7 @@ export function useOnboardingChat({
     });
 
     // Show avatar creation after intro is advanced
-    if (state.step === 'avatar-create' || state.step === 'avatar-preview' || state.step === 'choose-path') {
+    if (state.step === 'avatar-create' || state.step === 'avatar-preview') {
       messages.push({
         id: 'onboarding-avatar-prompt',
         content: '',
@@ -129,7 +128,7 @@ export function useOnboardingChat({
     }
 
     // Show avatar preview when generated
-    if (state.step === 'avatar-preview' || (state.step === 'choose-path' && state.generatedAvatarUrl)) {
+    if (state.step === 'avatar-preview' && state.generatedAvatarUrl) {
       messages.push({
         id: 'onboarding-avatar-preview',
         content: '',
@@ -139,21 +138,6 @@ export function useOnboardingChat({
           type: 'onboarding_avatar_preview',
           onboardingStep: 'avatar-preview',
           avatarImageUrl: state.generatedAvatarUrl || undefined,
-        } as IntelligentChatMetadata,
-      });
-    }
-
-    // Show path selection after avatar is done
-    if (state.step === 'choose-path') {
-      messages.push({
-        id: 'onboarding-path-selection',
-        content: '',
-        sender: 'assistant',
-        timestamp: new Date(),
-        metadata: {
-          type: 'onboarding_path_selection',
-          onboardingStep: 'choose-path',
-          pathOptions: defaultPathOptions,
         } as IntelligentChatMetadata,
       });
     }
@@ -169,8 +153,9 @@ export function useOnboardingChat({
 
   const handleIntroSkip = useCallback(() => {
     markModalSeen();
-    setState((prev) => ({ ...prev, step: 'choose-path' }));
-  }, [markModalSeen]);
+    setState((prev) => ({ ...prev, step: 'complete' }));
+    onComplete?.();
+  }, [markModalSeen, onComplete]);
 
   // Handlers for avatar creation
   const handleSelectTemplate = useCallback((templateId: string) => {
@@ -182,16 +167,21 @@ export function useOnboardingChat({
   }, []);
 
   const handleReferenceImageChange = useCallback((url: string | null) => {
+    // Update ref immediately (synchronous) to avoid stale closure issues
+    referenceImageUrlRef.current = url;
     setState((prev) => ({ ...prev, referenceImageUrl: url }));
   }, []);
 
   const handleGenerateAvatar = useCallback(async () => {
+    // Use ref to get latest referenceImageUrl (avoids stale closure)
+    const currentReferenceImageUrl = referenceImageUrlRef.current;
+
     if (!state.avatarPrompt.trim()) return;
 
     // Start avatar session if not already started
     // Use 'make_me' mode if a reference image is provided, 'template' if template selected, otherwise 'scratch'
     let creationMode: 'scratch' | 'template' | 'make_me' = 'scratch';
-    if (state.referenceImageUrl) {
+    if (currentReferenceImageUrl) {
       creationMode = 'make_me';
     } else if (state.selectedTemplate && state.selectedTemplate !== 'make_me') {
       creationMode = 'template';
@@ -200,26 +190,28 @@ export function useOnboardingChat({
     const session = await startSession(
       creationMode,
       state.selectedTemplate || undefined,
-      state.referenceImageUrl || undefined
+      currentReferenceImageUrl || undefined
     );
     if (session) {
-      generateAvatar(state.avatarPrompt, state.referenceImageUrl || undefined);
+      generateAvatar(state.avatarPrompt, currentReferenceImageUrl || undefined);
     }
   }, [state.avatarPrompt, state.selectedTemplate, state.referenceImageUrl, startSession, generateAvatar]);
 
   const handleSkipAvatar = useCallback(() => {
     abandonSession();
-    setState((prev) => ({ ...prev, step: 'choose-path' }));
-  }, [abandonSession]);
+    setState((prev) => ({ ...prev, step: 'complete' }));
+    onComplete?.();
+  }, [abandonSession, onComplete]);
 
   // Handlers for avatar preview
   const handleAcceptAvatar = useCallback(async () => {
     if (currentIteration) {
       await acceptIteration(currentIteration.id);
       completeAdventure('personalize');
-      setState((prev) => ({ ...prev, step: 'choose-path' }));
+      setState((prev) => ({ ...prev, step: 'complete' }));
+      onComplete?.();
     }
-  }, [currentIteration, acceptIteration, completeAdventure]);
+  }, [currentIteration, acceptIteration, completeAdventure, onComplete]);
 
   const handleRefineAvatar = useCallback(() => {
     setState((prev) => ({
@@ -231,32 +223,9 @@ export function useOnboardingChat({
 
   const handleSkipPreview = useCallback(() => {
     abandonSession();
-    setState((prev) => ({ ...prev, step: 'choose-path' }));
-  }, [abandonSession]);
-
-  // Handlers for path selection
-  const handleSelectPath = useCallback((path: PathOption) => {
-    setState((prev) => ({ ...prev, selectedPath: path.id }));
-
-    // Complete the relevant adventure based on path
-    const adventureMap: Record<string, AdventureId> = {
-      play: 'play',
-      learn: 'learn',
-      personalize: 'personalize',
-    };
-    if (adventureMap[path.id]) {
-      completeAdventure(adventureMap[path.id]);
-    }
-
-    // Mark onboarding as complete
     setState((prev) => ({ ...prev, step: 'complete' }));
-
-    // Notify completion
     onComplete?.();
-
-    // Navigate to the selected path
-    navigate(path.path);
-  }, [completeAdventure, navigate, onComplete]);
+  }, [abandonSession, onComplete]);
 
   // Skip entire onboarding
   const handleDismissOnboarding = useCallback(() => {
@@ -281,7 +250,6 @@ export function useOnboardingChat({
     selectedTemplate: state.selectedTemplate,
     avatarPrompt: state.avatarPrompt,
     generatedAvatarUrl: state.generatedAvatarUrl,
-    selectedPath: state.selectedPath,
     referenceImageUrl: state.referenceImageUrl,
     username,
 
@@ -307,12 +275,9 @@ export function useOnboardingChat({
     handleRefineAvatar,
     handleSkipPreview,
 
-    // Path selection handlers
-    handleSelectPath,
-
     // General handlers
     handleDismissOnboarding,
   };
 }
 
-export type { AvatarTemplate, PathOption };
+export type { AvatarTemplate };

@@ -17,13 +17,28 @@ import {
   OnboardingIntroMessage,
   AvatarTemplateSelector,
   AvatarPreviewMessage,
-  PathSelectionMessage,
 } from '@/components/chat/onboarding';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { getPersonalizationSettings } from '@/services/personalization';
 import ReactMarkdown from 'react-markdown';
 import { ArrowRightIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDragon } from '@fortawesome/free-solid-svg-icons';
+
+// What Ember can actually do today - mapped to user intents
+// These map to real Ember tools: discovery, learning, project, profile, navigation
+const EMBER_CAPABILITIES = {
+  // Discovery tools: search_projects, get_recommendations, get_trending_projects
+  explore: { label: 'Explore', message: "Show me what's trending in AI" },
+  // Learning tools: get_learning_progress, suggest_next_activity, get_quiz_details
+  learn: { label: 'Learn', message: "I want to learn something new about AI" },
+  // Project tools: create_project, import_from_url
+  build: { label: 'Build', message: "I want to build something" },
+  // Profile tools: gather_user_data, generate_profile_sections, save_profile_sections
+  profile: { label: 'Set up my profile', message: "Help me set up my profile" },
+  // Orchestration: navigate_to_page - takes user to battles
+  play: { label: 'Play', message: "Take me to a game!" },
+};
 
 function EmberHomeContent() {
   const navigate = useNavigate();
@@ -31,6 +46,18 @@ function EmberHomeContent() {
   const [inputValue, setInputValue] = useState('');
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [excitedFeatures, setExcitedFeatures] = useState<string[]>([]);
+
+  // Fetch user's personalization settings on mount
+  useEffect(() => {
+    getPersonalizationSettings()
+      .then((settings) => {
+        setExcitedFeatures(settings.excitedFeatures || []);
+      })
+      .catch(() => {
+        // Silently fail - will use defaults
+      });
+  }, []);
 
   // Generate a unique conversation ID for this session
   const [conversationId] = useState(() => `ember-home-${Date.now()}`);
@@ -113,15 +140,64 @@ function EmberHomeContent() {
     return 'Good evening';
   };
 
-  // Feeling options that appear as pills after typing
-  const feelingOptions = useMemo(() => [
-    { label: 'Get inspired', message: "I want to see what's possible" },
-    { label: 'Challenge myself', message: "I'm ready for a challenge" },
-    { label: 'Learn something new', message: "I want to grow my skills" },
-    { label: 'Connect with others', message: "I want to find my people" },
-    { label: 'Share my work', message: "I have something to share" },
-    { label: 'Surprise me', message: "Surprise me with something fun!" },
-  ], []);
+  // Personalized options based on role + signup interests, mapped to Ember's real capabilities
+  const feelingOptions = useMemo(() => {
+    const role = user?.role || 'explorer';
+    const { explore, learn, build, profile, play } = EMBER_CAPABILITIES;
+
+    // Map signup features to Ember capabilities
+    const featureToCapability: Record<string, keyof typeof EMBER_CAPABILITIES> = {
+      portfolio: 'build',
+      battles: 'play',
+      challenges: 'play',
+      microlearning: 'explore',
+      learning: 'learn',
+      marketplace: 'build',
+      investing: 'explore',
+      community: 'profile',  // Community = connecting = having a good profile
+    };
+
+    // Start with capabilities based on their signup interests
+    const selectedCapabilities = new Set<keyof typeof EMBER_CAPABILITIES>();
+
+    for (const feature of excitedFeatures) {
+      const capability = featureToCapability[feature];
+      if (capability) {
+        selectedCapabilities.add(capability);
+      }
+    }
+
+    // If they have preferences, build options from them
+    if (selectedCapabilities.size > 0) {
+      const options: { label: string; message: string }[] = [];
+      const caps = Array.from(selectedCapabilities);
+
+      // Add up to 2 from their preferences
+      for (let i = 0; i < Math.min(2, caps.length); i++) {
+        options.push(EMBER_CAPABILITIES[caps[i]]);
+      }
+
+      // Add play if not already there and we have room
+      if (!selectedCapabilities.has('play') && options.length < 3) {
+        options.push(play);
+      }
+
+      return options;
+    }
+
+    // Fallback based on role - always 3 options
+    switch (role) {
+      case 'creator':
+        return [build, profile, play];
+      case 'learner':
+        return [learn, explore, play];
+      case 'mentor':
+      case 'expert':
+        return [explore, profile, play];
+      default:
+        return [explore, profile, play];
+    }
+  }, [user?.role, excitedFeatures]);
 
   // Generate Ember's greeting message - focused on feelings, not features
   const greetingMessage = useMemo(() => {
@@ -209,6 +285,8 @@ function EmberHomeContent() {
             isGenerating={onboarding.isAvatarGenerating}
             isConnecting={onboarding.isAvatarConnecting}
             error={onboarding.avatarError}
+            referenceImageUrl={onboarding.referenceImageUrl || undefined}
+            onReferenceImageChange={onboarding.handleReferenceImageChange}
           />
         );
       case 'avatar-preview':
@@ -221,13 +299,6 @@ function EmberHomeContent() {
             isAccepting={onboarding.isAvatarSaving}
           />
         ) : null;
-      case 'choose-path':
-        return (
-          <PathSelectionMessage
-            selectedPath={onboarding.selectedPath}
-            onSelectPath={onboarding.handleSelectPath}
-          />
-        );
       default:
         return null;
     }
@@ -251,32 +322,32 @@ function EmberHomeContent() {
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.sender !== 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-3">
-                    <FontAwesomeIcon icon={faDragon} className="w-4 h-4 text-orange-400" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
+                    <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
                   </div>
                 )}
                 <div
-                  className={`px-4 py-3 rounded-2xl ${
+                  className={`px-5 py-4 rounded-2xl ${
                     message.sender === 'user'
                       ? 'max-w-[85%] bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-br-sm'
                       : 'flex-1 glass-subtle rounded-bl-sm'
                   }`}
                 >
                   {message.sender === 'user' ? (
-                    <span className="text-base">{message.content}</span>
+                    <span className="text-lg">{message.content}</span>
                   ) : (
-                    <div className="text-base text-slate-200">
+                    <div className="text-lg text-slate-200">
                       {'isGreeting' in message && message.isGreeting ? (
                         // Greeting message - plain text with cursor
                         <>
                           <span className="whitespace-pre-wrap">{message.content}</span>
                           {'isTyping' in message && message.isTyping && (
-                            <span className="inline-block w-0.5 h-4 bg-orange-400 ml-0.5 animate-pulse" />
+                            <span className="inline-block w-0.5 h-5 bg-orange-400 ml-0.5 animate-pulse" />
                           )}
                         </>
                       ) : (
                         // Regular AI message - markdown
-                        <div className="prose prose-base prose-invert max-w-none">
+                        <div className="prose prose-lg prose-invert max-w-none">
                           <ReactMarkdown>{message.content}</ReactMarkdown>
                         </div>
                       )}
@@ -288,13 +359,13 @@ function EmberHomeContent() {
 
             {/* Feeling pills - appear after greeting types */}
             {showPills && (
-              <div className="flex justify-start pl-11">
-                <div className="flex flex-wrap gap-2 max-w-[85%]">
+              <div className="flex justify-start pl-16">
+                <div className="flex flex-wrap gap-3 max-w-[85%]">
                   {feelingOptions.map((option, idx) => (
                     <button
                       key={option.label}
                       onClick={() => sendMessage(option.message)}
-                      className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300
+                      className="px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300
                         bg-gradient-to-r from-orange-500/10 to-amber-500/10
                         border border-orange-500/30
                         text-orange-300 hover:text-orange-200
@@ -315,17 +386,17 @@ function EmberHomeContent() {
             {/* Loading indicator */}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-3">
-                  <FontAwesomeIcon icon={faDragon} className="w-4 h-4 text-orange-400" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
+                  <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
                 </div>
-                <div className="glass-subtle px-4 py-3 rounded-2xl rounded-bl-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2.5 h-2.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2.5 h-2.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-sm text-slate-400">
+                    <span className="text-base text-slate-400">
                       {currentTool ? 'Working on it...' : 'Thinking...'}
                     </span>
                   </div>

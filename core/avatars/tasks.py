@@ -118,6 +118,9 @@ def process_avatar_generation_task(
     """
     channel_layer = get_channel_layer()
 
+    # Debug logging for reference image
+    logger.info(f'Avatar generation started: session_id={session_id}, reference_image_url={reference_image_url}')
+
     try:
         # Validate user exists
         try:
@@ -133,15 +136,15 @@ def process_avatar_generation_task(
             logger.error(f'Session not found: session_id={session_id}')
             return {'status': 'error', 'reason': 'session_not_found'}
 
-        # Send "generating" status
+        # Send "generating" status (camelCase keys for frontend compatibility)
         async_to_sync(channel_layer.group_send)(
             channel_name,
             {
                 'type': 'chat.message',
                 'event': 'avatar_generating',
                 'message': 'Creating your avatar...',
-                'conversation_id': session.conversation_id,
-                'session_id': session_id,
+                'conversationId': session.conversation_id,
+                'sessionId': session_id,
             },
         )
 
@@ -166,8 +169,8 @@ def process_avatar_generation_task(
                     'type': 'chat.message',
                     'event': 'avatar_error',
                     'error': 'Invalid template selected. Please try a different one!',
-                    'conversation_id': session.conversation_id,
-                    'session_id': session_id,
+                    'conversationId': session.conversation_id,
+                    'sessionId': session_id,
                 },
             )
             return {'status': 'error', 'reason': 'invalid_template'}
@@ -176,10 +179,19 @@ def process_avatar_generation_task(
         reference_bytes = None
         if reference_image_url:
             try:
-                resp = requests.get(reference_image_url, timeout=10)
+                # Convert localhost URLs to Docker internal network when running in container
+                # localhost:9000 -> minio:9000 for MinIO access within Docker
+                download_url = reference_image_url
+                if 'localhost:9000' in download_url:
+                    download_url = download_url.replace('localhost:9000', 'minio:9000')
+                    logger.info(f'Converted reference URL for Docker: {download_url}')
+
+                resp = requests.get(download_url, timeout=10)
                 if resp.status_code == 200:
                     reference_bytes = resp.content
                     logger.info(f'Downloaded reference image: {len(reference_bytes)} bytes')
+                else:
+                    logger.warning(f'Failed to download reference image: HTTP {resp.status_code}')
             except Exception as e:
                 logger.warning(f'Failed to download reference image: {e}')
 
@@ -207,8 +219,8 @@ def process_avatar_generation_task(
                     'type': 'chat.message',
                     'event': 'avatar_error',
                     'error': error_message,
-                    'conversation_id': session.conversation_id,
-                    'session_id': session_id,
+                    'conversationId': session.conversation_id,
+                    'sessionId': session_id,
                 },
             )
             return {'status': 'error', 'reason': 'generation_failed'}
@@ -236,8 +248,8 @@ def process_avatar_generation_task(
                     'type': 'chat.message',
                     'event': 'avatar_error',
                     'error': "I generated the avatar but couldn't save it. Please try again!",
-                    'conversation_id': session.conversation_id,
-                    'session_id': session_id,
+                    'conversationId': session.conversation_id,
+                    'sessionId': session_id,
                 },
             )
             return {'status': 'error', 'reason': 'upload_failed'}
@@ -285,18 +297,18 @@ def process_avatar_generation_task(
 
         logger.info(f'Created iteration {iteration_order} for session {session_id}')
 
-        # Send success event
+        # Send success event (camelCase keys for frontend compatibility)
         async_to_sync(channel_layer.group_send)(
             channel_name,
             {
                 'type': 'chat.message',
                 'event': 'avatar_generated',
-                'image_url': image_url,
-                'conversation_id': session.conversation_id,
-                'session_id': session_id,
-                'iteration_id': iteration.id,
-                'iteration_number': iteration_order + 1,
-                'text_response': text_response or '',
+                'imageUrl': image_url,
+                'conversationId': session.conversation_id,
+                'sessionId': session_id,
+                'iterationId': iteration.id,
+                'iterationNumber': iteration_order + 1,
+                'textResponse': text_response or '',
             },
         )
 
@@ -330,15 +342,15 @@ def process_avatar_generation_task(
     except Exception as update_exc:
         logger.warning(f'Failed to update session {session_id} status: {update_exc}')
 
-    # Send error to user
+    # Send error to user (camelCase keys for frontend compatibility)
     async_to_sync(channel_layer.group_send)(
         channel_name,
         {
             'type': 'chat.message',
             'event': 'avatar_error',
             'error': 'Something went wrong generating your avatar. Please try again!',
-            'conversation_id': f'avatar-{user_id}',
-            'session_id': session_id,
+            'conversationId': f'avatar-{user_id}',
+            'sessionId': session_id,
         },
     )
 

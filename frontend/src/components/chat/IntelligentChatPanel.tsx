@@ -12,7 +12,6 @@ import {
   OnboardingIntroMessage,
   AvatarTemplateSelector,
   AvatarPreviewMessage,
-  PathSelectionMessage,
 } from './onboarding';
 import { useIntelligentChat, type ChatMessage, type QuotaExceededInfo, type OrchestrationAction } from '@/hooks/useIntelligentChat';
 import { useOnboardingChat } from '@/hooks/useOnboardingChat';
@@ -1529,16 +1528,6 @@ export function IntelligentChatPanel({
           onRefine={onboarding.handleRefineAvatar}
           onSkip={onboarding.handleSkipPreview}
           isAccepting={onboarding.isAvatarSaving}
-        />
-      );
-    }
-
-    // Handle onboarding path selection
-    if (messageType === 'onboarding_path_selection') {
-      return (
-        <PathSelectionMessage
-          selectedPath={onboarding.selectedPath}
-          onSelectPath={onboarding.handleSelectPath}
         />
       );
     }

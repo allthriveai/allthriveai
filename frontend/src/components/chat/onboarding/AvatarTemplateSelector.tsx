@@ -179,6 +179,7 @@ export function AvatarTemplateSelector({
   referenceImageUrl,
   onReferenceImageChange,
 }: AvatarTemplateSelectorProps) {
+
   const [dialogueStep, setDialogueStep] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -409,12 +410,14 @@ export function AvatarTemplateSelector({
                           onPromptChange('');
                         } else {
                           onSelectTemplate(template.id);
-                          onPromptChange(template.starterPrompt);
-                          // Clear photo if selecting a template
+                          // If photo is uploaded, combine with template style
                           if (previewUrl) {
-                            setPreviewUrl(null);
-                            onReferenceImageChange?.(null);
+                            onPromptChange(`Make me look like ${template.starterPrompt.toLowerCase()}`);
+                          } else {
+                            onPromptChange(template.starterPrompt);
                           }
+                          // Note: We intentionally DO NOT clear the photo when selecting a template
+                          // This allows users to combine their photo with a template style
                         }
                       }}
                       className={`
