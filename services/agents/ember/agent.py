@@ -15,7 +15,6 @@ Scalability considerations:
 import asyncio
 import logging
 import time
-from copy import deepcopy
 from typing import Annotated, TypedDict
 
 from django.conf import settings
@@ -28,7 +27,7 @@ from langgraph.prebuilt import ToolNode
 from core.ai_usage.tracker import AIUsageTracker
 
 from .prompts import EMBER_FULL_ONBOARDING_PROMPT, EMBER_SYSTEM_PROMPT
-from .tools import EMBER_TOOLS, EMBER_TOOLS_BY_NAME, TOOLS_NEEDING_STATE
+from .tools import EMBER_TOOLS, TOOLS_NEEDING_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +45,13 @@ MAX_CONTEXT_MESSAGES = getattr(settings, 'EMBER_MAX_CONTEXT_MESSAGES', 50)
 # Tool execution timeout in seconds (prevents hanging on slow tools)
 TOOL_EXECUTION_TIMEOUT = getattr(settings, 'EMBER_TOOL_EXECUTION_TIMEOUT', 30)
 
-# Default model (can be overridden per-request)
-DEFAULT_MODEL = getattr(settings, 'EMBER_DEFAULT_MODEL', 'gpt-4o-mini')
+
+def get_default_model() -> str:
+    """Get the default model from AI gateway configuration."""
+    from services.ai.provider import get_model_for_purpose
+
+    # Use the default OpenAI model from settings.AI_MODELS
+    return get_model_for_purpose('openai', 'default')
 
 
 # =============================================================================
@@ -132,10 +136,15 @@ def create_tool_node_with_state_injection(state: EmberState) -> ToolNode:
 # =============================================================================
 
 
-def create_agent_node(model_name: str = 'gpt-4o-mini'):
-    """Create the agent node that calls the LLM with tools bound."""
+def create_agent_node(model_name: str | None = None):
+    """Create the agent node that calls the LLM with tools bound.
 
-    llm = ChatOpenAI(model=model_name, temperature=0.7)
+    Uses the AI gateway configuration from settings.AI_MODELS.
+    """
+    # Get model from AI gateway config if not specified
+    resolved_model = model_name or get_default_model()
+
+    llm = ChatOpenAI(model=resolved_model, temperature=0.7)
     llm_with_tools = llm.bind_tools(EMBER_TOOLS)
 
     def agent_node(state: EmberState) -> dict:
@@ -184,20 +193,22 @@ def should_continue(state: EmberState) -> str:
 # =============================================================================
 
 
-def create_ember_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
+def _build_ember_workflow(model_name: str | None = None) -> StateGraph:
     """
-    Create the unified Ember agent graph.
+    Build the Ember agent workflow (without checkpointer).
+
+    Uses the AI gateway configuration from settings.AI_MODELS.
 
     Args:
-        model_name: OpenAI model to use (default: gpt-4o-mini)
+        model_name: Optional model override. If None, uses AI gateway default.
 
     Returns:
-        Compiled LangGraph StateGraph ready for invocation
+        StateGraph (not compiled) - compile with checkpointer at runtime
     """
     # Create the graph
     graph = StateGraph(EmberState)
 
-    # Add nodes
+    # Add nodes - model_name passed through, resolved in create_agent_node
     graph.add_node('agent', create_agent_node(model_name))
     graph.add_node('tools', ToolNode(EMBER_TOOLS))
 
@@ -217,12 +228,47 @@ def create_ember_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
     # Tools always return to agent
     graph.add_edge('tools', 'agent')
 
-    # Compile and return
+    return graph
+
+
+# Pre-build workflow (checkpointer added when compiling)
+# Model resolved from AI gateway at runtime
+_workflow = _build_ember_workflow()
+
+
+async def _get_async_agent():
+    """
+    Get async agent with async checkpointer for conversation memory.
+
+    Creates a fresh checkpointer for each call because Celery creates
+    a new event loop per task, and the checkpointer's connection pool
+    is tied to the event loop that created it.
+    """
+    from services.agents.auth.checkpointer import get_async_checkpointer
+
+    checkpointer = await get_async_checkpointer()
+    agent = _workflow.compile(checkpointer=checkpointer)
+    return agent
+
+
+def create_ember_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
+    """
+    Create the unified Ember agent graph (stateless, no checkpointer).
+
+    For stateful conversations with memory, use _get_async_agent() instead.
+
+    Args:
+        model_name: OpenAI model to use (default: gpt-4o-mini)
+
+    Returns:
+        Compiled LangGraph StateGraph ready for invocation
+    """
+    graph = _build_ember_workflow(model_name)
     return graph.compile()
 
 
 def create_ember_agent_with_state_injection(
-    model_name: str = 'gpt-4o-mini',
+    model_name: str | None = None,
     user_id: int | None = None,
     username: str = '',
     session_id: str = '',
@@ -233,8 +279,10 @@ def create_ember_agent_with_state_injection(
     This variant creates a custom tool node that automatically injects
     user state into tools that need it.
 
+    Uses the AI gateway configuration from settings.AI_MODELS.
+
     Args:
-        model_name: OpenAI model to use
+        model_name: Optional model override. If None, uses AI gateway default.
         user_id: User ID for state injection
         username: Username for state injection
         session_id: Session ID for state injection
@@ -422,6 +470,9 @@ async def stream_ember_response(
     """
     Stream Ember agent response with tool execution events.
 
+    Uses LangGraph with PostgreSQL checkpointing for conversation memory.
+    The session_id is used as the thread_id for persistent state.
+
     Yields events:
     - {'type': 'token', 'content': '...'} - Text tokens from LLM
     - {'type': 'tool_start', 'tool': '...'} - Tool execution started
@@ -429,239 +480,113 @@ async def stream_ember_response(
     - {'type': 'complete'} - Agent finished
     - {'type': 'error', 'message': '...'} - Error occurred
 
-    Scalability features:
-    - Message history truncation (MAX_CONTEXT_MESSAGES)
-    - Tool execution timeouts (TOOL_EXECUTION_TIMEOUT)
-    - Iteration limits (MAX_TOOL_ITERATIONS)
-
     Args:
         user_message: User's input message
         user_id: Authenticated user ID
         username: User's username
-        session_id: WebSocket session ID
-        conversation_history: Optional previous messages
+        session_id: WebSocket session ID (used as thread_id for checkpointing)
+        conversation_history: Optional previous messages (ignored - checkpointer handles this)
         is_onboarding: Whether this is an onboarding conversation
-        model_name: OpenAI model to use (defaults to EMBER_DEFAULT_MODEL)
+        model_name: Optional model override (uses AI gateway default if None)
 
     Yields:
         Event dicts with type and content
     """
-    from langchain_openai import ChatOpenAI
-
-    # Use configured default if not specified
-    model_name = model_name or DEFAULT_MODEL
+    # Get model from AI gateway config if not specified
+    resolved_model = model_name or get_default_model()
 
     # Track timing and usage for analytics/billing
     start_time = time.time()
     total_output_content = ''
     total_tool_calls = 0
-    status = 'success'
-    error_msg = ''
+    input_tokens = 0
 
     try:
-        # Build messages with history limiting
-        messages = list(conversation_history or [])
-        messages.append(HumanMessage(content=user_message))
+        # Get async agent with checkpointer for conversation memory
+        agent = await _get_async_agent()
 
-        # Truncate to prevent unbounded memory growth
-        messages = _truncate_messages(messages, MAX_CONTEXT_MESSAGES)
+        # Use session_id as thread_id for persistent conversation state
+        config = {
+            'configurable': {
+                'thread_id': session_id,
+                'user_id': user_id,
+            }
+        }
 
-        # Select system prompt
-        system_prompt = EMBER_FULL_ONBOARDING_PROMPT if is_onboarding else EMBER_SYSTEM_PROMPT
-
-        # Create LLM with streaming and tools
-        llm = ChatOpenAI(model=model_name, temperature=0.7, streaming=True)
-        llm_with_tools = llm.bind_tools(EMBER_TOOLS)
-
-        # State for injection (immutable - will be copied for each tool)
-        state = {
+        # Create input state - only the new message
+        # The checkpointer automatically manages conversation history
+        input_state = {
+            'messages': [HumanMessage(content=user_message)],
             'user_id': user_id,
             'username': username,
             'session_id': session_id,
+            'is_onboarding': is_onboarding,
+            'conversation_id': session_id,
         }
 
-        # Build full message list (system prompt + truncated history)
-        full_messages = [SystemMessage(content=system_prompt)] + messages
+        # Track processed events to avoid duplicates
+        processed_tool_calls = set()
+        processed_stream_runs = set()
+        current_stream_run_id = None
 
-        # Estimate input tokens (system prompt + conversation history + user message)
-        input_tokens = _estimate_tokens(system_prompt) + _estimate_messages_tokens(messages)
+        # Stream agent execution with astream_events
+        async for event in agent.astream_events(input_state, config, version='v1'):
+            kind = event['event']
+            run_id = event.get('run_id', '')
 
-        iteration = 0
+            # Stream LLM tokens
+            if kind == 'on_chat_model_stream':
+                # Track run_id to prevent duplicate streams from multiple nodes
+                if run_id:
+                    if run_id in processed_stream_runs and run_id != current_stream_run_id:
+                        continue
+                    if current_stream_run_id is None:
+                        current_stream_run_id = run_id
+                        processed_stream_runs.add(run_id)
+                    elif run_id != current_stream_run_id:
+                        continue
 
-        while iteration < MAX_TOOL_ITERATIONS:
-            iteration += 1
+                chunk = event.get('data', {}).get('chunk')
+                if chunk and hasattr(chunk, 'content') and chunk.content:
+                    content = chunk.content
+                    if isinstance(content, str):
+                        total_output_content += content
+                        yield {'type': 'token', 'content': content}
 
-            # Stream LLM response
-            collected_content = ''
-            # Use dict to accumulate tool calls by index (streaming sends chunks)
-            tool_calls_by_index: dict = {}
+            # Tool execution started
+            elif kind == 'on_tool_start':
+                tool_name = event.get('name', '')
+                run_id = event.get('run_id', '')
 
-            async for chunk in llm_with_tools.astream(full_messages):
-                # Handle content chunks
-                if chunk.content:
-                    collected_content += chunk.content
-                    total_output_content += chunk.content
-                    yield {'type': 'token', 'content': chunk.content}
-
-                # Collect tool calls - accumulate by index for streaming
-                if hasattr(chunk, 'tool_call_chunks') and chunk.tool_call_chunks:
-                    # LangChain's tool_call_chunks format
-                    for tc_chunk in chunk.tool_call_chunks:
-                        idx = tc_chunk.get('index', 0)
-                        if idx not in tool_calls_by_index:
-                            tool_calls_by_index[idx] = {'name': '', 'args': '', 'id': ''}
-                        if tc_chunk.get('name'):
-                            tool_calls_by_index[idx]['name'] = tc_chunk['name']
-                        if tc_chunk.get('args'):
-                            tool_calls_by_index[idx]['args'] += tc_chunk['args']
-                        if tc_chunk.get('id'):
-                            tool_calls_by_index[idx]['id'] = tc_chunk['id']
-                elif hasattr(chunk, 'additional_kwargs'):
-                    tc_list = chunk.additional_kwargs.get('tool_calls', [])
-                    for tc in tc_list:
-                        idx = tc.get('index', 0)
-                        if idx not in tool_calls_by_index:
-                            tool_calls_by_index[idx] = {'name': '', 'args': '', 'id': ''}
-                        # Handle OpenAI streaming format
-                        if 'function' in tc:
-                            func = tc['function']
-                            if func.get('name'):
-                                tool_calls_by_index[idx]['name'] = func['name']
-                            if func.get('arguments'):
-                                tool_calls_by_index[idx]['args'] += func['arguments']
-                        if tc.get('id'):
-                            tool_calls_by_index[idx]['id'] = tc['id']
-
-            # Convert accumulated tool calls to list and parse JSON args
-            import json
-
-            tool_calls = []
-            for idx in sorted(tool_calls_by_index.keys()):
-                tc = tool_calls_by_index[idx]
-                # Skip incomplete tool calls (no name)
-                if not tc['name']:
+                # Skip if already processed
+                if run_id in processed_tool_calls:
                     continue
-                # Parse args from JSON string
-                args = tc['args']
-                if isinstance(args, str) and args:
-                    try:
-                        args = json.loads(args)
-                    except json.JSONDecodeError:
-                        args = {}
-                else:
-                    args = {}
-                tool_calls.append(
-                    {
-                        'name': tc['name'],
-                        'args': args,
-                        'id': tc['id'] or f'call_{idx}',
-                    }
-                )
+                processed_tool_calls.add(run_id)
 
-            # Track tool calls for usage
-            total_tool_calls += len(tool_calls)
-
-            # If no tool calls, we're done
-            if not tool_calls:
-                # Track usage before completing
-                latency_ms = int((time.time() - start_time) * 1000)
-                output_tokens = _estimate_tokens(total_output_content)
-                await _track_ember_usage(
-                    user_id=user_id,
-                    session_id=session_id,
-                    model_name=model_name,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    latency_ms=latency_ms,
-                    status=status,
-                    is_onboarding=is_onboarding,
-                    tool_calls_count=total_tool_calls,
-                )
-                yield {'type': 'complete'}
-                return
-
-            # Execute tool calls
-            ai_message = AIMessage(content=collected_content, tool_calls=tool_calls)
-            full_messages.append(ai_message)
-
-            # Truncate again after adding messages (tool loops can grow fast)
-            full_messages = [full_messages[0]] + _truncate_messages(full_messages[1:], MAX_CONTEXT_MESSAGES)
-
-            for tool_call in tool_calls:
-                tool_name = tool_call.get('name', '') if isinstance(tool_call, dict) else tool_call.name
-                tool_args = tool_call.get('args', {}) if isinstance(tool_call, dict) else tool_call.args
-                tool_id = tool_call.get('id', '') if isinstance(tool_call, dict) else tool_call.id
-
+                total_tool_calls += 1
                 yield {'type': 'tool_start', 'tool': tool_name}
 
-                # Get the tool
-                tool = EMBER_TOOLS_BY_NAME.get(tool_name)
-                if not tool:
-                    logger.warning(f'Unknown tool: {tool_name}')
-                    yield {
-                        'type': 'tool_end',
-                        'tool': tool_name,
-                        'output': {'error': f'Unknown tool: {tool_name}'},
-                    }
-                    continue
+            # Tool execution completed
+            elif kind == 'on_tool_end':
+                tool_name = event.get('name', '')
+                output = event.get('data', {}).get('output', {})
+                yield {'type': 'tool_end', 'tool': tool_name, 'output': output}
 
-                # Deep copy args to prevent mutation issues
-                # (important when same tool_args dict might be reused)
-                tool_args_copy = deepcopy(tool_args) if tool_args else {}
+            # Reset stream tracking when entering new nodes
+            elif kind == 'on_chain_start':
+                current_stream_run_id = None
 
-                # Inject state if needed
-                if tool_name in TOOLS_NEEDING_STATE:
-                    tool_args_copy['state'] = state
-                    logger.info(f'Injecting state into {tool_name}: user_id={state.get("user_id")}')
-
-                # Execute tool with timeout protection
-                exec_result = await _execute_tool_with_timeout(tool, tool_args_copy, TOOL_EXECUTION_TIMEOUT)
-
-                if exec_result['success']:
-                    result = exec_result['result']
-                    yield {'type': 'tool_end', 'tool': tool_name, 'output': result}
-
-                    # Add tool result to messages
-                    from langchain_core.messages import ToolMessage
-
-                    full_messages.append(ToolMessage(content=str(result), tool_call_id=tool_id, name=tool_name))
-                else:
-                    error_msg = exec_result['error']
-                    logger.error(f'Tool {tool_name} failed: {error_msg}')
-                    yield {
-                        'type': 'tool_end',
-                        'tool': tool_name,
-                        'output': {'error': error_msg},
-                    }
-
-                    # Add error as tool message so LLM knows it failed
-                    from langchain_core.messages import ToolMessage
-
-                    full_messages.append(
-                        ToolMessage(
-                            content=f'Error: {error_msg}',
-                            tool_call_id=tool_id,
-                            name=tool_name,
-                        )
-                    )
-
-        # Max iterations reached - warn about potential infinite loop
-        logger.warning(
-            f'Ember agent reached max iterations ({MAX_TOOL_ITERATIONS}) '
-            f'for session {session_id}. Possible infinite tool loop.'
-        )
-
-        # Track usage even when max iterations reached
+        # Track usage on successful completion
         latency_ms = int((time.time() - start_time) * 1000)
         output_tokens = _estimate_tokens(total_output_content)
         await _track_ember_usage(
             user_id=user_id,
             session_id=session_id,
-            model_name=model_name,
+            model_name=resolved_model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             latency_ms=latency_ms,
-            status='max_iterations',
+            status='success',
             is_onboarding=is_onboarding,
             tool_calls_count=total_tool_calls,
         )
@@ -676,8 +601,8 @@ async def stream_ember_response(
         await _track_ember_usage(
             user_id=user_id,
             session_id=session_id,
-            model_name=model_name,
-            input_tokens=input_tokens if 'input_tokens' in dir() else 0,
+            model_name=resolved_model,
+            input_tokens=input_tokens,
             output_tokens=output_tokens,
             latency_ms=latency_ms,
             status='error',
@@ -710,13 +635,13 @@ def invoke_ember(
         session_id: WebSocket session ID
         conversation_history: Optional previous messages
         is_onboarding: Whether this is an onboarding conversation
-        model_name: OpenAI model to use (defaults to EMBER_DEFAULT_MODEL)
+        model_name: Optional model override (uses AI gateway default if None)
 
     Returns:
         Final state dict with messages
     """
-    # Use configured default if not specified
-    model_name = model_name or DEFAULT_MODEL
+    # Get model from AI gateway config if not specified
+    resolved_model = model_name or get_default_model()
 
     # Track timing
     start_time = time.time()
@@ -739,8 +664,8 @@ def invoke_ember(
         conversation_id='',
     )
 
-    # Create and invoke agent
-    agent = create_ember_agent(model_name)
+    # Create and invoke agent (uses AI gateway model)
+    agent = create_ember_agent(resolved_model)
     result = agent.invoke(initial_state)
 
     # Track usage (sync version for non-streaming)
@@ -770,7 +695,7 @@ def invoke_ember(
                 user=user,
                 feature=feature,
                 provider='openai',
-                model=model_name,
+                model=resolved_model,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 request_type='chat',
