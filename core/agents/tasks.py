@@ -497,6 +497,14 @@ def _process_with_orchestrator(
                 channel_name=channel_name,
                 channel_layer=channel_layer,
             )
+        elif agent == AgentType.ORCHESTRATION:
+            return _process_with_orchestration_agent(
+                conversation_id=conversation_id,
+                message=message,
+                user=user,
+                channel_name=channel_name,
+                channel_layer=channel_layer,
+            )
         else:
             # Support fallback
             return _process_with_ai_provider(
@@ -1266,6 +1274,184 @@ def _process_with_learning_agent(
                 'type': 'chat.message',
                 'event': 'chunk',
                 'chunk': "I'm Pip, your learning tutor! I encountered an issue. Please try again.",
+                'conversation_id': conversation_id,
+            },
+        )
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'completed',
+                'conversation_id': conversation_id,
+            },
+        )
+
+    return {}
+
+
+def _process_with_orchestration_agent(
+    conversation_id: str,
+    message: str,
+    user,
+    channel_name: str,
+    channel_layer,
+) -> dict:
+    """
+    Process message using the LangGraph orchestration agent (Ember).
+
+    This enables site orchestration with tools for:
+    - Navigating users to different pages
+    - Highlighting UI elements
+    - Opening trays/panels
+    - Showing toast notifications
+    - Triggering actions (with optional confirmation)
+
+    Args:
+        conversation_id: Unique conversation identifier
+        message: Sanitized user message
+        user: User object
+        channel_name: Redis channel for WebSocket
+        channel_layer: Django Channels layer
+
+    Returns:
+        Dict with processing results
+    """
+    import asyncio
+
+    from services.agents.orchestration.agent import stream_orchestration_response
+
+    logger.info(f'Processing with orchestration agent (Ember): conversation={conversation_id}')
+
+    async def run_agent():
+        """Async function to stream agent response and send to WebSocket."""
+        from channels.layers import get_channel_layer as get_async_channel_layer
+
+        async_channel_layer = get_async_channel_layer()
+
+        try:
+            async for event in stream_orchestration_response(
+                user_message=message,
+                user_id=user.id,
+                username=user.username,
+                session_id=conversation_id,
+            ):
+                event_type = event.get('type')
+
+                if event_type == 'token':
+                    # Stream text chunk to WebSocket
+                    chunk_content = event.get('content', '')
+                    logger.debug(
+                        f'[ORCHESTRATION] Sending chunk to {channel_name}: {chunk_content[:50]}...'
+                        if len(str(chunk_content)) > 50
+                        else f'[ORCHESTRATION] Sending chunk: {chunk_content}'
+                    )
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'chunk',
+                            'chunk': chunk_content,
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+                elif event_type == 'tool_start':
+                    # Notify frontend that a tool is being called
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'tool_start',
+                            'tool': event.get('tool', ''),
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    logger.info(f'Orchestration tool started: {event.get("tool")}')
+
+                elif event_type == 'tool_end':
+                    # Notify frontend that tool completed
+                    # The output contains action commands for the frontend to execute
+                    tool_output = event.get('output', {})
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'tool_end',
+                            'tool': event.get('tool', ''),
+                            'output': tool_output,
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    logger.info(f'Orchestration tool ended: {event.get("tool")} - output: {tool_output}')
+
+                elif event_type == 'complete':
+                    logger.info('Orchestration agent completed')
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'completed',
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+                elif event_type == 'error':
+                    error_msg = event.get('message', 'Unknown error')
+                    logger.error(f'Orchestration agent error: {error_msg}')
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'chunk',
+                            'chunk': 'I encountered an issue navigating. Please try again!',
+                            'conversation_id': conversation_id,
+                        },
+                    )
+                    await async_channel_layer.group_send(
+                        channel_name,
+                        {
+                            'type': 'chat.message',
+                            'event': 'completed',
+                            'conversation_id': conversation_id,
+                        },
+                    )
+
+        except Exception as e:
+            logger.error(f'Orchestration agent streaming error: {e}', exc_info=True)
+            await async_channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'chunk',
+                    'chunk': "I'm Ember, your guide! I encountered an issue. Please try again.",
+                    'conversation_id': conversation_id,
+                },
+            )
+            await async_channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'completed',
+                    'conversation_id': conversation_id,
+                },
+            )
+
+    # Run the async function - create new event loop since we're in sync context
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(run_agent())
+        finally:
+            loop.close()
+    except Exception as e:
+        logger.error(f'Orchestration agent error: {e}', exc_info=True)
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'chunk',
+                'chunk': "I'm Ember, your site guide! I encountered an issue. Please try again.",
                 'conversation_id': conversation_id,
             },
         )

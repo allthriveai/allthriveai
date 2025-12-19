@@ -1561,3 +1561,148 @@ body:not(.impersonating) {
     color: var(--neon-cyan);
   }
 }
+
+/* =============================================================================
+   EMBER HIGHLIGHT STYLES - Site Orchestration UI Highlights
+   ============================================================================= */
+
+@layer components {
+  /* Ember's fire colors */
+  :root {
+    --ember-orange: #f97316;
+    --ember-amber: #fbbf24;
+    --ember-red: #ef4444;
+    --ember-glow: rgba(249, 115, 22, 0.6);
+    --ember-glow-strong: rgba(249, 115, 22, 0.8);
+  }
+
+  /* Pulse animation - Good for buttons and CTAs */
+  .ember-highlight-pulse {
+    position: relative;
+    z-index: 1000;
+    animation: ember-pulse 1.5s ease-in-out infinite;
+    outline: 3px solid var(--ember-orange) !important;
+    outline-offset: 4px;
+  }
+
+  @keyframes ember-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 var(--ember-glow),
+                  0 0 20px var(--ember-glow);
+    }
+    50% {
+      box-shadow: 0 0 0 15px rgba(249, 115, 22, 0),
+                  0 0 30px var(--ember-glow-strong);
+    }
+  }
+
+  /* Glow effect - Good for areas/sections */
+  .ember-highlight-glow {
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 0 0 3px var(--ember-orange),
+                0 0 20px var(--ember-glow),
+                0 0 40px rgba(249, 115, 22, 0.3) !important;
+    transition: box-shadow 0.3s ease;
+  }
+
+  /* Spotlight effect - Darkens everything except the element */
+  .ember-spotlight-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 999;
+    pointer-events: none;
+    animation: ember-fade-in 0.3s ease-out;
+  }
+
+  .ember-highlight-spotlight {
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 0 0 4px var(--ember-orange),
+                0 0 30px var(--ember-glow-strong),
+                0 0 60px var(--ember-glow) !important;
+  }
+
+  @keyframes ember-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Arrow pointer - Bouncing arrow above element */
+  .ember-highlight-arrow {
+    position: relative;
+    z-index: 1000;
+    outline: 2px solid var(--ember-orange) !important;
+    outline-offset: 4px;
+  }
+
+  .ember-highlight-arrow::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 16px solid var(--ember-orange);
+    animation: ember-bounce 0.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px var(--ember-glow));
+  }
+
+  .ember-highlight-arrow::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 24px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 20px;
+    background: linear-gradient(180deg, transparent, var(--ember-orange));
+    border-radius: 4px;
+    animation: ember-bounce 0.8s ease-in-out infinite;
+  }
+
+  @keyframes ember-bounce {
+    0%, 100% {
+      transform: translateX(-50%) translateY(0);
+    }
+    50% {
+      transform: translateX(-50%) translateY(-10px);
+    }
+  }
+
+  /* Light mode adjustments */
+  .light .ember-highlight-pulse {
+    outline-color: var(--ember-orange);
+  }
+
+  .light .ember-highlight-glow {
+    box-shadow: 0 0 0 3px var(--ember-orange),
+                0 0 15px rgba(249, 115, 22, 0.4),
+                0 0 30px rgba(249, 115, 22, 0.2) !important;
+  }
+
+  .light .ember-spotlight-overlay {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .light .ember-highlight-spotlight {
+    box-shadow: 0 0 0 4px var(--ember-orange),
+                0 0 25px rgba(249, 115, 22, 0.5),
+                0 0 50px rgba(249, 115, 22, 0.3) !important;
+  }
+}

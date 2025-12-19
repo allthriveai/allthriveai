@@ -6,11 +6,10 @@ import { useActiveQuest } from '@/hooks/useActiveQuest';
 import { useSearchStore } from '@/hooks/useGlobalSearch';
 import {
   MagnifyingGlassIcon,
-  PlusIcon,
   Bars3Icon,
   SunIcon,
   MoonIcon,
-  BoltIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { getMenuSections } from './menuData';
 import { NavDropdown } from './NavDropdown';
@@ -21,11 +20,10 @@ import { GlobalSearchModal } from '@/components/search/GlobalSearchModal';
 
 interface TopNavigationProps {
   onMenuClick: (menuItem: string) => void;
-  onAddProject?: () => void;
   onOpenActiveQuest?: () => void;
 }
 
-export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: TopNavigationProps) {
+export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationProps) {
   const { user, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { activeQuest, abandonQuest, isAbandoningQuest, activeQuestColors, activeQuestCategory } = useActiveQuest();
@@ -37,12 +35,11 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
   const menuSections = getMenuSections(onMenuClick, user?.username);
 
   // Main navigation items (sections that should appear in top nav)
+  // menuSections: [0]=Discover, [1]=Play, [2]=Connect, [3]=Account
   const mainNavItems = [
-    { label: 'Explore', path: '/explore', section: menuSections[0] },
+    { label: 'Discover', path: '/explore', section: menuSections[0] },
     { label: 'Play', section: menuSections[1] },
-    { label: 'Learn', section: menuSections[2] },
-    { label: 'Community', section: menuSections[3] },
-    { label: 'Support', section: menuSections[4] },
+    { label: 'Connect', section: menuSections[2] },
   ];
 
   const isActivePath = (path?: string) => {
@@ -62,12 +59,12 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         }}
       >
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 relative">
 
             {/* Centered Mobile Logo */}
             <button
-              onClick={() => navigate('/explore')}
+              onClick={() => navigate('/home')}
               className="sm:hidden absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-gray-900 dark:text-white transition-all duration-300 hover:scale-105"
             >
               <img
@@ -90,7 +87,7 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
 
               {/* Logo - Hidden on mobile, shown on desktop */}
               <button
-                onClick={() => navigate('/explore')}
+                onClick={() => navigate('/home')}
                 className="hidden sm:flex items-center gap-2 text-gray-900 dark:text-white transition-all duration-300 hover:scale-105"
               >
                 <img
@@ -153,32 +150,10 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
               </button>
 
-              {/* Battle Button (Authenticated Users) */}
-              {isAuthenticated && user?.username && (
+              {/* Chat Button - Hidden on /home where chat is integrated */}
+              {isAuthenticated && location.pathname !== '/home' && (
                 <button
-                  onClick={() => navigate('/battles')}
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
-                    boxShadow: '0 2px 8px rgba(236, 72, 153, 0.15)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.3), 0 2px 8px rgba(139, 92, 246, 0.2)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(236, 72, 153, 0.15)';
-                  }}
-                >
-                  <BoltIcon className="w-4 h-4" />
-                  <span className="hidden md:inline">Prompt Battle</span>
-                </button>
-              )}
-
-              {/* Add Project Button (Authenticated Users) */}
-              {isAuthenticated && user?.username && onAddProject && (
-                <button
-                  onClick={onAddProject}
-                  data-testid="add-project-button"
+                  onClick={() => onMenuClick('Chat')}
                   className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-slate-900"
                   style={{
                     background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
@@ -190,9 +165,10 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
                   onMouseLeave={(e) => {
                     e.currentTarget.style.boxShadow = '0 2px 8px rgba(34, 211, 238, 0.15)';
                   }}
+                  aria-label="Open chat"
                 >
-                  <PlusIcon className="w-4 h-4" />
-                  <span className="hidden md:inline">Add Project</span>
+                  <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                  <span className="hidden md:inline">Chat</span>
                 </button>
               )}
 
@@ -225,13 +201,12 @@ export function TopNavigation({ onMenuClick, onAddProject, onOpenActiveQuest }: 
         </div>
       </nav>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - exclude ACCOUNT section (handled by UserMenu) */}
       <MobileMenu
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
-        menuSections={menuSections}
+        menuSections={menuSections.filter(s => s.title !== 'ACCOUNT')}
         onMenuClick={onMenuClick}
-        onAddProject={onAddProject}
       />
 
       {/* Global Search Modal */}

@@ -47,6 +47,19 @@ export interface WebSocketMessage {
     title?: string;
     message?: string;
     error?: string;
+    // Orchestration action fields (Ember)
+    action?: 'navigate' | 'highlight' | 'open_tray' | 'toast' | 'trigger';
+    path?: string;
+    target?: string;
+    style?: string;
+    duration?: number;
+    tray?: string;
+    context?: Record<string, unknown>;
+    variant?: string;
+    trigger_action?: string;
+    params?: Record<string, unknown>;
+    auto_execute?: boolean;
+    requires_confirmation?: boolean;
   };
   // Quota exceeded fields
   reason?: string;
@@ -90,11 +103,29 @@ export interface ChatMessage extends Omit<SharedChatMessage, 'metadata'> {
   metadata?: IntelligentChatMetadata;
 }
 
+// Orchestration action types for Ember
+export interface OrchestrationAction {
+  action: 'navigate' | 'highlight' | 'open_tray' | 'toast' | 'trigger';
+  path?: string;
+  message?: string;
+  target?: string;
+  style?: string;
+  duration?: number;
+  tray?: string;
+  context?: Record<string, unknown>;
+  variant?: string;
+  trigger_action?: string;
+  params?: Record<string, unknown>;
+  auto_execute?: boolean;
+  requires_confirmation?: boolean;
+}
+
 interface UseIntelligentChatOptions {
   conversationId: string;
   onError?: (error: string) => void;
   onProjectCreated?: (projectUrl: string, projectTitle: string) => void;
   onQuotaExceeded?: (info: QuotaExceededInfo) => void;
+  onOrchestrationAction?: (action: OrchestrationAction) => void;
   autoReconnect?: boolean;
 }
 
@@ -103,6 +134,7 @@ export function useIntelligentChat({
   onError,
   onProjectCreated,
   onQuotaExceeded,
+  onOrchestrationAction,
   autoReconnect = true
 }: UseIntelligentChatOptions) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -381,6 +413,26 @@ export function useIntelligentChat({
                   data.output?.success && data.output?.url) {
                 // Project was created successfully - trigger callback
                 onProjectCreated?.(data.output.url, data.output.title || 'Project');
+              }
+              // Check for orchestration actions (Ember)
+              // These are actions like navigate, highlight, open_tray, toast, trigger
+              if (data.output?.action && onOrchestrationAction) {
+                const orchestrationAction: OrchestrationAction = {
+                  action: data.output.action,
+                  path: data.output.path,
+                  message: data.output.message,
+                  target: data.output.target,
+                  style: data.output.style,
+                  duration: data.output.duration,
+                  tray: data.output.tray,
+                  context: data.output.context,
+                  variant: data.output.variant,
+                  trigger_action: data.output.trigger_action,
+                  params: data.output.params,
+                  auto_execute: data.output.auto_execute,
+                  requires_confirmation: data.output.requires_confirmation,
+                };
+                onOrchestrationAction(orchestrationAction);
               }
               break;
 

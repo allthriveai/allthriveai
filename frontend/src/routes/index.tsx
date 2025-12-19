@@ -44,6 +44,7 @@ import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
 import PerksPage from '@/pages/PerksPage';
 import MarketplacePage from '@/pages/MarketplacePage';
 import OnboardingPage from '@/pages/OnboardingPage';
+import EmberHomePage from '@/pages/EmberHomePage';
 import VendorDashboardPage from '@/pages/VendorDashboardPage';
 import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
 import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
@@ -63,8 +64,19 @@ import TermsOfServicePage from '@/pages/TermsOfServicePage';
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Landing page - public, redirects authenticated users to /explore */}
+      {/* Landing page - public, redirects authenticated users to /home */}
       <Route path="/" element={<LandingPage />} />
+
+      {/* Home - Ember chat-first experience for authenticated users */}
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <EmberHomePage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* About page - public route */}
       <Route path="/about" element={<AboutPage />} />
       <Route path="/about-us" element={<AboutPage />} />

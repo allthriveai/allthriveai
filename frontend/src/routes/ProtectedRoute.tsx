@@ -64,7 +64,7 @@ export function ProtectedRoute({
   // Redirect authenticated users away from login page
   // BUT allow guest users to stay - they're trying to convert to a full account
   if (redirectIfAuthenticated && isAuthenticated && !isGuestUser) {
-    return <Navigate to="/explore" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   // Redirect unauthenticated users to auth (chat onboarding)
