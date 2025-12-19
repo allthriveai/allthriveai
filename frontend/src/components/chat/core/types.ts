@@ -191,6 +191,8 @@ export interface ChatInputAreaProps {
   prefix?: ReactNode;
   // Callback to expose file select trigger function
   onFileSelectRef?: (triggerFn: () => void) => void;
+  // Callback to expose file drop handler (for page-level drag-and-drop)
+  onDropFilesRef?: (handler: (files: File[]) => void) => void;
 }
 
 // Loading message props

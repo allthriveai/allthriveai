@@ -9,7 +9,7 @@
  * - Integrates with ChatCore via render props
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useEmberOnboarding } from '@/hooks/useEmberOnboarding';
@@ -123,6 +123,48 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [excitedFeatures, setExcitedFeatures] = useState<string[]>([]);
   const triggerFileSelectRef = useRef<(() => void) | null>(null);
+  const dropFilesRef = useRef<((files: File[]) => void) | null>(null);
+
+  // Page-level drag-and-drop state
+  const [isPageDragging, setIsPageDragging] = useState(false);
+  const pageDragCounterRef = useRef(0);
+
+  // Page-level drag handlers
+  const handlePageDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pageDragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsPageDragging(true);
+    }
+  }, []);
+
+  const handlePageDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pageDragCounterRef.current--;
+    if (pageDragCounterRef.current === 0) {
+      setIsPageDragging(false);
+    }
+  }, []);
+
+  const handlePageDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handlePageDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsPageDragging(false);
+    pageDragCounterRef.current = 0;
+
+    // Forward files to the input area's drop handler
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && dropFilesRef.current) {
+      const files = Array.from(e.dataTransfer.files);
+      dropFilesRef.current(files);
+    }
+  }, []);
 
   // Fetch user's personalization settings on mount
   useEffect(() => {
@@ -283,7 +325,31 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
         };
 
         return (
-          <div className="min-h-[calc(100vh-12rem)] flex flex-col relative">
+          <div
+            className="min-h-[calc(100vh-12rem)] flex flex-col relative"
+            onDragEnter={handlePageDragEnter}
+            onDragLeave={handlePageDragLeave}
+            onDragOver={handlePageDragOver}
+            onDrop={handlePageDrop}
+          >
+            {/* Page-level drag overlay */}
+            {isPageDragging && (
+              <div
+                className="fixed inset-0 z-[100] bg-orange-500/10 border-4 border-dashed border-orange-400 flex items-center justify-center pointer-events-none"
+                style={{
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                }}
+              >
+                <div className="text-center p-8 rounded-2xl bg-background/80 border border-orange-500/30">
+                  <div className="text-orange-300 text-2xl font-semibold mb-2">Drop files here</div>
+                  <div className="text-orange-400/70 text-base">
+                    Images, videos, and documents supported
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Effects handler - handles useEffect properly as a component */}
             <ChatStateEffects
               messagesLength={state.messages.length}
@@ -380,6 +446,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                 placeholder="Message Ember..."
                 enableAttachments={true}
                 onFileSelectRef={(fn) => { triggerFileSelectRef.current = fn; }}
+                onDropFilesRef={(fn) => { dropFilesRef.current = fn; }}
                 prefix={
                   <ChatPlusMenu
                     onIntegrationSelect={handleIntegrationSelect}

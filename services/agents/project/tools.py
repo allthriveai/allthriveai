@@ -194,6 +194,14 @@ class CreateMediaProjectInput(BaseModel):
         ),
     )
 
+    is_owned: bool = Field(
+        default=True,
+        description=(
+            'Whether the user created/owns this content (True) or is clipping something cool they found (False). '
+            'IMPORTANT: Ask the user before assuming ownership! '
+            'True = "my project", False = "something cool I found"'
+        ),
+    )
     is_showcase: bool = Field(default=True, description='Whether to add to showcase tab')
     is_private: bool = Field(default=True, description='Whether to mark as private')
     state: dict | None = Field(default=None, description='Internal - injected by agent')
@@ -1154,6 +1162,7 @@ def create_media_project(
     video_url: str | None = None,
     title: str | None = None,
     tool_hint: str | None = None,
+    is_owned: bool = True,
     is_showcase: bool = True,
     is_private: bool = True,
     state: dict | None = None,
@@ -1237,6 +1246,7 @@ def create_media_project(
                 filename=filename or 'video.mp4',
                 title=title,
                 tool_hint=tool_hint,
+                is_owned=is_owned,
                 is_showcase=is_showcase,
                 is_private=is_private,
                 user=user,
@@ -1248,6 +1258,7 @@ def create_media_project(
             filename=filename or 'image.png',
             title=title,
             tool_hint=tool_hint,
+            is_owned=is_owned,
             is_showcase=is_showcase,
             is_private=is_private,
             user=user,
@@ -1272,11 +1283,10 @@ def create_media_project(
             )
 
         # For Vimeo/Loom, use generic scraper
-        # Assume user owns their own Vimeo/Loom videos (usually personal uploads)
         return _handle_generic_import(
             url=video_url,
             user=user,
-            is_owned=True,
+            is_owned=is_owned,
             is_showcase=is_showcase,
             is_private=is_private,
         )
@@ -1323,6 +1333,7 @@ def _create_video_project_internal(
     filename: str,
     title: str,
     tool_hint: str | None,
+    is_owned: bool,
     is_showcase: bool,
     is_private: bool,
     user,
@@ -1332,7 +1343,7 @@ def _create_video_project_internal(
     from core.integrations.video.ai_analyzer import analyze_video_for_template
     from core.projects.models import Project
 
-    logger.info(f'Creating video project: {title} from {filename}')
+    logger.info(f'Creating video project: {title} from {filename} (is_owned={is_owned})')
 
     # Determine file type
     file_extension = filename.lower().split('.')[-1] if '.' in filename else 'mp4'
@@ -1393,12 +1404,15 @@ def _create_video_project_internal(
         },
     }
 
+    # Use CLIPPED type if user didn't create this (clipping external content)
+    project_type = Project.ProjectType.VIDEO if is_owned else Project.ProjectType.CLIPPED
+
     # Create project
     project = Project.objects.create(
         user=user,
         title=title or analysis.get('title', filename),
         description=analysis.get('description', ''),
-        type=Project.ProjectType.VIDEO,
+        type=project_type,
         featured_image_url='',
         content=content,
         is_showcased=is_showcase,
@@ -1408,13 +1422,14 @@ def _create_video_project_internal(
 
     apply_ai_metadata(project, analysis, content=content)
 
+    action_word = 'created' if is_owned else 'clipped'
     return {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
         'url': f'/{user.username}/{project.slug}',
-        'message': f"Video project '{project.title}' created successfully!",
+        'message': f"Video project '{project.title}' {action_word} successfully!",
     }
 
 
@@ -1423,6 +1438,7 @@ def _create_image_project_internal(
     filename: str,
     title: str,
     tool_hint: str | None,
+    is_owned: bool,
     is_showcase: bool,
     is_private: bool,
     user,
@@ -1431,7 +1447,7 @@ def _create_image_project_internal(
     from core.integrations.github.helpers import apply_ai_metadata
     from core.projects.models import Project
 
-    logger.info(f'Creating image project: {title} from {filename}')
+    logger.info(f'Creating image project: {title} from {filename} (is_owned={is_owned})')
 
     # Build content with image
     content = {
@@ -1440,12 +1456,15 @@ def _create_image_project_internal(
         'heroDisplayMode': 'image',
     }
 
+    # Use CLIPPED type if user didn't create this (clipping external content)
+    project_type = Project.ProjectType.IMAGE if is_owned else Project.ProjectType.CLIPPED
+
     # Create project with the uploaded image as featured image
     project = Project.objects.create(
         user=user,
         title=title,
         description='',
-        type=Project.ProjectType.IMAGE,
+        type=project_type,
         featured_image_url=image_url,
         content=content,
         is_showcased=is_showcase,
@@ -1458,13 +1477,14 @@ def _create_image_project_internal(
         analysis = {'tool_names': [tool_hint]}
         apply_ai_metadata(project, analysis, content=content)
 
+    action_word = 'created' if is_owned else 'clipped'
     return {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
         'url': f'/{user.username}/{project.slug}',
-        'message': f"Image project '{project.title}' created successfully!",
+        'message': f"Image project '{project.title}' {action_word} successfully!",
     }
 
 

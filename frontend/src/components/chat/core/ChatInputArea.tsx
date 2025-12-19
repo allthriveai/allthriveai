@@ -47,6 +47,7 @@ export function ChatInputArea({
   onAttachmentsChange,
   prefix,
   onFileSelectRef,
+  onDropFilesRef,
 }: ChatInputAreaProps) {
   const [inputValue, setInputValue] = useState('');
   const [localAttachments, setLocalAttachments] = useState<File[]>(attachments);
@@ -197,6 +198,47 @@ export function ChatInputArea({
       onFileSelectRef(handleAttachClick);
     }
   }, [onFileSelectRef, enableAttachments, handleAttachClick]);
+
+  // Handle external file drops (from page-level drag-and-drop)
+  const handleExternalDrop = useCallback((files: File[]) => {
+    if (!enableAttachments || files.length === 0) return;
+
+    const newFiles: File[] = [];
+    let error: string | null = null;
+
+    for (const file of files) {
+      if (localAttachments.length + newFiles.length >= MAX_ATTACHMENTS) {
+        error = `Maximum ${MAX_ATTACHMENTS} files allowed`;
+        break;
+      }
+
+      const validationError = validateFile(file);
+      if (validationError) {
+        error = validationError;
+        continue;
+      }
+
+      newFiles.push(file);
+    }
+
+    if (newFiles.length > 0) {
+      const updated = [...localAttachments, ...newFiles];
+      setLocalAttachments(updated);
+      onAttachmentsChange?.(updated);
+    }
+
+    if (error) {
+      setFileError(error);
+      setTimeout(() => setFileError(null), 5000);
+    }
+  }, [localAttachments, enableAttachments, onAttachmentsChange]);
+
+  // Expose the external drop handler to parent
+  useEffect(() => {
+    if (onDropFilesRef && enableAttachments) {
+      onDropFilesRef(handleExternalDrop);
+    }
+  }, [onDropFilesRef, enableAttachments, handleExternalDrop]);
 
   return (
     <div

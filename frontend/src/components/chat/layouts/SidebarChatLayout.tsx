@@ -127,6 +127,48 @@ export function SidebarChatLayout({
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const triggerFileSelectRef = useRef<(() => void) | null>(null);
+  const dropFilesRef = useRef<((files: File[]) => void) | null>(null);
+
+  // Panel-level drag-and-drop state
+  const [isPanelDragging, setIsPanelDragging] = useState(false);
+  const panelDragCounterRef = useRef(0);
+
+  // Panel-level drag handlers
+  const handlePanelDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    panelDragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsPanelDragging(true);
+    }
+  }, []);
+
+  const handlePanelDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    panelDragCounterRef.current--;
+    if (panelDragCounterRef.current === 0) {
+      setIsPanelDragging(false);
+    }
+  }, []);
+
+  const handlePanelDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handlePanelDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsPanelDragging(false);
+    panelDragCounterRef.current = 0;
+
+    // Forward files to the input area's drop handler
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && dropFilesRef.current) {
+      const files = Array.from(e.dataTransfer.files);
+      dropFilesRef.current(files);
+    }
+  }, []);
 
   // Quick actions for current context
   const quickActions = useMemo(() => QUICK_ACTIONS[context], [context]);
@@ -290,7 +332,31 @@ export function SidebarChatLayout({
             />
 
             {/* Sidebar Panel */}
-            <div className="fixed right-0 top-0 h-full w-full max-w-md bg-background/95 backdrop-blur-xl border-l border-white/10 z-50 flex flex-col shadow-2xl animate-slide-in-right">
+            <div
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-background/95 backdrop-blur-xl border-l border-white/10 z-50 flex flex-col shadow-2xl animate-slide-in-right"
+              onDragEnter={handlePanelDragEnter}
+              onDragLeave={handlePanelDragLeave}
+              onDragOver={handlePanelDragOver}
+              onDrop={handlePanelDrop}
+            >
+              {/* Panel-level drag overlay */}
+              {isPanelDragging && (
+                <div
+                  className="absolute inset-0 z-[100] bg-cyan-500/10 border-4 border-dashed border-cyan-400 rounded-lg flex items-center justify-center pointer-events-none"
+                  style={{
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                  }}
+                >
+                  <div className="text-center p-6 rounded-xl bg-background/80 border border-cyan-500/30">
+                    <div className="text-cyan-300 text-xl font-semibold mb-2">Drop files here</div>
+                    <div className="text-cyan-400/70 text-sm">
+                      Images, videos, and documents supported
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
                 <div className="flex items-center gap-3">
@@ -402,6 +468,7 @@ export function SidebarChatLayout({
                   placeholder="Message Ember..."
                   enableAttachments={true}
                   onFileSelectRef={(fn) => { triggerFileSelectRef.current = fn; }}
+                  onDropFilesRef={(fn) => { dropFilesRef.current = fn; }}
                   prefix={
                     <ChatPlusMenu
                       onIntegrationSelect={handleIntegrationSelect}
