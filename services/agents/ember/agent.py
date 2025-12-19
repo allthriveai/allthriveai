@@ -15,6 +15,7 @@ Scalability considerations:
 import asyncio
 import logging
 import time
+from contextlib import asynccontextmanager
 from typing import Annotated, TypedDict
 
 from django.conf import settings
@@ -44,6 +45,26 @@ MAX_CONTEXT_MESSAGES = getattr(settings, 'EMBER_MAX_CONTEXT_MESSAGES', 50)
 
 # Tool execution timeout in seconds (prevents hanging on slow tools)
 TOOL_EXECUTION_TIMEOUT = getattr(settings, 'EMBER_TOOL_EXECUTION_TIMEOUT', 30)
+
+# Concurrency locks for thread_id to prevent race conditions
+# when multiple requests come in for the same conversation
+_thread_locks: dict[str, asyncio.Lock] = {}
+
+
+def _get_thread_lock(thread_id: str) -> asyncio.Lock:
+    """
+    Get or create an async lock for a specific thread_id.
+
+    This prevents concurrent requests to the same conversation from
+    causing race conditions or corrupted state in the checkpointer.
+
+    Note: In a multi-worker environment (Celery/Gunicorn), this only
+    protects within a single worker process. For true distributed
+    locking, use Redis-based locks.
+    """
+    if thread_id not in _thread_locks:
+        _thread_locks[thread_id] = asyncio.Lock()
+    return _thread_locks[thread_id]
 
 
 def get_default_model() -> str:
@@ -236,19 +257,28 @@ def _build_ember_workflow(model_name: str | None = None) -> StateGraph:
 _workflow = _build_ember_workflow()
 
 
+@asynccontextmanager
 async def _get_async_agent():
     """
     Get async agent with async checkpointer for conversation memory.
 
+    This is a context manager that ensures proper cleanup of the connection pool.
+
     Creates a fresh checkpointer for each call because Celery creates
     a new event loop per task, and the checkpointer's connection pool
     is tied to the event loop that created it.
+
+    Usage:
+        async with _get_async_agent() as agent:
+            async for event in agent.astream_events(...):
+                ...
+        # Pool automatically closed after context exits
     """
     from services.agents.auth.checkpointer import get_async_checkpointer
 
-    checkpointer = await get_async_checkpointer()
-    agent = _workflow.compile(checkpointer=checkpointer)
-    return agent
+    async with get_async_checkpointer() as checkpointer:
+        agent = _workflow.compile(checkpointer=checkpointer)
+        yield agent
 
 
 def create_ember_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
@@ -463,7 +493,6 @@ async def stream_ember_response(
     user_id: int | None = None,
     username: str = '',
     session_id: str = '',
-    conversation_history: list[BaseMessage] | None = None,
     is_onboarding: bool = False,
     model_name: str | None = None,
 ):
@@ -472,6 +501,7 @@ async def stream_ember_response(
 
     Uses LangGraph with PostgreSQL checkpointing for conversation memory.
     The session_id is used as the thread_id for persistent state.
+    Connection pools are properly cleaned up via context managers.
 
     Yields events:
     - {'type': 'token', 'content': '...'} - Text tokens from LLM
@@ -485,7 +515,6 @@ async def stream_ember_response(
         user_id: Authenticated user ID
         username: User's username
         session_id: WebSocket session ID (used as thread_id for checkpointing)
-        conversation_history: Optional previous messages (ignored - checkpointer handles this)
         is_onboarding: Whether this is an onboarding conversation
         model_name: Optional model override (uses AI gateway default if None)
 
@@ -501,82 +530,87 @@ async def stream_ember_response(
     total_tool_calls = 0
     input_tokens = 0
 
+    # Get lock for this thread_id to prevent concurrent writes
+    thread_lock = _get_thread_lock(session_id)
+
     try:
-        # Get async agent with checkpointer for conversation memory
-        agent = await _get_async_agent()
+        # Acquire lock to prevent concurrent requests to same conversation
+        async with thread_lock:
+            # Get async agent with checkpointer for conversation memory
+            # Context manager ensures connection pool is cleaned up
+            async with _get_async_agent() as agent:
+                # Use session_id as thread_id for persistent conversation state
+                config = {
+                    'configurable': {
+                        'thread_id': session_id,
+                        'user_id': user_id,
+                    }
+                }
 
-        # Use session_id as thread_id for persistent conversation state
-        config = {
-            'configurable': {
-                'thread_id': session_id,
-                'user_id': user_id,
-            }
-        }
+                # Create input state - only the new message
+                # The checkpointer automatically manages conversation history
+                input_state = {
+                    'messages': [HumanMessage(content=user_message)],
+                    'user_id': user_id,
+                    'username': username,
+                    'session_id': session_id,
+                    'is_onboarding': is_onboarding,
+                    'conversation_id': session_id,
+                }
 
-        # Create input state - only the new message
-        # The checkpointer automatically manages conversation history
-        input_state = {
-            'messages': [HumanMessage(content=user_message)],
-            'user_id': user_id,
-            'username': username,
-            'session_id': session_id,
-            'is_onboarding': is_onboarding,
-            'conversation_id': session_id,
-        }
-
-        # Track processed events to avoid duplicates
-        processed_tool_calls = set()
-        processed_stream_runs = set()
-        current_stream_run_id = None
-
-        # Stream agent execution with astream_events
-        async for event in agent.astream_events(input_state, config, version='v1'):
-            kind = event['event']
-            run_id = event.get('run_id', '')
-
-            # Stream LLM tokens
-            if kind == 'on_chat_model_stream':
-                # Track run_id to prevent duplicate streams from multiple nodes
-                if run_id:
-                    if run_id in processed_stream_runs and run_id != current_stream_run_id:
-                        continue
-                    if current_stream_run_id is None:
-                        current_stream_run_id = run_id
-                        processed_stream_runs.add(run_id)
-                    elif run_id != current_stream_run_id:
-                        continue
-
-                chunk = event.get('data', {}).get('chunk')
-                if chunk and hasattr(chunk, 'content') and chunk.content:
-                    content = chunk.content
-                    if isinstance(content, str):
-                        total_output_content += content
-                        yield {'type': 'token', 'content': content}
-
-            # Tool execution started
-            elif kind == 'on_tool_start':
-                tool_name = event.get('name', '')
-                run_id = event.get('run_id', '')
-
-                # Skip if already processed
-                if run_id in processed_tool_calls:
-                    continue
-                processed_tool_calls.add(run_id)
-
-                total_tool_calls += 1
-                yield {'type': 'tool_start', 'tool': tool_name}
-
-            # Tool execution completed
-            elif kind == 'on_tool_end':
-                tool_name = event.get('name', '')
-                output = event.get('data', {}).get('output', {})
-                yield {'type': 'tool_end', 'tool': tool_name, 'output': output}
-
-            # Reset stream tracking when entering new nodes
-            elif kind == 'on_chain_start':
+                # Track processed events to avoid duplicates
+                processed_tool_calls = set()
+                processed_stream_runs = set()
                 current_stream_run_id = None
 
-        # Track usage on successful completion
+                # Stream agent execution with astream_events
+                async for event in agent.astream_events(input_state, config, version='v1'):
+                    kind = event['event']
+                    run_id = event.get('run_id', '')
+
+                    # Stream LLM tokens
+                    if kind == 'on_chat_model_stream':
+                        # Track run_id to prevent duplicate streams from multiple nodes
+                        if run_id:
+                            if run_id in processed_stream_runs and run_id != current_stream_run_id:
+                                continue
+                            if current_stream_run_id is None:
+                                current_stream_run_id = run_id
+                                processed_stream_runs.add(run_id)
+                            elif run_id != current_stream_run_id:
+                                continue
+
+                        chunk = event.get('data', {}).get('chunk')
+                        if chunk and hasattr(chunk, 'content') and chunk.content:
+                            content = chunk.content
+                            if isinstance(content, str):
+                                total_output_content += content
+                                yield {'type': 'token', 'content': content}
+
+                    # Tool execution started
+                    elif kind == 'on_tool_start':
+                        tool_name = event.get('name', '')
+                        run_id = event.get('run_id', '')
+
+                        # Skip if already processed
+                        if run_id in processed_tool_calls:
+                            continue
+                        processed_tool_calls.add(run_id)
+
+                        total_tool_calls += 1
+                        yield {'type': 'tool_start', 'tool': tool_name}
+
+                    # Tool execution completed
+                    elif kind == 'on_tool_end':
+                        tool_name = event.get('name', '')
+                        output = event.get('data', {}).get('output', {})
+                        yield {'type': 'tool_end', 'tool': tool_name, 'output': output}
+
+                    # Reset stream tracking when entering new nodes
+                    elif kind == 'on_chain_start':
+                        current_stream_run_id = None
+
+        # Track usage on successful completion (after context managers exit)
         latency_ms = int((time.time() - start_time) * 1000)
         output_tokens = _estimate_tokens(total_output_content)
         await _track_ember_usage(
@@ -625,21 +659,32 @@ def invoke_ember(
     """
     Convenience function to invoke Ember with a single message (non-streaming).
 
-    Note: For production use, prefer stream_ember_response() for better UX
-    and memory efficiency with streaming.
+    DEPRECATED: This function does NOT use LangGraph checkpointing for conversation
+    memory. Each call is stateless and requires passing conversation_history manually.
+
+    For production use with persistent conversation memory, use stream_ember_response()
+    which uses PostgreSQL checkpointing via the session_id as thread_id.
 
     Args:
         message: User's message
         user_id: Authenticated user ID
         username: User's username
-        session_id: WebSocket session ID
-        conversation_history: Optional previous messages
+        session_id: WebSocket session ID (not used for checkpointing in this function)
+        conversation_history: Previous messages (required for context - not persisted)
         is_onboarding: Whether this is an onboarding conversation
         model_name: Optional model override (uses AI gateway default if None)
 
     Returns:
         Final state dict with messages
     """
+    import warnings
+
+    warnings.warn(
+        'invoke_ember() does not use LangGraph checkpointing. '
+        'Use stream_ember_response() for persistent conversation memory.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # Get model from AI gateway config if not specified
     resolved_model = model_name or get_default_model()
 

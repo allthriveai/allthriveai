@@ -12,6 +12,7 @@ Auto-cleanup via Celery task removes expired conversations from Redis.
 """
 
 import logging
+from contextlib import asynccontextmanager
 from urllib.parse import quote_plus
 
 from django.conf import settings
@@ -150,18 +151,28 @@ def get_checkpointer(use_postgres: bool = True):
     return _checkpointer
 
 
+@asynccontextmanager
 async def get_async_checkpointer():
     """
     Get async checkpointer for use with async LangGraph operations.
     Uses AsyncPostgresSaver for persistent conversation memory.
 
+    This is a context manager that ensures proper cleanup of the connection pool.
+
     NOTE: We create a fresh connection pool each time because Celery
     creates a new event loop per task, and connection pools are bound
     to the event loop they were created in.
 
-    Returns:
+    Usage:
+        async with get_async_checkpointer() as checkpointer:
+            agent = workflow.compile(checkpointer=checkpointer)
+            # Use agent...
+        # Pool automatically closed after context exits
+
+    Yields:
         AsyncPostgresSaver instance or MemorySaver fallback
     """
+    pool = None
     try:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
         from psycopg_pool import AsyncConnectionPool
@@ -180,7 +191,7 @@ async def get_async_checkpointer():
         await checkpointer.setup()
 
         logger.debug('AsyncPostgresSaver ready for this request')
-        return checkpointer
+        yield checkpointer
 
     except ValueError as e:
         # Configuration error - this is critical in production
@@ -188,13 +199,21 @@ async def get_async_checkpointer():
         logger.warning('Falling back to MemorySaver - conversation state will not persist!')
         from langgraph.checkpoint.memory import MemorySaver
 
-        return MemorySaver()
+        yield MemorySaver()
     except Exception as e:
         logger.error(f'Failed to initialize AsyncPostgresSaver: {e}', exc_info=True)
         logger.warning('Falling back to MemorySaver')
         from langgraph.checkpoint.memory import MemorySaver
 
-        return MemorySaver()
+        yield MemorySaver()
+    finally:
+        # Always close the pool if it was created
+        if pool is not None:
+            try:
+                await pool.close()
+                logger.debug('AsyncConnectionPool closed successfully')
+            except Exception as e:
+                logger.warning(f'Error closing AsyncConnectionPool: {e}')
 
 
 def get_redis_cache_key(thread_id: str) -> str:
