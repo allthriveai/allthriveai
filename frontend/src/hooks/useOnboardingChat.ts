@@ -43,7 +43,7 @@ export function useOnboardingChat({
   onComplete,
   onAvatarSaved,
 }: UseOnboardingChatOptions = {}) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const {
     shouldShowModal: shouldShowOnboarding,
     markModalSeen,
@@ -88,7 +88,9 @@ export function useOnboardingChat({
         step: 'avatar-preview',
       }));
     },
-    onAvatarSaved: () => {
+    onAvatarSaved: async () => {
+      // Refresh user to get updated avatar URL
+      await refreshUser();
       onAvatarSaved?.();
     },
     onError: (error) => {
