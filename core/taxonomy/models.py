@@ -89,7 +89,7 @@ class Taxonomy(models.Model):
     )
 
     # Common fields
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, unique=True, blank=True, help_text='URL-friendly identifier')
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True, help_text='Whether this taxonomy is available for selection')

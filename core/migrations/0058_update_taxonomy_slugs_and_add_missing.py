@@ -163,141 +163,134 @@ def update_and_seed_taxonomies(apps, schema_editor):
     ]
 
     for item in personality_types:
-        # Check both slug and name to avoid unique constraint violations
-        if (
-            not Taxonomy.objects.filter(slug=item['slug']).exists()
-            and not Taxonomy.objects.filter(name=item['name']).exists()
-        ):
-            Taxonomy.objects.create(
+        Taxonomy.objects.get_or_create(
+            slug=item['slug'],
+            defaults={
                 **item,
-                taxonomy_type='personality',
-                is_active=True,
-            )
+                'taxonomy_type': 'personality',
+                'is_active': True,
+            },
+        )
 
     # =========================================================================
     # LEARNING STYLE - How users learn best
-    # Prefix: style-*
-    # Names prefixed with "Learn by" to avoid conflicts with topic names
+    # Prefix: style-* (slug only, name can be simple since unique=False now)
     # =========================================================================
     learning_styles = [
         {
-            'name': 'Visual Learner',
+            'name': 'Visual',
             'slug': 'style-visual',
             'description': 'Learns best through images, diagrams, charts, and videos',
         },
         {
-            'name': 'Reading/Writing Learner',
+            'name': 'Reading/Writing',
             'slug': 'style-reading',
             'description': 'Prefers written content, documentation, and text-based learning',
         },
         {
-            'name': 'Hands-On Learner',
+            'name': 'Hands-On',
             'slug': 'style-hands-on',
             'description': 'Learns by doing - projects, exercises, and practical application',
         },
         {
-            'name': 'Auditory Learner',
+            'name': 'Audio',
             'slug': 'style-audio',
             'description': 'Prefers podcasts, verbal explanations, and audio content',
         },
         {
-            'name': 'Social Learner',
+            'name': 'Social',
             'slug': 'style-social',
             'description': 'Learns through discussion, community interaction, and collaboration',
         },
     ]
 
     for item in learning_styles:
-        # Check both slug and name to avoid unique constraint violations
-        if (
-            not Taxonomy.objects.filter(slug=item['slug']).exists()
-            and not Taxonomy.objects.filter(name=item['name']).exists()
-        ):
-            Taxonomy.objects.create(
+        Taxonomy.objects.get_or_create(
+            slug=item['slug'],
+            defaults={
                 **item,
-                taxonomy_type='learning_style',
-                is_active=True,
-            )
+                'taxonomy_type': 'learning_style',
+                'is_active': True,
+            },
+        )
 
     # =========================================================================
     # ROLE - Job function/audience (multi-select)
     # Merged from previous audience + role taxonomies
-    # Prefix: role-*
+    # Prefix: role-* (slug only, name can be simple since unique=False now)
     # =========================================================================
     roles = [
-        # Technical roles - use "Role:" prefix to avoid name conflicts with existing audience taxonomies
+        # Technical roles
         {
-            'name': 'Role: Developer',
+            'name': 'Developer',
             'slug': 'role-developer',
             'description': 'Software developer, engineer, or programmer',
         },
         {
-            'name': 'Role: Designer',
+            'name': 'Designer',
             'slug': 'role-designer',
             'description': 'UI/UX designer, product designer, or graphic designer',
         },
         {
-            'name': 'Role: Data Professional',
+            'name': 'Data Professional',
             'slug': 'role-data',
             'description': 'Data analyst, data scientist, or analytics professional',
         },
         # Business roles
         {
-            'name': 'Role: Product Manager',
+            'name': 'Product Manager',
             'slug': 'role-product-manager',
             'description': 'Product management and strategy',
         },
         {
-            'name': 'Role: Founder/Entrepreneur',
+            'name': 'Founder/Entrepreneur',
             'slug': 'role-founder',
             'description': 'Founder, CEO, or entrepreneur building a business',
         },
         {
-            'name': 'Role: Marketer',
+            'name': 'Marketer',
             'slug': 'role-marketer',
             'description': 'Marketing, growth, or content professional',
         },
         # Creator roles
         {
-            'name': 'Role: Content Creator',
+            'name': 'Content Creator',
             'slug': 'role-creator',
             'description': 'Content creators, influencers, and media producers',
         },
         {
-            'name': 'Role: No-Code Builder',
+            'name': 'No-Code Builder',
             'slug': 'role-no-code',
             'description': 'No-code and low-code builders',
         },
         # Learning roles
         {
-            'name': 'Role: Student',
+            'name': 'Student',
             'slug': 'role-student',
             'description': 'Student or full-time learner',
         },
         {
-            'name': 'Role: Hobbyist',
+            'name': 'Hobbyist',
             'slug': 'role-hobbyist',
             'description': 'Personal interest, side projects, or casual exploration',
         },
         # Non-technical
         {
-            'name': 'Role: Non-Technical User',
+            'name': 'Non-Technical User',
             'slug': 'role-non-technical',
             'description': 'Non-technical users and general audiences',
         },
     ]
 
     for item in roles:
-        # Check both slug and name to avoid unique constraint violations
-        if (
-            not Taxonomy.objects.filter(slug=item['slug']).exists()
-            and not Taxonomy.objects.filter(name=item['name']).exists()
-        ):
-            Taxonomy.objects.create(
+        Taxonomy.objects.get_or_create(
+            slug=item['slug'],
+            defaults={
                 **item,
-                taxonomy_type='role',
-                is_active=True,
-            )
+                'taxonomy_type': 'role',
+                'is_active': True,
+            },
+        )
 
 
 def reverse_updates(apps, schema_editor):
@@ -362,7 +355,7 @@ def reverse_updates(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('core', '0056_cleanup_deprecated_topic_fields'),
+        ('core', '0057_alter_taxonomy_name_remove_unique'),
     ]
 
     operations = [
