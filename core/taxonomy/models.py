@@ -38,15 +38,22 @@ class Taxonomy(models.Model):
     """Unified taxonomy for the system.
 
     Taxonomy supports multiple types:
-    - 'tool'     -> represents a Tool entry (1:1 with core.tools.Tool) - structured
-    - 'category' -> represents a predefined category for filtering projects - structured
-    - 'topic'    -> free-flowing topics that AI/quizzes/curation agents can add dynamically
-    - 'goal'     -> user goals (e.g., "Learn New Skills", "Start a Business")
-    - 'industry' -> industry verticals (e.g., "Healthcare", "Finance")
-    - 'interest' -> user interests (e.g., "AI & Machine Learning", "Design")
-    - 'skill'    -> technical skills (e.g., "Python", "React") - supports hierarchy via parent
-    - 'modality' -> learning modalities (e.g., "Video", "Microlearning", "Games")
-    - 'outcome'  -> learning outcomes (e.g., "Build a RAG pipeline")
+    - 'tool'            -> represents a Tool entry (1:1 with core.tools.Tool) - structured
+    - 'category'        -> represents a predefined category for filtering projects - structured
+    - 'topic'           -> free-flowing topics that AI/quizzes/curation agents can add dynamically
+    - 'goal'            -> user goals (e.g., "Learn New Skills", "Start a Business")
+    - 'industry'        -> industry verticals (e.g., "Healthcare", "Finance")
+    - 'interest'        -> user interests (e.g., "AI & Machine Learning", "Design")
+    - 'skill'           -> technical skills (e.g., "Python", "React") - supports hierarchy via parent
+    - 'modality'        -> learning modalities (e.g., "Video", "Microlearning", "Games")
+    - 'outcome'         -> learning outcomes (e.g., "Build a RAG pipeline")
+    - 'content_type'    -> unified content types (e.g., "article", "video", "course")
+    - 'time_investment' -> time to consume/build (e.g., "quick", "deep-dive")
+    - 'difficulty'      -> content difficulty level (e.g., "beginner", "advanced")
+    - 'pricing'         -> pricing tier (e.g., "free", "paid", "freemium")
+    - 'personality'     -> personality types (e.g., MBTI types like "INTJ", "ENFP")
+    - 'learning_style'  -> how users learn best (e.g., "visual", "hands-on", "reading")
+    - 'role'            -> job function/audience (e.g., "developer", "marketer", "non-technical") - multi-select
     """
 
     class TaxonomyType(models.TextChoices):
@@ -59,9 +66,16 @@ class Taxonomy(models.Model):
         SKILL = 'skill', 'Skill'
         MODALITY = 'modality', 'Learning Modality'
         OUTCOME = 'outcome', 'Learning Outcome'
+        CONTENT_TYPE = 'content_type', 'Content Type'
+        TIME_INVESTMENT = 'time_investment', 'Time Investment'
+        DIFFICULTY = 'difficulty', 'Difficulty'
+        PRICING = 'pricing', 'Pricing'
+        PERSONALITY = 'personality', 'Personality Type'
+        LEARNING_STYLE = 'learning_style', 'Learning Style'
+        ROLE = 'role', 'Role'
 
     taxonomy_type = models.CharField(
-        max_length=15, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True
+        max_length=20, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True
     )
 
     # Parent for hierarchical taxonomies (e.g., skill hierarchy)

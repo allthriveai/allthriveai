@@ -21,7 +21,6 @@ class UserLearningPathAdmin(admin.ModelAdmin):
     list_display = [
         'user',
         'topic',
-        'topic_taxonomy',
         'current_skill_level',
         'topic_points',
         'quizzes_completed',
@@ -29,9 +28,8 @@ class UserLearningPathAdmin(admin.ModelAdmin):
         'progress_percentage',
         'last_activity_at',
     ]
-    list_filter = ['topic', 'topic_taxonomy', 'current_skill_level']
+    list_filter = ['topic', 'current_skill_level']
     search_fields = ['user__username', 'user__email']
-    autocomplete_fields = ['topic_taxonomy']
     readonly_fields = [
         'progress_percentage',
         'points_to_next_level',
@@ -41,7 +39,7 @@ class UserLearningPathAdmin(admin.ModelAdmin):
     ordering = ['-last_activity_at']
 
     fieldsets = (
-        ('User & Topic', {'fields': ('user', 'topic', 'topic_taxonomy')}),
+        ('User & Topic', {'fields': ('user', 'topic')}),
         (
             'Progress',
             {
@@ -80,16 +78,14 @@ class ConceptAdmin(admin.ModelAdmin):
     list_display = [
         'name',
         'topic',
-        'topic_taxonomy',
         'tool',
         'base_difficulty',
         'estimated_minutes',
         'is_active',
     ]
-    list_filter = ['topic', 'topic_taxonomy', 'base_difficulty', 'is_active']
+    list_filter = ['topic', 'base_difficulty', 'is_active']
     search_fields = ['name', 'description', 'keywords']
     prepopulated_fields = {'slug': ('name',)}
-    autocomplete_fields = ['topic_taxonomy', 'tool']
     filter_horizontal = ['prerequisites']
     readonly_fields = ['created_at', 'updated_at']
     ordering = ['topic', 'name']

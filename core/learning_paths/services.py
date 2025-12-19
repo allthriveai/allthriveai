@@ -115,14 +115,13 @@ class LearnerMemory:
         recent_masteries = list(
             UserConceptMastery.objects.filter(user_id=user_id)
             .exclude(mastery_level='unknown')
-            .select_related('concept', 'concept__topic_taxonomy')
+            .select_related('concept', 'concept__topic')
             .order_by('-updated_at')[:10]
             .values(
                 'concept__name',
                 'concept__slug',
-                'concept__topic',
-                'concept__topic_taxonomy__slug',
-                'concept__topic_taxonomy__name',
+                'concept__topic__slug',
+                'concept__topic__name',
                 'mastery_level',
                 'mastery_score',
             )
@@ -224,7 +223,7 @@ class AdaptiveDifficultyService:
 
         # Check topic-specific mastery
         masteries = profile_data.get('recent_masteries', [])
-        topic_masteries = [m for m in masteries if m.get('concept__topic') == topic]
+        topic_masteries = [m for m in masteries if m.get('concept__topic__slug') == topic]
 
         if not topic_masteries:
             return base_difficulty
@@ -724,10 +723,13 @@ class StructuredLearningPathGenerator:
 
     @classmethod
     def _get_topic_display(cls, topic_slug: str) -> str:
-        """Get human-readable topic name."""
-        from .models import UserLearningPath
+        """Get human-readable topic name from Taxonomy."""
+        from core.taxonomy.models import Taxonomy
 
-        return UserLearningPath.get_topic_display_name(topic_slug)
+        taxonomy = Taxonomy.objects.filter(slug=topic_slug, taxonomy_type='topic', is_active=True).first()
+        if taxonomy:
+            return taxonomy.name
+        return topic_slug.replace('-', ' ').title()
 
     @classmethod
     def get_user_path(cls, user_id: int) -> dict:
@@ -869,17 +871,21 @@ class ContentGapService:
         """
         from django.utils.text import slugify
 
+        from core.taxonomy.models import Taxonomy
+
         if results_count >= cls.GAP_THRESHOLD:
             return None
 
         normalized = slugify(topic.lower().strip())[:200]
 
         try:
+            # Try to find a matching taxonomy for the topic
+            topic_taxonomy = Taxonomy.objects.filter(slug=normalized, taxonomy_type='topic', is_active=True).first()
+
             gap, created = ContentGap.objects.get_or_create(
-                topic_normalized=normalized,
+                topic=topic_taxonomy,
                 modality=modality,
                 defaults={
-                    'topic': topic[:200],
                     'gap_type': gap_type,
                     'results_returned': results_count,
                     'first_requested_by_id': user_id,
@@ -895,7 +901,8 @@ class ContentGapService:
                 )
                 gap.refresh_from_db()
 
-            logger.info(f'Recorded content gap: {topic}/{modality} (count: {gap.request_count})')
+            topic_name = topic_taxonomy.name if topic_taxonomy else topic
+            logger.info(f'Recorded content gap: {topic_name}/{modality} (count: {gap.request_count})')
             return gap
 
         except Exception as e:
@@ -906,12 +913,17 @@ class ContentGapService:
     @sync_to_async
     def get_priority_gaps(cls, limit: int = 20) -> list[dict]:
         """Get top priority gaps for content creation."""
-        gaps = ContentGap.objects.filter(status='pending').order_by('-unique_user_count', '-request_count')[:limit]
+        gaps = (
+            ContentGap.objects.filter(status='pending')
+            .select_related('topic')
+            .order_by('-unique_user_count', '-request_count')[:limit]
+        )
 
         return [
             {
                 'id': g.id,
-                'topic': g.topic,
+                'topic': g.topic.name if g.topic else None,
+                'topic_slug': g.topic.slug if g.topic else None,
                 'modality': g.modality,
                 'gap_type': g.gap_type,
                 'request_count': g.request_count,
@@ -1041,19 +1053,19 @@ class LearningContentService:
         # Get user's active learning paths
         paths = (
             UserLearningPath.objects.filter(user_id=user_id)
-            .select_related('topic_taxonomy')
+            .select_related('topic')
             .order_by('-last_activity_at')[:limit]
         )
 
         suggestions = []
         for path in paths:
-            # Prefer taxonomy if available
-            if path.topic_taxonomy:
-                topic_slug = path.topic_taxonomy.slug
-                topic_display = path.topic_taxonomy.name
+            # Topic is now always a FK to Taxonomy
+            if path.topic:
+                topic_slug = path.topic.slug
+                topic_display = path.topic.name
             else:
-                topic_slug = path.topic
-                topic_display = path.get_topic_display()
+                topic_slug = ''
+                topic_display = ''
 
             suggestions.append(
                 {
@@ -1076,15 +1088,15 @@ class LearningContentService:
         now = timezone.now()
         due_reviews = (
             UserConceptMastery.objects.filter(user_id=user_id, next_review_at__lte=now)
-            .select_related('concept', 'concept__topic_taxonomy')
+            .select_related('concept', 'concept__topic')
             .order_by('next_review_at')[:limit]
         )
 
         suggestions = []
         for m in due_reviews:
-            # Prefer taxonomy if available
-            if m.concept.topic_taxonomy:
-                topic_display = m.concept.topic_taxonomy.name
+            # Topic is now always a FK to Taxonomy
+            if m.concept.topic:
+                topic_display = m.concept.topic.name
             else:
                 topic_display = m.concept.name
 
@@ -1217,14 +1229,15 @@ class LearningContentService:
         Returns content if available, or AI context for fallback generation.
         Logs content gap if insufficient content.
         """
+        from core.taxonomy.models import Taxonomy
+
         topic_slug = cls._normalize_topic(topic)
         topic_display = topic.replace('-', ' ').title()
 
-        # Get topic display name if it's a known topic
-        for slug, display in UserLearningPath.TOPIC_CHOICES:
-            if slug == topic_slug:
-                topic_display = display
-                break
+        # Get topic display name from Taxonomy
+        taxonomy = Taxonomy.objects.filter(slug=topic_slug, taxonomy_type='topic', is_active=True).first()
+        if taxonomy:
+            topic_display = taxonomy.name
 
         # Route to appropriate handler
         handlers = {

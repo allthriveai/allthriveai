@@ -419,6 +419,8 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     categories_details = serializers.SerializerMethodField()
     # Topic taxonomy details for displaying topic badges
     topics_details = serializers.SerializerMethodField()
+    # Learning eligibility - whether project appears in learning content
+    is_learning_eligible = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -443,6 +445,7 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'topics_details',  # Full topic taxonomy objects for displaying badges
             'heart_count',
             'is_liked_by_user',
+            'is_learning_eligible',
             'published_date',
             'created_at',
             'content',  # Populated for battle and rss_article projects
@@ -489,6 +492,20 @@ class ProjectCardSerializer(serializers.ModelSerializer):
         """Get topic taxonomies ordered by name for displaying topic badges."""
         topics = obj.topics_taxonomy.order_by('name')
         return TaxonomySerializer(topics, many=True).data
+
+    def get_is_learning_eligible(self, obj):
+        """Get learning eligibility from ProjectLearningMetadata.
+
+        Returns True if the project appears in learning content.
+        Defaults to True if no metadata record exists.
+        """
+        from django.core.exceptions import ObjectDoesNotExist
+
+        try:
+            return obj.learning_metadata.is_learning_eligible
+        except ObjectDoesNotExist:
+            # No metadata exists - default to True (all projects are learning-eligible by default)
+            return True
 
     def get_content(self, obj):
         """Return minimal content for card rendering.
@@ -616,6 +633,7 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'topics_details': 'topicsDetails',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
+            'is_learning_eligible': 'isLearningEligible',
             'published_date': 'publishedDate',
             'created_at': 'createdAt',
         }

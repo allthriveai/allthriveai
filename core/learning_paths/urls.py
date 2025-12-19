@@ -27,4 +27,10 @@ urlpatterns = [
         views.RecordProjectLearningView.as_view(),
         name='record-project-learning',
     ),
+    # Toggle learning eligibility for project (owner/admin only)
+    path(
+        'projects/<int:project_id>/toggle-learning-eligible/',
+        views.ToggleLearningEligibilityView.as_view(),
+        name='toggle-learning-eligible',
+    ),
 ]

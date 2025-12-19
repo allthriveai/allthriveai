@@ -229,25 +229,6 @@ class SideQuest(models.Model):
         ('epic', 'Epic'),
     ]
 
-    TOPIC_CHOICES = [
-        ('chatbots-conversation', 'Chatbots & Conversation'),
-        ('websites-apps', 'Websites & Apps'),
-        ('images-video', 'Images & Video'),
-        ('design-ui', 'Design (Mockups & UI)'),
-        ('video-creative-media', 'Video & Multimodal Media'),
-        ('podcasts-education', 'Podcasts & Educational Series'),
-        ('games-interactive', 'Games & Interactive Experiences'),
-        ('workflows-automation', 'Workflows & Automation'),
-        ('productivity', 'Productivity'),
-        ('developer-coding', 'Developer & Coding Projects'),
-        ('prompts-templates', 'Prompt Collections & Templates'),
-        ('thought-experiments', 'Thought Experiments & Concept Pieces'),
-        ('wellness-growth', 'Wellness & Personal Growth'),
-        ('ai-agents-multitool', 'AI Agents & Multi-Tool Systems'),
-        ('ai-models-research', 'AI Models & Research'),
-        ('data-analytics', 'Data & Analytics'),
-    ]
-
     SKILL_LEVEL_CHOICES = [
         ('beginner', 'Beginner'),  # 0-200 points in topic
         ('intermediate', 'Intermediate'),  # 201-500 points in topic
@@ -273,17 +254,8 @@ class SideQuest(models.Model):
         help_text='Quest category/pathway',
     )
 
-    # Topic-based progression (Phase 2 enhancement)
-    # DEPRECATED: Use topic_taxonomy instead. This field will be removed in a future migration.
-    topic = models.CharField(
-        max_length=50,
-        choices=TOPIC_CHOICES,
-        blank=True,
-        default='',
-        help_text='DEPRECATED: Use topic_taxonomy instead.',
-    )
     # Topic taxonomy (proper FK relationship)
-    topic_taxonomy = models.ForeignKey(
+    topic = models.ForeignKey(
         'core.Taxonomy',
         null=True,
         blank=True,

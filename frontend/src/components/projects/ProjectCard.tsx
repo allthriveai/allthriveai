@@ -28,9 +28,10 @@ import {
   NewspaperIcon,
   MegaphoneIcon,
   StarIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid, StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { toggleProjectLike, deleteProjectById, toggleProjectPromotion, toggleProjectInShowcase } from '@/services/projects';
+import { toggleProjectLike, deleteProjectById, toggleProjectPromotion, toggleProjectInShowcase, toggleLearningEligibility } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -94,6 +95,8 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   const [isPromoting, setIsPromoting] = useState(false);
   const [inShowcase, setInShowcase] = useState(isInShowcase);
   const [isTogglingShowcase, setIsTogglingShowcase] = useState(false);
+  const [isLearningEligible, setIsLearningEligible] = useState(project.isLearningEligible ?? true);
+  const [isTogglingLearning, setIsTogglingLearning] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   const projectUrl = `/${project.username}/${project.slug}`;
 
@@ -215,6 +218,24 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       alert(errorMsg);
     } finally {
       setIsTogglingShowcase(false);
+    }
+  };
+
+  const handleLearningEligibilityClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isTogglingLearning) return;
+
+    setIsTogglingLearning(true);
+    try {
+      const result = await toggleLearningEligibility(project.id);
+      setIsLearningEligible(result.isLearningEligible);
+    } catch (error: any) {
+      console.error('Failed to toggle learning eligibility:', error);
+      const errorMsg = error?.response?.data?.error || 'Failed to update learning eligibility. Please try again.';
+      alert(errorMsg);
+    } finally {
+      setIsTogglingLearning(false);
     }
   };
 
@@ -1162,6 +1183,17 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                         Add to Showcase
                       </>
                     )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      setShowMenu(false);
+                      handleLearningEligibilityClick(e);
+                    }}
+                    disabled={isTogglingLearning}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <AcademicCapIcon className="w-4 h-4" />
+                    {isLearningEligible ? 'Hide from Learning' : 'Show in Learning'}
                   </button>
                   <button
                     onClick={(e) => {

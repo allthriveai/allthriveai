@@ -336,20 +336,22 @@ class LearningPathService:
         2. Topics they haven't started yet
         3. Available content in each topic
         """
-        # Get existing path topics
-        existing_topics = set(UserLearningPath.objects.filter(user=user).values_list('topic', flat=True))
+        from core.taxonomy.models import Taxonomy
 
-        # Get all valid topics
-        all_topics = [choice[0] for choice in UserLearningPath.TOPIC_CHOICES]
+        # Get existing path topics (now FK to Taxonomy)
+        existing_topic_ids = set(UserLearningPath.objects.filter(user=user).values_list('topic_id', flat=True))
+
+        # Get all valid topics from Taxonomy
+        all_topics = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('order', 'name')
 
         # Score topics by available content
         recommendations = []
         for topic in all_topics:
-            if topic in existing_topics:
+            if topic.id in existing_topic_ids:
                 continue
 
-            quiz_count = self._count_quizzes_for_topic(topic)
-            sidequest_count = self._count_sidequests_for_topic(topic)
+            quiz_count = self._count_quizzes_for_topic(topic.slug)
+            sidequest_count = self._count_sidequests_for_topic(topic.slug)
 
             # Only recommend topics with content
             if quiz_count == 0 and sidequest_count == 0:
@@ -360,8 +362,8 @@ class LearningPathService:
 
             recommendations.append(
                 {
-                    'topic': topic,
-                    'topic_display': UserLearningPath.get_topic_display_name(topic),
+                    'topic': topic.slug,
+                    'topic_display': topic.name,
                     'quiz_count': quiz_count,
                     'sidequest_count': sidequest_count,
                     'score': score,

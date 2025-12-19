@@ -704,11 +704,12 @@ class ProjectLearningMetadata(models.Model):
         help_text='Concepts demonstrated by this project',
     )
 
-    # Learning eligibility (calculated from project stats)
+    # Learning eligibility - defaults to True so all projects are learning content
+    # Owners and admins can toggle this off via project card menu
     is_learning_eligible = models.BooleanField(
-        default=False,
+        default=True,
         db_index=True,
-        help_text='Meets quality threshold for learning content',
+        help_text='Whether this project appears in learning content',
     )
     learning_quality_score = models.FloatField(
         default=0.0,

@@ -135,6 +135,7 @@ export interface Project {
   isArchived: boolean; // Soft delete - hidden from all views
   isPromoted?: boolean; // Admin promoted - appears at top of explore feeds
   promotedAt?: string; // When this project was promoted
+  isLearningEligible?: boolean; // Whether this project appears in learning content
   bannerUrl?: string; // Banner/cover image
   featuredImageUrl?: string;
   externalUrl?: string;

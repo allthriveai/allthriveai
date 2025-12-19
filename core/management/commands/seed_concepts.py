@@ -3,7 +3,7 @@
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
-from core.learning_paths.models import Concept, UserLearningPath
+from core.learning_paths.models import Concept
 from core.tools.models import Tool
 
 
@@ -277,7 +277,10 @@ class Command(BaseCommand):
 
         # Summary by topic
         self.stdout.write('Concepts by topic:')
-        for topic_slug, topic_name in UserLearningPath.TOPIC_CHOICES:
-            count = Concept.objects.filter(topic=topic_slug, is_active=True).count()
+        from core.taxonomy.models import Taxonomy
+
+        topic_taxonomies = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('order', 'name')
+        for topic in topic_taxonomies:
+            count = Concept.objects.filter(topic=topic, is_active=True).count()
             if count > 0:
-                self.stdout.write(f'  {topic_name}: {count} concepts')
+                self.stdout.write(f'  {topic.name}: {count} concepts')

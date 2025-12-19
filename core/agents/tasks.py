@@ -467,6 +467,7 @@ def _process_with_orchestrator(
         channel_name=channel_name,
         channel_layer=channel_layer,
         is_onboarding=is_ember_conversation,  # Only EmberHomePage conversations are onboarding
+        conversation_history=conversation_history,  # Pass conversation history for context
     )
 
 
@@ -1219,6 +1220,7 @@ def _process_with_ember(
     channel_name: str,
     channel_layer,
     is_onboarding: bool = False,
+    conversation_history: list[dict] | None = None,
 ) -> dict:
     """
     Process message using the unified Ember agent with all tools.
@@ -1237,16 +1239,35 @@ def _process_with_ember(
         channel_name: Redis channel for WebSocket
         channel_layer: Django Channels layer
         is_onboarding: Whether this is an onboarding conversation
+        conversation_history: Recent conversation context for stateful processing
 
     Returns:
         Dict with processing results
     """
+    from langchain_core.messages import AIMessage, HumanMessage
+
     from services.agents.ember import stream_ember_response
 
     logger.info(f'Processing with unified Ember agent: conversation={conversation_id}, onboarding={is_onboarding}')
 
+    # Convert conversation history from dict format to LangChain messages
+    langchain_history = []
+    if conversation_history:
+        for msg in conversation_history:
+            sender = msg.get('sender', 'user')
+            content = msg.get('content', '')
+            if sender == 'user':
+                langchain_history.append(HumanMessage(content=content))
+            else:
+                langchain_history.append(AIMessage(content=content))
+        logger.info(f'Passing {len(langchain_history)} messages of conversation history to Ember')
+
+    # Track assistant response for caching
+    assistant_response_chunks = []
+
     async def run_agent():
         """Async function to stream agent response and send to WebSocket."""
+        nonlocal assistant_response_chunks
         from channels.layers import get_channel_layer as get_async_channel_layer
 
         async_channel_layer = get_async_channel_layer()
@@ -1258,12 +1279,14 @@ def _process_with_ember(
                 username=user.username,
                 session_id=conversation_id,
                 is_onboarding=is_onboarding,
+                conversation_history=langchain_history if langchain_history else None,
             ):
                 event_type = event.get('type')
 
                 if event_type == 'token':
                     # Stream text chunk to WebSocket
                     chunk_content = event.get('content', '')
+                    assistant_response_chunks.append(chunk_content)  # Collect for caching
                     logger.debug(
                         f'[EMBER] Sending chunk to {channel_name}: {chunk_content[:50]}...'
                         if len(str(chunk_content)) > 50
@@ -1381,6 +1404,12 @@ def _process_with_ember(
                 'conversation_id': conversation_id,
             },
         )
+
+    # Cache the assistant's response for conversation history
+    if assistant_response_chunks:
+        full_response = ''.join(assistant_response_chunks)
+        _update_conversation_history_cache(conversation_id, full_response, 'assistant')
+        logger.debug(f'Cached assistant response ({len(full_response)} chars) for conversation {conversation_id}')
 
     return {}
 

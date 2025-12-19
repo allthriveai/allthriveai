@@ -99,8 +99,8 @@ def get_learning_progress(
         for path in paths:
             path_data.append(
                 {
-                    'topic': path.topic,
-                    'topic_display': path.get_topic_display(),
+                    'topic': path.topic.slug if path.topic else '',
+                    'topic_display': path.topic.name if path.topic else '',
                     'skill_level': path.current_skill_level,
                     'skill_level_display': path.get_current_skill_level_display(),
                     'progress_percentage': path.progress_percentage,

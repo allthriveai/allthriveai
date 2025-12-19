@@ -219,7 +219,6 @@ class SideQuestForm(forms.ModelForm):
             'difficulty',
             'category',
             'topic',
-            'topic_taxonomy',
             'skill_level',
             'requirements',
             'points_reward',
@@ -282,13 +281,13 @@ class SideQuestAdmin(admin.ModelAdmin):
         'quest_type',
         'category',
         'topic',
-        'topic_taxonomy',
         'is_daily',
         'is_repeatable',
     ]
     search_fields = ['title', 'description', 'quest_type']
     ordering = ['category__order', 'order', '-created_at']
-    autocomplete_fields = ['topic_taxonomy', 'category']
+    raw_id_fields = ['topic']  # Use raw_id instead of autocomplete since Taxonomy admin may not have search_fields
+    autocomplete_fields = ['category']
     readonly_fields = ['created_at', 'updated_at', 'quest_preview']
 
     list_per_page = 50
@@ -312,7 +311,7 @@ class SideQuestAdmin(admin.ModelAdmin):
         (
             '🗂️ Topic & Level (Optional)',
             {
-                'fields': ('topic', 'topic_taxonomy', 'skill_level'),
+                'fields': ('topic', 'skill_level'),
                 'description': ('Optional topic-based filtering for personalized quest recommendations'),
                 'classes': ('collapse',),
             },

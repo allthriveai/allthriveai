@@ -17,6 +17,7 @@ interface ProjectApiResponse {
   isArchived: boolean;
   isPromoted?: boolean;
   promotedAt?: string;
+  isLearningEligible?: boolean;
   bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -53,6 +54,7 @@ function transformProject(data: ProjectApiResponse): Project {
     isArchived: data.isArchived,
     isPromoted: data.isPromoted ?? false,
     promotedAt: data.promotedAt,
+    isLearningEligible: data.isLearningEligible ?? true,
     bannerUrl: data.bannerUrl,
     featuredImageUrl: data.featuredImageUrl || '',
     externalUrl: data.externalUrl || '',
@@ -407,4 +409,22 @@ export async function adminEditProject(
     visual_style: updates.visualStyle,
   });
   return transformProject(response.data);
+}
+
+/**
+ * Toggle learning eligibility for a project (owner/admin only)
+ * Controls whether the project appears in learning content
+ */
+export async function toggleLearningEligibility(projectId: number): Promise<{
+  projectId: number;
+  isLearningEligible: boolean;
+}> {
+  const response = await api.post<{
+    projectId: number;
+    isLearningEligible: boolean;
+  }>(`/projects/${projectId}/toggle-learning-eligible/`);
+  return {
+    projectId: response.data.projectId,
+    isLearningEligible: response.data.isLearningEligible,
+  };
 }

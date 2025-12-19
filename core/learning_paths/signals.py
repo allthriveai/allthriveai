@@ -2,6 +2,7 @@
 
 Update learning paths when quizzes or side quests are completed.
 Also emits LearningEvents for the unified learning system.
+Auto-creates ProjectLearningMetadata when projects are created.
 """
 
 import logging
@@ -9,12 +10,29 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from core.projects.models import Project
 from core.quizzes.models import QuizAttempt
 from core.thrive_circle.models import UserSideQuest
 
-from .models import Concept, LearnerProfile, LearningEvent, UserConceptMastery
+from .models import Concept, LearnerProfile, LearningEvent, ProjectLearningMetadata, UserConceptMastery
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# PROJECT LEARNING METADATA SIGNAL
+# ============================================================================
+
+
+@receiver(post_save, sender=Project)
+def create_project_learning_metadata(sender, instance, created, **kwargs):
+    """Auto-create ProjectLearningMetadata when a new Project is created.
+
+    This ensures all projects are learning-eligible by default.
+    """
+    if created:
+        ProjectLearningMetadata.objects.get_or_create(project=instance, defaults={'is_learning_eligible': True})
+        logger.debug(f'Created learning metadata for project {instance.id}')
 
 
 @receiver(post_save, sender=QuizAttempt)

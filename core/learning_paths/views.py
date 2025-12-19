@@ -15,7 +15,6 @@ from .models import (
     LearningEvent,
     ProjectLearningMetadata,
     UserConceptMastery,
-    UserLearningPath,
 )
 from .serializers import (
     ConceptSerializer,
@@ -94,8 +93,9 @@ class MyLearningPathsViewSet(viewsets.ViewSet):
 
     def _is_valid_topic(self, topic: str) -> bool:
         """Check if a topic slug is valid."""
-        valid_topics = [choice[0] for choice in UserLearningPath.TOPIC_CHOICES]
-        return topic in valid_topics
+        from core.taxonomy.models import Taxonomy
+
+        return Taxonomy.objects.filter(slug=topic, taxonomy_type='topic', is_active=True).exists()
 
 
 class UserLearningPathsView(APIView):
@@ -129,14 +129,17 @@ class AllTopicsView(APIView):
         """
         GET /api/v1/learning-paths/topics/
 
-        Returns all available learning path topics.
+        Returns all available learning path topics from Taxonomy.
         """
+        from core.taxonomy.models import Taxonomy
+
+        topic_taxonomies = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('order', 'name')
         topics = [
             {
-                'slug': choice[0],
-                'name': choice[1],
+                'slug': t.slug,
+                'name': t.name,
             }
-            for choice in UserLearningPath.TOPIC_CHOICES
+            for t in topic_taxonomies
         ]
         return Response(topics)
 
@@ -452,3 +455,51 @@ class LearningSetupView(APIView):
         profile.save()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ============================================================================
+# PROJECT LEARNING ELIGIBILITY TOGGLE
+# ============================================================================
+
+
+class ToggleLearningEligibilityView(APIView):
+    """Toggle whether a project appears in learning content."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_id):
+        """
+        POST /api/v1/projects/{project_id}/toggle-learning-eligible/
+
+        Toggle whether this project appears in learning content.
+        Only the project owner or an admin can toggle.
+        """
+        from core.projects.models import Project
+
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check permissions (owner or admin)
+        is_owner = project.user_id == request.user.id
+        is_admin = request.user.is_staff or getattr(request.user, 'role', '') == 'admin'
+
+        if not (is_owner or is_admin):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Get or create metadata (defaults to is_learning_eligible=True)
+        metadata, _ = ProjectLearningMetadata.objects.get_or_create(
+            project=project, defaults={'is_learning_eligible': True}
+        )
+
+        # Toggle
+        metadata.is_learning_eligible = not metadata.is_learning_eligible
+        metadata.save()
+
+        return Response(
+            {
+                'projectId': project_id,
+                'isLearningEligible': metadata.is_learning_eligible,
+            }
+        )
