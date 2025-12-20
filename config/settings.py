@@ -350,7 +350,9 @@ GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
-AZURE_OPENAI_ENDPOINT = config('AZURE_OPENAI_ENDPOINT', default='https://go1-presales-resource.cognitiveservices.azure.com/')
+AZURE_OPENAI_ENDPOINT = config(
+    'AZURE_OPENAI_ENDPOINT', default='https://go1-presales-resource.cognitiveservices.azure.com/'
+)
 AZURE_OPENAI_API_VERSION = config('AZURE_OPENAI_API_VERSION', default='2025-01-01-preview')
 AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4.1')
 

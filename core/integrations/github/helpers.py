@@ -451,7 +451,7 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
                 defaults={
                     'name': topic_name.title(),
                     'is_active': True,
-                }
+                },
             )
             topic_objects.append(topic_obj)
             if created:

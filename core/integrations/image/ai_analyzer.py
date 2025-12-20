@@ -56,7 +56,8 @@ IMPORTANT GUIDELINES:
   8=Research & Science, 9=Developer & Coding, 10=Data & Analytics,
   11=Community Projects, 12=News & Updates, 13=Tutorials & Guides, 14=Reviews & Comparisons, 15=Other
 - Topics: lowercase, specific tags (3-8 keywords) describing the image style/subject
-- tool_names: AI tools likely used (Midjourney, DALL-E, Stable Diffusion, Leonardo.ai, Adobe Firefly, Photoshop, Illustrator, etc.)
+- tool_names: AI tools likely used (Midjourney, DALL-E, Stable Diffusion, Leonardo.ai,
+  Adobe Firefly, Photoshop, Illustrator, etc.)
 
 Return ONLY valid JSON, no markdown code blocks."""
 

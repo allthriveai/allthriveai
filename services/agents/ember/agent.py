@@ -25,7 +25,6 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode
 
 from core.ai_usage.tracker import AIUsageTracker
 
@@ -370,6 +369,7 @@ def tools_node(state: EmberState) -> dict:
         # Convert result to string for ToolMessage content
         if isinstance(tool_result, dict):
             import json
+
             content = json.dumps(tool_result)
         else:
             content = str(tool_result)
@@ -555,16 +555,6 @@ def create_ember_agent_with_state_injection(
     Returns:
         Compiled LangGraph StateGraph with state injection
     """
-    # Create initial state for injection
-    initial_state = EmberState(
-        messages=[],
-        user_id=user_id,
-        username=username,
-        session_id=session_id,
-        is_onboarding=False,
-        conversation_id='',
-    )
-
     # Create graph
     graph = StateGraph(EmberState)
 
@@ -572,8 +562,7 @@ def create_ember_agent_with_state_injection(
     graph.add_node('agent', create_agent_node(model_name))
 
     # Add custom tool node with state injection
-    tool_node = create_tool_node_with_state_injection(initial_state)
-    graph.add_node('tools', tool_node)
+    graph.add_node('tools', tools_node)
 
     # Set entry point
     graph.set_entry_point('agent')
