@@ -94,36 +94,30 @@ GAMES: list[GameDefinition] = [
             {'slug': 'token-management', 'xp': 5},
             {'slug': 'llm-fundamentals', 'xp': 5},
         ],
-        # LLM topic explanations - connects game mechanics to concepts
+        # LLM topic explanations - fun game, not a simulation
         'topic_explanations': {
             'context-windows': (
-                'In Context Snake, every food item is a token and your snake represents '
-                'the context window. Your job is to collect tokens without hitting yourself '
-                'or the context window barriers. Context is finite - play accordingly!'
+                'Context Snake is a fun arcade game themed around tokens and context. '
+                'Collect tokens to grow your snake - just a fun way to engage with AI concepts!'
             ),
             'context-window': (
-                'In Context Snake, every food item is a token and your snake represents '
-                'the context window. Your job is to collect tokens without hitting yourself '
-                'or the context window barriers. Context is finite - play accordingly!'
+                'Context Snake is a fun arcade game themed around tokens and context. '
+                'Collect tokens to grow your snake - just a fun way to engage with AI concepts!'
             ),
             'tokens': (
-                'In Context Snake, every food item you collect is a token. Watch how quickly '
-                'they add up and fill your context! The game shows why token management matters '
-                'when working with LLMs.'
+                'Context Snake is a fun arcade game where you collect tokens. '
+                "It's a playful way to take a break while learning about AI!"
             ),
             'token-limits': (
-                'Context Snake teaches token limits viscerally - your snake grows with each '
-                "token until you hit the walls. Just like real LLMs, there's only so much "
-                'context you can hold before things break.'
+                'Context Snake is a fun arcade game themed around tokens. ' 'Take a break and collect some tokens!'
             ),
             'llm': (
-                'Context Snake simulates how LLMs process information sequentially. Each token '
-                "you collect adds to your context, and you'll experience firsthand why models "
-                'have context limits.'
+                'Context Snake is a fun arcade game themed around AI concepts. '
+                'Collect tokens and see how long you can survive!'
             ),
             'ai-fundamentals': (
-                "Context Snake teaches a core AI concept: context windows. You'll collect "
-                'tokens and experience the limits that all LLMs face when processing text.'
+                'Context Snake is a fun arcade game themed around AI concepts like tokens. '
+                'A playful break while learning!'
             ),
         },
     },
