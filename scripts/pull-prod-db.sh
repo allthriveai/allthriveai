@@ -196,10 +196,45 @@ docker-compose exec -T web python manage.py migrate --noinput
 # Clean up local dump file
 rm -f "${LOCAL_DUMP}"
 
+# Load configuration for preserved usernames
+CONFIG_FILE=".pull-prod-db.conf"
+PRESERVE_USERNAMES=""
+
+if [ -f "${CONFIG_FILE}" ]; then
+    source "${CONFIG_FILE}"
+fi
+
+# Prompt for username to preserve if not configured
+if [ -z "${PRESERVE_USERNAMES}" ]; then
+    echo ""
+    read -p "Enter your username to preserve (for OAuth login), or press Enter to skip: " USERNAME_INPUT
+    if [ -n "${USERNAME_INPUT}" ]; then
+        PRESERVE_USERNAMES="${USERNAME_INPUT}"
+        echo "PRESERVE_USERNAMES=\"${USERNAME_INPUT}\"" > "${CONFIG_FILE}"
+        echo "Saved to ${CONFIG_FILE} for future runs."
+    fi
+fi
+
+# Anonymize user data for local development
+echo ""
+echo "Anonymizing user data for local development..."
+
+ANONYMIZE_ARGS="--confirm --preserve-staff --preserve-agents"
+if [ -n "${PRESERVE_USERNAMES}" ]; then
+    # Support multiple usernames separated by comma
+    IFS=',' read -ra USERNAMES <<< "${PRESERVE_USERNAMES}"
+    for username in "${USERNAMES[@]}"; do
+        ANONYMIZE_ARGS="${ANONYMIZE_ARGS} --preserve-username=${username}"
+    done
+fi
+
+docker-compose exec -T web python manage.py anonymize_users ${ANONYMIZE_ARGS}
+
 echo ""
 echo "=== Database Pull Complete ==="
 echo ""
 echo "Your local database now contains ${ENVIRONMENT} data."
+echo "User PII has been anonymized (except preserved accounts)."
 echo ""
 echo "IMPORTANT: Remember to restart your services:"
 echo "  make restart"

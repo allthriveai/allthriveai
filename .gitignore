@@ -57,3 +57,6 @@ test-results/
 
 # Large files
 *.pdf
+
+# Local development config
+.pull-prod-db.conf

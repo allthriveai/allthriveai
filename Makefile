@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db create-youtube-agent regenerate-battle-images regenerate-user-images
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db anonymize-users create-youtube-agent regenerate-battle-images regenerate-user-images
 
 help:
 	@echo "Available commands:"
@@ -117,7 +117,8 @@ help:
 	@echo "  make aws-seed-all    - Seed all initial data on AWS"
 	@echo "  make sync-user-projects USERNAME=... - Export local user projects to S3"
 	@echo "  make aws-import-user-projects USERNAME=... - Import user projects on AWS from S3"
-	@echo "  make pull-prod-db    - Pull production database to local (ENVIRONMENT=production|staging)"
+	@echo "  make pull-prod-db    - Pull production database to local (anonymizes user PII)"
+	@echo "  make anonymize-users - Anonymize user PII in local database (for prod data safety)"
 	@echo ""
 	@echo "Django:"
 	@echo "  make collectstatic   - Collect static files"
@@ -999,3 +1000,13 @@ pull-prod-db:
 	@echo "⚠️  WARNING: This will REPLACE your local database with production data!"
 	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Cancelled." && exit 1)
 	@ENVIRONMENT=$${ENVIRONMENT:-production} ./scripts/pull-prod-db.sh
+
+# Anonymize user PII in local database (for prod data safety)
+# Usage: make anonymize-users [PRESERVE_USERNAME=myuser]
+anonymize-users:
+	@echo "Anonymizing user PII in local database..."
+ifdef PRESERVE_USERNAME
+	docker-compose exec web python manage.py anonymize_users --confirm --preserve-staff --preserve-agents --preserve-username=$(PRESERVE_USERNAME)
+else
+	docker-compose exec web python manage.py anonymize_users --confirm --preserve-staff --preserve-agents
+endif
