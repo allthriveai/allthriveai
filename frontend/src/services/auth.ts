@@ -121,6 +121,26 @@ export interface StatsSummary {
   battlesCount?: number; // Optional for now, will be added to backend
 }
 
+export interface GameScoreEntry {
+  score: number;
+  date: string;
+}
+
+export interface GameStats {
+  game: string;
+  displayName: string;
+  icon: string;
+  playCount: number;
+  highScore: number;
+  highScoreDate: string | null;
+  recentScores: GameScoreEntry[];
+}
+
+export interface GameStatsData {
+  games: GameStats[];
+  totalPlays: number;
+}
+
 export interface ActivityInsights {
   toolEngagement: ToolEngagement[];
   topicInterests: TopicInterest[];
@@ -128,6 +148,7 @@ export interface ActivityInsights {
   pointsByCategory: PointsCategory[];
   insights: PersonalizedInsight[];
   statsSummary: StatsSummary;
+  gameStats: GameStatsData;
 }
 
 // Login user

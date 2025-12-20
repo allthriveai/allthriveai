@@ -22,6 +22,9 @@ import {
   faArrowTrendUp,
   faGraduationCap,
   faCompass,
+  faWorm,
+  faGamepad,
+  faShield,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   getActivityInsights,
@@ -31,6 +34,7 @@ import {
   type PointsCategory,
   type PersonalizedInsight,
   type ActivityTrend,
+  type GameStatsData,
 } from '@/services/auth';
 import { logError } from '@/utils/errorHandler';
 
@@ -49,6 +53,9 @@ const iconMap: Record<string, any> = {
   'arrow-trending-up': faArrowTrendUp,
   'trophy': faTrophy,
   'lightbulb': faLightbulb,
+  'worm': faWorm,
+  'gamepad': faGamepad,
+  'shield': faShield,
 };
 
 // Color classes for insight cards
@@ -59,6 +66,7 @@ const colorClasses: Record<string, { bg: string; text: string; border: string }>
   yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-600 dark:text-yellow-400', border: 'border-yellow-200 dark:border-yellow-800' },
   green: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', border: 'border-green-200 dark:border-green-800' },
   teal: { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-600 dark:text-teal-400', border: 'border-teal-200 dark:border-teal-800' },
+  cyan: { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-800' },
   gray: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-700' },
 };
 
@@ -169,6 +177,11 @@ export function ActivityInsightsTab({ username, isOwnProfile }: ActivityInsights
 
       {/* Activity Trends */}
       <ActivityTrendsSection trends={insights.activityTrends} />
+
+      {/* Games Activity */}
+      {insights.gameStats && insights.gameStats.games.length > 0 && (
+        <GamesActivitySection gameStats={insights.gameStats} onGameClick={(game) => navigate(`/games/${game}`)} />
+      )}
 
       {/* Points by Category */}
       <PointsCategorySection categories={insights.pointsByCategory} />
@@ -563,6 +576,102 @@ function PointsCategorySection({ categories }: { categories: PointsCategory[] })
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Games Activity Section
+function GamesActivitySection({
+  gameStats,
+  onGameClick,
+}: {
+  gameStats: GameStatsData;
+  onGameClick: (game: string) => void;
+}) {
+  return (
+    <div className="glass-subtle p-6 border border-gray-200 dark:border-gray-800" style={{ borderRadius: 'var(--radius)' }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30" style={{ borderRadius: 'var(--radius)' }}>
+            <FontAwesomeIcon icon={faGamepad} className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Games</h3>
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {gameStats.totalPlays} total plays
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {gameStats.games.map((game) => {
+          const icon = iconMap[game.icon] || faGamepad;
+          const formattedDate = game.highScoreDate
+            ? new Date(game.highScoreDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })
+            : null;
+
+          return (
+            <button
+              key={game.game}
+              onClick={() => onGameClick(game.game.replace('_', '-'))}
+              className="w-full p-4 bg-white/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:border-cyan-400 dark:hover:border-cyan-600 transition-colors text-left"
+              style={{ borderRadius: 'var(--radius)' }}
+            >
+              <div className="flex items-center gap-4">
+                {/* Game Icon */}
+                <div className="p-3 bg-gradient-to-br from-cyan-400 to-teal-400 rounded-xl">
+                  <FontAwesomeIcon icon={icon} className="w-6 h-6 text-white" />
+                </div>
+
+                {/* Game Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {game.displayName}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {game.playCount} {game.playCount === 1 ? 'play' : 'plays'}
+                    </span>
+                  </div>
+
+                  {/* High Score */}
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faTrophy} className="w-4 h-4 text-yellow-500" />
+                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                      {game.highScore} tokens
+                    </span>
+                    {formattedDate && (
+                      <span className="text-xs text-gray-400">
+                        on {formattedDate}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Recent Scores Mini Chart */}
+                  {game.recentScores.length > 1 && (
+                    <div className="flex items-end gap-1 mt-2 h-6">
+                      {game.recentScores.slice(0, 5).reverse().map((score, idx) => {
+                        const maxScore = Math.max(...game.recentScores.map(s => s.score), 1);
+                        const height = Math.max(15, (score.score / maxScore) * 100);
+                        return (
+                          <div
+                            key={idx}
+                            className="flex-1 bg-gradient-to-t from-cyan-500 to-teal-400 rounded-t"
+                            style={{ height: `${height}%` }}
+                            title={`${score.score} tokens`}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

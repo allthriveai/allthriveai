@@ -11,10 +11,18 @@ import {
   faWorm,
   faStar,
 } from '@fortawesome/free-solid-svg-icons';
+import { useReward } from 'react-rewards';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useGameScore } from '@/hooks/useGameScore';
 import type { PointsAwarded } from '@/services/games';
+
+// Score tier thresholds
+const SCORE_TIERS = {
+  LOW: 10,    // 0-9: crash effect
+  MEDIUM: 30, // 10-29: subtle effect
+  // 30+: celebration
+};
 
 // Types
 interface Position {
@@ -57,6 +65,23 @@ export default function ContextSnakeGame() {
       setPointsEarnedData(points);
       setShowPointsEarned(true);
     },
+  });
+
+  // End-game animation states
+  const [showCrashFlash, setShowCrashFlash] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
+
+  // Token eaten particle bursts
+  const [particleBursts, setParticleBursts] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const particleIdRef = useRef(0);
+  const particleTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Confetti reward hook
+  const { reward: confettiReward } = useReward('confettiAnchor', 'confetti', {
+    elementCount: 100,
+    spread: 90,
+    startVelocity: 35,
+    colors: ['#22D3EE', '#FB37FF', '#4ADE80', '#FBBF24'],
   });
 
   // Calculate cell size based on screen
@@ -171,6 +196,15 @@ export default function ContextSnakeGame() {
 
       if (eating) {
         setTokenCount(prev => prev + 1);
+        // Trigger particle burst at token position
+        const burstId = particleIdRef.current++;
+        setParticleBursts(prev => [...prev, { id: burstId, x: token.x, y: token.y }]);
+        // Clean up particle after animation (with tracked timeout)
+        const timeoutId = setTimeout(() => {
+          setParticleBursts(prev => prev.filter(p => p.id !== burstId));
+          particleTimeoutsRef.current.delete(burstId);
+        }, 600);
+        particleTimeoutsRef.current.set(burstId, timeoutId);
         spawnToken(newSnake);
       } else {
         newSnake.pop();
@@ -189,6 +223,9 @@ export default function ContextSnakeGame() {
     setGameState('playing');
     setShowPointsEarned(false);
     setPointsEarnedData(null);
+    setShowCrashFlash(false);
+    setIsShaking(false);
+    setParticleBursts([]);
     hasSubmittedRef.current = false;
     spawnToken([{ x: 7, y: 7 }]);
   }, [spawnToken]);
@@ -324,6 +361,14 @@ export default function ContextSnakeGame() {
     };
   }, [gameState, gameLoop]);
 
+  // Cleanup particle timeouts on unmount
+  useEffect(() => {
+    return () => {
+      particleTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      particleTimeoutsRef.current.clear();
+    };
+  }, []);
+
   // Submit score when game ends
   useEffect(() => {
     if (gameState === 'context-full' && !hasSubmittedRef.current && tokenCount > 0) {
@@ -331,6 +376,34 @@ export default function ContextSnakeGame() {
       submitScore(tokenCount);
     }
   }, [gameState, tokenCount, submitScore]);
+
+  // Trigger end-game animations based on score tier
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    if (gameState === 'context-full') {
+      if (tokenCount >= SCORE_TIERS.MEDIUM) {
+        // High score: celebration with confetti
+        confettiReward();
+      } else if (tokenCount < SCORE_TIERS.LOW) {
+        // Low score: crash effect with shake and flash
+        setIsShaking(true);
+        setShowCrashFlash(true);
+        timeoutId = setTimeout(() => {
+          setIsShaking(false);
+          setShowCrashFlash(false);
+        }, 400);
+      } else {
+        // Medium score: subtle shake only
+        setIsShaking(true);
+        timeoutId = setTimeout(() => setIsShaking(false), 300);
+      }
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [gameState, tokenCount, confettiReward]);
 
   const gridPixelSize = GRID_SIZE * cellSize;
 
@@ -353,15 +426,33 @@ export default function ContextSnakeGame() {
 
           {/* Game Area */}
           <div className="flex flex-col items-center">
-            {/* Game canvas */}
-            <div
+            {/* Confetti anchor point */}
+            <span id="confettiAnchor" className="absolute" style={{ top: '40%', left: '50%' }} />
+
+            {/* Game canvas with shake animation */}
+            <motion.div
               className="relative border border-slate-700/50 rounded-lg overflow-hidden"
               style={{
                 width: gridPixelSize,
                 height: gridPixelSize,
                 background: 'rgba(2, 6, 23, 0.8)',
               }}
+              animate={isShaking ? { x: [0, -8, 8, -8, 8, 0] } : { x: 0 }}
+              transition={{ duration: 0.4 }}
             >
+              {/* Red flash overlay for crash effect */}
+              <AnimatePresence>
+                {showCrashFlash && (
+                  <motion.div
+                    className="absolute inset-0 bg-red-500/30 pointer-events-none z-50"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  />
+                )}
+              </AnimatePresence>
+
               {/* Grid lines */}
               <div
                 className="absolute inset-0 pointer-events-none opacity-10"
@@ -418,6 +509,56 @@ export default function ContextSnakeGame() {
                   }}
                 />
               )}
+
+              {/* Particle bursts when eating tokens */}
+              <AnimatePresence>
+                {particleBursts.map(burst => (
+                  <div
+                    key={burst.id}
+                    className="absolute pointer-events-none"
+                    style={{
+                      left: burst.x * cellSize + cellSize / 2,
+                      top: burst.y * cellSize + cellSize / 2,
+                    }}
+                  >
+                    {/* 8 particles radiating outward */}
+                    {[...Array(8)].map((_, i) => {
+                      const angle = (i * 45) * (Math.PI / 180);
+                      const distance = 20;
+                      return (
+                        <motion.div
+                          key={i}
+                          className="absolute w-2 h-2 rounded-full"
+                          style={{
+                            background: i % 2 === 0 ? '#FB37FF' : '#22D3EE',
+                            boxShadow: i % 2 === 0
+                              ? '0 0 6px rgba(251, 55, 255, 0.8)'
+                              : '0 0 6px rgba(34, 211, 238, 0.8)',
+                            marginLeft: -4,
+                            marginTop: -4,
+                          }}
+                          initial={{
+                            x: 0,
+                            y: 0,
+                            scale: 1,
+                            opacity: 1
+                          }}
+                          animate={{
+                            x: Math.cos(angle) * distance,
+                            y: Math.sin(angle) * distance,
+                            scale: 0,
+                            opacity: 0,
+                          }}
+                          transition={{
+                            duration: 0.5,
+                            ease: 'easeOut'
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </AnimatePresence>
 
               {/* Intro overlay - explains context window */}
               <AnimatePresence>
@@ -542,7 +683,7 @@ export default function ContextSnakeGame() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
 
             {/* Token count - during gameplay */}
             {gameState === 'playing' && (
