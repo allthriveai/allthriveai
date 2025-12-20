@@ -41,6 +41,7 @@ help:
 	@echo "  make create-pip      - Create Pip bot user (if doesn't exist)"
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
 	@echo "  make seed-quizzes    - Seed initial quiz data"
+	@echo "  make seed-ai-pricing - Seed AI provider pricing for cost tracking"
 	@echo "  make seed-battle-prompts - Seed battle prompts for prompt battles"
 	@echo "  make seed-test-users - Create test users for admin impersonation"
 	@echo "  make seed-test-users-clean - Recreate test users (delete old ones first)"
@@ -240,6 +241,10 @@ seed-quizzes:
 	@echo "Seeding quizzes..."
 	docker-compose exec web python manage.py seed_quizzes
 
+seed-ai-pricing:
+	@echo "Seeding AI provider pricing..."
+	docker-compose exec web python manage.py seed_ai_pricing
+
 seed-battle-prompts:
 	@echo "Seeding battle prompts..."
 	docker-compose exec web python manage.py seed_battle_prompts
@@ -264,7 +269,9 @@ seed-all:
 	docker-compose exec web python manage.py seed_quizzes
 	docker-compose exec web python manage.py seed_battle_prompts
 	docker-compose exec web python manage.py seed_billing
+	docker-compose exec web python manage.py seed_credit_packs
 	docker-compose exec web python manage.py seed_ai_pricing
+	docker-compose exec web python manage.py seed_achievements
 	docker-compose exec web python manage.py create_pip
 	docker-compose exec web python manage.py create_test_users --count=10
 	@echo "✓ All data seeded successfully!"
@@ -936,6 +943,7 @@ aws-seed-test-users:
 	@make aws-run-command CMD="create_test_users --count=10"
 
 # Seed all data on AWS (run after initial deployment)
+# Note: This matches the seed commands in .github/workflows/deploy-aws.yml
 aws-seed-all:
 	@echo "Seeding all data on AWS..."
 	@make aws-run-command CMD="seed_topics"
@@ -945,9 +953,11 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_quizzes"
 	@make aws-run-command CMD="seed_battle_prompts"
 	@make aws-run-command CMD="seed_billing"
+	@make aws-run-command CMD="seed_credit_packs"
 	@make aws-run-command CMD="seed_ai_pricing"
+	@make aws-run-command CMD="seed_achievements"
 	@make aws-run-command CMD="create_pip"
-	@make aws-run-command CMD="create_test_users --count=10"
+	@make aws-run-command CMD="seed_ai_daily_brief_agent"
 	@echo "✓ All data seeded on AWS!"
 
 # Sync user projects from local to AWS production
