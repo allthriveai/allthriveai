@@ -459,6 +459,12 @@ AI_MODELS = {
 # Legacy setting - kept for backwards compatibility, maps to AI_MODELS['openai']['default']
 DEFAULT_OPENAI_MODEL = AI_MODELS['openai']['default']
 
+# Image Analysis Provider Configuration
+# Primary provider for analyzing uploaded images (gemini, openai, anthropic)
+IMAGE_ANALYSIS_PROVIDER = config('IMAGE_ANALYSIS_PROVIDER', default='gemini')
+# Fallback provider if primary fails (set to same as primary to disable fallback)
+IMAGE_ANALYSIS_FALLBACK_PROVIDER = config('IMAGE_ANALYSIS_FALLBACK_PROVIDER', default='openai')
+
 # LangSmith Configuration (AI Gateway Observability)
 LANGSMITH_API_KEY = config('LANGSMITH_API_KEY', default='')
 LANGSMITH_PROJECT = config('LANGSMITH_PROJECT', default='allthrive-ai-gateway')

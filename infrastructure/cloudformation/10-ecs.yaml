@@ -307,6 +307,11 @@ Resources:
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
               Value: 'allie@allthrive.ai,imnet@allthrive.ai'
+            # Image Analysis AI Provider Configuration
+            - Name: IMAGE_ANALYSIS_PROVIDER
+              Value: 'gemini'
+            - Name: IMAGE_ANALYSIS_FALLBACK_PROVIDER
+              Value: 'openai'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
           Secrets:
@@ -528,6 +533,11 @@ Resources:
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
               Value: 'allie@allthrive.ai,imnet@allthrive.ai'
+            # Image Analysis AI Provider Configuration
+            - Name: IMAGE_ANALYSIS_PROVIDER
+              Value: 'gemini'
+            - Name: IMAGE_ANALYSIS_FALLBACK_PROVIDER
+              Value: 'openai'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
             - Name: FRONTEND_URL
@@ -696,6 +706,11 @@ Resources:
               Value: 'support@allthrive.ai'
             - Name: INVITATION_ADMIN_EMAILS
               Value: 'allie@allthrive.ai,imnet@allthrive.ai'
+            # Image Analysis AI Provider Configuration
+            - Name: IMAGE_ANALYSIS_PROVIDER
+              Value: 'gemini'
+            - Name: IMAGE_ANALYSIS_FALLBACK_PROVIDER
+              Value: 'openai'
             - Name: COOKIE_DOMAIN
               Value: !If [HasDomain, !Sub '.${DomainName}', 'localhost']
             - Name: FRONTEND_URL

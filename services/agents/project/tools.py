@@ -180,10 +180,13 @@ class CreateMediaProjectInput(BaseModel):
         description='Video URL from YouTube, Vimeo, or Loom to import as a project',
     )
 
-    # Common fields - required for all scenarios
+    # Common fields
     title: str | None = Field(
         default=None,
-        description=('Title for the project. ' 'If None, tool returns needs_user_input=True asking for title.'),
+        description=(
+            'Title for the project. OPTIONAL for images/gifs - AI will auto-generate a creative title from the image. '
+            'Required for videos. If user explicitly provides a title, use it.'
+        ),
     )
     tool_hint: str | None = Field(
         default=None,
@@ -1173,7 +1176,8 @@ def create_media_project(
     ROUTING LOGIC:
     1. If file_url is present → IMPORT FLOW (NEVER generation)
        - User uploaded an image, video, or gif
-       - Ask for title and tool if missing
+       - For IMAGES/GIFS: Only tool_hint required - AI auto-generates title from image!
+       - For VIDEOS: Title is required (can't analyze video content)
        - Create project with uploaded file
 
     2. If video_url is present → VIDEO URL IMPORT FLOW
@@ -1185,6 +1189,11 @@ def create_media_project(
        - Generate image, then create project
 
     CRITICAL: file_url takes priority - if present, it's ALWAYS an import.
+
+    AI AUTO-GENERATION (for images/gifs):
+    - Title: AI vision analyzes the image and creates a creative, catchy title
+    - Description, topics, categories: All auto-generated from image content
+    - User only needs to provide: ownership (is_owned) and tool used (tool_hint)
 
     Returns:
         - If missing required info: {success: False, needs_user_input: True, missing: [...]}
@@ -1218,24 +1227,29 @@ def create_media_project(
 
         media_type = _detect_media_type(filename or '')
 
-        # Check if we need user input (title required for all imports)
-        if not title:
-            missing = ['title']
-            if not tool_hint and media_type in ('image', 'gif'):
-                missing.append('tool_hint')
-
+        # Check if we need user input
+        # For images/gifs: only require tool_hint - AI will generate title from the image
+        # For videos: require title since we can't analyze video content
+        if media_type in ('image', 'gif'):
+            if not tool_hint:
+                return {
+                    'success': False,
+                    'needs_user_input': True,
+                    'missing': ['tool_hint'],
+                    'media_type': media_type,
+                    'file_url': file_url,
+                    'filename': filename,
+                    'message': 'What tool did you use? (e.g., Midjourney, DALL-E, Photoshop)',
+                }
+        elif media_type == 'video' and not title:
             return {
                 'success': False,
                 'needs_user_input': True,
-                'missing': missing,
+                'missing': ['title'],
                 'media_type': media_type,
                 'file_url': file_url,
                 'filename': filename,
-                'message': (
-                    "What's the title for this project? " 'And what tool did you use to create it?'
-                    if 'tool_hint' in missing
-                    else 'What would you like to call this project?'
-                ),
+                'message': 'What would you like to call this video project?',
             }
 
         # For videos, use the existing video import logic
@@ -1436,27 +1450,30 @@ def _create_video_project_internal(
 def _create_image_project_internal(
     image_url: str,
     filename: str,
-    title: str,
+    title: str | None,
     tool_hint: str | None,
     is_owned: bool,
     is_showcase: bool,
     is_private: bool,
     user,
 ) -> dict:
-    """Internal helper to create an image project with AI-generated content."""
+    """Internal helper to create an image project with AI-generated content.
+
+    Note: title is optional - if not provided, AI will generate one from the image.
+    """
     from core.integrations.github.helpers import apply_ai_metadata
     from core.integrations.image.ai_analyzer import analyze_image_for_template
     from core.projects.models import Project
 
-    logger.info(f'Creating image project: {title} from {filename} (is_owned={is_owned})')
+    logger.info(f'Creating image project from {filename} (title={title}, is_owned={is_owned})')
 
-    # Run AI analysis on the image to generate rich content
+    # Run AI analysis on the image to generate rich content (including title)
     try:
         logger.info(f'Running AI analysis for image: {filename}')
         analysis = analyze_image_for_template(
             image_url=image_url,
             filename=filename,
-            title=title,
+            title=title or '',  # Pass empty string if no title - AI will generate one
             tool_hint=tool_hint or '',
             user=user,
         )
@@ -1464,12 +1481,19 @@ def _create_image_project_internal(
         logger.warning(f'Image analysis failed for {filename}: {e}')
         analysis = {
             'templateVersion': 2,
+            'title': '',
             'description': '',
             'sections': [],
             'category_ids': [1],
             'topics': ['ai-art'],
             'tool_names': [tool_hint] if tool_hint else [],
         }
+
+    # Use provided title, or AI-generated title, or fallback to filename
+    final_title = title or analysis.get('title') or _generate_title_from_filename(filename)
+    logger.info(
+        f'Using title: {final_title} (user provided: {bool(title)}, AI generated: {bool(analysis.get("title"))})'
+    )
 
     # Build content with image and AI-generated sections
     content = {
@@ -1485,7 +1509,7 @@ def _create_image_project_internal(
     # Create project with the uploaded image as featured image
     project = Project.objects.create(
         user=user,
-        title=title,
+        title=final_title,
         description=analysis.get('description', ''),
         type=project_type,
         featured_image_url=image_url,
@@ -1507,6 +1531,18 @@ def _create_image_project_internal(
         'url': f'/{user.username}/{project.slug}',
         'message': f"Image project '{project.title}' {action_word} successfully!",
     }
+
+
+def _generate_title_from_filename(filename: str) -> str:
+    """Generate a human-readable title from a filename."""
+    import re
+
+    # Remove extension
+    name = re.sub(r'\.[^.]+$', '', filename)
+    # Replace underscores and hyphens with spaces
+    name = re.sub(r'[-_]+', ' ', name)
+    # Title case
+    return name.title() if name else 'Untitled Project'
 
 
 def _generate_and_create_project(
