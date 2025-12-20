@@ -7,7 +7,12 @@ import {
   faArrowLeft,
   faArrowRight,
   faPlay,
+  faStar,
 } from '@fortawesome/free-solid-svg-icons';
+import { useReward } from 'react-rewards';
+import { useAuth } from '@/hooks/useAuth';
+import { useGameScore } from '@/hooks/useGameScore';
+import type { PointsAwarded } from '@/services/games';
 
 interface Position {
   x: number;
@@ -21,6 +26,7 @@ type GameState = 'ready' | 'playing' | 'ended';
 const GRID_SIZE = 12;
 const CELL_SIZE = 22; // Fits ~265px width nicely
 const INITIAL_SPEED = 160;
+const HIGH_SCORE_THRESHOLD = 15; // Score needed for confetti celebration
 
 interface MiniSnakeGameProps {
   onGameEnd?: (score: number) => void;
@@ -39,6 +45,29 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
   const [snake, setSnake] = useState<Position[]>([{ x: 6, y: 6 }]);
   const [token, setToken] = useState<Position>({ x: 9, y: 6 });
   const [tokenCount, setTokenCount] = useState(0);
+
+  // Points system
+  const { isAuthenticated } = useAuth();
+  const [showPointsEarned, setShowPointsEarned] = useState(false);
+  const [pointsEarnedData, setPointsEarnedData] = useState<PointsAwarded | null>(null);
+  const hasSubmittedRef = useRef(false);
+
+  const { submitScore, isSubmitting } = useGameScore({
+    game: 'context_snake',
+    isAuthenticated,
+    onPointsAwarded: (points) => {
+      setPointsEarnedData(points);
+      setShowPointsEarned(true);
+    },
+  });
+
+  // Confetti celebration for high scores
+  const { reward: confettiReward } = useReward('miniSnakeConfetti', 'confetti', {
+    elementCount: 60,
+    spread: 70,
+    startVelocity: 25,
+    colors: ['#22D3EE', '#FB37FF', '#4ADE80', '#FBBF24'],
+  });
 
   const directionRef = useRef<Direction>('RIGHT');
   const gameLoopRef = useRef<number | null>(null);
@@ -130,6 +159,9 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
     directionRef.current = 'RIGHT';
     setTokenCount(0);
     setGameState('playing');
+    setShowPointsEarned(false);
+    setPointsEarnedData(null);
+    hasSubmittedRef.current = false;
     spawnToken([{ x: 6, y: 6 }]);
   }, [spawnToken]);
 
@@ -257,8 +289,24 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
     }
   }, [gameState, tokenCount, onGameEnd]);
 
+  // Submit score and show celebration when game ends
+  useEffect(() => {
+    if (gameState === 'ended' && !hasSubmittedRef.current && tokenCount > 0) {
+      hasSubmittedRef.current = true;
+      submitScore(tokenCount);
+
+      // Confetti for high scores
+      if (tokenCount >= HIGH_SCORE_THRESHOLD) {
+        confettiReward();
+      }
+    }
+  }, [gameState, tokenCount, submitScore, confettiReward]);
+
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3 relative">
+      {/* Confetti anchor */}
+      <span id="miniSnakeConfetti" className="absolute top-1/3 left-1/2" />
+
       {/* Game canvas */}
       <div
         ref={gameContainerRef}
@@ -488,15 +536,56 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
         </AnimatePresence>
 
         {/* Game over overlay */}
-        {gameState === 'ended' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm">
-            <p className="text-slate-400 text-sm mb-1">Context full!</p>
-            <div className="text-center mb-3">
-              <span className="text-cyan-400 font-mono text-2xl font-bold">{tokenCount}</span>
-              <span className="text-slate-500 text-sm ml-1">tokens</span>
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {gameState === 'ended' && (
+            <motion.div
+              className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <p className="text-slate-400 text-xs mb-1">Context full!</p>
+              <div className="text-center mb-2">
+                <span className="text-cyan-400 font-mono text-xl font-bold">{tokenCount}</span>
+                <span className="text-slate-500 text-xs ml-1">tokens</span>
+              </div>
+
+              {/* Points earned display */}
+              <AnimatePresence>
+                {showPointsEarned && pointsEarnedData && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="mb-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30"
+                  >
+                    <div className="flex items-center gap-1.5 text-yellow-400 text-sm">
+                      <FontAwesomeIcon icon={faStar} className="text-xs" />
+                      <span className="font-bold">+{pointsEarnedData.total} points</span>
+                    </div>
+                    {pointsEarnedData.bonus > 0 && (
+                      <p className="text-yellow-500/70 text-[10px] mt-0.5 text-center">
+                        +{pointsEarnedData.base} play + {pointsEarnedData.bonus} bonus
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {isSubmitting && (
+                <div className="mb-2 text-slate-500 text-xs">
+                  Saving...
+                </div>
+              )}
+
+              {!isAuthenticated && !isSubmitting && (
+                <p className="text-slate-500 text-[10px] mb-2">
+                  Sign in to earn points!
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Token count during gameplay */}
