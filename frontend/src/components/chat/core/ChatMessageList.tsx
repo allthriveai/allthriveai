@@ -93,12 +93,6 @@ export function ChatMessageList({
     }
   }, [messages.length]);
 
-  // Debug: log messages with inline_game type
-  const inlineGameMessages = messages.filter(m => m.metadata?.type === 'inline_game');
-  if (inlineGameMessages.length > 0) {
-    console.log('[ChatMessageList] Found inline_game messages:', inlineGameMessages);
-  }
-
   // Render a single message based on its type
   const renderMessage = (message: ChatMessage) => {
     const metadata = message.metadata;
