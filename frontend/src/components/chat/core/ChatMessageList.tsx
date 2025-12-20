@@ -177,14 +177,24 @@ export function ChatMessageList({
         {showEmptyState && customEmptyState}
 
         {/* Messages */}
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {renderMessage(message)}
-          </div>
-        ))}
+        {messages.map((message) => {
+          // Center game messages, otherwise use normal alignment
+          const isGameMessage = message.metadata?.type === 'inline_game';
+          const alignment = message.sender === 'user'
+            ? 'justify-end'
+            : isGameMessage
+              ? 'justify-center'
+              : 'justify-start';
+
+          return (
+            <div
+              key={message.id}
+              className={`flex ${alignment}`}
+            >
+              {renderMessage(message)}
+            </div>
+          );
+        })}
 
         {/* Loading indicator */}
         {isLoading && (

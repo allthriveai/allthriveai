@@ -13,13 +13,13 @@ import type { GameMessageProps } from '../core/types';
 
 export function GameMessage({ gameType, gameConfig, explanation }: GameMessageProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 items-center w-full">
       {explanation && (
-        <div className="text-sm text-gray-300 leading-relaxed max-w-[90%]">
+        <div className="text-sm text-gray-300 leading-relaxed text-center max-w-md">
           {explanation}
         </div>
       )}
-      <div className="flex justify-start">
+      <div className="flex justify-center w-full">
         <ChatErrorBoundary inline resetKey={`game-${gameType}`}>
           <ChatGameCard gameType={gameType} config={gameConfig} />
         </ChatErrorBoundary>
