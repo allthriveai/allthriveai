@@ -72,6 +72,24 @@ export interface WebSocketMessage {
     topic?: string;
     topic_display?: string;
     items?: LearningContentItem[];
+    // find_learning_content unified tool fields
+    query?: string;
+    content?: Array<{
+      type: string;
+      game_type?: string;
+      title?: string;
+      explanation?: string;
+      description?: string;
+      url?: string;
+      id?: string;
+      thumbnail?: string;
+      content_type?: string;
+      difficulty?: string;
+      question_count?: number;
+      name?: string;
+      slug?: string;
+      key_features?: string[];
+    }>;
   };
   // Quota exceeded fields
   reason?: string;
