@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
@@ -42,10 +43,6 @@ urlpatterns = [
     ),
     path('robots.txt', robots_txt, name='robots_txt'),
     path('.well-known/ai-plugin.json', ai_plugin_manifest, name='ai_plugin_manifest'),
-    # API Documentation (OpenAPI/Swagger)
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     # Versioned API namespace
     path('api/v1/', include('core.urls')),
     path('accounts/', include('allauth.urls')),
@@ -70,3 +67,20 @@ if settings.DEBUG:
     from core.views.media_views import serve_media_with_range
 
     urlpatterns.append(path('media/<path:path>', serve_media_with_range, name='media'))
+
+# API Documentation - only available in DEBUG mode or to staff in production
+# In production, staff must be logged into Django admin first to access
+if settings.DEBUG:
+    # Development: No authentication required
+    urlpatterns += [
+        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+        path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    ]
+else:
+    # Production: Require staff authentication (login via /thrive-manage/ first)
+    urlpatterns += [
+        path('api/schema/', staff_member_required(SpectacularAPIView.as_view()), name='schema'),
+        path('api/docs/', staff_member_required(SpectacularSwaggerView.as_view(url_name='schema')), name='swagger-ui'),
+        path('api/redoc/', staff_member_required(SpectacularRedocView.as_view(url_name='schema')), name='redoc'),
+    ]

@@ -90,6 +90,19 @@ export interface WebSocketMessage {
       slug?: string;
       key_features?: string[];
     }>;
+    // get_trending_projects fields
+    projects?: Array<{
+      id: number;
+      title: string;
+      slug: string;
+      description: string;
+      author: string;
+      author_avatar_url?: string;
+      thumbnail?: string;
+      featured_image_url?: string;
+      categories?: string[];
+      url: string;
+    }>;
   };
   // Quota exceeded fields
   reason?: string;
@@ -699,6 +712,65 @@ export function useIntelligentChat({
                   console.log('[useIntelligentChat] Queuing', newContentMessages.length, 'content messages for after streaming');
                   pendingContentMessagesRef.current.push(...newContentMessages);
                 }
+              }
+
+              // Handle get_trending_projects tool - show as project cards
+              if (data.tool === 'get_trending_projects' && data.output?.projects && data.output.projects.length > 0) {
+                const trendingId = `trending-projects-${Date.now()}`;
+
+                // Check for duplicate
+                if (seenMessageIdsRef.current.has(trendingId)) {
+                  break;
+                }
+                seenMessageIdsRef.current.add(trendingId);
+
+                // Transform projects to LearningContentItem format
+                const projects = data.output.projects as Array<{
+                  id: number;
+                  title: string;
+                  slug: string;
+                  description: string;
+                  author: string;
+                  author_avatar_url?: string;
+                  thumbnail?: string;
+                  featured_image_url?: string;
+                  categories?: string[];
+                  url: string;
+                }>;
+
+                const items: LearningContentItem[] = projects.map((p) => ({
+                  id: String(p.id),
+                  title: p.title,
+                  slug: p.slug,
+                  description: p.description,
+                  url: p.url,
+                  featured_image_url: p.featured_image_url || p.thumbnail || '',
+                  thumbnail: p.thumbnail || p.featured_image_url || '',
+                  author_username: p.author,
+                  author_avatar_url: p.author_avatar_url || '',
+                  key_techniques: p.categories || [],
+                }));
+
+                const trendingMessage: ChatMessage = {
+                  id: trendingId,
+                  content: '',
+                  sender: 'assistant',
+                  timestamp: new Date(),
+                  metadata: {
+                    type: 'learning_content',
+                    learningContent: {
+                      topic: 'trending',
+                      topicDisplay: 'Trending Projects',
+                      contentType: 'projects',
+                      sourceType: 'trending',
+                      items,
+                      hasContent: true,
+                    },
+                  },
+                };
+
+                // Queue for after streaming completes
+                pendingContentMessagesRef.current.push(trendingMessage);
               }
               break;
 

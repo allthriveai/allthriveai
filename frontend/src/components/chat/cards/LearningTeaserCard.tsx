@@ -17,6 +17,8 @@ export interface LearningTeaserCardProps {
   item: LearningContentItem;
   contentType: string;
   onNavigate?: (path: string) => void;
+  /** Compact mode for smaller grid display */
+  compact?: boolean;
 }
 
 // Get icon for content type
@@ -45,6 +47,7 @@ export function LearningTeaserCard({
   item,
   contentType,
   onNavigate,
+  compact = false,
 }: LearningTeaserCardProps) {
   const imageUrl = item.featured_image_url || item.thumbnail;
   const hasImage = !!imageUrl;
@@ -56,6 +59,73 @@ export function LearningTeaserCard({
     }
   };
 
+  // Compact card for grid display
+  if (compact) {
+    const CompactCardContent = (
+      <div className="group relative rounded-lg overflow-hidden bg-slate-800/50 border border-white/10 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-md hover:shadow-cyan-500/10">
+        {/* Image Section - smaller square aspect */}
+        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-violet-600/20 to-cyan-600/20">
+          {hasImage ? (
+            <img
+              src={imageUrl}
+              alt={item.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <FontAwesomeIcon
+                icon={getContentTypeIcon(contentType)}
+                className="w-8 h-8 text-white/30"
+              />
+            </div>
+          )}
+
+          {/* Small author avatar */}
+          {item.author_avatar_url && (
+            <div className="absolute bottom-1.5 left-1.5">
+              <img
+                src={item.author_avatar_url}
+                alt={item.author_username || 'Author'}
+                className="w-6 h-6 rounded-full border border-white/60 object-cover"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Compact Content Section */}
+        <div className="p-2">
+          <h4 className="text-xs font-medium text-white line-clamp-1 group-hover:text-cyan-300 transition-colors">
+            {item.title}
+          </h4>
+          {item.author_username && (
+            <p className="text-[10px] text-slate-400 truncate">
+              @{item.author_username}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+
+    if (item.url) {
+      const isExternal = item.url.startsWith('http');
+      if (isExternal) {
+        return (
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className="block">
+            {CompactCardContent}
+          </a>
+        );
+      }
+      return (
+        <Link to={item.url} onClick={handleClick} className="block">
+          {CompactCardContent}
+        </Link>
+      );
+    }
+    return CompactCardContent;
+  }
+
+  // Standard card (original size)
   const CardContent = (
     <div className="group relative w-64 flex-shrink-0 rounded-xl overflow-hidden bg-slate-800/50 border border-white/10 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/20">
       {/* Image Section */}

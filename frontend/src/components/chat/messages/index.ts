@@ -15,3 +15,5 @@ export { GameMessage } from './GameMessage';
 export { OnboardingMessage } from './OnboardingMessage';
 export { GeneratingImageMessage } from './GeneratingImageMessage';
 export { LearningContentMessage } from './LearningContentMessage';
+export { ChallengeTeaserMessage } from './ChallengeTeaserMessage';
+export { PeopleToConnectMessage } from './PeopleToConnectMessage';

@@ -143,32 +143,40 @@ class UserRecommendationService:
         following_ids = set(user.following_set.values_list('following_id', flat=True))
         exclude_ids = [user.id, *list(following_ids)]
 
-        # Step 3: Optimized query with annotations
+        # Step 3: Build Q filter dynamically to avoid empty sets in OR
+        q_filters = Q()
+        if user_interests:
+            q_filters |= Q(interests__id__in=user_interests)
+        if user_roles:
+            q_filters |= Q(roles__id__in=user_roles)
+        if user_goals:
+            q_filters |= Q(goals__id__in=user_goals)
+
+        # Optimized query with annotations
         # Using distinct counts to handle M2M properly
         candidates = (
             User.objects.exclude(id__in=exclude_ids)
             .filter(is_active=True)
-            .filter(Q(interests__id__in=user_interests) | Q(roles__id__in=user_roles) | Q(goals__id__in=user_goals))
+            .filter(q_filters)
             .annotate(
                 interest_overlap=Count(
                     'interests',
-                    filter=Q(interests__id__in=user_interests),
+                    filter=Q(interests__id__in=user_interests) if user_interests else Q(pk=None),
                     distinct=True,
                 ),
                 role_overlap=Count(
                     'roles',
-                    filter=Q(roles__id__in=user_roles),
+                    filter=Q(roles__id__in=user_roles) if user_roles else Q(pk=None),
                     distinct=True,
                 ),
                 goal_overlap=Count(
                     'goals',
-                    filter=Q(goals__id__in=user_goals),
+                    filter=Q(goals__id__in=user_goals) if user_goals else Q(pk=None),
                     distinct=True,
                 ),
             )
             .annotate(overlap_count=F('interest_overlap') + F('role_overlap') + F('goal_overlap'))
             .filter(overlap_count__gte=1)
-            .select_related('tier')
             .order_by('-overlap_count', '-total_points')
             .distinct()[: limit * 2]  # Fetch extra for filtering
         )
@@ -192,7 +200,7 @@ class UserRecommendationService:
                     'display_name': candidate.get_full_name() or candidate.username,
                     'avatar_url': candidate.avatar_url or '',
                     'tagline': self._get_tagline(candidate),
-                    'tier': candidate.tier.name if candidate.tier else None,
+                    'tier': candidate.tier if candidate.tier else None,
                     'level': candidate.level,
                     'match_reason': self._build_match_reason(shared),
                     'shared_interests': shared,
@@ -243,17 +251,16 @@ class UserRecommendationService:
 
         Returns list of tools sorted by usage count.
         """
-        from core.taxonomy.models import Taxonomy
+        from core.tools.models import Tool
 
         # Get tools from user's public projects, ordered by frequency
         tool_counts = (
-            Taxonomy.objects.filter(
-                project__user=user,
-                project__is_private=False,
-                project__is_archived=False,
-                taxonomy_type='tool',
+            Tool.objects.filter(
+                projects__user=user,
+                projects__is_private=False,
+                projects__is_archived=False,
             )
-            .annotate(usage_count=Count('project'))
+            .annotate(usage_count=Count('projects'))
             .order_by('-usage_count')
             .values('id', 'name', 'slug')[:limit]
         )

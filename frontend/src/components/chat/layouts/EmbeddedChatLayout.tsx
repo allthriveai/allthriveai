@@ -28,6 +28,12 @@ interface FeelingOption {
   signupFeatures: string[];
   message?: string;
   navigateTo?: string;
+  // Contextual weights for personalization
+  timeOfDay?: ('morning' | 'afternoon' | 'evening')[];
+  dayOfWeek?: number[]; // 0 = Sunday, 6 = Saturday
+  priority?: number; // Higher = more likely to show
+  // Conditional display flags
+  requiresNoAvatar?: boolean; // Only show if user has no avatar
 }
 
 const FEELING_OPTIONS: FeelingOption[] = [
@@ -36,50 +42,127 @@ const FEELING_OPTIONS: FeelingOption[] = [
     label: 'Share something I\'ve been working on',
     signupFeatures: ['portfolio'],
     message: 'I want to share something I\'ve been working on',
+    timeOfDay: ['afternoon', 'evening'],
+    priority: 3,
   },
   {
     id: 'play',
     label: 'Play a game',
     signupFeatures: ['battles'],
     message: 'I want to play a game',
+    timeOfDay: ['afternoon', 'evening'],
+    dayOfWeek: [0, 5, 6], // Weekends and Friday
+    priority: 2,
   },
   {
     id: 'challenge',
     label: 'See this week\'s challenge',
     signupFeatures: ['challenges'],
     message: "Show me this week's challenge",
+    dayOfWeek: [1, 2, 3], // Early week for fresh challenges
+    priority: 4,
   },
   {
     id: 'learn',
     label: 'Learn something new',
     signupFeatures: ['microlearning', 'learning'],
     message: 'I want to learn something new about AI',
+    timeOfDay: ['morning', 'afternoon'],
+    priority: 3,
   },
   {
     id: 'marketplace',
     label: 'Sell a product or service',
     signupFeatures: ['marketplace'],
     message: 'I want to sell a product or service',
+    timeOfDay: ['morning', 'afternoon'],
+    dayOfWeek: [1, 2, 3, 4], // Weekdays
+    priority: 2,
   },
   {
     id: 'explore',
     label: 'Explore what others are making',
     signupFeatures: ['community'],
     message: 'Show me what others are making',
+    priority: 3,
   },
   {
     id: 'connect',
     label: 'Connect with others',
     signupFeatures: ['community'],
-    message: 'Help me connect with others in my Thrive Circle',
+    message: 'Help me find people to connect with',
+    priority: 3,
   },
   {
     id: 'personalize',
     label: 'Personalize my experience',
     signupFeatures: ['personalize'],
     message: 'Help me personalize my AllThrive experience',
+    priority: 1,
+  },
+  {
+    id: 'trending',
+    label: 'What\'s trending today?',
+    signupFeatures: ['community', 'portfolio'],
+    message: 'Show me what\'s trending today',
+    priority: 2,
+  },
+  {
+    id: 'quick-win',
+    label: 'Give me a quick win',
+    signupFeatures: ['microlearning', 'battles'],
+    message: 'I want a quick win to start my day',
+    timeOfDay: ['morning'],
+    priority: 4,
+  },
+  {
+    id: 'avatar',
+    label: 'Make my avatar',
+    signupFeatures: ['personalize', 'portfolio', 'community'],
+    message: 'Help me create my avatar',
+    priority: 5, // High priority to encourage profile completion
+    requiresNoAvatar: true,
   },
 ];
+
+// Maximum pills to show at once
+const MAX_PILLS_SHOWN = 4;
+
+// Get contextual score for a pill based on time/day
+function getPillContextScore(option: FeelingOption): number {
+  const hour = new Date().getHours();
+  const day = new Date().getDay();
+
+  let score = option.priority || 1;
+
+  // Time of day bonus
+  if (option.timeOfDay) {
+    const timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+    if (option.timeOfDay.includes(timeOfDay)) {
+      score += 2;
+    }
+  }
+
+  // Day of week bonus
+  if (option.dayOfWeek && option.dayOfWeek.includes(day)) {
+    score += 2;
+  }
+
+  // Add some randomness for variety (0-1.5 bonus)
+  score += Math.random() * 1.5;
+
+  return score;
+}
+
+// Shuffle array using Fisher-Yates
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 interface EmbeddedChatLayoutProps {
   conversationId: string;
@@ -239,34 +322,60 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
     return () => clearTimeout(startDelay);
   }, [greetingMessage, hasMessages]);
 
-  // Filter feeling options based on user's signup interests
+  // Check if user has an avatar
+  const hasAvatar = Boolean(user?.avatarUrl);
+
+  // Filter and rotate feeling options based on user's signup interests and context
   const feelingOptions = useMemo((): FeelingOption[] => {
     const getOption = (id: string) => FEELING_OPTIONS.find((o) => o.id === id)!;
 
-    const matchingOptions = FEELING_OPTIONS.filter((option) =>
+    // Get all matching options based on signup features
+    let matchingOptions = FEELING_OPTIONS.filter((option) =>
       option.signupFeatures.some((feature) => excitedFeatures.includes(feature))
     );
 
+    // Fallback if no features match
     if (matchingOptions.length === 0) {
-      return [getOption('play'), getOption('explore'), getOption('share')];
+      matchingOptions = [getOption('play'), getOption('explore'), getOption('learn'), getOption('share')];
     }
 
+    // Remove personalize if already completed
     if (hasPersonalized) {
-      const filtered = matchingOptions.filter((o) => o.id !== 'personalize');
-      const hasLearn = filtered.some((o) => o.id === 'learn');
-      if (!hasLearn) {
-        filtered.push(getOption('learn'));
+      matchingOptions = matchingOptions.filter((o) => o.id !== 'personalize');
+    } else {
+      // Add personalize if not in list and not completed
+      const hasPersonalizeOption = matchingOptions.some((o) => o.id === 'personalize');
+      if (!hasPersonalizeOption) {
+        matchingOptions.push(getOption('personalize'));
       }
-      return filtered;
     }
 
-    const hasPersonalizeOption = matchingOptions.some((o) => o.id === 'personalize');
-    if (!hasPersonalizeOption) {
-      matchingOptions.push(getOption('personalize'));
+    // Filter out avatar pill if user already has an avatar
+    if (hasAvatar) {
+      matchingOptions = matchingOptions.filter((o) => !o.requiresNoAvatar);
+    } else {
+      // Add avatar pill if not in list and user doesn't have one
+      const hasAvatarOption = matchingOptions.some((o) => o.id === 'avatar');
+      if (!hasAvatarOption) {
+        matchingOptions.push(getOption('avatar'));
+      }
     }
 
-    return matchingOptions;
-  }, [excitedFeatures, hasPersonalized]);
+    // Score each option based on context (time, day, priority)
+    const scoredOptions = matchingOptions.map((option) => ({
+      option,
+      score: getPillContextScore(option),
+    }));
+
+    // Sort by score (highest first)
+    scoredOptions.sort((a, b) => b.score - a.score);
+
+    // Take top N options
+    const topOptions = scoredOptions.slice(0, MAX_PILLS_SHOWN).map((s) => s.option);
+
+    // Shuffle the final selection for visual variety
+    return shuffleArray(topOptions);
+  }, [excitedFeatures, hasPersonalized, hasAvatar]);
 
   // Show feeling pills with animation
   const [showPills, setShowPills] = useState(false);

@@ -141,6 +141,7 @@ export function ChatMessageList({
             hasContent={metadata.learningContent.hasContent}
             message={metadata.learningContent.message}
             onNavigate={handleNavigate}
+            sourceType={metadata.learningContent.sourceType}
           />
         </ChatErrorBoundary>
       );
