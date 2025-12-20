@@ -69,6 +69,14 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
     colors: ['#22D3EE', '#FB37FF', '#4ADE80', '#FBBF24'],
   });
 
+  // Emoji reaction for lower scores (encouraging!)
+  const { reward: emojiReward } = useReward('miniSnakeConfetti', 'emoji', {
+    emoji: ['🐍', '💪', '🎮', '⭐'],
+    elementCount: 15,
+    spread: 60,
+    startVelocity: 20,
+  });
+
   const directionRef = useRef<Direction>('RIGHT');
   const gameLoopRef = useRef<number | null>(null);
   const touchStartRef = useRef<Position | null>(null);
@@ -295,12 +303,14 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
       hasSubmittedRef.current = true;
       submitScore(tokenCount);
 
-      // Confetti for high scores
+      // Celebration based on score
       if (tokenCount >= HIGH_SCORE_THRESHOLD) {
-        confettiReward();
+        confettiReward(); // Big celebration for high scores
+      } else {
+        emojiReward(); // Encouraging emojis for lower scores
       }
     }
-  }, [gameState, tokenCount, submitScore, confettiReward]);
+  }, [gameState, tokenCount, submitScore, confettiReward, emojiReward]);
 
   return (
     <div className="flex flex-col items-center gap-3 relative">
