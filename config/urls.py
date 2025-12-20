@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, re_path
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from core.sitemaps import ProjectSitemap, StaticViewSitemap, ToolSitemap, UserProfileSitemap
 from core.views.core_views import ai_plugin_manifest, db_health, robots_txt
@@ -41,6 +42,10 @@ urlpatterns = [
     ),
     path('robots.txt', robots_txt, name='robots_txt'),
     path('.well-known/ai-plugin.json', ai_plugin_manifest, name='ai_plugin_manifest'),
+    # API Documentation (OpenAPI/Swagger)
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     # Versioned API namespace
     path('api/v1/', include('core.urls')),
     path('accounts/', include('allauth.urls')),

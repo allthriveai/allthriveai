@@ -433,6 +433,7 @@ class UnifiedSearchService:
             'quiz': WeaviateSchema.QUIZ_COLLECTION,
             'tool': WeaviateSchema.TOOL_COLLECTION,
             'micro_lesson': WeaviateSchema.MICRO_LESSON_COLLECTION,
+            'game': WeaviateSchema.GAME_COLLECTION,
         }
         return mapping.get(content_type)
 
@@ -448,6 +449,8 @@ class UnifiedSearchService:
             return base + ['tool_id', 'description', 'category_names']
         elif content_type == 'micro_lesson':
             return base + ['micro_lesson_id', 'concept_name', 'topic_name']
+        elif content_type == 'game':
+            return base + ['game_id', 'description', 'url', 'learning_outcomes', 'topic_tags']
 
         return base
 
@@ -470,6 +473,7 @@ class UnifiedSearchService:
                 'quiz': 'quiz_id',
                 'tool': 'tool_id',
                 'micro_lesson': 'micro_lesson_id',
+                'game': 'game_id',
             }
             id_field = id_field_mapping.get(content_type, 'id')
             content_id = item.get(id_field)
@@ -570,6 +574,7 @@ class UnifiedSearchService:
                 'quiz': 'quiz_id',
                 'tool': 'tool_id',
                 'micro_lesson': 'micro_lesson_id',
+                'game': 'game_id',
             }
             id_field = id_field_mapping.get(content_type)
             if not id_field:
@@ -601,7 +606,7 @@ class UnifiedSearchService:
             # Search for similar content in all collections
             all_results: list[SearchResult] = []
 
-            for target_type in ['project', 'quiz', 'tool', 'micro_lesson']:
+            for target_type in ['project', 'quiz', 'tool', 'micro_lesson', 'game']:
                 target_collection = self._get_collection_name(target_type)
                 if not target_collection:
                     continue

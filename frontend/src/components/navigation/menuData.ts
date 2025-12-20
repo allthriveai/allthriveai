@@ -55,7 +55,7 @@ export const getMenuSections = (
     path: '/challenges',
     items: [
       { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
-      { label: 'Side Quests', path: '/play/side-quests', icon: faGamepad },
+      { label: 'Games', path: '/play/games', icon: faGamepad },
       { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy, className: 'text-pink-500 dark:text-pink-400' },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
       { label: 'Learning Paths', path: '#', icon: faGraduationCap },
@@ -92,7 +92,7 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'DISCOVER': (path) => path === '/explore',
   'Quizzes': (path) => path === '/quizzes',
   "This Week's Challenge": (path) => path === '/challenges' || path.startsWith('/challenges/') || path === '/this-weeks-challenge',
-  'Side Quests': (path) => path === '/play/side-quests',
+  'Games': (path) => path === '/play/games',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
   'Account Settings': (path, search) => path === '/account/settings' && !search,
   'Onboarding': (path) => path === '/onboarding',

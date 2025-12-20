@@ -32,8 +32,6 @@ import {
   faPuzzlePiece,
   faChevronLeft,
   faChevronRight,
-  faShieldAlt,
-  faWorm,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
@@ -76,7 +74,7 @@ const getCategoryIcon = (iconName?: string): IconDefinition => {
   return categoryIconMap[iconName] || faCompass;
 };
 
-export default function SideQuestsPage() {
+export default function GamesPage() {
   const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
@@ -257,8 +255,8 @@ export default function SideQuestsPage() {
       <DashboardLayout>
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-4xl font-bold mb-2">Join Side Quests</h1>
-            <p className="text-muted">Log in to discover and complete optional challenges for bonus Points</p>
+            <h1 className="text-4xl font-bold mb-2">Join Games</h1>
+            <p className="text-muted">Log in to play games and complete challenges for bonus Points</p>
           </div>
         </div>
       </DashboardLayout>
@@ -308,17 +306,17 @@ export default function SideQuestsPage() {
     <DashboardLayout>
       <div className="h-full overflow-y-auto">
         {/* Hero Banner - Neon Glass Style */}
-        <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Side Quests page header">
+        <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Games page header">
           {/* Ambient Glow Background */}
           <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
           <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-green-500/10 dark:bg-green-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-green-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-green-400 bg-clip-text text-transparent">Side Quests</span>
+              <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-green-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-green-400 bg-clip-text text-transparent">Games</span>
             </h1>
             <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
-              Embark on quests, forge new skills, and claim legendary rewards
+              Play games, complete side quests, and earn legendary rewards
             </p>
           </div>
         </header>
@@ -346,99 +344,49 @@ export default function SideQuestsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Prompt Battle Game Card - Neon Glass Style */}
+              {/* Prompt Battle Game Card */}
               <Link
                 to="/play/prompt-battles"
                 className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(34, 211, 238, 0.08))',
                   border: '1px solid rgba(236, 72, 153, 0.3)',
                 }}
               >
-                {/* Animated Background Glow */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.25), transparent 70%)',
-                  }}
-                />
+                {/* Promo Image */}
+                <div className="relative aspect-[2/3] overflow-hidden">
+                  <img
+                    src="/games/game-prompt-battle-promo.png"
+                    alt="Image Prompt Battle"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* Gradient overlay for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Diagonal clash lines */}
-                <div
-                  className="absolute inset-0 opacity-10"
-                  style={{
-                    backgroundImage: `
-                      linear-gradient(135deg, rgba(34, 211, 238, 0.4) 1px, transparent 1px),
-                      linear-gradient(225deg, rgba(236, 72, 153, 0.4) 1px, transparent 1px)
-                    `,
-                    backgroundSize: '30px 30px',
-                  }}
-                />
-
-                {/* Player glow effects */}
-                <div className="absolute top-1/3 left-4 w-16 h-16 rounded-full bg-cyan-500/20 blur-xl" />
-                <div className="absolute top-1/3 right-4 w-16 h-16 rounded-full bg-pink-500/20 blur-xl" />
-
-                <div className="relative p-5">
-                  {/* VS Battle Display - Centered */}
-                  <div className="flex items-center justify-center gap-3 mb-4">
-                    {/* Player 1 Avatar */}
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-2 border-cyan-400/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.3), rgba(34, 211, 238, 0.1))',
-                      }}
-                    >
-                      <span className="text-cyan-300">P1</span>
-                    </div>
-
-                    {/* VS with lightning */}
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center border border-pink-400/40 shadow-[0_0_10px_rgba(236,72,153,0.2)]"
-                      style={{
-                        background: 'rgba(236, 72, 153, 0.15)',
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faBolt} className="text-pink-400 text-sm" />
-                    </div>
-
-                    {/* Player 2 Avatar */}
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-2 border-pink-400/50 shadow-[0_0_15px_rgba(236,72,153,0.3)]"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(236, 72, 153, 0.1))',
-                      }}
-                    >
-                      <span className="text-pink-300">P2</span>
-                    </div>
-                  </div>
-
-                  {/* Game Info */}
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <h3 className="font-bold text-lg text-white group-hover:text-pink-300 transition-colors text-center">
+                  {/* Content overlay at bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="font-bold text-lg text-white group-hover:text-pink-300 transition-colors">
                       Image Prompt Battle
                     </h3>
-                  </div>
+                    <p className="text-sm text-gray-300 mb-2">
+                      Challenge friends to head-to-head prompt battles
+                    </p>
 
-                  <p className="text-sm text-gray-400 mb-4 text-center">
-                    Challenge friends to head-to-head prompt battles
-                  </p>
-
-                  {/* Stats */}
-                  <div className="flex items-center justify-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faUsers} className="text-pink-400" />
-                      <span className="text-gray-400">1v1</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
-                      <span className="text-amber-400 font-medium">+200 pts</span>
+                    {/* Stats */}
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faUsers} className="text-pink-400" />
+                        <span className="text-gray-300">1v1</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
+                        <span className="text-amber-400 font-medium">+200 pts</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Play Button Overlay */}
-                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-pink-500/20 border border-pink-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110 shadow-[0_0_15px_rgba(236,72,153,0.3)]">
-                    <FontAwesomeIcon icon={faPlay} className="text-pink-300 text-sm ml-0.5" />
+                  <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-pink-500/40 backdrop-blur-sm border border-pink-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110 shadow-[0_0_15px_rgba(236,72,153,0.3)]">
+                    <FontAwesomeIcon icon={faPlay} className="text-white text-sm ml-0.5" />
                   </div>
                 </div>
               </Link>
@@ -448,73 +396,44 @@ export default function SideQuestsPage() {
                 to="/play/ethics-defender"
                 className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.05))',
                   border: '1px solid rgba(139, 92, 246, 0.3)',
                 }}
               >
-                {/* Animated Background Glow */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.3), transparent 70%)',
-                  }}
-                />
+                {/* Promo Image */}
+                <div className="relative aspect-[2/3] overflow-hidden">
+                  <img
+                    src="/games/game-ethics-defender-promo.png"
+                    alt="Ethics Defender"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* Gradient overlay for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Starfield Background */}
-                <div className="absolute inset-0 overflow-hidden">
-                  {[...Array(20)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute rounded-full bg-white animate-pulse"
-                      style={{
-                        width: Math.random() * 2 + 1 + 'px',
-                        height: Math.random() * 2 + 1 + 'px',
-                        left: Math.random() * 100 + '%',
-                        top: Math.random() * 100 + '%',
-                        animationDelay: Math.random() * 2 + 's',
-                        animationDuration: Math.random() * 2 + 1 + 's',
-                        opacity: Math.random() * 0.5 + 0.2,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="relative p-5">
-                  {/* Game Icon */}
-                  <div className="w-14 h-14 rounded-xl mb-4 flex items-center justify-center bg-gradient-to-br from-violet-500/30 to-blue-500/20 border border-violet-500/30">
-                    <FontAwesomeIcon icon={faShieldAlt} className="text-2xl text-violet-400" />
-                  </div>
-
-                  {/* Game Info */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-bold text-xl text-white group-hover:text-violet-300 transition-colors">
+                  {/* Content overlay at bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="font-bold text-lg text-white group-hover:text-violet-300 transition-colors">
                       Ethics Defender
                     </h3>
-                  </div>
+                    <p className="text-sm text-gray-300 mb-2 line-clamp-2">
+                      Defend the galaxy from AI ethics threats!
+                    </p>
 
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    Defend the galaxy from AI ethics threats! Shoot the correct answers to earn rewards while learning about AI bias, privacy, and more.
-                  </p>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faRocket} className="text-cyan-400" />
-                      <span className="text-gray-400">Space Shooter</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faBrain} className="text-pink-400" />
-                      <span className="text-gray-400">AI Ethics</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
-                      <span className="text-amber-400 font-medium">+50 pts</span>
+                    {/* Stats */}
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faRocket} className="text-cyan-400" />
+                        <span className="text-gray-300">Space Shooter</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
+                        <span className="text-amber-400 font-medium">+50 pts</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Play Button Overlay */}
-                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-violet-500/30 border border-violet-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
-                    <FontAwesomeIcon icon={faPlay} className="text-violet-300 text-sm ml-0.5" />
+                  <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-violet-500/40 backdrop-blur-sm border border-violet-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
+                    <FontAwesomeIcon icon={faPlay} className="text-white text-sm ml-0.5" />
                   </div>
                 </div>
               </Link>
@@ -524,65 +443,51 @@ export default function SideQuestsPage() {
                 to="/play/context-snake"
                 className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(20, 184, 166, 0.05))',
                   border: '1px solid rgba(34, 211, 238, 0.3)',
                 }}
               >
-                {/* Animated Background Glow */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.3), transparent 70%)',
-                  }}
-                />
+                {/* Promo Image */}
+                <div className="relative aspect-[2/3] overflow-hidden">
+                  <img
+                    src="/games/game-context-snake-promo.png"
+                    alt="Context Snake"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* Gradient overlay for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Grid Background */}
-                <div
-                  className="absolute inset-0 opacity-20"
-                  style={{
-                    backgroundImage: `
-                      linear-gradient(to right, rgba(34, 211, 238, 0.3) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgba(34, 211, 238, 0.3) 1px, transparent 1px)
-                    `,
-                    backgroundSize: '20px 20px',
-                  }}
-                />
-
-                <div className="relative p-5">
-                  {/* Game Icon */}
-                  <div className="w-14 h-14 rounded-xl mb-4 flex items-center justify-center bg-gradient-to-br from-cyan-500/30 to-teal-500/20 border border-cyan-500/30">
-                    <FontAwesomeIcon icon={faWorm} className="text-2xl text-cyan-400" />
-                  </div>
-
-                  {/* Game Info */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-bold text-xl text-white group-hover:text-cyan-300 transition-colors">
-                      Context Snake
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 animate-pulse">
+                  {/* NEW badge */}
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/40 backdrop-blur-sm text-cyan-300 border border-cyan-500/30 animate-pulse">
                       NEW
                     </span>
                   </div>
 
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    Collect tokens. Watch your context grow. Learn why bigger isn't always better.
-                  </p>
+                  {/* Content overlay at bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="font-bold text-lg text-white group-hover:text-cyan-300 transition-colors">
+                      Context Snake
+                    </h3>
+                    <p className="text-sm text-gray-300 mb-2 line-clamp-2">
+                      Collect tokens. Watch your context grow.
+                    </p>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faGamepad} className="text-cyan-400" />
-                      <span className="text-gray-400">Classic Snake</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <FontAwesomeIcon icon={faBrain} className="text-pink-400" />
-                      <span className="text-gray-400">Context Windows</span>
+                    {/* Stats */}
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faGamepad} className="text-cyan-400" />
+                        <span className="text-gray-300">Classic Snake</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faBrain} className="text-pink-400" />
+                        <span className="text-gray-300">Context Windows</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Play Button Overlay */}
-                  <div className="absolute bottom-5 right-5 w-10 h-10 rounded-full bg-cyan-500/30 border border-cyan-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
-                    <FontAwesomeIcon icon={faPlay} className="text-cyan-300 text-sm ml-0.5" />
+                  <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-cyan-500/40 backdrop-blur-sm border border-cyan-400/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
+                    <FontAwesomeIcon icon={faPlay} className="text-white text-sm ml-0.5" />
                   </div>
                 </div>
               </Link>

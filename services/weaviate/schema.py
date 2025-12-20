@@ -25,6 +25,7 @@ class WeaviateSchema:
     TOOL_COLLECTION = 'Tool'
     QUIZ_COLLECTION = 'Quiz'
     MICRO_LESSON_COLLECTION = 'MicroLesson'
+    GAME_COLLECTION = 'Game'
 
     # Content metadata taxonomy properties shared across content types
     # These correspond to the ContentMetadataMixin and taxonomy fields
@@ -627,6 +628,99 @@ class WeaviateSchema:
         }
 
     @classmethod
+    def get_game_schema(cls) -> dict:
+        """
+        Schema for Game collection.
+
+        Stores game embeddings for semantic search and discovery.
+        Games are static content (Context Snake, Ethics Defender, Prompt Battle).
+        """
+        return {
+            'class': cls.GAME_COLLECTION,
+            'description': 'Game embeddings for search and discovery',
+            'vectorizer': 'none',
+            'properties': [
+                {
+                    'name': 'game_id',
+                    'dataType': ['text'],
+                    'description': 'Game identifier (context_snake, ethics_defender, prompt_battle)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'weaviate_uuid',
+                    'dataType': ['text'],
+                    'description': 'Stable UUID for cross-referencing',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'title',
+                    'dataType': ['text'],
+                    'description': 'Game title',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'combined_text',
+                    'dataType': ['text'],
+                    'description': 'Combined text for keyword search (title + description + topics)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'description',
+                    'dataType': ['text'],
+                    'description': 'Game description and how to play',
+                    'indexFilterable': False,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'learning_outcomes',
+                    'dataType': ['text[]'],
+                    'description': 'What players learn from the game',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'topic_tags',
+                    'dataType': ['text[]'],
+                    'description': 'Related topics/concepts',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'difficulty',
+                    'dataType': ['text'],
+                    'description': 'Game difficulty level',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'url',
+                    'dataType': ['text'],
+                    'description': 'Frontend route to the game',
+                    'indexFilterable': False,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'player_count',
+                    'dataType': ['int'],
+                    'description': 'Number of players who played',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'content_type_name',
+                    'dataType': ['text'],
+                    'description': 'Content type (always "Game")',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+            ],
+        }
+
+    @classmethod
     def get_all_schemas(cls) -> list[dict]:
         """Get all collection schemas."""
         return [
@@ -635,6 +729,7 @@ class WeaviateSchema:
             cls.get_tool_schema(),
             cls.get_quiz_schema(),
             cls.get_micro_lesson_schema(),
+            cls.get_game_schema(),
         ]
 
     @classmethod

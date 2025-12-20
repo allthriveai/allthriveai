@@ -41,13 +41,13 @@ const FEELING_OPTIONS: FeelingOption[] = [
     id: 'play',
     label: 'Play a game',
     signupFeatures: ['battles'],
-    navigateTo: '/play/side-quests',
+    message: 'I want to play a game',
   },
   {
     id: 'challenge',
     label: 'See this week\'s challenge',
     signupFeatures: ['challenges'],
-    navigateTo: '/challenge',
+    message: "Show me this week's challenge",
   },
   {
     id: 'learn',
@@ -64,14 +64,14 @@ const FEELING_OPTIONS: FeelingOption[] = [
   {
     id: 'explore',
     label: 'Explore what others are making',
-    signupFeatures: ['investing'],
-    navigateTo: '/explore?tab=trending',
+    signupFeatures: ['community'],
+    message: 'Show me what others are making',
   },
   {
     id: 'connect',
     label: 'Connect with others',
     signupFeatures: ['community'],
-    navigateTo: '/thrive-circle',
+    message: 'Help me connect with others in my Thrive Circle',
   },
   {
     id: 'personalize',
@@ -324,6 +324,19 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
           navigate(path);
         };
 
+        // Wrap sendMessage to intercept slash commands
+        const handleSendMessage = (message: string, attachments?: File[]) => {
+          // Handle /clear command
+          if (message.trim().toLowerCase() === '/clear') {
+            state.clearMessages();
+            setTypedGreeting('');
+            setIsTypingComplete(false);
+            return;
+          }
+          // Pass through to normal send
+          state.sendMessage(message, attachments);
+        };
+
         return (
           <div
             className="min-h-[calc(100vh-12rem)] flex flex-col relative"
@@ -439,7 +452,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
               {/* Input Area */}
               <ChatInputArea
-                onSendMessage={state.sendMessage}
+                onSendMessage={handleSendMessage}
                 isLoading={state.isLoading}
                 isUploading={state.isUploading}
                 onCancelUpload={state.cancelUpload}

@@ -59,6 +59,7 @@ class Project(WeaviateSyncMixin, models.Model):
         BATTLE = 'battle', 'Prompt Battle'
         PRODUCT = 'product', 'Digital Product'
         CLIPPED = 'clipped', 'Clipped'  # External content user saved from the web
+        GAME = 'game', 'Game'  # Interactive game teaser linking to /play/
         OTHER = 'other', 'Other'
 
     class DifficultyLevel(models.TextChoices):

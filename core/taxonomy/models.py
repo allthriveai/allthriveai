@@ -119,7 +119,14 @@ class Taxonomy(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            # Ensure uniqueness for slug, especially if name might not be unique across taxonomy types
+            base_slug = slugify(self.name)
+            unique_slug = base_slug
+            num = 1
+            while Taxonomy.objects.filter(slug=unique_slug).exists():
+                unique_slug = f'{base_slug}-{num}'
+                num += 1
+            self.slug = unique_slug
         super().save(*args, **kwargs)
 
 

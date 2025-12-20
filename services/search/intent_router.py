@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-ContentType = Literal['project', 'quiz', 'tool', 'micro_lesson']
+ContentType = Literal['project', 'quiz', 'tool', 'micro_lesson', 'game']
 
 # Keywords that indicate specific content type intent
 INTENT_KEYWORDS: dict[ContentType, list[str]] = {
@@ -78,6 +78,22 @@ INTENT_KEYWORDS: dict[ContentType, list[str]] = {
         'coding',
         'repository',
         'repo',
+    ],
+    'game': [
+        'game',
+        'games',
+        'play',
+        'playing',
+        'snake',
+        'defender',
+        'battle',
+        'prompt battle',
+        'context snake',
+        'ethics defender',
+        'minigame',
+        'mini-game',
+        'arcade',
+        'interactive',
     ],
 }
 
@@ -185,7 +201,7 @@ class IntentRouter:
                 detected_types = ['quiz', 'project']
             else:
                 # Default: search all types
-                detected_types = ['project', 'quiz', 'tool', 'micro_lesson']
+                detected_types = ['project', 'quiz', 'tool', 'micro_lesson', 'game']
 
         # Extract topic by removing intent keywords
         topic = cls._extract_topic(query_lower, detected_types)
@@ -281,6 +297,7 @@ class IntentRouter:
             'quiz': WeaviateSchema.QUIZ_COLLECTION,
             'tool': WeaviateSchema.TOOL_COLLECTION,
             'micro_lesson': WeaviateSchema.MICRO_LESSON_COLLECTION,
+            'game': WeaviateSchema.GAME_COLLECTION,
         }
 
         return [mapping[ct] for ct in content_types if ct in mapping]

@@ -1,29 +1,29 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, _TEST_USER } from './helpers';
 
-test.describe('Side Quests', () => {
+test.describe('Games', () => {
   // Login before each test
   test.beforeEach(async ({ page }) => {
     await loginViaAPI(page);
   });
 
-  test('should display the side quests page with Quest Paths section', async ({ page }) => {
-    // Navigate to side quests page
-    await page.goto('/play/side-quests');
+  test('should display the games page with Quest Paths section', async ({ page }) => {
+    // Navigate to games page
+    await page.goto('/play/games');
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for page content to load
     await page.waitForTimeout(3000);
 
-    // Verify the Side Quests title is displayed (it's the main heading)
-    await expect(page.getByRole('heading', { name: 'Side Quests' })).toBeVisible({ timeout: 10000 });
+    // Verify the Games title is displayed (it's the main heading)
+    await expect(page.getByRole('heading', { name: 'Games' })).toBeVisible({ timeout: 10000 });
 
     // Verify Quest Paths section exists - use heading role to be specific
     await expect(page.getByRole('heading', { name: 'Quest Paths', level: 2 })).toBeVisible();
   });
 
   test('should display quest categories', async ({ page }) => {
-    await page.goto('/play/side-quests');
+    await page.goto('/play/games');
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for content to load
@@ -47,7 +47,7 @@ test.describe('Side Quests', () => {
   });
 
   test('should expand category to show individual quests', async ({ page }) => {
-    await page.goto('/play/side-quests');
+    await page.goto('/play/games');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
@@ -76,7 +76,7 @@ test.describe('Side Quests', () => {
   });
 
   test('should show Continue Playing section with daily quests', async ({ page }) => {
-    await page.goto('/play/side-quests');
+    await page.goto('/play/games');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
@@ -97,7 +97,7 @@ test.describe('Side Quests', () => {
   });
 
   test('should show daily quests like Daily Explorer, Daily Check-In', async ({ page }) => {
-    await page.goto('/play/side-quests');
+    await page.goto('/play/games');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
@@ -125,12 +125,12 @@ test.describe('Side Quests', () => {
     await page.context().clearCookies();
 
     // Navigate to side quests page without auth
-    await page.goto('/play/side-quests');
+    await page.goto('/play/games');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
-    // Should see login prompt "Join Side Quests" or be redirected to auth
-    const loginPrompt = page.getByText('Join Side Quests');
+    // Should see login prompt "Join Games" or be redirected to auth
+    const loginPrompt = page.getByText('Join Games');
     const authPage = page.url().includes('/auth') || page.url().includes('/login');
 
     const hasLoginPrompt = await loginPrompt.isVisible().catch(() => false);

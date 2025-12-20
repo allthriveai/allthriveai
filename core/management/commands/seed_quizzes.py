@@ -242,6 +242,7 @@ class Command(BaseCommand):
             category_names = quiz_data.pop('category_names', [])
             topic_tags = quiz_data.pop('topic_tags', [])
             tool_names = quiz_data.pop('tool_names', [])
+            topic_name = quiz_data.pop('topic', None)  # Extract the topic string
 
             # Get or create the quiz
             quiz, quiz_created = Quiz.objects.get_or_create(
@@ -249,12 +250,10 @@ class Command(BaseCommand):
                 defaults={
                     'title': quiz_data['title'],
                     'description': quiz_data['description'],
-                    'topic': quiz_data['topic'],
                     'difficulty': quiz_data['difficulty'],
                     'estimated_time': quiz_data['estimated_time'],
                     'thumbnail_url': quiz_data.get('thumbnail_url', ''),
                     'is_published': quiz_data['is_published'],
-                    'topics': topic_tags,
                     'created_by': system_user,
                 },
             )
@@ -266,15 +265,40 @@ class Command(BaseCommand):
                 # Update existing quiz
                 quiz.title = quiz_data['title']
                 quiz.description = quiz_data['description']
-                quiz.topic = quiz_data['topic']
                 quiz.difficulty = quiz_data['difficulty']
                 quiz.estimated_time = quiz_data['estimated_time']
                 quiz.thumbnail_url = quiz_data.get('thumbnail_url', '')
                 quiz.is_published = quiz_data['is_published']
-                quiz.topics.set(topic_tags)
                 quiz.save()
                 updated_quizzes += 1
                 self.stdout.write(self.style.WARNING(f'↻ Updated quiz: {quiz.title}'))
+
+            # Set topics (ManyToMany - must be set after save)
+            topics_to_set = []
+
+            # Add the main topic if provided
+            if topic_name:
+                try:
+                    main_topic = Taxonomy.objects.get(name=topic_name, taxonomy_type='topic', is_active=True)
+                    topics_to_set.append(main_topic)
+                except Taxonomy.DoesNotExist:
+                    self.stdout.write(
+                        self.style.WARNING(f'  ⚠ Topic "{topic_name}" not found in Taxonomy. Run seed_topics first.')
+                    )
+
+            # Add additional topic tags
+            if topic_tags:
+                for tag_name in topic_tags:
+                    try:
+                        topic_tag = Taxonomy.objects.get(name=tag_name, taxonomy_type='topic', is_active=True)
+                        if topic_tag not in topics_to_set:
+                            topics_to_set.append(topic_tag)
+                    except Taxonomy.DoesNotExist:
+                        self.stdout.write(self.style.WARNING(f'  ⚠ Topic tag "{tag_name}" not found in Taxonomy.'))
+
+            quiz.topics.set(topics_to_set)
+            if topics_to_set:
+                self.stdout.write(self.style.SUCCESS(f'  → Added {len(topics_to_set)} topics to {quiz.title}'))
 
             # Add categories (ManyToMany relationship)
             if category_names:

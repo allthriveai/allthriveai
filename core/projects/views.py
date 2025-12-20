@@ -3,6 +3,7 @@ import time
 
 from django.conf import settings
 from django.core.cache import cache
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, Throttled
@@ -1035,22 +1036,66 @@ def user_clipped_projects(request, username):
     return Response({'results': serializer.data})
 
 
+@extend_schema(
+    summary='Explore projects',
+    description='Explore public projects with filtering, search, and pagination.',
+    parameters=[
+        OpenApiParameter(
+            name='tab',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description="Filter tab: 'for-you', 'trending', 'new', 'news', or 'all'",
+            enum=['for-you', 'trending', 'new', 'news', 'all'],
+            default='all',
+        ),
+        OpenApiParameter(
+            name='search',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Text search query',
+        ),
+        OpenApiParameter(
+            name='tools',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Comma-separated tool IDs to filter by',
+        ),
+        OpenApiParameter(
+            name='topics',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Comma-separated topic slugs to filter by',
+        ),
+        OpenApiParameter(
+            name='sort',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Sort order',
+            enum=['newest', 'trending', 'popular', 'random'],
+            default='newest',
+        ),
+        OpenApiParameter(
+            name='page',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description='Page number',
+            default=1,
+        ),
+        OpenApiParameter(
+            name='page_size',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description='Results per page (max 100)',
+            default=30,
+        ),
+    ],
+    responses={200: ProjectCardSerializer(many=True)},
+    tags=['projects'],
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def explore_projects(request):
-    """Explore projects with filtering, search, and pagination.
-
-    Query parameters:
-    - tab: 'for-you' | 'trending' | 'new' | 'news' | 'all' (default: 'all')
-    - search: text search query
-    - tools: comma-separated tool IDs
-    - topics: comma-separated topic slugs
-    - sort: 'newest' | 'trending' | 'popular' | 'random' (default: 'newest')
-    - page: page number (default: 1)
-    - page_size: results per page (default: 30, max: 100)
-
-    Returns paginated list of all public projects (not private, not archived) regardless of showcase status.
-    """
+    """Explore projects with filtering, search, and pagination."""
     import logging
 
     from django.contrib.postgres.search import TrigramWordSimilarity

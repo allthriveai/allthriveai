@@ -297,6 +297,8 @@ class EmberState(TypedDict):
     # Optional context flags
     is_onboarding: bool
     conversation_id: str
+    # Learner context (injected at conversation start)
+    learner_context: dict | None
 
 
 # =============================================================================
@@ -347,6 +349,7 @@ def tools_node(state: EmberState) -> dict:
                 'user_id': state.get('user_id'),
                 'username': state.get('username', ''),
                 'session_id': state.get('session_id', ''),
+                'learner_context': state.get('learner_context'),
             }
             logger.debug(f'Injected state into {tool_name}: user_id={state.get("user_id")}')
 
@@ -790,6 +793,11 @@ async def stream_ember_response(
                         }
                     }
 
+                    # Load learner context for personalization
+                    from services.agents.learning.components import LearnerContextService
+
+                    learner_context = await LearnerContextService.get_context_async(user_id)
+
                     # Create input state - only the new message
                     # The checkpointer automatically manages conversation history
                     input_state = {
@@ -799,6 +807,7 @@ async def stream_ember_response(
                         'session_id': session_id,
                         'is_onboarding': is_onboarding,
                         'conversation_id': session_id,
+                        'learner_context': learner_context,
                     }
 
                     # Track processed events to avoid duplicates
@@ -976,6 +985,11 @@ def invoke_ember(
     # Estimate input tokens
     input_tokens = _estimate_messages_tokens(messages)
 
+    # Load learner context for personalization (sync)
+    from services.agents.learning.components import LearnerContextService
+
+    learner_context = LearnerContextService.get_context(user_id)
+
     # Create initial state
     initial_state = EmberState(
         messages=messages,
@@ -984,6 +998,7 @@ def invoke_ember(
         session_id=session_id,
         is_onboarding=is_onboarding,
         conversation_id='',
+        learner_context=learner_context,
     )
 
     # Create and invoke agent (uses AI gateway model)

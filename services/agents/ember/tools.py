@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 EMBER_TOOLS = [
     # Discovery (5 tools) - Search, recommend, trending, similar, details
     *DISCOVERY_TOOLS,
-    # Learning (5 tools) - Progress, hints, explain, suggest, quiz details
+    # Learning (3 tools) - find_learning_content, create_learning_path, update_learner_profile
     *LEARNING_TOOLS,
     # Project (10+ tools) - Create, import, media, scrape, architecture
     *PROJECT_TOOLS,

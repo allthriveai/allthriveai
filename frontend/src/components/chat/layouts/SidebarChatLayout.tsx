@@ -210,6 +210,18 @@ export function SidebarChatLayout({
           state.sendMessage(message);
         };
 
+        // Wrap sendMessage to intercept slash commands
+        const handleSendMessage = (message: string, attachments?: File[]) => {
+          // Handle /clear command
+          if (message.trim().toLowerCase() === '/clear') {
+            state.clearMessages();
+            setShowQuickActions(true);
+            return;
+          }
+          // Pass through to normal send
+          state.sendMessage(message, attachments);
+        };
+
         // Handle integration selection from plus menu
         const handleIntegrationSelect = (type: IntegrationType) => {
           if (type === 'clear-conversation') {
@@ -461,7 +473,7 @@ export function SidebarChatLayout({
               {/* Input Area - hide when learning setup is shown */}
               {!hasActiveIntegration && !showLearningSetup && (
                 <ChatInputArea
-                  onSendMessage={state.sendMessage}
+                  onSendMessage={handleSendMessage}
                   isLoading={state.isLoading}
                   isUploading={state.isUploading}
                   onCancelUpload={state.cancelUpload}

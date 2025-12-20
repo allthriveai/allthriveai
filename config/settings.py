@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'drf_spectacular',  # OpenAPI schema generation
     'corsheaders',
     'csp',
     'core',  # Must come before allauth to ensure User model is available
@@ -340,6 +341,38 @@ REST_FRAMEWORK = {
     },
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# OpenAPI Schema Settings (drf-spectacular)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'AllThrive AI API',
+    'DESCRIPTION': 'API for AllThrive AI platform - AI-powered learning and project portfolio',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY': [{'bearerAuth': []}],
+    'COMPONENT_SPLIT_REQUEST': True,
+    # Better serializer introspection
+    'SCHEMA_PATH_PREFIX': r'/api/v1/',
+    'SCHEMA_PATH_PREFIX_TRIM': True,
+    # Enable request/response body detection
+    'POSTPROCESSING_HOOKS': [],
+    # Generate pagination parameters
+    'PAGINATION_COMPONENT': True,
+    # Generate filter parameters from django-filter
+    'PREPROCESSING_HOOKS': ['drf_spectacular.hooks.preprocess_exclude_path_format'],
+    # Component settings
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    },
+    # Enable deep inspection of serializers
+    'COMPONENT_NO_READ_ONLY_REQUIRED': True,
 }
 
 # AI API Keys
@@ -984,13 +1017,16 @@ CSRF_TRUSTED_ORIGINS = config(
 # SECURITY NOTE: 'unsafe-inline' for styles is required for many CSS-in-JS libraries.
 # To remove it, migrate to nonce-based CSP or external stylesheets.
 # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP#inline_styles
+# CDN sources for API documentation (Swagger UI, ReDoc)
+_API_DOCS_CDN = ('https://cdn.jsdelivr.net',)
+
 if DEBUG:
-    _CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")
-    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+    _CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'") + _API_DOCS_CDN
+    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'") + _API_DOCS_CDN
 else:
-    _CSP_SCRIPT_SRC = ("'self'",)
+    _CSP_SCRIPT_SRC = ("'self'",) + _API_DOCS_CDN
     # TODO: Remove 'unsafe-inline' for styles once CSS-in-JS is refactored to use nonces
-    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'") + _API_DOCS_CDN
 
 CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {

@@ -29,6 +29,7 @@ import {
   MegaphoneIcon,
   StarIcon,
   AcademicCapIcon,
+  PlayIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid, StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike, deleteProjectById, toggleProjectPromotion, toggleProjectInShowcase, toggleLearningEligibility } from '@/services/projects';
@@ -70,6 +71,7 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   video: VideoCameraIcon,
   rss_article: NewspaperIcon,
   battle: TrophyIcon,
+  game: PlayIcon,
   other: DocumentTextIcon,
 };
 
@@ -98,7 +100,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   const [isLearningEligible, setIsLearningEligible] = useState(project.isLearningEligible ?? true);
   const [isTogglingLearning, setIsTogglingLearning] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
-  const projectUrl = `/${project.username}/${project.slug}`;
+  // Game projects link directly to the game URL
+  const gameUrl = project.type === 'game' ? project.content?.game_url : null;
+  const projectUrl = gameUrl || `/${project.username}/${project.slug}`;
 
   // Check if user is admin (includes superusers via isAdminRole)
   const isAdmin = user?.isAdminRole || user?.role === 'admin';

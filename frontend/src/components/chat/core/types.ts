@@ -240,6 +240,8 @@ export interface GameMessageProps {
   gameConfig?: {
     difficulty?: 'easy' | 'medium' | 'hard';
   };
+  /** Topic-specific explanation text to display before the game */
+  explanation?: string;
 }
 
 // Onboarding message props

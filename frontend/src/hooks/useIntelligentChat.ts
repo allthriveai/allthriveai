@@ -177,6 +177,8 @@ export interface IntelligentChatMetadata {
   gameConfig?: {
     difficulty?: 'easy' | 'medium' | 'hard';
   };
+  /** Topic-specific explanation to display before an inline game */
+  explanation?: string;
   // Learning content fields
   learningContent?: {
     topic: string;
@@ -583,6 +585,104 @@ export function useIntelligentChat({
                   return newMessages.slice(-MAX_MESSAGES);
                 });
                 seenMessageIdsRef.current.add(learningContentId);
+              }
+
+              // Handle find_learning_content tool with content array (new unified tool)
+              console.log('[useIntelligentChat] tool_end received:', data.tool, 'output:', data.output);
+              if (data.tool === 'find_learning_content' && data.output?.content && data.output.content.length > 0) {
+                console.log('[useIntelligentChat] Processing find_learning_content content array:', data.output.content);
+                const contentArray = data.output.content;
+                const timestamp = Date.now();
+
+                setMessages((prev) => {
+                  const newMessages = [...prev];
+
+                  // Process each content item by type
+                  contentArray.forEach((item: {
+                    type: string;
+                    game_type?: string;
+                    title?: string;
+                    explanation?: string;
+                    description?: string;
+                    url?: string;
+                    id?: string;
+                    thumbnail?: string;
+                    content_type?: string;
+                    difficulty?: string;
+                    question_count?: number;
+                    name?: string;
+                    slug?: string;
+                    key_features?: string[];
+                  }, index: number) => {
+                    const itemId = `find-learning-${timestamp}-${index}`;
+
+                    // Skip if already seen
+                    if (seenMessageIdsRef.current.has(itemId)) {
+                      return;
+                    }
+
+                    if (item.type === 'inline_game') {
+                      // Render inline game with explanation
+                      const gameMessage = {
+                        id: itemId,
+                        content: item.explanation || '', // Explanation text shown before game
+                        sender: 'assistant' as const,
+                        timestamp: new Date(),
+                        metadata: {
+                          type: 'inline_game' as const,
+                          gameType: item.game_type as 'snake' | 'quiz' | 'random',
+                          gameConfig: {},
+                          // Store explanation in metadata too for components that need it
+                          explanation: item.explanation,
+                        },
+                      };
+                      console.log('[useIntelligentChat] Creating inline_game message:', gameMessage);
+                      newMessages.push(gameMessage);
+                      seenMessageIdsRef.current.add(itemId);
+                    } else if (item.type === 'project_card' || item.type === 'quiz_card') {
+                      // Convert to learning content format
+                      const learningItem = {
+                        id: item.id || itemId,
+                        title: item.title || '',
+                        description: item.description || '',
+                        url: item.url || '',
+                        thumbnail: item.thumbnail || '',
+                        featured_image_url: item.thumbnail || '',
+                        difficulty: item.difficulty,
+                        question_count: item.question_count,
+                      };
+                      newMessages.push({
+                        id: itemId,
+                        content: '',
+                        sender: 'assistant' as const,
+                        timestamp: new Date(),
+                        metadata: {
+                          type: 'learning_content' as const,
+                          learningContent: {
+                            topic: data.output?.query || '',
+                            topicDisplay: data.output?.query || '',
+                            contentType: item.type === 'quiz_card' ? 'quizzes' : 'projects',
+                            sourceType: 'curated',
+                            items: [learningItem],
+                            hasContent: true,
+                          },
+                        },
+                      });
+                      seenMessageIdsRef.current.add(itemId);
+                    } else if (item.type === 'tool_info') {
+                      // Tool info rendered as text for now
+                      newMessages.push({
+                        id: itemId,
+                        content: `**${item.name}**: ${item.description}`,
+                        sender: 'assistant' as const,
+                        timestamp: new Date(),
+                      });
+                      seenMessageIdsRef.current.add(itemId);
+                    }
+                  });
+
+                  return newMessages.slice(-MAX_MESSAGES);
+                });
               }
               break;
 

@@ -69,7 +69,7 @@ const ToolDirectoryPage = lazy(() => import('@/pages/ToolDirectoryPage'));
 const ToolDetailPage = lazy(() => import('@/pages/ToolDetailPage'));
 const ExplorePage = lazy(() => import('@/pages/ExplorePage').then((m) => ({ default: m.ExplorePage })));
 const ThriveCirclePage = lazy(() => import('@/pages/ThriveCirclePage'));
-const SideQuestsPage = lazy(() => import('@/pages/SideQuestsPage'));
+const GamesPage = lazy(() => import('@/pages/GamesPage'));
 const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
 
 // Battle pages - lazy loaded
@@ -387,14 +387,19 @@ export function AppRoutes() {
         }
       />
 
-      {/* Side Quests - protected */}
+      {/* Games - protected */}
       <Route
-        path="/play/side-quests"
+        path="/play/games"
         element={
           <ProtectedRoute>
-            <SideQuestsPage />
+            <GamesPage />
           </ProtectedRoute>
         }
+      />
+      {/* Legacy side-quests route - redirect to /play/games */}
+      <Route
+        path="/play/side-quests"
+        element={<Navigate to="/play/games" replace />}
       />
 
       {/* Ethics Defender Game - protected */}

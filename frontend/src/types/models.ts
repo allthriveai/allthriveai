@@ -111,7 +111,7 @@ export const StorageKeys = {
 } as const;
 
 // Project types
-export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'video' | 'battle' | 'rss_article' | 'clipped' | 'other';
+export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'video' | 'battle' | 'rss_article' | 'clipped' | 'game' | 'other';
 
 // Project redirect
 export interface ProjectRedirect {
@@ -282,6 +282,12 @@ export interface ProjectContent {
   };
   // TL;DR section styling
   tldrBgColor?: string;
+  // Game teaser fields (for game type projects)
+  game_url?: string; // URL to the game (e.g., /play/context-snake)
+  game_id?: string; // Game ID from games config
+  difficulty?: string; // Game difficulty level
+  learning_outcomes?: string[]; // What users will learn
+  topic_tags?: string[]; // Topic tags for the game
 }
 
 // Base block interface

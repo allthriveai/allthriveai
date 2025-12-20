@@ -483,18 +483,31 @@ INLINE_GAME_TYPES = ['snake', 'quiz']
 @tool(args_schema=LaunchInlineGameInput)
 def launch_inline_game(game_type: str = 'random', difficulty: str = 'medium', state: dict = None) -> dict:
     """
-    Launch a mini-game directly in the chat sidebar.
+    EMBED a playable mini-game directly in the chat interface.
 
-    Use this when users want quick, instant fun without leaving the chat.
-    Great for "surprise me", "I want something fun", or "let's play a game".
+    ⚠️ CRITICAL: This tool EMBEDS an interactive game widget. You MUST call this tool
+    to embed the game - outputting a markdown link does NOT embed it!
 
-    Available games:
-    - snake: A compact version of Context Snake - collect tokens to grow!
-    - quiz: Quick AI trivia question with instant feedback
-    - random: Pick one for the user (adds surprise element)
+    ❌ WRONG: Outputting "[Context Snake](/play/context-snake)" as text
+    ✅ CORRECT: Calling this tool: launch_inline_game(game_type="snake")
 
-    This embeds the game directly in the chat as an interactive card.
-    No navigation needed - the user can play right there and continue chatting.
+    WHEN TO USE (REQUIRED for learning topics):
+    - User asks "what is a context window?" → CALL launch_inline_game(game_type="snake")
+    - User asks "explain tokens" → CALL launch_inline_game(game_type="snake")
+    - User asks "teach me about LLMs" → CALL launch_inline_game(game_type="snake")
+    - User says "surprise me" or "I'm bored" → CALL launch_inline_game(game_type="random")
+    - User says "quiz me" → CALL launch_inline_game(game_type="quiz")
+
+    HOW IT WORKS:
+    1. You write your explanation text first
+    2. You call this tool
+    3. The game appears as an interactive widget in the chat
+    4. User can play without leaving the conversation
+
+    Available game_type values:
+    - "snake": Context Snake - teaches context windows & tokens through gameplay
+    - "quiz": Quick AI trivia question with instant feedback
+    - "random": Pick one randomly (for "surprise me" requests)
 
     Args:
         game_type: Type of game to launch (snake, quiz, or random)

@@ -420,7 +420,7 @@ export default function ContextSnakeGame() {
               </span>
             </h1>
             <p className="text-slate-500 text-sm mt-1">
-              Collect tokens and grow your snake as long as you can!
+              Context is finite, so play accordingly!
             </p>
           </div>
 
