@@ -145,8 +145,18 @@ export interface Project {
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
   hideCategories?: boolean; // If true, categories are hidden from public display
   topics?: string[]; // User-generated topics (free-form, moderated)
+  topicsDetails?: Taxonomy[]; // Full topic taxonomy objects
   tags?: string[]; // Tags for the project
   tagsManuallyEdited?: boolean; // If true, tags were manually edited by admin and won't be auto-updated
+  // Content metadata taxonomy fields (AI-generated or manual)
+  contentTypeTaxonomy?: number; // Content type taxonomy ID
+  contentTypeDetails?: Taxonomy; // Full content type taxonomy object
+  timeInvestment?: number; // Time investment taxonomy ID
+  timeInvestmentDetails?: Taxonomy; // Full time investment taxonomy object
+  difficultyTaxonomy?: number; // Difficulty taxonomy ID
+  difficultyDetails?: Taxonomy; // Full difficulty taxonomy object
+  pricingTaxonomy?: number; // Pricing taxonomy ID
+  pricingDetails?: Taxonomy; // Full pricing taxonomy object
   viewCount?: number; // Number of views
   likesCount?: number; // Number of likes
   heartCount: number;

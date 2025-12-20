@@ -289,26 +289,27 @@ class AITaggingService:
 
             # Call AI
             ai = AIProvider()
-            response = ai.complete(
+            response_text = ai.complete(
                 prompt=user_prompt,
                 purpose=purpose,
                 temperature=0.2,  # Low for consistency
                 system_message=system_prompt,
             )
 
-            if not response or not response.get('content'):
+            if not response_text:
                 return TaggingResult(success=False, error='Empty AI response')
 
             # Parse response
-            parsed = self._parse_ai_response(response['content'])
+            parsed = self._parse_ai_response(response_text)
             if not parsed:
                 return TaggingResult(success=False, error='Failed to parse AI response')
 
-            # Build result
+            # Build result - get usage from provider's last_usage attribute
+            usage = getattr(ai, 'last_usage', {}) or {}
             result = TaggingResult(
                 success=True,
-                model_used=response.get('model', ''),
-                tokens_used=response.get('usage', {}).get('total_tokens', 0),
+                model_used=usage.get('model', purpose),
+                tokens_used=usage.get('total_tokens', 0),
             )
 
             # Process single-value fields
