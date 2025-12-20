@@ -56,7 +56,6 @@ class ProjectSerializer(serializers.ModelSerializer):
             'categories_details',
             'hide_categories',
             'topics',
-            'topics_taxonomy',
             'topics_details',
             'heart_count',
             'is_liked_by_user',
@@ -267,7 +266,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_topics_details(self, obj):
         """Get topic taxonomies ordered by name."""
-        topics = obj.topics_taxonomy.order_by('name')
+        topics = obj.topics.order_by('name')
         return TaxonomySerializer(topics, many=True).data
 
     def get_is_promoted(self, obj):
@@ -351,7 +350,6 @@ class ProjectSerializer(serializers.ModelSerializer):
             'external_url': 'externalUrl',
             'tools_details': 'toolsDetails',
             'categories_details': 'categoriesDetails',
-            'topics_taxonomy': 'topicsTaxonomy',
             'topics_details': 'topicsDetails',
             'user_tags': 'userTags',
             'heart_count': 'heartCount',
@@ -440,8 +438,7 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'tools_details',  # Full tool objects for displaying icons
             'categories',  # IDs for filtering
             'categories_details',  # Full category objects for displaying badges
-            'topics',
-            'topics_taxonomy',  # IDs for filtering
+            'topics',  # IDs for filtering
             'topics_details',  # Full topic taxonomy objects for displaying badges
             'heart_count',
             'is_liked_by_user',
@@ -490,7 +487,7 @@ class ProjectCardSerializer(serializers.ModelSerializer):
 
     def get_topics_details(self, obj):
         """Get topic taxonomies ordered by name for displaying topic badges."""
-        topics = obj.topics_taxonomy.order_by('name')
+        topics = obj.topics.order_by('name')
         return TaxonomySerializer(topics, many=True).data
 
     def get_is_learning_eligible(self, obj):
@@ -629,7 +626,6 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'external_url': 'externalUrl',
             'tools_details': 'toolsDetails',
             'categories_details': 'categoriesDetails',
-            'topics_taxonomy': 'topicsTaxonomy',
             'topics_details': 'topicsDetails',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',

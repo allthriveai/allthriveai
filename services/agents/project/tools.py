@@ -85,7 +85,7 @@ class ImportGitHubProjectInput(BaseModel):
 
     url: str = Field(description='GitHub repository URL (e.g., https://github.com/user/repo)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private (hidden from public)')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private (hidden from public)')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
@@ -113,7 +113,7 @@ class ScrapeWebpageInput(BaseModel):
 
     url: str = Field(description='The URL of the webpage to scrape (e.g., https://example.com/project)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
@@ -132,7 +132,7 @@ class ImportVideoProjectInput(BaseModel):
     is_owned: bool = Field(default=True, description='True if user created the video, False if clipping')
     tool_hint: str = Field(default='', description='Tool mentioned by user (e.g., "Runway", "Midjourney", "Pika")')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
     state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
@@ -203,7 +203,7 @@ class CreateMediaProjectInput(BaseModel):
         ),
     )
     is_showcase: bool = Field(default=True, description='Whether to add to showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark as private')
+    is_private: bool = Field(default=False, description='Whether to mark as private')
     state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
@@ -223,7 +223,7 @@ class ImportFromURLInput(BaseModel):
         ),
     )
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
     force_clip: bool = Field(
         default=False,
         description=(
@@ -263,7 +263,7 @@ class CreateProjectFromScreenshotInput(BaseModel):
         default='', description='Optional title for the project (extracted from screenshot if not provided)'
     )
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
@@ -487,7 +487,7 @@ def extract_url_info(text: str) -> dict:
 def import_github_project(
     url: str,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
@@ -805,7 +805,7 @@ def create_product(
 def scrape_webpage_for_project(
     url: str,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
@@ -995,7 +995,7 @@ def import_video_project(
     is_owned: bool = True,
     tool_hint: str = '',
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     state: dict | None = None,
 ) -> dict:
     """
@@ -1164,7 +1164,7 @@ def create_media_project(
     tool_hint: str | None = None,
     is_owned: bool = True,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     state: dict | None = None,
 ) -> dict:
     """
@@ -1443,27 +1443,50 @@ def _create_image_project_internal(
     is_private: bool,
     user,
 ) -> dict:
-    """Internal helper to create an image project."""
+    """Internal helper to create an image project with AI-generated content."""
     from core.integrations.github.helpers import apply_ai_metadata
+    from core.integrations.image.ai_analyzer import analyze_image_for_template
     from core.projects.models import Project
 
     logger.info(f'Creating image project: {title} from {filename} (is_owned={is_owned})')
 
-    # Build content with image
+    # Run AI analysis on the image to generate rich content
+    try:
+        logger.info(f'Running AI analysis for image: {filename}')
+        analysis = analyze_image_for_template(
+            image_url=image_url,
+            filename=filename,
+            title=title,
+            tool_hint=tool_hint or '',
+            user=user,
+        )
+    except Exception as e:
+        logger.warning(f'Image analysis failed for {filename}: {e}')
+        analysis = {
+            'templateVersion': 2,
+            'description': '',
+            'sections': [],
+            'category_ids': [1],
+            'topics': ['ai-art'],
+            'tool_names': [tool_hint] if tool_hint else [],
+        }
+
+    # Build content with image and AI-generated sections
     content = {
         'templateVersion': 2,
-        'sections': [],
+        'sections': analysis.get('sections', []),
         'heroDisplayMode': 'image',
     }
 
     # Use CLIPPED type if user didn't create this (clipping external content)
-    project_type = Project.ProjectType.IMAGE if is_owned else Project.ProjectType.CLIPPED
+    # IMAGE_COLLECTION is used for image-based projects
+    project_type = Project.ProjectType.IMAGE_COLLECTION if is_owned else Project.ProjectType.CLIPPED
 
     # Create project with the uploaded image as featured image
     project = Project.objects.create(
         user=user,
         title=title,
-        description='',
+        description=analysis.get('description', ''),
         type=project_type,
         featured_image_url=image_url,
         content=content,
@@ -1472,10 +1495,8 @@ def _create_image_project_internal(
         tools_order=[],
     )
 
-    # Apply tool if provided
-    if tool_hint:
-        analysis = {'tool_names': [tool_hint]}
-        apply_ai_metadata(project, analysis, content=content)
+    # Apply AI-suggested categories, topics, and tools
+    apply_ai_metadata(project, analysis, content=content)
 
     action_word = 'created' if is_owned else 'clipped'
     return {
@@ -2011,7 +2032,7 @@ def import_from_url(
     url: str,
     is_owned: bool | None = None,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     force_clip: bool = False,
     state: dict | None = None,
 ) -> dict:
@@ -2310,7 +2331,7 @@ def create_project_from_screenshot(
     original_url: str = '',
     title: str = '',
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:

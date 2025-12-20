@@ -312,9 +312,10 @@ class EmbeddingService:
         if project.description:
             parts.append(project.description)
 
-        # Topics
-        if project.topics:
-            topics_text = ', '.join(project.topics)
+        # Topics (ManyToMany to Taxonomy)
+        topic_names = list(project.topics.values_list('name', flat=True))
+        if topic_names:
+            topics_text = ', '.join(topic_names)
             parts.append(f'Topics: {topics_text}')
 
         # Tools

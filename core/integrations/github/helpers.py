@@ -435,12 +435,31 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
                 project.categories.add(fallback)
                 logger.warning(f'Default category not found, using fallback "{fallback.name}" for project {project.id}')
 
-    # Apply topics
-    topics = analysis.get('topics', [])
-    if topics:
-        project.topics = topics[:20]  # Limit to 20
-        project.save(update_fields=['topics'])
-        logger.info(f'Applied {len(topics[:20])} topics to project {project.id}')
+    # Apply topics (ManyToMany to Taxonomy with taxonomy_type='topic')
+    topic_names = analysis.get('topics', [])
+    if topic_names:
+        topic_objects = []
+        for topic_name in topic_names[:20]:  # Limit to 20
+            # Normalize topic name: lowercase, replace spaces with hyphens
+            normalized_name = topic_name.lower().strip()
+            slug = normalized_name.replace(' ', '-')
+
+            # Find or create the topic taxonomy
+            topic_obj, created = Taxonomy.objects.get_or_create(
+                slug=slug,
+                taxonomy_type='topic',
+                defaults={
+                    'name': topic_name.title(),
+                    'is_active': True,
+                }
+            )
+            topic_objects.append(topic_obj)
+            if created:
+                logger.debug(f'Created new topic taxonomy: {topic_obj.name}')
+
+        # Use .set() for ManyToMany field
+        project.topics.set(topic_objects)
+        logger.info(f'Applied {len(topic_objects)} topics to project {project.id}')
 
     # Apply AI tools (ChatGPT, Claude, etc.) - try multiple matching strategies
     tools_added = 0
@@ -462,7 +481,9 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
             tools_added += 1
             logger.info(f'Added tool "{tool.name}" to project {project.id}')
         else:
-            logger.debug(f'Tool "{tool_name}" not found in database')
+            # Log as warning so it's visible in production logs
+            # This helps identify when users mention tools we don't have
+            logger.warning(f'Tool "{tool_name}" not found in database - consider adding it')
 
     # Apply technologies from tech_stack sections
     tech_added = 0
@@ -511,7 +532,8 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
                     tech_added += 1
                     logger.info(f'Added tool "{tool.name}" to project {project.id}')
 
+    topics_count = len(topic_names) if topic_names else 0
     logger.info(
-        f'AI metadata applied: {categories_added} categories, {len(topics)} topics, '
+        f'AI metadata applied: {categories_added} categories, {topics_count} topics, '
         f'{tools_added} AI tools, {tech_added} technologies'
     )

@@ -8,7 +8,6 @@ import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
 import { Footer } from '@/components/landing/Footer';
-import { EmberAdventureBanner, useEmberOnboardingContextSafe } from '@/components/onboarding';
 import { PendingBattleBanner } from '@/components/battles';
 import { AsyncBattleBanner } from '@/components/battles/AsyncBattleBanner';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
@@ -79,7 +78,6 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
-  const onboardingContext = useEmberOnboardingContextSafe();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
   const [eventsOpen, setEventsOpen] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
@@ -312,17 +310,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         {/* Main Content Area - wrapped in MainScrollContainer for scroll-to-close support */}
         <MainScrollContainer>
           <div style={{ paddingTop: 'calc(4rem + var(--impersonation-offset, 0px))' }}>
-            {/* Ember Onboarding Banner - positioned below nav, not sticky */}
-            {onboardingContext?.shouldShowBanner && (
-              <EmberAdventureBanner
-                completedAdventures={onboardingContext.completedAdventures}
-                onAdventureClick={onboardingContext.completeAdventure}
-                onDismiss={onboardingContext.dismissOnboarding}
-                onShowMoreRecommendations={() => {
-                  window.location.href = '/onboarding';
-                }}
-              />
-            )}
             {/* Pending Battle Banner - shows when user has created a battle challenge */}
             <PendingBattleBanner />
             {/* Async Battle Banner - shows when user has an async battle where it's their turn */}

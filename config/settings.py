@@ -348,6 +348,12 @@ OPENAI_BASE_URL = config('OPENAI_BASE_URL', default='')  # For AI gateway (OpenR
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
 
+# Azure OpenAI Configuration
+AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
+AZURE_OPENAI_ENDPOINT = config('AZURE_OPENAI_ENDPOINT', default='https://go1-presales-resource.cognitiveservices.azure.com/')
+AZURE_OPENAI_API_VERSION = config('AZURE_OPENAI_API_VERSION', default='2025-01-01-preview')
+AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4.1')
+
 # Stripe Payment Configuration
 STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
@@ -432,6 +438,10 @@ AI_MODELS = {
     'openai': {
         'default': config('OPENAI_MODEL_DEFAULT', default='gpt-4o-mini'),
         'reasoning': config('OPENAI_MODEL_REASONING', default='gpt-5-mini-2025-08-07'),
+    },
+    'azure': {
+        'default': AZURE_OPENAI_DEPLOYMENT_NAME,
+        'reasoning': config('AZURE_OPENAI_REASONING_DEPLOYMENT', default=AZURE_OPENAI_DEPLOYMENT_NAME),
     },
     'anthropic': {
         'default': config('ANTHROPIC_MODEL_DEFAULT', default='claude-3-5-haiku-20241022'),

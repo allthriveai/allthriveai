@@ -140,6 +140,7 @@ class AIProviderType(Enum):
     """Supported AI provider types."""
 
     OPENAI = 'openai'
+    AZURE = 'azure'
     ANTHROPIC = 'anthropic'
     GEMINI = 'gemini'
 
@@ -173,6 +174,7 @@ def get_model_for_purpose(provider: str, purpose: str = 'default') -> str:
         # Ultimate fallbacks if settings not configured
         fallbacks = {
             'openai': 'gpt-4o-mini',
+            'azure': 'gpt-4.1',
             'anthropic': 'claude-3-5-haiku-20241022',
             'gemini': 'gemini-2.0-flash',
         }
@@ -315,6 +317,8 @@ class AIProvider:
         """Initialize the appropriate client based on the current provider."""
         if self._provider == AIProviderType.OPENAI:
             return self._initialize_openai_client()
+        elif self._provider == AIProviderType.AZURE:
+            return self._initialize_azure_client()
         elif self._provider == AIProviderType.ANTHROPIC:
             return self._initialize_anthropic_client()
         elif self._provider == AIProviderType.GEMINI:
@@ -343,6 +347,29 @@ class AIProvider:
             logger.info(f'Using AI gateway at: {base_url}')
 
         return OpenAI(**client_kwargs)
+
+    def _initialize_azure_client(self):
+        """Initialize Azure OpenAI client."""
+        try:
+            from openai import AzureOpenAI
+        except ImportError as e:
+            raise ImportError('OpenAI library not installed. Install with: pip install openai') from e
+
+        api_key = getattr(settings, 'AZURE_OPENAI_API_KEY', None)
+        endpoint = getattr(settings, 'AZURE_OPENAI_ENDPOINT', None)
+        api_version = getattr(settings, 'AZURE_OPENAI_API_VERSION', '2025-01-01-preview')
+
+        if not api_key:
+            raise ValueError('Azure OpenAI API key not configured. Set AZURE_OPENAI_API_KEY in settings.')
+        if not endpoint:
+            raise ValueError('Azure OpenAI endpoint not configured. Set AZURE_OPENAI_ENDPOINT in settings.')
+
+        logger.info(f'Using Azure OpenAI at: {endpoint}')
+        return AzureOpenAI(
+            api_key=api_key,
+            azure_endpoint=endpoint,
+            api_version=api_version,
+        )
 
     def _initialize_anthropic_client(self):
         """Initialize Anthropic client."""
@@ -435,7 +462,7 @@ class AIProvider:
         )
 
         try:
-            if self._provider == AIProviderType.OPENAI:
+            if self._provider in (AIProviderType.OPENAI, AIProviderType.AZURE):
                 result = self._complete_openai(
                     prompt, model, temperature, max_tokens, system_message, timeout, **kwargs
                 )
@@ -702,7 +729,7 @@ class AIProvider:
         total_chars = 0
 
         try:
-            if self._provider == AIProviderType.OPENAI:
+            if self._provider in (AIProviderType.OPENAI, AIProviderType.AZURE):
                 stream = self._stream_openai(prompt, model, temperature, max_tokens, system_message, **kwargs)
             elif self._provider == AIProviderType.ANTHROPIC:
                 stream = self._stream_anthropic(prompt, model, temperature, max_tokens, system_message, **kwargs)
@@ -897,6 +924,18 @@ class AIProvider:
                 openai_kwargs['base_url'] = base_url
 
             return ChatOpenAI(**openai_kwargs)
+
+        elif self._provider == AIProviderType.AZURE:
+            from langchain_openai import AzureChatOpenAI
+
+            return AzureChatOpenAI(
+                azure_deployment=kwargs.pop('model', getattr(settings, 'AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4.1')),
+                api_key=getattr(settings, 'AZURE_OPENAI_API_KEY', ''),
+                azure_endpoint=getattr(settings, 'AZURE_OPENAI_ENDPOINT', ''),
+                api_version=getattr(settings, 'AZURE_OPENAI_API_VERSION', '2025-01-01-preview'),
+                temperature=temperature,
+                **kwargs,
+            )
 
         elif self._provider == AIProviderType.ANTHROPIC:
             from langchain_anthropic import ChatAnthropic
@@ -1187,7 +1226,7 @@ class AIProvider:
                 result = self._complete_with_image_gemini(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
                 )
-            elif self._provider == AIProviderType.OPENAI:
+            elif self._provider in (AIProviderType.OPENAI, AIProviderType.AZURE):
                 result = self._complete_with_image_openai(
                     prompt, image_url, image_bytes, model, temperature, max_tokens, timeout
                 )

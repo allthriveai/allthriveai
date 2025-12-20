@@ -304,58 +304,85 @@ class EmberState(TypedDict):
 # =============================================================================
 
 
-def create_tool_node_with_state_injection(state: EmberState) -> ToolNode:
+def tools_node(state: EmberState) -> dict:
     """
-    Create a ToolNode that injects state into tools that need it.
+    Tool execution node that injects user state into tools that need it.
+
+    This is a LangGraph node function (not ToolNode) that receives the current
+    state at runtime, allowing us to inject user_id, username, and session_id
+    into tool calls dynamically.
 
     Tools listed in TOOLS_NEEDING_STATE receive a `state` dict with:
     - user_id: The authenticated user's ID
     - username: The user's username
     - session_id: The WebSocket session ID
     """
+    from langchain_core.messages import ToolMessage as LCToolMessage
 
-    def inject_state(tool_call: dict) -> dict:
-        """Inject state into tool arguments if the tool needs it."""
+    messages = state.get('messages', [])
+
+    # Find the last AI message with tool calls
+    tool_calls_to_execute = []
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage) and msg.tool_calls:
+            tool_calls_to_execute = msg.tool_calls
+            break
+
+    if not tool_calls_to_execute:
+        return {'messages': []}
+
+    # Log state for debugging
+    logger.debug(f'tools_node: user_id={state.get("user_id")}, username={state.get("username")}')
+
+    # Execute each tool with state injection
+    tool_results = []
+    for tool_call in tool_calls_to_execute:
         tool_name = tool_call.get('name', '')
+        tool_args = dict(tool_call.get('args', {}))  # Copy to avoid mutation
+        tool_id = tool_call.get('id', '')
 
+        # Inject state for tools that need it
         if tool_name in TOOLS_NEEDING_STATE:
-            # Get or create args dict
-            args = tool_call.get('args', {})
-            if not isinstance(args, dict):
-                args = {}
-
-            # Inject state
-            args['state'] = {
+            tool_args['state'] = {
                 'user_id': state.get('user_id'),
                 'username': state.get('username', ''),
                 'session_id': state.get('session_id', ''),
             }
-            tool_call['args'] = args
+            logger.debug(f'Injected state into {tool_name}: user_id={state.get("user_id")}')
 
-        return tool_call
-
-    # Create standard tool node with our tools
-    tool_node = ToolNode(EMBER_TOOLS)
-
-    # Wrap the invoke method to inject state
-    original_invoke = tool_node.invoke
-
-    def invoke_with_state_injection(state_input: dict) -> dict:
-        """Invoke tool node with state injection."""
-        messages = state_input.get('messages', [])
-
-        # Find the last AI message with tool calls
-        for msg in reversed(messages):
-            if isinstance(msg, AIMessage) and msg.tool_calls:
-                # Inject state into each tool call
-                for tool_call in msg.tool_calls:
-                    inject_state(tool_call)
+        # Find and execute the tool
+        tool_result = None
+        for tool in EMBER_TOOLS:
+            if tool.name == tool_name:
+                try:
+                    logger.info(f'Executing tool: {tool_name}')
+                    tool_result = tool.invoke(tool_args)
+                    logger.info(f'Tool {tool_name} completed successfully')
+                except Exception as e:
+                    logger.error(f'Tool {tool_name} failed: {e}', exc_info=True)
+                    tool_result = {'error': str(e), 'success': False}
                 break
 
-        return original_invoke(state_input)
+        if tool_result is None:
+            logger.warning(f'Tool {tool_name} not found in EMBER_TOOLS')
+            tool_result = {'error': f'Tool {tool_name} not found', 'success': False}
 
-    tool_node.invoke = invoke_with_state_injection
-    return tool_node
+        # Convert result to string for ToolMessage content
+        if isinstance(tool_result, dict):
+            import json
+            content = json.dumps(tool_result)
+        else:
+            content = str(tool_result)
+
+        # Create tool message with result
+        tool_message = LCToolMessage(
+            content=content,
+            tool_call_id=tool_id,
+            name=tool_name,
+        )
+        tool_results.append(tool_message)
+
+    return {'messages': tool_results}
 
 
 # =============================================================================
@@ -437,7 +464,9 @@ def _build_ember_workflow(model_name: str | None = None) -> StateGraph:
 
     # Add nodes - model_name passed through, resolved in create_agent_node
     graph.add_node('agent', create_agent_node(model_name))
-    graph.add_node('tools', ToolNode(EMBER_TOOLS))
+    # Use custom tools_node that injects state (user_id, username, session_id)
+    # into tools at runtime. This is critical for tools to access user context.
+    graph.add_node('tools', tools_node)
 
     # Set entry point
     graph.set_entry_point('agent')

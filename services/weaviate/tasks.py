@@ -105,7 +105,7 @@ def sync_project_to_weaviate(self, project_id: int):
             'combined_text': embedding_text[:5000],  # Truncate for storage
             'tool_names': list(project.tools.values_list('name', flat=True)),
             'category_names': list(project.categories.values_list('name', flat=True)),
-            'topics': project.topics or [],
+            'topics': list(project.topics.values_list('name', flat=True)),
             'owner_id': project.user_id,
             'owner_username': project.user.username,  # For username-based search
             'engagement_velocity': 0.0,  # Will be updated by engagement task
@@ -648,7 +648,7 @@ def reindex_projects_chunk(self, offset: int, limit: int):
                     'combined_text': embedding_text[:5000],
                     'tool_names': list(project.tools.values_list('name', flat=True)),
                     'category_names': list(project.categories.values_list('name', flat=True)),
-                    'topics': project.topics or [],
+                    'topics': list(project.topics.values_list('name', flat=True)),
                     'owner_id': project.user_id,
                     'owner_username': project.user.username,  # For username-based search
                     'engagement_velocity': project.engagement_velocity or 0.0,
