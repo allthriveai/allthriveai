@@ -304,8 +304,8 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
 
   return (
     <div className="flex flex-col items-center gap-3 relative">
-      {/* Confetti anchor */}
-      <span id="miniSnakeConfetti" className="absolute top-1/3 left-1/2" />
+      {/* Confetti anchor - high z-index to appear above game */}
+      <span id="miniSnakeConfetti" className="absolute top-1/3 left-1/2 z-50" />
 
       {/* Game canvas */}
       <div
@@ -535,11 +535,11 @@ export function MiniSnakeGame({ onGameEnd }: MiniSnakeGameProps) {
           )}
         </AnimatePresence>
 
-        {/* Game over overlay */}
+        {/* Game over overlay - z-20 to appear above game elements */}
         <AnimatePresence>
           {gameState === 'ended' && (
             <motion.div
-              className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm"
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
