@@ -3,12 +3,12 @@
  */
 
 import type { ReactNode } from 'react';
-import type { ChatMessage, QuotaExceededInfo, OrchestrationAction, InlineGameType } from '@/hooks/useIntelligentChat';
+import type { ChatMessage, QuotaExceededInfo, OrchestrationAction, InlineGameType, ProjectImportOption } from '@/hooks/useIntelligentChat';
 import type { PendingAction } from '@/hooks/useOrchestrationActions';
 import type { LearningGoal } from '@/types/models';
 
 // Re-export for convenience
-export type { ChatMessage, QuotaExceededInfo, OrchestrationAction, InlineGameType, PendingAction };
+export type { ChatMessage, QuotaExceededInfo, OrchestrationAction, InlineGameType, PendingAction, ProjectImportOption };
 
 // Chat context determines which quick actions to show
 export type ChatContext = 'learn' | 'explore' | 'project' | 'default';
@@ -173,6 +173,17 @@ export interface ChatMessageListProps {
   onNavigate?: (path: string) => void;
   // Auto-scroll behavior
   autoScroll?: boolean;
+  // Project import options handler
+  onProjectImportOptionSelect?: (option: ProjectImportOption) => void;
+  // Integration picker handlers
+  onIntegrationSelect?: (integration: IntegrationId) => void;
+  connectionStatus?: {
+    github: boolean;
+    gitlab: boolean;
+    figma: boolean;
+    youtube: boolean;
+    loading: boolean;
+  };
 }
 
 // Input area props

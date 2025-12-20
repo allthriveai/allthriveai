@@ -816,6 +816,335 @@ scenarios:
       **Expected:** Error handled gracefully with meaningful message
     order: 43
 
+  # ---------------------------------------------------------------------------
+  # HOME PAGE USER FLOWS - ember-chat/home-flows.spec.ts
+  # ---------------------------------------------------------------------------
+  - title: Home page greeting shows time-of-day message
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Login via API
+      2. Navigate to /home
+      3. Wait for greeting animation to complete
+      4. Verify greeting contains "Good morning", "Good afternoon", or "Good evening"
+
+      **Expected:** Greeting displays appropriate time-of-day message
+    order: 44
+
+  - title: Home page greeting includes user name
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home as authenticated user
+      2. Wait for greeting animation
+      3. Verify greeting matches pattern "Good <time>, <name>!"
+
+      **Expected:** Personalized greeting with user's name displayed
+    order: 45
+
+  - title: Greeting typewriter animation completes
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home
+      2. Observe typewriter animation
+      3. Wait for greeting to end with punctuation
+
+      **Expected:** Greeting animation completes, ends with ? or !
+    order: 46
+
+  - title: Feeling pills appear after greeting animation
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with excitedFeatures set
+      2. Wait for greeting to complete
+      3. Wait for pills to appear
+
+      **Expected:** Feeling pills become visible after greeting
+    order: 47
+
+  - title: Only 4 feeling pills display at once
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Set multiple excitedFeatures (more than 4)
+      2. Navigate to /home
+      3. Wait for pills to appear
+      4. Count visible pills
+
+      **Expected:** At most 4 pills shown at any time
+    order: 48
+
+  - title: Feeling pills are filtered by user excitedFeatures
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Set specific excitedFeatures via API (e.g., ['portfolio'])
+      2. Navigate to /home
+      3. Wait for pills
+      4. Verify relevant pills are shown
+
+      **Expected:** Pills match user's configured interests
+    order: 49
+
+  - title: Avatar pill only shows when user has no avatar
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with user who has avatar
+      2. Check if "Make my avatar" pill is visible
+      3. Clear user avatar
+      4. Reload and check again
+
+      **Expected:** Avatar pill only appears when no avatar set
+    order: 50
+
+  - title: Feeling pills hide after sending first message
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with pills visible
+      2. Type and send a message
+      3. Check if pills are still visible
+
+      **Expected:** Pills hidden after first message sent
+    order: 51
+
+  - title: Clicking "Share something" pill sends correct message
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with 'portfolio' in excitedFeatures
+      2. Wait for "Share something I've been working on" pill
+      3. Click the pill
+      4. Check chat content
+
+      **Expected:** Message "I want to share something I've been working on" appears in chat
+    order: 52
+
+  - title: Clicking "Play a game" pill sends correct message
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with 'battles' in excitedFeatures
+      2. Wait for "Play a game" pill
+      3. Click the pill
+      4. Check chat content
+
+      **Expected:** Message "I want to play a game" appears in chat
+    order: 53
+
+  - title: Clicking "Challenge someone" pill sends correct message
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with 'battles' in excitedFeatures
+      2. Wait for "Challenge someone to a battle" pill
+      3. Click the pill
+      4. Check chat content
+
+      **Expected:** Message "I want to challenge someone to a prompt battle" appears in chat
+    order: 54
+
+  - title: Clicking "Learn something new" pill sends correct message
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with 'learn' in excitedFeatures
+      2. Wait for "Learn something new" pill
+      3. Click the pill
+      4. Check chat content
+
+      **Expected:** Message "I want to learn something new" appears in chat
+    order: 55
+
+  - title: Clicking "Make my avatar" pill sends correct message (no avatar)
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Preconditions:** User must have no avatar set
+
+      **Steps:**
+      1. Clear user avatar via API
+      2. Navigate to /home with 'personalize' in excitedFeatures
+      3. Wait for "Make my avatar" pill
+      4. Click the pill
+      5. Check chat content
+
+      **Expected:** Message "I want to make my avatar" appears in chat
+    order: 56
+
+  - title: Sidebar shows quick actions from /explore
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /explore
+      2. Open chat sidebar (click chat icon)
+      3. Look for quick action buttons
+
+      **Expected:** Quick action buttons visible in sidebar
+    order: 57
+
+  - title: Sidebar chat input is functional
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Open sidebar from /explore
+      2. Type "Test message" in chat input
+      3. Verify input contains message
+
+      **Expected:** Chat input accepts and displays typed text
+    order: 58
+
+  - title: Share something pill gets relevant AI response
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true
+
+      **Steps:**
+      1. Click "Share something I've been working on" pill
+      2. Wait for Ember response
+      3. Verify response mentions sharing, project, or portfolio
+
+      **Expected:** Ember responds with relevant content about sharing work
+    order: 59
+
+  - title: Play a game pill gets relevant AI response
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true
+
+      **Steps:**
+      1. Click "Play a game" pill
+      2. Wait for Ember response
+      3. Verify response mentions games, play, or fun activities
+
+      **Expected:** Ember responds with game-related content
+    order: 60
+
+  - title: Challenge someone pill gets relevant AI response
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true
+
+      **Steps:**
+      1. Click "Challenge someone to a battle" pill
+      2. Wait for Ember response
+      3. Verify response mentions battles, challenges, or competition
+
+      **Expected:** Ember responds about prompt battles
+    order: 61
+
+  - title: Learn something new pill gets relevant AI response
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true
+
+      **Steps:**
+      1. Click "Learn something new" pill
+      2. Wait for Ember response
+      3. Verify response mentions learning, tutorials, or education
+
+      **Expected:** Ember responds with learning-related content
+    order: 62
+
+  - title: Make my avatar pill gets relevant AI response (no avatar)
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true, user has no avatar
+
+      **Steps:**
+      1. Clear user avatar
+      2. Click "Make my avatar" pill
+      3. Wait for Ember response
+      4. Verify response mentions avatar creation
+
+      **Expected:** Ember responds about avatar creation
+    order: 63
+
+  - title: Sidebar message gets AI response
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true
+
+      **Steps:**
+      1. Open sidebar from /explore
+      2. Send "Show me what projects are trending"
+      3. Wait for Ember response
+
+      **Expected:** Ember responds with non-empty content (>50 chars)
+    order: 64
+
+  - title: Chat remains functional after clicking any pill
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Navigate to /home with pills visible
+      2. Click any visible pill
+      3. Wait for response
+      4. Verify chat input is still enabled
+
+      **Expected:** Chat input remains functional after pill interaction
+    order: 65
+
+  - title: No console errors on /home page load
+    category: ember
+    description: |
+      **Source:** ember-chat/home-flows.spec.ts
+
+      **Steps:**
+      1. Monitor console for errors
+      2. Navigate to /home
+      3. Wait for greeting and pills
+      4. Check collected errors (filter network errors)
+
+      **Expected:** No critical console errors on page load
+    order: 66
+
   # ===========================================================================
   # AI FEATURES (ai-features) - ai-chat/*.spec.ts
   # ===========================================================================

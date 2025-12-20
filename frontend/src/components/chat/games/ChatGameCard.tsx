@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, type ComponentType } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGamepad, faRotateRight, faDice, faWorm, faQuestion } from '@fortawesome/free-solid-svg-icons';
-import { MiniSnakeGame } from './MiniSnakeGame';
-import { QuickQuiz } from './QuickQuiz';
-
-export type GameType = 'snake' | 'quiz' | 'random';
-type PlayableGameType = Exclude<GameType, 'random'>;
+import { faGamepad, faRotateRight, faDice } from '@fortawesome/free-solid-svg-icons';
+import {
+  GAME_REGISTRY,
+  getRandomGame,
+  getEnabledGames,
+  type GameType,
+  type PlayableGameType,
+  type MiniGameProps,
+} from './gameRegistry';
 
 interface ChatGameCardProps {
   gameType: GameType;
@@ -16,26 +19,8 @@ interface ChatGameCardProps {
   onTryAnother?: () => void;
 }
 
-// Available games for random selection
-const AVAILABLE_GAMES: PlayableGameType[] = ['snake', 'quiz'];
-
-function getRandomGame(): PlayableGameType {
-  const index = Math.floor(Math.random() * AVAILABLE_GAMES.length);
-  return AVAILABLE_GAMES[index];
-}
-
-const GAME_INFO: Record<Exclude<GameType, 'random'>, { name: string; icon: typeof faWorm; description: string }> = {
-  snake: {
-    name: 'Context Snake',
-    icon: faWorm,
-    description: 'Collect tokens to grow! Use arrow keys or swipe.',
-  },
-  quiz: {
-    name: 'AI Trivia',
-    icon: faQuestion,
-    description: 'Test your AI knowledge with a quick question!',
-  },
-};
+// Cache for lazy-loaded components
+const componentCache = new Map<PlayableGameType, ComponentType<MiniGameProps>>();
 
 /**
  * ChatGameCard - Wrapper component for inline games in the chat sidebar
@@ -43,6 +28,8 @@ const GAME_INFO: Record<Exclude<GameType, 'random'>, { name: string; icon: typeo
  * Renders a glass-styled card containing a mini-game that fits within
  * the chat panel width (~380px). Games are self-contained and playable
  * without leaving the chat context.
+ *
+ * Uses the game registry for scalability - add new games to gameRegistry.ts
  */
 export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, onTryAnother }: ChatGameCardProps) {
   // Resolve 'random' to an actual game
@@ -50,13 +37,41 @@ export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, o
     if (initialGameType === 'random') {
       return getRandomGame();
     }
-    return initialGameType;
+    return initialGameType as PlayableGameType;
   });
   const [gameKey, setGameKey] = useState(0); // Key to force game reset
   const [showGame, setShowGame] = useState(false);
   const [lastScore, setLastScore] = useState<number | null>(null);
+  const [GameComponent, setGameComponent] = useState<ComponentType<MiniGameProps> | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const gameInfo = GAME_INFO[currentGame];
+  const gameConfig = GAME_REGISTRY[currentGame];
+  const enabledGames = getEnabledGames();
+
+  // Load game component
+  useEffect(() => {
+    const loadComponent = async () => {
+      // Check cache first
+      if (componentCache.has(currentGame)) {
+        setGameComponent(() => componentCache.get(currentGame)!);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const module = await gameConfig.component();
+        const Component = module.default;
+        componentCache.set(currentGame, Component);
+        setGameComponent(() => Component);
+      } catch (error) {
+        console.error(`Failed to load game: ${currentGame}`, error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadComponent();
+  }, [currentGame, gameConfig]);
 
   const handlePlayAgain = () => {
     setGameKey(prev => prev + 1);
@@ -66,9 +81,9 @@ export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, o
   };
 
   const handleTryAnother = () => {
-    // Pick a different game
-    const otherGames = AVAILABLE_GAMES.filter(g => g !== currentGame);
-    const newGame: PlayableGameType = otherGames[Math.floor(Math.random() * otherGames.length)] || 'snake';
+    // Pick a different game from enabled games
+    const otherGames = enabledGames.filter(g => g.id !== currentGame);
+    const newGame: PlayableGameType = otherGames[Math.floor(Math.random() * otherGames.length)]?.id ?? 'snake';
     setCurrentGame(newGame);
     setGameKey(prev => prev + 1);
     setShowGame(false);
@@ -92,13 +107,13 @@ export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, o
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 border border-orange-500/30 flex items-center justify-center">
               <FontAwesomeIcon
-                icon={gameInfo.icon}
+                icon={gameConfig.icon}
                 className="w-4 h-4 text-orange-400"
               />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">{gameInfo.name}</h4>
-              <p className="text-xs text-slate-400">{gameInfo.description}</p>
+              <h4 className="text-sm font-semibold text-white">{gameConfig.name}</h4>
+              <p className="text-xs text-slate-400">{gameConfig.description}</p>
             </div>
           </div>
         </div>
@@ -119,26 +134,29 @@ export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, o
               </p>
               <button
                 onClick={handleStart}
-                className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-sm font-semibold rounded-lg hover:from-cyan-400 hover:to-teal-400 transition-all shadow-lg shadow-cyan-500/20"
+                disabled={isLoading}
+                className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-sm font-semibold rounded-lg hover:from-cyan-400 hover:to-teal-400 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
               >
-                Start Game
+                {isLoading ? 'Loading...' : 'Start Game'}
               </button>
             </div>
           ) : (
             // Game content
             <div className="min-h-[280px]">
-              {currentGame === 'snake' && (
-                <MiniSnakeGame
+              {isLoading ? (
+                <div className="flex items-center justify-center h-48">
+                  <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : GameComponent ? (
+                <GameComponent
                   key={gameKey}
                   onGameEnd={handleGameEnd}
-                />
-              )}
-              {currentGame === 'quiz' && (
-                <QuickQuiz
-                  key={gameKey}
-                  onComplete={handleGameEnd}
                   difficulty={config?.difficulty}
                 />
+              ) : (
+                <div className="flex items-center justify-center h-48 text-slate-500 text-sm">
+                  Failed to load game
+                </div>
               )}
             </div>
           )}
@@ -159,13 +177,15 @@ export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, o
                   <FontAwesomeIcon icon={faRotateRight} className="w-3 h-3" />
                   Play Again
                 </button>
-                <button
-                  onClick={handleTryAnother}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg transition-colors"
-                >
-                  <FontAwesomeIcon icon={faDice} className="w-3 h-3" />
-                  Try Another
-                </button>
+                {enabledGames.length > 1 && (
+                  <button
+                    onClick={handleTryAnother}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg transition-colors"
+                  >
+                    <FontAwesomeIcon icon={faDice} className="w-3 h-3" />
+                    Try Another
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -2,22 +2,28 @@
 Personalization engine with hybrid scoring algorithm.
 
 Combines multiple signals for "For You" feed:
-- Vector similarity (30%): Content-based from Weaviate
-- Explicit preferences (25%): UserTag matches
-- Behavioral signals (25%): Interaction history + follow boost
+- Vector similarity (27%): Content-based from Weaviate
+- Explicit preferences (23%): UserTag matches
+- Behavioral signals (23%): Interaction history + follow boost
   - Penalize viewed/liked projects
   - Boost projects from liked owners
   - Boost projects from followed users (+0.4)
-- Collaborative filtering (15%): Similar users' likes
+  - Boost based on time spent on similar topics
+  - Boost content matching recent searches
+  - Penalize dismissed projects and their topics
+- Collaborative filtering (14%): Similar users' likes
 - Popularity (5%): Baseline popularity score
+- Promotion (8%): Admin-curated boost with 7-day decay
 """
 
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from django.db.models import Count
+from django.utils import timezone
 
 from services.personalization.settings_aware_scorer import SettingsAwareScorer
 
@@ -432,6 +438,153 @@ class PersonalizationEngine:
             )
             return []
 
+    def _get_time_spent_topic_boosts(self, user: 'User') -> dict[str, float]:
+        """
+        Get topic boosts based on time spent on projects in the last 30 days.
+
+        Projects where user spent >60 seconds are analyzed. Their topics
+        are boosted proportionally to time spent.
+
+        Returns:
+            Dict mapping topic name -> boost value (0.0-0.3)
+        """
+        from core.engagement.models import EngagementEvent
+        from core.projects.models import Project
+
+        try:
+            # Get time_spent events from the last 30 days
+            cutoff = timezone.now() - timedelta(days=30)
+            time_events = EngagementEvent.objects.filter(
+                user=user,
+                event_type='time_spent',
+                created_at__gte=cutoff,
+            ).select_related('project')
+
+            # Aggregate time per project
+            project_times: dict[int, int] = {}
+            for event in time_events:
+                if event.project_id:
+                    seconds = event.payload.get('seconds', 0)
+                    project_times[event.project_id] = project_times.get(event.project_id, 0) + seconds
+
+            # Filter to projects where user spent >60 seconds
+            engaged_project_ids = [pid for pid, secs in project_times.items() if secs > 60]
+
+            if not engaged_project_ids:
+                return {}
+
+            # Get topics from these engaged projects
+            engaged_projects = Project.objects.filter(id__in=engaged_project_ids).only('topics')
+
+            # Count topic occurrences weighted by time
+            topic_scores: dict[str, float] = {}
+            for project in engaged_projects:
+                time_weight = min(project_times.get(project.id, 0) / 300, 1.0)  # Normalize by 5 min
+                for topic in project.topics or []:
+                    topic_scores[topic] = topic_scores.get(topic, 0) + time_weight
+
+            # Normalize and cap at 0.3
+            max_score = max(topic_scores.values(), default=1)
+            return {topic: min(score / max_score * 0.3, 0.3) for topic, score in topic_scores.items()}
+
+        except Exception as e:
+            logger.warning(f'Error computing time-spent topic boosts: {e}')
+            return {}
+
+    def _get_search_query_boosts(self, user: 'User') -> list[str]:
+        """
+        Get recent search queries to boost matching content.
+
+        Returns:
+            List of search query strings from the last 7 days
+        """
+        from core.taxonomy.models import UserInteraction
+
+        try:
+            cutoff = timezone.now() - timedelta(days=7)
+            recent_searches = UserInteraction.objects.filter(
+                user=user,
+                interaction_type='search',
+                created_at__gte=cutoff,
+            ).values_list('metadata', flat=True)
+
+            queries = []
+            for metadata in recent_searches:
+                if isinstance(metadata, dict):
+                    query = metadata.get('query', '')
+                    if query and len(query) >= 3:
+                        queries.append(query.lower())
+
+            return queries
+
+        except Exception as e:
+            logger.warning(f'Error getting search query boosts: {e}')
+            return []
+
+    def _get_click_boost_project_ids(self, user: 'User') -> set[int]:
+        """
+        Get project IDs that user clicked in feeds (high-intent signal).
+
+        Returns:
+            Set of project IDs the user clicked from feeds
+        """
+        from core.projects.models import ProjectClick
+
+        try:
+            cutoff = timezone.now() - timedelta(days=14)
+            clicked_ids = set(
+                ProjectClick.objects.filter(
+                    user=user,
+                    created_at__gte=cutoff,
+                ).values_list('project_id', flat=True)
+            )
+            return clicked_ids
+
+        except Exception as e:
+            logger.warning(f'Error getting click boost project IDs: {e}')
+            return set()
+
+    def _get_dismissed_data(self, user: 'User') -> tuple[set[int], dict[str, int]]:
+        """
+        Get dismissed project IDs and topic counts for penalty calculation.
+
+        Returns:
+            Tuple of:
+            - Set of directly dismissed project IDs
+            - Dict mapping topic name -> dismissal count (for topics dismissed 3+ times)
+        """
+        from core.projects.models import ProjectDismissal
+
+        try:
+            # Get all dismissals from the last 90 days
+            cutoff = timezone.now() - timedelta(days=90)
+            dismissals = (
+                ProjectDismissal.objects.filter(
+                    user=user,
+                    created_at__gte=cutoff,
+                )
+                .select_related('project')
+                .only('project_id', 'project__topics')
+            )
+
+            dismissed_ids = set()
+            topic_counts: dict[str, int] = {}
+
+            for dismissal in dismissals:
+                dismissed_ids.add(dismissal.project_id)
+                # Count topics from dismissed projects
+                for topic in dismissal.project.topics or []:
+                    topic_counts[topic] = topic_counts.get(topic, 0) + 1
+
+            # Only return topics with 3+ dismissals
+            penalized_topics = {t: c for t, c in topic_counts.items() if c >= 3}
+
+            return dismissed_ids, penalized_topics
+
+        except Exception as e:
+            logger.warning(f'Error getting dismissed data: {e}')
+            return set(), {}
+
     def _score_candidates(
         self,
         user: 'User',
@@ -512,6 +665,18 @@ class PersonalizationEngine:
         # Convert to dict for O(1) lookup: {owner_id: like_count}
         owner_like_map = {item['project__user_id']: item['like_count'] for item in owner_like_counts}
 
+        # Get time-spent topic boosts (topics user spent time on)
+        time_spent_topic_boosts = self._get_time_spent_topic_boosts(user)
+
+        # Get recent search queries for content matching
+        search_queries = self._get_search_query_boosts(user)
+
+        # Get clicked project IDs (high-intent signal)
+        clicked_project_ids = self._get_click_boost_project_ids(user)
+
+        # Get dismissed projects and penalized topics (negative feedback)
+        dismissed_project_ids, penalized_topics = self._get_dismissed_data(user)
+
         # Calculate max values for normalization (treat None as 0)
         max_like_count = max((c.get('like_count') or 0 for c in candidates), default=1) or 1
         max_velocity = max((c.get('engagement_velocity') or 0 for c in candidates), default=1) or 1
@@ -558,6 +723,36 @@ class PersonalizationEngine:
                 # Boost projects from followed users (significant boost)
                 if owner_id in followed_user_ids:
                     behavioral_score += 0.4  # Strong boost for followed users' content
+
+            # Boost projects with topics user spent time on
+            for topic in topics:
+                if topic in time_spent_topic_boosts:
+                    behavioral_score += time_spent_topic_boosts[topic]
+
+            # Boost projects matching recent searches
+            title = (candidate.get('title') or '').lower()
+            for query in search_queries:
+                if query in title:
+                    behavioral_score += 0.2  # Match in title
+                    break
+                for topic in topics:
+                    if query in topic.lower():
+                        behavioral_score += 0.1  # Match in topics
+                        break
+
+            # Boost projects user clicked in feeds (high-intent signal)
+            if project_id in clicked_project_ids:
+                behavioral_score += 0.2
+
+            # Penalize dismissed projects (skip entirely for direct dismissals)
+            if project_id in dismissed_project_ids:
+                behavioral_score -= 1.0  # Full penalty - effectively filters out
+
+            # Penalize projects in topics user has dismissed 3+ times
+            for topic in topics:
+                if topic in penalized_topics:
+                    behavioral_score -= 0.3  # Moderate penalty per topic
+                    break  # Only apply once
 
             behavioral_score = max(-1, min(1, behavioral_score))  # Clamp to [-1, 1]
 

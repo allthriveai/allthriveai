@@ -80,7 +80,7 @@ class LaunchInlineGameInput(BaseModel):
 
     game_type: str = Field(
         default='random',
-        description='Type of game to launch: snake, quiz, or random (picks one for user)',
+        description='Type of game to launch: snake, quiz, ethics, prompt_battle, or random (picks one for user)',
     )
     difficulty: str = Field(default='medium', description='Difficulty level for quiz games: easy, medium, or hard')
 
@@ -477,7 +477,7 @@ def get_fun_activities(surprise_me: bool = False, state: dict = None) -> dict:
 # =============================================================================
 
 
-INLINE_GAME_TYPES = ['snake', 'quiz']
+INLINE_GAME_TYPES = ['snake', 'quiz', 'ethics', 'prompt_battle']
 
 
 @tool(args_schema=LaunchInlineGameInput)
@@ -491,12 +491,13 @@ def launch_inline_game(game_type: str = 'random', difficulty: str = 'medium', st
     ❌ WRONG: Outputting "[Context Snake](/play/context-snake)" as text
     ✅ CORRECT: Calling this tool: launch_inline_game(game_type="snake")
 
-    WHEN TO USE (REQUIRED for learning topics):
+    WHEN TO USE:
     - User asks "what is a context window?" → CALL launch_inline_game(game_type="snake")
-    - User asks "explain tokens" → CALL launch_inline_game(game_type="snake")
-    - User asks "teach me about LLMs" → CALL launch_inline_game(game_type="snake")
     - User says "surprise me" or "I'm bored" → CALL launch_inline_game(game_type="random")
     - User says "quiz me" → CALL launch_inline_game(game_type="quiz")
+    - User asks about AI ethics → CALL launch_inline_game(game_type="ethics")
+    - User wants to practice prompts → CALL launch_inline_game(game_type="prompt_battle")
+    - User says "Play snake/ethics/quiz/prompt battle game" → Use the specified game type
 
     HOW IT WORKS:
     1. You write your explanation text first
@@ -507,10 +508,12 @@ def launch_inline_game(game_type: str = 'random', difficulty: str = 'medium', st
     Available game_type values:
     - "snake": Context Snake - teaches context windows & tokens through gameplay
     - "quiz": Quick AI trivia question with instant feedback
+    - "ethics": Ethics Defender - shoot correct answers about AI ethics
+    - "prompt_battle": Prompt Battle - practice prompt writing skills
     - "random": Pick one randomly (for "surprise me" requests)
 
     Args:
-        game_type: Type of game to launch (snake, quiz, or random)
+        game_type: Type of game to launch (snake, quiz, ethics, prompt_battle, or random)
         difficulty: Difficulty level for quiz (easy, medium, hard)
 
     Returns:

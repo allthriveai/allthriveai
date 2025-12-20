@@ -20,6 +20,15 @@ import { faDragon } from '@fortawesome/free-solid-svg-icons';
 import { ChatCore, ChatMessageList, ChatInputArea } from '../core';
 import { ChatPlusMenu, type IntegrationType } from '../ChatPlusMenu';
 import { OrchestrationPrompt, QuotaExceededBanner } from '../messages';
+import { GamePicker, type PlayableGameType } from '../games';
+import { GitHubFlow, GitLabFlow, FigmaFlow } from '../integrations';
+import { Modal } from '@/components/ui/Modal';
+import type { ProjectImportOption, ChatMessage } from '@/hooks/useIntelligentChat';
+import type { IntegrationId } from '../core/types';
+import { checkGitHubConnection } from '@/services/github';
+import { checkGitLabConnection } from '@/services/gitlab';
+import { checkFigmaConnection } from '@/services/figma';
+import { api } from '@/services/api';
 
 // Feeling options that show based on user's signup interests
 interface FeelingOption {
@@ -49,7 +58,7 @@ const FEELING_OPTIONS: FeelingOption[] = [
     id: 'play',
     label: 'Play a game',
     signupFeatures: ['battles'],
-    message: 'I want to play a game',
+    // Note: 'play' is handled specially to show the game picker
     timeOfDay: ['afternoon', 'evening'],
     dayOfWeek: [0, 5, 6], // Weekends and Friday
     priority: 2,
@@ -205,12 +214,58 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
   const { user } = useAuth();
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [excitedFeatures, setExcitedFeatures] = useState<string[]>([]);
+  const [showGamePicker, setShowGamePicker] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const triggerFileSelectRef = useRef<(() => void) | null>(null);
   const dropFilesRef = useRef<((files: File[]) => void) | null>(null);
 
   // Page-level drag-and-drop state
   const [isPageDragging, setIsPageDragging] = useState(false);
   const pageDragCounterRef = useRef(0);
+
+  // Local messages for canned responses (share flow)
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+
+  // Connection status for integrations
+  const [connectionStatus, setConnectionStatus] = useState({
+    github: false,
+    gitlab: false,
+    figma: false,
+    youtube: false,
+    loading: false,
+  });
+
+  // Fetch connection statuses
+  const fetchConnectionStatuses = useCallback(async () => {
+    setConnectionStatus((prev) => ({ ...prev, loading: true }));
+    try {
+      const [githubConnected, gitlabConnected, figmaConnected] = await Promise.all([
+        checkGitHubConnection(),
+        checkGitLabConnection(),
+        checkFigmaConnection(),
+      ]);
+
+      // Check YouTube via Google OAuth
+      let youtubeConnected = false;
+      try {
+        const response = await api.get('/social/status/google/');
+        youtubeConnected = response.data?.data?.connected || response.data?.connected || false;
+      } catch {
+        youtubeConnected = false;
+      }
+
+      setConnectionStatus({
+        github: githubConnected,
+        gitlab: gitlabConnected,
+        figma: figmaConnected,
+        youtube: youtubeConnected,
+        loading: false,
+      });
+    } catch (error) {
+      logError('EmbeddedChatLayout.fetchConnectionStatuses', error);
+      setConnectionStatus((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
 
   // Page-level drag handlers
   const handlePageDragEnter = useCallback((e: React.DragEvent) => {
@@ -387,13 +442,161 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
       onProjectCreated={(url) => navigate(url)}
     >
       {(state) => {
+        // Access extended state for integration flow
+        const extendedState = state as typeof state & {
+          integrationFlow: ReturnType<typeof import('../integrations').useIntegrationFlow>;
+        };
+        const integrationFlow = extendedState.integrationFlow;
+
         // Handle feeling pill click
         const handleFeelingClick = (option: FeelingOption) => {
+          if (option.id === 'play') {
+            // Show game picker instead of sending a message
+            setShowGamePicker(true);
+            return;
+          }
+          if (option.id === 'share') {
+            // Intercept "share" pill - show canned response with project import options
+            const timestamp = Date.now();
+
+            // Add user message
+            const userMessage: ChatMessage = {
+              id: `user-share-${timestamp}`,
+              content: 'I want to share something I\'ve been working on',
+              sender: 'user',
+              timestamp: new Date(),
+            };
+
+            // Add canned assistant message with project import options
+            const assistantMessage: ChatMessage = {
+              id: `assistant-import-options-${timestamp}`,
+              content: "Great! I'd love to see what you've been creating.",
+              sender: 'assistant',
+              timestamp: new Date(),
+              metadata: {
+                type: 'project_import_options',
+              },
+            };
+
+            setLocalMessages((prev) => [...prev, userMessage, assistantMessage]);
+            return;
+          }
           if (option.navigateTo) {
             navigate(option.navigateTo);
           } else if (option.message) {
             state.sendMessage(option.message);
           }
+        };
+
+        // Handle project import option selection
+        const handleProjectImportOptionSelect = (option: ProjectImportOption) => {
+          const timestamp = Date.now();
+
+          switch (option) {
+            case 'integration': {
+              // Show integration picker inline and fetch connection statuses
+              fetchConnectionStatuses();
+              const integrationMessage: ChatMessage = {
+                id: `assistant-integration-picker-${timestamp}`,
+                content: '',
+                sender: 'assistant',
+                timestamp: new Date(),
+                metadata: {
+                  type: 'integration_picker',
+                },
+              };
+              setLocalMessages((prev) => [...prev, integrationMessage]);
+              break;
+            }
+            case 'url':
+              // Send to AI to handle URL import
+              state.sendMessage('I want to import a project from a URL');
+              break;
+            case 'upload':
+              // Trigger file picker
+              if (triggerFileSelectRef.current) {
+                triggerFileSelectRef.current();
+              }
+              break;
+            case 'chrome-extension':
+              // Show coming soon modal
+              setShowComingSoon(true);
+              break;
+          }
+        };
+
+        // Handle game selection from picker
+        const handleGameSelect = (gameType: PlayableGameType) => {
+          setShowGamePicker(false);
+          // Send message to trigger inline game
+          state.sendMessage(`Play ${gameType === 'prompt_battle' ? 'prompt battle' : gameType} game`);
+        };
+
+        // Handle integration card selection (from inline integration picker)
+        // This triggers the actual OAuth flow / repo picker, not just a message
+        const handleIntegrationCardSelect = (integration: IntegrationId) => {
+          integrationFlow?.actions.startFlow(integration);
+        };
+
+        // Render active integration flow inline (GitHub/GitLab/Figma)
+        const renderInlineIntegrationFlow = () => {
+          if (!integrationFlow) return null;
+          const { state: integrationState } = integrationFlow;
+
+          if (integrationState.activeFlow === 'github') {
+            return (
+              <div className="flex justify-start">
+                <div className="w-full max-w-2xl">
+                  <GitHubFlow
+                    state={integrationState.github}
+                    repos={integrationFlow.githubRepos}
+                    searchQuery={integrationFlow.githubSearchQuery}
+                    onSearchChange={integrationFlow.setGithubSearchQuery}
+                    onSelectRepo={integrationFlow.handleSelectGitHubRepo}
+                    onConnect={integrationFlow.handleConnectGitHub}
+                    onInstallApp={integrationFlow.handleInstallGitHubApp}
+                    onBack={integrationFlow.actions.cancelFlow}
+                  />
+                </div>
+              </div>
+            );
+          }
+
+          if (integrationState.activeFlow === 'gitlab') {
+            return (
+              <div className="flex justify-start">
+                <div className="w-full max-w-2xl">
+                  <GitLabFlow
+                    state={integrationState.gitlab}
+                    projects={integrationFlow.gitlabProjects}
+                    searchQuery={integrationFlow.gitlabSearchQuery}
+                    onSearchChange={integrationFlow.setGitlabSearchQuery}
+                    onSelectProject={integrationFlow.handleSelectGitLabProject}
+                    onConnect={integrationFlow.handleConnectGitLab}
+                    onBack={integrationFlow.actions.cancelFlow}
+                  />
+                </div>
+              </div>
+            );
+          }
+
+          if (integrationState.activeFlow === 'figma') {
+            return (
+              <div className="flex justify-start">
+                <div className="w-full max-w-2xl">
+                  <FigmaFlow
+                    state={integrationState.figma}
+                    onConnect={integrationFlow.handleConnectFigma}
+                    onImportUrl={integrationFlow.handleFigmaUrlImport}
+                    isFigmaUrl={integrationFlow.isFigmaUrl}
+                    onBack={integrationFlow.actions.cancelFlow}
+                  />
+                </div>
+              </div>
+            );
+          }
+
+          return null;
         };
 
         // Handle integration selection from plus menu
@@ -457,15 +660,15 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
             {/* Page-level drag overlay */}
             {isPageDragging && (
               <div
-                className="fixed inset-0 z-[100] bg-orange-500/10 border-4 border-dashed border-orange-400 flex items-center justify-center pointer-events-none"
+                className="fixed inset-0 z-[100] bg-cyan-500/10 border-4 border-dashed border-cyan-400 flex items-center justify-center pointer-events-none"
                 style={{
                   backdropFilter: 'blur(8px)',
                   WebkitBackdropFilter: 'blur(8px)',
                 }}
               >
-                <div className="text-center p-8 rounded-2xl bg-white/80 dark:bg-background/80 border border-orange-500/30">
-                  <div className="text-orange-600 dark:text-orange-300 text-2xl font-semibold mb-2">Drop files here</div>
-                  <div className="text-orange-500/70 dark:text-orange-400/70 text-base">
+                <div className="text-center p-8 rounded-2xl bg-white/80 dark:bg-background/80 border border-cyan-500/30">
+                  <div className="text-cyan-600 dark:text-cyan-300 text-2xl font-semibold mb-2">Drop files here</div>
+                  <div className="text-cyan-500/70 dark:text-cyan-400/70 text-base">
                     Images, videos, and documents supported
                   </div>
                 </div>
@@ -487,14 +690,14 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                   {/* Greeting message (when no onboarding) */}
                   {!state.onboarding?.isActive && (
                     <div className="flex justify-start">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-                        <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-teal-600/20 flex items-center justify-center flex-shrink-0 mr-4">
+                        <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-500" />
                       </div>
                       <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
                         <div className="text-lg text-slate-700 dark:text-slate-200">
                           <span className="whitespace-pre-wrap">{typedGreeting}</span>
                           {!isTypingComplete && (
-                            <span className="inline-block w-0.5 h-5 bg-orange-500 dark:bg-orange-400 ml-0.5 animate-pulse" />
+                            <span className="inline-block w-0.5 h-5 bg-cyan-500 dark:bg-cyan-400 ml-0.5 animate-pulse" />
                           )}
                         </div>
                       </div>
@@ -502,7 +705,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                   )}
 
                   {/* Feeling pills */}
-                  {showPills && (
+                  {showPills && !showGamePicker && (
                     <div className="flex justify-start pl-16">
                       <div className="flex flex-wrap gap-3 max-w-[85%]">
                         {feelingOptions.map((option, idx) => (
@@ -510,11 +713,11 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                             key={option.id}
                             onClick={() => handleFeelingClick(option)}
                             className="px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300
-                              bg-gradient-to-r from-orange-500/10 to-amber-500/10
-                              border border-orange-500/30
-                              text-orange-600 dark:text-orange-300 hover:text-orange-500 dark:hover:text-orange-200
-                              hover:border-orange-400/50 hover:from-orange-500/20 hover:to-amber-500/20
-                              hover:shadow-[0_0_20px_rgba(251,146,60,0.3)]
+                              bg-gradient-to-r from-cyan-500/10 to-teal-500/10
+                              border border-cyan-500/30
+                              text-cyan-600 dark:text-cyan-300 hover:text-cyan-500 dark:hover:text-cyan-200
+                              hover:border-cyan-400/50 hover:from-cyan-500/20 hover:to-teal-500/20
+                              hover:shadow-neon
                               transform hover:scale-105 active:scale-95"
                             style={{
                               animation: `fadeInUp 0.4s ease-out ${idx * 0.1}s both`,
@@ -527,15 +730,33 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                     </div>
                   )}
 
+                  {/* Game picker (shown when "Play a game" is clicked) */}
+                  {showGamePicker && (
+                    <div className="flex justify-start pl-16">
+                      <div className="max-w-[85%]">
+                        <GamePicker
+                          onSelectGame={handleGameSelect}
+                          onClose={() => setShowGamePicker(false)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Chat messages */}
                   <ChatMessageList
-                    messages={state.messages}
+                    messages={[...localMessages, ...state.messages]}
                     isLoading={state.isLoading}
                     currentTool={state.currentTool}
                     onCancelProcessing={state.cancelProcessing}
                     onboarding={state.onboarding}
                     onNavigate={handleNavigate}
+                    onProjectImportOptionSelect={handleProjectImportOptionSelect}
+                    onIntegrationSelect={handleIntegrationCardSelect}
+                    connectionStatus={connectionStatus}
                   />
+
+                  {/* Inline integration flow (GitHub/GitLab/Figma) */}
+                  {renderInlineIntegrationFlow()}
                 </div>
               </div>
 
@@ -587,6 +808,34 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                 Reconnecting...
               </div>
             )}
+
+            {/* Coming Soon Modal for Chrome Extension */}
+            <Modal
+              isOpen={showComingSoon}
+              onClose={() => setShowComingSoon(false)}
+              className="!rounded bg-white dark:bg-brand-dark border-slate-200 dark:border-cyan-500/20"
+            >
+              <div className="text-center py-4">
+                <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
+                  Coming Soon
+                </h2>
+                <div className="w-16 h-16 mx-auto mb-4 rounded bg-gradient-to-r from-cyan-400 to-green-400 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faDragon} className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                  Chrome Extension
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-6">
+                  We're working on a Chrome extension to help you save and import content from anywhere on the web. Stay tuned!
+                </p>
+                <button
+                  onClick={() => setShowComingSoon(false)}
+                  className="px-6 py-2 rounded bg-gradient-to-r from-cyan-500 to-green-500 text-white font-medium hover:from-cyan-600 hover:to-green-600 transition-all shadow-neon"
+                >
+                  Got it
+                </button>
+              </div>
+            </Modal>
           </div>
         );
       }}

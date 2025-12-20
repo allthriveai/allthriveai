@@ -143,8 +143,8 @@ export function BattleArena({
           className="text-center mb-4 md:mb-8"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-rose-500/20 border border-rose-500/30 mb-2 md:mb-4">
-            <BoltIcon className="w-3 h-3 md:w-4 md:h-4 text-rose-400" />
-            <span className="text-xs md:text-sm font-semibold text-rose-300 tracking-wider uppercase">
+            <BoltIcon className="w-3 h-3 md:w-4 md:h-4 text-rose-500 dark:text-rose-400" />
+            <span className="text-xs md:text-sm font-semibold text-rose-600 dark:text-rose-300 tracking-wider uppercase">
               Battle in Progress
             </span>
           </div>
@@ -176,7 +176,7 @@ export function BattleArena({
           >
             <div
               className="relative w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center
-                         bg-gradient-to-br from-slate-800 to-slate-900
+                         bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900
                          border-2 border-cyan-500/50
                          shadow-[0_0_20px_rgba(34,211,238,0.3)] md:shadow-[0_0_30px_rgba(34,211,238,0.3)]"
             >
@@ -186,7 +186,7 @@ export function BattleArena({
                 animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
-              <span className="text-lg md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400">
+              <span className="text-lg md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 dark:from-cyan-400 to-pink-500 dark:to-pink-400">
                 VS
               </span>
             </div>
@@ -242,12 +242,12 @@ export function BattleArena({
                 transition={{ type: 'spring' }}
                 className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center"
               >
-                <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-emerald-500 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </motion.div>
-              <h3 className="text-xl font-bold text-white mb-2">Prompt Submitted!</h3>
-              <p className="text-slate-400">{getSubmittedMessage()}</p>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Prompt Submitted!</h3>
+              <p className="text-slate-600 dark:text-slate-400">{getSubmittedMessage()}</p>
 
               {/* Guest signup CTA for async battles */}
               {isGuestUser && isAsyncBattle && onSignupClick && (
@@ -264,7 +264,7 @@ export function BattleArena({
                   >
                     Create Account to Get Notified
                   </button>
-                  <p className="text-xs text-slate-500 mt-2">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                     We'll email you when they submit and the results are ready!
                   </p>
                 </motion.div>
@@ -293,12 +293,12 @@ export function BattleArena({
                 transition={{ type: 'spring' }}
                 className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/20 flex items-center justify-center"
               >
-                <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-amber-500 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </motion.div>
-              <h3 className="text-xl font-bold text-white mb-2">Waiting for {challengerName || opponent.username}</h3>
-              <p className="text-slate-400">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Waiting for {challengerName || opponent.username}</h3>
+              <p className="text-slate-600 dark:text-slate-400">
                 {challengerName || opponent.username} is currently working on their prompt.
                 You'll be able to submit once they finish their turn.
               </p>

@@ -99,8 +99,8 @@ function DialogueBubble({ children }: { children: React.ReactNode }) {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={`
         relative glass-subtle px-5 py-4 rounded
-        bg-gradient-to-br from-orange-500/10 to-amber-500/5
-        border border-orange-500/20
+        bg-gradient-to-br from-orange-100/80 to-amber-50/60 dark:from-orange-500/10 dark:to-amber-500/5
+        border border-orange-300/40 dark:border-orange-500/20
       `}
     >
       {children}
@@ -200,9 +200,9 @@ export function OnboardingIntroMessage({
         <div className="flex-1 space-y-3 max-w-2xl">
           {/* Line 1: Greeting */}
           <DialogueBubble>
-            <p className="text-orange-100 text-lg leading-relaxed">
+            <p className="text-slate-800 dark:text-orange-100 text-lg leading-relaxed">
               {line1.displayedText}
-              {!line1.isComplete && <span className="animate-pulse text-orange-400 ml-0.5">|</span>}
+              {!line1.isComplete && <span className="animate-pulse text-orange-500 dark:text-orange-400 ml-0.5">|</span>}
             </p>
           </DialogueBubble>
 
@@ -210,10 +210,10 @@ export function OnboardingIntroMessage({
           <AnimatePresence>
             {dialogueStep >= 1 && (
               <DialogueBubble>
-                <p className="text-orange-100/90 text-lg leading-relaxed">
+                <p className="text-slate-700 dark:text-orange-100/90 text-lg leading-relaxed">
                   {line2.displayedText}
                   {!line2.isComplete && dialogueStep === 1 && (
-                    <span className="animate-pulse text-orange-400 ml-0.5">|</span>
+                    <span className="animate-pulse text-orange-500 dark:text-orange-400 ml-0.5">|</span>
                   )}
                 </p>
               </DialogueBubble>
@@ -224,19 +224,19 @@ export function OnboardingIntroMessage({
           <AnimatePresence>
             {dialogueStep >= 2 && (
               <DialogueBubble>
-                <p className="text-orange-100 text-lg leading-relaxed font-medium">
+                <p className="text-slate-800 dark:text-orange-100 text-lg leading-relaxed font-medium">
                   {line3.displayedText.split('All Thrive Avatar').map((part, i) =>
                     i === 0 ? (
                       part
                     ) : (
                       <span key={i}>
-                        <span className="text-orange-300 font-semibold">All Thrive Avatar</span>
+                        <span className="text-orange-600 dark:text-orange-300 font-semibold">All Thrive Avatar</span>
                         {part}
                       </span>
                     )
                   )}
                   {!line3.isComplete && dialogueStep === 2 && (
-                    <span className="animate-pulse text-orange-400 ml-0.5">|</span>
+                    <span className="animate-pulse text-orange-500 dark:text-orange-400 ml-0.5">|</span>
                   )}
                 </p>
               </DialogueBubble>
@@ -277,7 +277,7 @@ export function OnboardingIntroMessage({
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center text-slate-600 text-sm mt-4 ml-16"
+          className="text-center text-slate-500 dark:text-slate-600 text-sm mt-4 ml-16"
         >
           Tap anywhere to skip
         </motion.p>

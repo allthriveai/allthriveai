@@ -109,8 +109,8 @@ export function PromptEditor({
       {/* Header - stacks on mobile to prevent overlap */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <label htmlFor="prompt-editor-textarea" className="flex items-center gap-2 cursor-pointer">
-          <SparklesIcon className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden="true" />
-          <span className="text-white font-medium text-sm sm:text-base">Your Prompt</span>
+          <SparklesIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-400 shrink-0" aria-hidden="true" />
+          <span className="text-slate-800 dark:text-white font-medium text-sm sm:text-base">Your Prompt</span>
         </label>
 
         {localTimeRemaining !== null && (
@@ -157,20 +157,20 @@ export function PromptEditor({
           aria-invalid={isTooLong}
           className={`
             w-full p-3 md:p-4 pb-14 md:pb-16 text-base
-            bg-slate-900/50 backdrop-blur-xl
-            border border-white/10
-            text-white placeholder:text-slate-500
+            bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl
+            border border-slate-300/50 dark:border-white/10
+            text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
             resize-none
-            focus:outline-none focus:bg-slate-900/70
+            focus:outline-none focus:bg-white/70 dark:focus:bg-slate-900/70
             transition-colors
-            ${isTooLong ? 'text-rose-300' : ''}
+            ${isTooLong ? 'text-rose-500 dark:text-rose-300' : ''}
           `}
         />
 
         {/* Bottom bar */}
         <div
           className="absolute bottom-0 left-0 right-0 p-3
-                     bg-gradient-to-t from-slate-900/90 to-transparent
+                     bg-gradient-to-t from-white/90 dark:from-slate-900/90 to-transparent
                      flex items-center justify-between"
         >
           {/* Character count */}
@@ -220,9 +220,9 @@ export function PromptEditor({
       </div>
 
       {/* Tips */}
-      <p id="prompt-hint" className="mt-2 text-xs text-slate-500 hidden md:block">
+      <p id="prompt-hint" className="mt-2 text-xs text-slate-400 dark:text-slate-500 hidden md:block">
         Your prompt is scored! Vague prompts lose points. Add style, mood, lighting, and composition for higher scores.{' '}
-        <kbd className="text-slate-600 font-mono">⌘+Enter</kbd> to submit
+        <kbd className="text-slate-500 dark:text-slate-600 font-mono">⌘+Enter</kbd> to submit
       </p>
     </motion.div>
   );

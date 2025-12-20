@@ -17,3 +17,5 @@ export { GeneratingImageMessage } from './GeneratingImageMessage';
 export { LearningContentMessage } from './LearningContentMessage';
 export { ChallengeTeaserMessage } from './ChallengeTeaserMessage';
 export { PeopleToConnectMessage } from './PeopleToConnectMessage';
+export { ProjectImportOptionsMessage } from './ProjectImportOptionsMessage';
+export { IntegrationCardsMessage } from './IntegrationCardsMessage';

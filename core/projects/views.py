@@ -17,7 +17,7 @@ from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, P
 from core.users.models import User
 
 from .constants import MIN_RESPONSE_TIME_SECONDS
-from .models import Project, ProjectLike
+from .models import Project, ProjectDismissal, ProjectLike
 from .serializers import ProjectCardSerializer, ProjectSerializer
 
 logger = logging.getLogger(__name__)
@@ -244,6 +244,66 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 response_data['completed_quests'] = format_completed_quests(user, completed_ids)
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='dismiss')
+    def dismiss(self, request, pk=None):
+        """Dismiss a project from the user's recommendations.
+
+        Creates or updates a ProjectDismissal record for this user/project.
+        The personalization engine uses these to filter and down-weight content.
+
+        Payload:
+            reason (optional): One of 'not_interested', 'seen_before',
+                              'wrong_topic', 'too_basic', 'too_advanced'
+                              Defaults to 'not_interested'
+
+        Returns:
+            {"status": "dismissed", "reason": "not_interested"}
+        """
+        project = self.get_object()
+        user = request.user
+
+        # Get reason from request, default to 'not_interested'
+        reason = request.data.get('reason', 'not_interested')
+        valid_reasons = [choice[0] for choice in ProjectDismissal.DismissalReason.choices]
+        if reason not in valid_reasons:
+            reason = 'not_interested'
+
+        # Create or update the dismissal record
+        dismissal, created = ProjectDismissal.objects.update_or_create(
+            user=user,
+            project=project,
+            defaults={'reason': reason},
+        )
+
+        logger.info(
+            f'Project dismissed: user={user.username} project={project.id} ' f'reason={reason} created={created}'
+        )
+
+        return Response(
+            {'status': 'dismissed', 'reason': reason},
+            status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['delete'], url_path='dismiss')
+    def undismiss(self, request, pk=None):
+        """Remove a project dismissal (show project in recommendations again).
+
+        Returns:
+            {"status": "undismissed"} or 404 if not dismissed
+        """
+        project = self.get_object()
+        user = request.user
+
+        deleted, _ = ProjectDismissal.objects.filter(user=user, project=project).delete()
+
+        if deleted:
+            return Response({'status': 'undismissed'}, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Project was not dismissed'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
     def perform_update(self, serializer):
         """Called when updating a project."""

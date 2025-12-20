@@ -34,8 +34,8 @@ export function LearningContentMessage({
   onNavigate,
   sourceType,
 }: LearningContentMessageProps) {
-  // Use compact grid layout for trending content
-  const useCompactGrid = sourceType === 'trending';
+  // Always use horizontal scroll for chat content (trending, personalized, etc.)
+  const useCompactGrid = false;
 
   if (!hasContent && message) {
     // AI fallback message - just show the message
@@ -60,7 +60,13 @@ export function LearningContentMessage({
         {/* Header */}
         <div className="glass-subtle px-5 py-3 rounded-2xl rounded-bl-sm mb-3">
           <p className="text-slate-200">
-            Here are some <span className="text-cyan-400 font-medium">{topicDisplay}</span> resources for you:
+            {sourceType === 'trending' ? (
+              <>Here's what's <span className="text-cyan-400 font-medium">trending</span> in the community:</>
+            ) : sourceType === 'personalized' ? (
+              <>Based on your preferences, here are some <span className="text-cyan-400 font-medium">projects you might like</span>:</>
+            ) : (
+              <>Here are some <span className="text-cyan-400 font-medium">{topicDisplay}</span> resources for you:</>
+            )}
           </p>
         </div>
 

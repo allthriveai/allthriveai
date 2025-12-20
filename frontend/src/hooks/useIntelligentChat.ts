@@ -152,7 +152,7 @@ export interface PathOption {
 }
 
 // Game types for inline games
-export type InlineGameType = 'snake' | 'quiz' | 'random';
+export type InlineGameType = 'snake' | 'quiz' | 'ethics' | 'prompt_battle' | 'random';
 
 // Learning content item from backend
 export interface LearningContentItem {
@@ -189,12 +189,15 @@ export interface LearningContentItem {
   game_id?: string;
 }
 
+// Project import option types
+export type ProjectImportOption = 'integration' | 'url' | 'upload' | 'chrome-extension';
+
 // Extended metadata for intelligent chat messages
 export interface IntelligentChatMetadata {
   type?: 'text' | 'generating' | 'generated_image'
        | 'onboarding_intro' | 'onboarding_avatar_prompt'
        | 'onboarding_avatar_preview' | 'inline_game'
-       | 'learning_content';
+       | 'learning_content' | 'project_import_options' | 'integration_picker';
   imageUrl?: string;
   filename?: string;
   sessionId?: number;
@@ -771,6 +774,65 @@ export function useIntelligentChat({
 
                 // Queue for after streaming completes
                 pendingContentMessagesRef.current.push(trendingMessage);
+              }
+
+              // Handle get_recommendations tool - show personalized project cards
+              if (data.tool === 'get_recommendations' && data.output?.projects && data.output.projects.length > 0) {
+                const recommendationsId = `recommendations-${Date.now()}`;
+
+                // Check for duplicate
+                if (seenMessageIdsRef.current.has(recommendationsId)) {
+                  break;
+                }
+                seenMessageIdsRef.current.add(recommendationsId);
+
+                // Transform projects to LearningContentItem format
+                const projects = data.output.projects as Array<{
+                  id: number;
+                  title: string;
+                  slug: string;
+                  description: string;
+                  author: string;
+                  author_avatar_url?: string;
+                  thumbnail?: string;
+                  featured_image_url?: string;
+                  categories?: string[];
+                  url: string;
+                }>;
+
+                const items: LearningContentItem[] = projects.map((p) => ({
+                  id: String(p.id),
+                  title: p.title,
+                  slug: p.slug,
+                  description: p.description,
+                  url: p.url,
+                  featured_image_url: p.featured_image_url || p.thumbnail || '',
+                  thumbnail: p.thumbnail || p.featured_image_url || '',
+                  author_username: p.author,
+                  author_avatar_url: p.author_avatar_url || '',
+                  key_techniques: p.categories || [],
+                }));
+
+                const recommendationsMessage: ChatMessage = {
+                  id: recommendationsId,
+                  content: '',
+                  sender: 'assistant',
+                  timestamp: new Date(),
+                  metadata: {
+                    type: 'learning_content',
+                    learningContent: {
+                      topic: 'for-you',
+                      topicDisplay: 'For You',
+                      contentType: 'projects',
+                      sourceType: 'personalized',
+                      items,
+                      hasContent: true,
+                    },
+                  },
+                };
+
+                // Queue for after streaming completes
+                pendingContentMessagesRef.current.push(recommendationsMessage);
               }
               break;
 

@@ -428,3 +428,35 @@ export async function toggleLearningEligibility(projectId: number): Promise<{
     isLearningEligible: response.data.isLearningEligible,
   };
 }
+
+/**
+ * Dismissal reason choices - must match backend DismissalReason enum
+ */
+export type DismissalReason = 'not_interested' | 'seen_before' | 'wrong_topic' | 'too_basic' | 'too_advanced';
+
+/**
+ * Dismiss a project from recommendations
+ * Tells the personalization engine the user doesn't want to see this type of content
+ */
+export async function dismissProject(projectId: number, reason: DismissalReason = 'not_interested'): Promise<{
+  status: 'dismissed';
+  reason: DismissalReason;
+}> {
+  const response = await api.post<{
+    status: 'dismissed';
+    reason: DismissalReason;
+  }>(`/projects/${projectId}/dismiss/`, { reason });
+  return response.data;
+}
+
+/**
+ * Remove a project dismissal (undo "not interested")
+ */
+export async function undismissProject(projectId: number): Promise<{
+  status: 'undismissed';
+}> {
+  const response = await api.delete<{
+    status: 'undismissed';
+  }>(`/projects/${projectId}/dismiss/`);
+  return response.data;
+}

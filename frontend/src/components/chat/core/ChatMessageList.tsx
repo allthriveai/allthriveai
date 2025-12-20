@@ -18,6 +18,8 @@ import {
   OnboardingMessage,
   GeneratingImageMessage,
   LearningContentMessage,
+  ProjectImportOptionsMessage,
+  IntegrationCardsMessage,
 } from '../messages';
 import { GeneratedImageMessage } from '../GeneratedImageMessage';
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
@@ -35,6 +37,9 @@ export function ChatMessageList({
   onCreateProjectFromImage,
   onNavigate,
   autoScroll = true,
+  onProjectImportOptionSelect,
+  onIntegrationSelect,
+  connectionStatus,
 }: ChatMessageListProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,6 +149,23 @@ export function ChatMessageList({
             sourceType={metadata.learningContent.sourceType}
           />
         </ChatErrorBoundary>
+      );
+    }
+
+    if (metadata?.type === 'project_import_options' && onProjectImportOptionSelect) {
+      return (
+        <ProjectImportOptionsMessage
+          onOptionSelect={onProjectImportOptionSelect}
+        />
+      );
+    }
+
+    if (metadata?.type === 'integration_picker' && onIntegrationSelect && connectionStatus) {
+      return (
+        <IntegrationCardsMessage
+          onIntegrationSelect={onIntegrationSelect}
+          connectionStatus={connectionStatus}
+        />
       );
     }
 

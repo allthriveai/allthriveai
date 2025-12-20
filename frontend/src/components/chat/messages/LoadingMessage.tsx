@@ -29,6 +29,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   get_similar_projects: 'Finding similar projects',
   get_project_details: 'Getting project details',
   recommend_projects: 'Finding recommendations',
+  get_recommendations: 'Finding personalized recommendations',
   launch_inline_game: 'Launching game',
   regenerate_architecture_diagram: 'Regenerating architecture',
 };

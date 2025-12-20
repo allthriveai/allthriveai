@@ -48,8 +48,8 @@ export function ChallengeDisplay({
                        bg-gradient-to-r from-amber-500/20 to-orange-500/20
                        border border-amber-500/30"
           >
-            <FireIcon className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-medium text-amber-300">{challengeType.name}</span>
+            <FireIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+            <span className="text-sm font-medium text-amber-600 dark:text-amber-300">{challengeType.name}</span>
           </div>
         </motion.div>
       )}
@@ -57,7 +57,7 @@ export function ChallengeDisplay({
       {/* Main challenge card */}
       <div
         className="relative p-4 md:p-8 rounded-2xl md:rounded-3xl overflow-hidden
-                   bg-gradient-to-br from-slate-800/80 to-slate-900/80
+                   bg-gradient-to-br from-slate-100/80 to-slate-200/80 dark:from-slate-800/80 dark:to-slate-900/80
                    border border-cyan-500/30
                    shadow-[0_0_40px_rgba(34,211,238,0.15)]"
       >
@@ -71,16 +71,16 @@ export function ChallengeDisplay({
         />
 
         {/* Corner accents - hidden on mobile */}
-        <div className="hidden md:block absolute top-0 left-0 w-16 h-16 border-l-2 border-t-2 border-cyan-400/50 rounded-tl-3xl pointer-events-none" />
-        <div className="hidden md:block absolute bottom-0 right-0 w-16 h-16 border-r-2 border-b-2 border-cyan-400/50 rounded-br-3xl pointer-events-none" />
+        <div className="hidden md:block absolute top-0 left-0 w-16 h-16 border-l-2 border-t-2 border-cyan-500/50 dark:border-cyan-400/50 rounded-tl-3xl pointer-events-none" />
+        <div className="hidden md:block absolute bottom-0 right-0 w-16 h-16 border-r-2 border-b-2 border-cyan-500/50 dark:border-cyan-400/50 rounded-br-3xl pointer-events-none" />
 
         {/* Label */}
         <div className="relative flex items-center justify-center gap-1 md:gap-2 mb-2 md:mb-4">
-          <BoltIcon className="w-4 h-4 md:w-5 md:h-5 text-cyan-400" />
-          <span className="text-xs md:text-sm font-semibold tracking-wider text-cyan-400 uppercase">
+          <BoltIcon className="w-4 h-4 md:w-5 md:h-5 text-cyan-600 dark:text-cyan-400" />
+          <span className="text-xs md:text-sm font-semibold tracking-wider text-cyan-600 dark:text-cyan-400 uppercase">
             Your Challenge
           </span>
-          <BoltIcon className="w-4 h-4 md:w-5 md:h-5 text-cyan-400" />
+          <BoltIcon className="w-4 h-4 md:w-5 md:h-5 text-cyan-600 dark:text-cyan-400" />
         </div>
 
         {/* Challenge text */}
@@ -91,7 +91,7 @@ export function ChallengeDisplay({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className="relative text-lg md:text-2xl lg:text-3xl font-bold text-center text-white leading-relaxed"
+            className="relative text-lg md:text-2xl lg:text-3xl font-bold text-center text-slate-800 dark:text-white leading-relaxed"
           >
             "{challengeText}"
           </motion.p>
@@ -114,9 +114,9 @@ export function ChallengeDisplay({
               onClick={onRefresh}
               disabled={isRefreshing}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium
-                       text-slate-300 hover:text-white
-                       bg-slate-700/50 hover:bg-slate-700
-                       rounded-full border border-slate-600/50 hover:border-cyan-500/50
+                       text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white
+                       bg-slate-200/50 dark:bg-slate-700/50 hover:bg-slate-300/50 dark:hover:bg-slate-700
+                       rounded-full border border-slate-300/50 dark:border-slate-600/50 hover:border-cyan-500/50
                        transition-all duration-200
                        disabled:opacity-50 disabled:cursor-not-allowed"
             >

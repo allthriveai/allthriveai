@@ -616,3 +616,54 @@ def auto_tag_project_on_save(sender, instance, created, **kwargs):
             ensure_topics_in_taxonomy(instance.topics)
         except Exception as e:
             logger.error(f"Error syncing topics to taxonomy for '{instance.title}': {e}", exc_info=True)
+
+
+class ProjectDismissal(models.Model):
+    """Tracks when users dismiss/hide projects from recommendations.
+
+    This provides a negative feedback signal for the personalization engine:
+    - Dismissed projects are hidden from the user's feed
+    - Repeated dismissals in the same topic down-weight that topic
+    - Reasons help inform why content isn't resonating
+    """
+
+    class DismissalReason(models.TextChoices):
+        NOT_INTERESTED = 'not_interested', 'Not Interested'
+        SEEN_BEFORE = 'seen_before', 'Already Seen'
+        WRONG_TOPIC = 'wrong_topic', 'Wrong Topic'
+        TOO_BASIC = 'too_basic', 'Too Basic'
+        TOO_ADVANCED = 'too_advanced', 'Too Advanced'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='dismissed_projects',
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='dismissals',
+    )
+    reason = models.CharField(
+        max_length=20,
+        choices=DismissalReason.choices,
+        default=DismissalReason.NOT_INTERESTED,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'project'],
+                name='unique_user_project_dismissal',
+            )
+        ]
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['project']),
+        ]
+        verbose_name = 'Project Dismissal'
+        verbose_name_plural = 'Project Dismissals'
+
+    def __str__(self):
+        return f'{self.user.username} dismissed {self.project.title} ({self.reason})'

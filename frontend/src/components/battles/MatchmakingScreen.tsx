@@ -41,6 +41,7 @@ interface MatchmakingScreenProps {
   onMatchWithPip: () => void;
   onFindRandomMatch: () => void;
   onLeaveQueue: () => void;
+  initialOpenHumanModal?: boolean;
 }
 
 export function MatchmakingScreen({
@@ -50,11 +51,12 @@ export function MatchmakingScreen({
   onMatchWithPip,
   onFindRandomMatch: _onFindRandomMatch,
   onLeaveQueue,
+  initialOpenHumanModal = false,
 }: MatchmakingScreenProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedMode, setSelectedMode] = useState<'ai' | 'random' | null>(null);
-  const [showHumanModal, setShowHumanModal] = useState(false);
+  const [showHumanModal, setShowHumanModal] = useState(initialOpenHumanModal);
   const [modalView, setModalView] = useState<'options' | 'sms' | 'link'>('options');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [friendName, setFriendName] = useState('');

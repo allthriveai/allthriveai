@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useMatchmaking, type MatchFoundData } from '@/hooks/useMatchmaking';
 import { MatchmakingScreen } from '@/components/battles';
@@ -16,6 +16,10 @@ import { useQuestTracking } from '@/hooks/useQuestTracking';
 
 export function BattlesLobbyPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check for URL param to auto-open human battle modal
+  const openHumanModal = searchParams.get('openHumanModal') === 'true';
 
   // Quest tracking for page visit
   const { trackPage } = useQuestTracking();
@@ -65,6 +69,7 @@ export function BattlesLobbyPage() {
         onMatchWithPip={matchWithPip}
         onFindRandomMatch={handleFindOpponent}
         onLeaveQueue={leaveQueue}
+        initialOpenHumanModal={openHumanModal}
       />
     </DashboardLayout>
   );
