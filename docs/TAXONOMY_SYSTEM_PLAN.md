@@ -19,6 +19,160 @@ Build a **fully agentic** taxonomy system that tags all content (Projects, Tools
 4. **No Pre-computed User Similarity**: Use real-time Weaviate vector similarity instead of storing billions of user pairs.
 5. **Self-Improving**: Track tag quality metrics; the system learns from user engagement signals.
 
+---
+
+## Prerequisites: Entity Taxonomy Fields
+
+**IMPORTANT**: Before implementing AI tagging, entity models must have taxonomy fields to populate.
+
+### Current State (16 Taxonomy Types Defined)
+
+| Entity | Currently Connected | Missing Fields |
+|--------|---------------------|----------------|
+| **User** | None (uses UserTag intermediary) | personality, learning_styles, roles, goals, interests, industries |
+| **Project** | categories, topics | content_type, time_investment, pricing, difficulty (FK) |
+| **Quiz** | categories, topics | content_type, time_investment, difficulty, pricing |
+| **SideQuest** | topic | content_type, time_investment, difficulty, pricing |
+| **MicroLesson** | via Concept | content_type, time_investment, difficulty, pricing |
+
+### Key Decision: UserTag vs Direct Fields
+
+**Keep both systems** - they serve complementary purposes:
+
+| System | Purpose | Data Source |
+|--------|---------|-------------|
+| **Direct User fields** | Explicit preferences | User selection during onboarding |
+| **UserTag** | Inferred preferences | AI analysis of behavior (auto-generated) |
+
+Rationale: A user might *say* they're a "developer" but mostly engage with marketing content. Both signals are valuable for recommendations.
+
+### Phase 0A: Add Taxonomy Fields to User Model
+
+**File**: `core/users/models.py`
+
+```python
+# Single-select (FK)
+personality = models.ForeignKey(
+    'taxonomy.Taxonomy',
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name='users_with_personality',
+    limit_choices_to={'taxonomy_type': 'personality', 'is_active': True},
+)
+
+# Multi-select (M2M)
+learning_styles = models.ManyToManyField(
+    'taxonomy.Taxonomy',
+    blank=True,
+    related_name='users_with_learning_style',
+    limit_choices_to={'taxonomy_type': 'learning_style', 'is_active': True},
+)
+
+roles = models.ManyToManyField(
+    'taxonomy.Taxonomy',
+    blank=True,
+    related_name='users_with_role',
+    limit_choices_to={'taxonomy_type': 'role', 'is_active': True},
+)
+
+goals = models.ManyToManyField(
+    'taxonomy.Taxonomy',
+    blank=True,
+    related_name='users_with_goal',
+    limit_choices_to={'taxonomy_type': 'goal', 'is_active': True},
+)
+
+interests = models.ManyToManyField(
+    'taxonomy.Taxonomy',
+    blank=True,
+    related_name='users_with_interest',
+    limit_choices_to={'taxonomy_type': 'interest', 'is_active': True},
+)
+
+industries = models.ManyToManyField(
+    'taxonomy.Taxonomy',
+    blank=True,
+    related_name='users_in_industry',
+    limit_choices_to={'taxonomy_type': 'industry', 'is_active': True},
+)
+```
+
+### Phase 0B: Add Taxonomy Fields to Content Models
+
+Create a shared mixin for all content models:
+
+**File**: `core/taxonomy/mixins.py` (new)
+
+```python
+class ContentMetadataMixin(models.Model):
+    """Shared taxonomy fields for all content types."""
+
+    content_type_taxonomy = models.ForeignKey(
+        'taxonomy.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_of_type',
+        limit_choices_to={'taxonomy_type': 'content_type', 'is_active': True},
+    )
+
+    time_investment = models.ForeignKey(
+        'taxonomy.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_with_time',
+        limit_choices_to={'taxonomy_type': 'time_investment', 'is_active': True},
+    )
+
+    difficulty_taxonomy = models.ForeignKey(
+        'taxonomy.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_with_difficulty',
+        limit_choices_to={'taxonomy_type': 'difficulty', 'is_active': True},
+    )
+
+    pricing = models.ForeignKey(
+        'taxonomy.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='%(class)s_with_pricing',
+        limit_choices_to={'taxonomy_type': 'pricing', 'is_active': True},
+    )
+
+    ai_tag_metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='AI-generated tag metadata: {field: {confidence, model, source}}'
+    )
+
+    class Meta:
+        abstract = True
+```
+
+Apply mixin to: Project, Quiz, SideQuest, MicroLesson
+
+### Phase 0C: Seed Taxonomy Data
+
+Ensure all taxonomy types have seed data via `seed_taxonomies` management command:
+
+- `personality`: 16 MBTI types (INTJ, ENFP, etc.)
+- `learning_style`: visual, reading, hands-on, audio, social
+- `role`: developer, designer, product-manager, founder, marketer, creator, etc.
+- `goal`: existing goals
+- `interest`: existing interests
+- `industry`: existing industries
+- `content_type`: code-repo, article, video, course, etc.
+- `time_investment`: quick, short, medium, deep-dive
+- `difficulty`: beginner, intermediate, advanced
+- `pricing`: free, freemium, paid
+
+---
+
 ## Architecture Overview (Simplified for Scale)
 
 ```
@@ -484,27 +638,48 @@ def compute_user_similarity_batch():
 
 ---
 
-## Implementation Order (Simplified for Scale)
+## Implementation Order
 
-### Week 1: AI Gateway + Weaviate Schema
+### Phase 0: Entity Taxonomy Fields (PREREQUISITE - Do First)
+
+**Phase 0A: User Model Fields**
+1. Add personality (FK), learning_styles (M2M), roles (M2M), goals (M2M), interests (M2M), industries (M2M) to User model
+2. Update UserSerializer to expose new fields
+3. Update profile API endpoints
+4. Create migration
+
+**Phase 0B: Seed Taxonomy Data**
+1. Verify all 16 taxonomy types have seed data
+2. Run `seed_taxonomies` management command
+3. Verify via admin or API
+
+**Phase 0C: Content Model Fields**
+1. Create `ContentMetadataMixin` in `core/taxonomy/mixins.py`
+2. Apply mixin to Project, Quiz, SideQuest, MicroLesson
+3. Data migration: Map existing `difficulty_level` CharField to `difficulty_taxonomy` FK
+4. Update serializers to expose new fields
+
+---
+
+### Phase 1: AI Gateway + Weaviate Schema
 1. Add `purpose='tagging'` and `purpose='tagging_premium'` to AI Gateway
 2. Create unified `Content` Weaviate collection schema
 3. Add `weaviate_uuid` field to Project, Tool, Quiz, MicroLesson models
 4. Create basic Weaviate indexing task
 
-### Week 2: AI Tagging Service
+### Phase 2: AI Tagging Service
 1. Create `services/tagging/` package with `AITaggingService`
 2. Implement tiered tagging (bulk vs premium)
 3. Add Celery tasks for async tagging
 4. Integrate with YouTube/RSS import pipelines
 
-### Week 3: Unified Search
+### Phase 3: Unified Search
 1. Implement `UnifiedSearchService` that queries Weaviate only
 2. Add `IntentRouter` for content type detection
 3. Add user profile vectors to Weaviate for collaborative filtering
 4. Implement Redis caching for user embeddings
 
-### Week 4: Ember Integration
+### Phase 4: Ember Integration
 1. Add `unified_search` tool to Ember agent
 2. Add `get_related_content` tool using Weaviate cross-references
 3. Performance testing at scale
@@ -513,6 +688,21 @@ def compute_user_similarity_batch():
 ---
 
 ## Critical Files to Modify
+
+### Phase 0 (Entity Taxonomy Fields)
+
+| File | Changes |
+|------|---------|
+| `core/users/models.py` | Add personality, learning_styles, roles, goals, interests, industries |
+| `core/users/serializers.py` | Expose new taxonomy fields in API |
+| `core/taxonomy/mixins.py` | **NEW**: ContentMetadataMixin |
+| `core/projects/models.py` | Add mixin, migrate difficulty_level → difficulty_taxonomy |
+| `core/quizzes/models.py` | Add mixin |
+| `core/thrive_circle/models.py` | Add mixin to SideQuest |
+| `core/concepts/models.py` | Add mixin to MicroLesson |
+| `core/taxonomy/management/commands/seed_taxonomies.py` | Verify all types seeded |
+
+### Phase 1-4 (AI Tagging & Weaviate)
 
 | File | Changes |
 |------|---------|
@@ -529,6 +719,7 @@ def compute_user_similarity_batch():
 
 | File | Purpose |
 |------|---------|
+| `core/taxonomy/mixins.py` | ContentMetadataMixin for content models |
 | `services/tagging/__init__.py` | Package init |
 | `services/tagging/service.py` | AITaggingService |
 | `services/tagging/tasks.py` | Celery tasks for tagging |

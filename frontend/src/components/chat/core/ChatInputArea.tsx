@@ -242,7 +242,7 @@ export function ChatInputArea({
 
   return (
     <div
-      className="p-4 border-t border-white/5 bg-background/80 backdrop-blur-sm relative"
+      className="p-4 border-t border-slate-200 dark:border-white/5 bg-white/80 dark:bg-background/80 backdrop-blur-sm relative"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
@@ -258,8 +258,8 @@ export function ChatInputArea({
           }}
         >
           <div className="text-center">
-            <div className="text-cyan-300 text-lg font-medium">Drop files here</div>
-            <div className="text-cyan-400/70 text-sm mt-1">Images, videos, and documents supported</div>
+            <div className="text-cyan-600 dark:text-cyan-300 text-lg font-medium">Drop files here</div>
+            <div className="text-cyan-500/70 dark:text-cyan-400/70 text-sm mt-1">Images, videos, and documents supported</div>
           </div>
         </div>
       )}
@@ -277,16 +277,16 @@ export function ChatInputArea({
           {localAttachments.map((file, index) => (
             <div
               key={`${file.name}-${index}`}
-              className="relative group flex items-center gap-2 px-2 py-1 bg-slate-800/50 rounded-lg text-xs"
+              className="relative group flex items-center gap-2 px-2 py-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-lg text-xs"
             >
-              <PaperClipIcon className="w-3 h-3 text-slate-400" />
-              <span className="text-slate-300 max-w-[100px] truncate">{file.name}</span>
+              <PaperClipIcon className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+              <span className="text-slate-700 dark:text-slate-300 max-w-[100px] truncate">{file.name}</span>
               <button
                 type="button"
                 onClick={() => removeAttachment(index)}
                 className="p-0.5 hover:bg-red-500/20 rounded transition-colors"
               >
-                <XMarkIcon className="w-3 h-3 text-red-400" />
+                <XMarkIcon className="w-3 h-3 text-red-500 dark:text-red-400" />
               </button>
             </div>
           ))}
@@ -337,11 +337,11 @@ export function ChatInputArea({
       {/* Upload progress / cancel */}
       {isUploading && onCancelUpload && (
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-slate-400">Uploading...</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400">Uploading...</span>
           <button
             type="button"
             onClick={onCancelUpload}
-            className="text-xs text-red-400 hover:text-red-300"
+            className="text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300"
           >
             Cancel
           </button>

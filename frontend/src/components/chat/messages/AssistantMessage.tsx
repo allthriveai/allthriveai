@@ -41,10 +41,10 @@ export function AssistantMessage({
     return (
       <div className="flex justify-start">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
+          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-500 dark:text-orange-400" />
         </div>
         <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
-          <div className="text-lg text-slate-200 prose prose-lg prose-invert max-w-none">
+          <div className="text-lg text-slate-700 dark:text-slate-200 prose prose-lg prose-slate dark:prose-invert max-w-none">
             <ReactMarkdown
               components={{
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
@@ -55,7 +55,7 @@ export function AssistantMessage({
                       <a
                         href={href}
                         onClick={(e) => handleLinkClick(href, e)}
-                        className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
+                        className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline cursor-pointer"
                       >
                         {children}
                       </a>
@@ -66,7 +66,7 @@ export function AssistantMessage({
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-cyan-400 hover:text-cyan-300 hover:underline"
+                      className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline"
                     >
                       {children}
                     </a>
@@ -75,7 +75,7 @@ export function AssistantMessage({
                 code: ({ children, node }) => {
                   const isInline = node?.position?.start.line === node?.position?.end.line;
                   return isInline ? (
-                    <code className="bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
+                    <code className="bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
                   ) : (
                     <code>{children}</code>
                   );
@@ -86,7 +86,7 @@ export function AssistantMessage({
             </ReactMarkdown>
           </div>
           {showGitHubConnectButton && onConnectGitHub && (
-            <div className="mt-3 pt-3 border-t border-white/10">
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/10">
               <button
                 onClick={onConnectGitHub}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"

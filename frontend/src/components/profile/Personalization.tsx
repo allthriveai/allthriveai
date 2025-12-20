@@ -11,6 +11,7 @@ import {
   type PersonalizationSettings,
 } from '@/services/personalization';
 import type { Taxonomy, UserTag } from '@/types/models';
+import { TaxonomyPreferences } from './TaxonomyPreferences';
 import {
   SparklesIcon,
   TagIcon,
@@ -464,6 +465,9 @@ export function Personalization() {
           </button>
         </div>
       </div>
+
+      {/* About You - Taxonomy Preferences */}
+      <TaxonomyPreferences />
 
       {/* Feature Interests */}
       <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">

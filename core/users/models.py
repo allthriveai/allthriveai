@@ -252,6 +252,64 @@ class User(AbstractUser):
         help_text='When the user completed onboarding by selecting a path',
     )
 
+    # ============================================================================
+    # TAXONOMY FIELDS - User Preferences for Personalization
+    # ============================================================================
+    # These are EXPLICIT preferences set by the user during onboarding.
+    # For INFERRED preferences from behavior, see UserTag in core/taxonomy/models.py
+
+    # Single-select (FK)
+    personality = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users_with_personality',
+        limit_choices_to={'taxonomy_type': 'personality', 'is_active': True},
+        help_text='MBTI personality type (e.g., INTJ, ENFP)',
+    )
+
+    # Multi-select (M2M)
+    learning_styles = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_learning_style',
+        limit_choices_to={'taxonomy_type': 'learning_style', 'is_active': True},
+        help_text='Preferred learning styles (visual, hands-on, etc.)',
+    )
+
+    roles = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_role',
+        limit_choices_to={'taxonomy_type': 'role', 'is_active': True},
+        help_text='Professional roles (developer, designer, marketer, etc.)',
+    )
+
+    goals = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_goal',
+        limit_choices_to={'taxonomy_type': 'goal', 'is_active': True},
+        help_text='User goals (learn new skills, start a business, etc.)',
+    )
+
+    interests = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_interest',
+        limit_choices_to={'taxonomy_type': 'interest', 'is_active': True},
+        help_text='Interest areas (AI & ML, design, automation, etc.)',
+    )
+
+    industries = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_in_industry',
+        limit_choices_to={'taxonomy_type': 'industry', 'is_active': True},
+        help_text='Industry verticals (healthcare, finance, etc.)',
+    )
+
     class Meta:
         ordering = ['-date_joined']
         indexes = [

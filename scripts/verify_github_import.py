@@ -28,7 +28,7 @@ from django.contrib.auth import get_user_model  # noqa: E402
 
 from core.integrations.github.helpers import get_user_github_token  # noqa: E402
 from core.projects.models import Project  # noqa: E402
-from services.project_agent.tools import import_github_project  # noqa: E402
+from services.agents.project.tools import import_github_project  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)

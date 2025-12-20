@@ -26,10 +26,10 @@ export function OrchestrationPrompt({
     return (
       <div className="mx-4 mb-2 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
         <div className="flex items-center gap-2 mb-3">
-          <SparklesIcon className="w-5 h-5 text-cyan-bright" />
-          <p className="text-sm font-medium text-cyan-bright">Confirm action</p>
+          <SparklesIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-bright" />
+          <p className="text-sm font-medium text-cyan-600 dark:text-cyan-bright">Confirm action</p>
         </div>
-        <p className="text-slate-300 text-sm mb-4">{action.description}</p>
+        <p className="text-slate-600 dark:text-slate-300 text-sm mb-4">{action.description}</p>
         <div className="flex gap-3">
           <button
             onClick={onConfirm}

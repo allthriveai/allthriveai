@@ -156,6 +156,11 @@ services:
       celery:
         condition: service_healthy
     command: celery -A config beat --loglevel=info
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery -A config beat'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     container_name: allthriveai_celery-beat_1
 
   stripe-cli:

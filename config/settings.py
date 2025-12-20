@@ -436,23 +436,33 @@ DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default=FALLBACK_AI_PROVIDER
 # - reasoning: Complex multi-step tasks, no temperature support
 # - image: Image generation (always uses Gemini)
 # - vision: Image understanding/analysis
+# - tagging: Bulk content tagging (cheapest model for high volume)
+# - tagging_premium: High-quality tagging for important/featured content
 AI_MODELS = {
     'openai': {
         'default': config('OPENAI_MODEL_DEFAULT', default='gpt-4o-mini'),
         'reasoning': config('OPENAI_MODEL_REASONING', default='gpt-5-mini-2025-08-07'),
+        'tagging': config('OPENAI_MODEL_TAGGING', default='gpt-3.5-turbo'),
+        'tagging_premium': config('OPENAI_MODEL_TAGGING_PREMIUM', default='gpt-4o-mini'),
     },
     'azure': {
         'default': AZURE_OPENAI_DEPLOYMENT_NAME,
         'reasoning': config('AZURE_OPENAI_REASONING_DEPLOYMENT', default=AZURE_OPENAI_DEPLOYMENT_NAME),
+        'tagging': config('AZURE_OPENAI_TAGGING_DEPLOYMENT', default=AZURE_OPENAI_DEPLOYMENT_NAME),
+        'tagging_premium': config('AZURE_OPENAI_TAGGING_PREMIUM_DEPLOYMENT', default=AZURE_OPENAI_DEPLOYMENT_NAME),
     },
     'anthropic': {
         'default': config('ANTHROPIC_MODEL_DEFAULT', default='claude-3-5-haiku-20241022'),
         'reasoning': config('ANTHROPIC_MODEL_REASONING', default='claude-sonnet-4-20250514'),
+        'tagging': config('ANTHROPIC_MODEL_TAGGING', default='claude-3-5-haiku-20241022'),
+        'tagging_premium': config('ANTHROPIC_MODEL_TAGGING_PREMIUM', default='claude-3-5-haiku-20241022'),
     },
     'gemini': {
         'default': config('GEMINI_MODEL_DEFAULT', default='gemini-2.0-flash'),
         'image': config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview'),
         'vision': config('GEMINI_MODEL_VISION', default='gemini-2.0-flash'),
+        'tagging': config('GEMINI_MODEL_TAGGING', default='gemini-2.0-flash'),
+        'tagging_premium': config('GEMINI_MODEL_TAGGING_PREMIUM', default='gemini-2.0-flash'),
     },
 }
 

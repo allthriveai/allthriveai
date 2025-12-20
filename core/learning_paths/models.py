@@ -16,6 +16,8 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils import timezone
 
+from core.taxonomy.mixins import WeaviateSyncMixin
+
 
 class UserLearningPath(models.Model):
     """
@@ -575,7 +577,7 @@ class UserConceptMastery(models.Model):
 # ============================================================================
 
 
-class MicroLesson(models.Model):
+class MicroLesson(WeaviateSyncMixin, models.Model):
     """
     Template for lessons Ember can deliver conversationally.
 
@@ -584,6 +586,9 @@ class MicroLesson(models.Model):
     - AI-generated on-the-fly (stored for reuse)
 
     Content supports markdown and template variables for personalization.
+
+    Inherits from:
+        WeaviateSyncMixin: Provides weaviate_uuid and last_indexed_at for vector search
     """
 
     LESSON_TYPE_CHOICES = [

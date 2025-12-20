@@ -27,6 +27,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
 from core.ai_usage.tracker import AIUsageTracker
+from services.ai.callbacks import TokenTrackingCallback
 
 from .prompts import EMBER_FULL_ONBOARDING_PROMPT, EMBER_SYSTEM_PROMPT
 from .tools import EMBER_TOOLS, TOOLS_NEEDING_STATE
@@ -487,9 +488,17 @@ def _build_ember_workflow(model_name: str | None = None) -> StateGraph:
     return graph
 
 
-# Pre-build workflow (checkpointer added when compiling)
+# Lazy workflow initialization to avoid import-time API key requirements
 # Model resolved from AI gateway at runtime
-_workflow = _build_ember_workflow()
+_workflow = None
+
+
+def _get_workflow():
+    """Get the workflow, building it lazily on first use."""
+    global _workflow
+    if _workflow is None:
+        _workflow = _build_ember_workflow()
+    return _workflow
 
 
 @asynccontextmanager
@@ -512,7 +521,7 @@ async def _get_async_agent():
     from services.agents.auth.checkpointer import get_async_checkpointer
 
     async with get_async_checkpointer() as checkpointer:
-        agent = _workflow.compile(checkpointer=checkpointer)
+        agent = _get_workflow().compile(checkpointer=checkpointer)
         yield agent
 
 
@@ -623,6 +632,9 @@ async def _track_ember_usage(
     error_message: str = '',
     is_onboarding: bool = False,
     tool_calls_count: int = 0,
+    is_estimated: bool = True,
+    llm_calls: int = 0,
+    gateway_metadata: dict | None = None,
 ):
     """
     Track Ember agent usage for analytics and billing.
@@ -656,7 +668,10 @@ async def _track_ember_usage(
             request_metadata={
                 'agent': 'ember',
                 'tool_calls': tool_calls_count,
+                'estimated': is_estimated,
+                'llm_calls': llm_calls,
             },
+            gateway_metadata=gateway_metadata,
         )
     except Exception as e:
         # Don't fail the request if tracking fails
@@ -754,6 +769,9 @@ async def stream_ember_response(
     total_tool_calls = 0
     input_tokens = 0
 
+    # Create token tracking callback for accurate usage (outside context managers so it's accessible for tracking)
+    token_callback = TokenTrackingCallback()
+
     try:
         # Acquire distributed lock to prevent concurrent requests across workers
         # This is critical at scale (100k users) to prevent checkpoint corruption
@@ -788,8 +806,14 @@ async def stream_ember_response(
                     processed_stream_runs = set()
                     current_stream_run_id = None
 
+                    # Add callback to config for LLM calls
+                    config_with_callbacks = {
+                        **config,
+                        'callbacks': [token_callback],
+                    }
+
                     # Stream agent execution with astream_events
-                    async for event in agent.astream_events(input_state, config, version='v1'):
+                    async for event in agent.astream_events(input_state, config_with_callbacks, version='v1'):
                         kind = event['event']
                         run_id = event.get('run_id', '')
 
@@ -839,41 +863,65 @@ async def stream_ember_response(
 
         # Track usage on successful completion (after context managers exit)
         latency_ms = int((time.time() - start_time) * 1000)
-        output_tokens = _estimate_tokens(total_output_content)
+
+        # Use actual tokens from callback if available, otherwise estimate
+        if token_callback.has_token_data:
+            actual_input_tokens = token_callback.total_input_tokens
+            actual_output_tokens = token_callback.total_output_tokens
+            is_estimated = False
+        else:
+            actual_input_tokens = input_tokens or _estimate_tokens(user_message)
+            actual_output_tokens = _estimate_tokens(total_output_content)
+            is_estimated = True
+
         await _track_ember_usage(
             user_id=user_id,
             session_id=session_id,
             model_name=resolved_model,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
+            input_tokens=actual_input_tokens,
+            output_tokens=actual_output_tokens,
             latency_ms=latency_ms,
             status='success',
             is_onboarding=is_onboarding,
             tool_calls_count=total_tool_calls,
+            is_estimated=is_estimated,
+            llm_calls=token_callback.llm_calls,
+            gateway_metadata=token_callback.gateway_metadata,
         )
         yield {'type': 'complete'}
 
     except Exception as e:
         # Convert exception to user-friendly message
-        user_message = _get_user_friendly_error(e)
+        error_user_message = _get_user_friendly_error(e)
         logger.error(f'Ember streaming error: {e}', exc_info=True)
 
-        # Track usage on error
+        # Track usage on error - use callback data if available
         latency_ms = int((time.time() - start_time) * 1000)
-        output_tokens = _estimate_tokens(total_output_content)
+        if token_callback.has_token_data:
+            actual_input_tokens = token_callback.total_input_tokens
+            actual_output_tokens = token_callback.total_output_tokens
+            is_estimated = False
+        else:
+            actual_input_tokens = input_tokens or _estimate_tokens(user_message)
+            actual_output_tokens = _estimate_tokens(total_output_content)
+            is_estimated = True
+
         await _track_ember_usage(
             user_id=user_id,
             session_id=session_id,
             model_name=resolved_model,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
+            input_tokens=actual_input_tokens,
+            output_tokens=actual_output_tokens,
             latency_ms=latency_ms,
             status='error',
             error_message=str(e),
             is_onboarding=is_onboarding,
             tool_calls_count=total_tool_calls,
+            is_estimated=is_estimated,
+            llm_calls=token_callback.llm_calls,
+            gateway_metadata=token_callback.gateway_metadata,
         )
-        yield {'type': 'error', 'message': user_message}
+        yield {'type': 'error', 'message': error_user_message}
 
 
 def invoke_ember(

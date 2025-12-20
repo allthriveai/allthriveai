@@ -872,6 +872,21 @@ class RedditSyncService:
             f'{metrics["score"]} score, {metrics["num_comments"]} comments'
         )
 
+        # Queue async AI taxonomy tagging for richer classification
+        try:
+            from services.tagging.tasks import tag_content_task
+
+            tag_content_task.delay(
+                content_type='project',
+                content_id=project.id,
+                tier='bulk',  # Use cheap model for imported content
+                force=False,
+            )
+            logger.debug(f'Queued AI tagging for Reddit project {project.id}')
+        except Exception as e:
+            # Don't fail project creation if tagging queue fails
+            logger.warning(f'Failed to queue AI tagging for project {project.id}: {e}')
+
     @classmethod
     def _update_thread(cls, thread: RedditThread, post_data: dict):
         """Update existing RedditThread with fresh data."""

@@ -17,6 +17,27 @@ from .models import AIProviderPricing, AIUsageLog, UserAICostSummary
 
 logger = logging.getLogger(__name__)
 
+# Provider name aliases - normalize to canonical names
+PROVIDER_ALIASES = {
+    'google': 'gemini',  # Google AI → Gemini
+}
+
+
+def normalize_provider(provider: str) -> str:
+    """
+    Normalize provider name to canonical form.
+
+    This handles cases where different parts of the codebase use different
+    names for the same provider (e.g., 'google' vs 'gemini').
+
+    Args:
+        provider: Provider name to normalize
+
+    Returns:
+        Canonical provider name
+    """
+    return PROVIDER_ALIASES.get(provider.lower(), provider.lower())
+
 
 def anonymize_user_id(user_id: int) -> str:
     """
@@ -114,6 +135,7 @@ class AIUsageTracker:
         request_metadata: dict[str, Any] | None = None,
         response_metadata: dict[str, Any] | None = None,
         session_id: str = '',
+        gateway_metadata: dict[str, Any] | None = None,
     ) -> AIUsageLog:
         """
         Track a single AI usage event with automatic cost calculation.
@@ -132,16 +154,43 @@ class AIUsageTracker:
             request_metadata: Additional request metadata
             response_metadata: Additional response metadata
             session_id: Session ID for tracking user sessions
+            gateway_metadata: Gateway-specific metadata from AI gateways like OpenRouter.
+                            May contain: gateway_provider, gateway_model, requested_model
 
         Returns:
             AIUsageLog instance
         """
+        # If using an AI gateway, prefer the actual provider/model from gateway metadata
+        if gateway_metadata:
+            if gateway_metadata.get('gateway_provider'):
+                provider = gateway_metadata['gateway_provider']
+                logger.debug(f'Using gateway provider: {provider}')
+            if gateway_metadata.get('gateway_model'):
+                model = gateway_metadata['gateway_model']
+                logger.debug(f'Using gateway model: {model}')
+
+        # Normalize provider name (e.g., 'google' → 'gemini')
+        provider = normalize_provider(provider)
+
         # Calculate costs
         input_cost, output_cost, total_cost, pricing = AIUsageTracker.calculate_cost(
             provider, model, input_tokens, output_tokens
         )
 
         total_tokens = input_tokens + output_tokens
+
+        # Merge gateway metadata into response_metadata for audit purposes
+        final_response_metadata = response_metadata or {}
+        if gateway_metadata:
+            # Store gateway routing info for transparency
+            final_response_metadata = {
+                **final_response_metadata,
+                'gateway': {
+                    'requested_model': gateway_metadata.get('requested_model'),
+                    'actual_provider': gateway_metadata.get('gateway_provider'),
+                    'actual_model': gateway_metadata.get('gateway_model'),
+                },
+            }
 
         # Create usage log
         usage_log = AIUsageLog.objects.create(
@@ -162,7 +211,7 @@ class AIUsageTracker:
             status=status,
             error_message=error_message,
             request_metadata=request_metadata or {},
-            response_metadata=response_metadata or {},
+            response_metadata=final_response_metadata,
         )
 
         # Update daily summary (async or real-time)

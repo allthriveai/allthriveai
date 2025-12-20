@@ -410,7 +410,7 @@ export default function ContextSnakeGame() {
   return (
     <DashboardLayout>
       <div className="h-full overflow-y-auto">
-        <div className="max-w-lg mx-auto px-4 py-6 flex flex-col items-center">
+        <div className="max-w-lg mx-auto px-4 py-12 flex flex-col items-center">
           {/* Header - always visible */}
           <div className="text-center mb-4">
             <h1 className="text-2xl sm:text-3xl font-black flex items-center justify-center gap-3">
@@ -420,7 +420,7 @@ export default function ContextSnakeGame() {
               </span>
             </h1>
             <p className="text-slate-500 text-sm mt-1">
-              More tokens, more context — until the window is full.
+              Collect tokens and grow your snake as long as you can!
             </p>
           </div>
 
@@ -587,7 +587,7 @@ export default function ContextSnakeGame() {
                 )}
               </AnimatePresence>
 
-              {/* Ready overlay - how to play */}
+              {/* Ready overlay - how to play with animated demo */}
               <AnimatePresence>
                 {gameState === 'ready' && (
                   <motion.div
@@ -597,19 +597,178 @@ export default function ContextSnakeGame() {
                     exit={{ opacity: 0 }}
                   >
                     <div className="text-center max-w-[280px]">
-                      <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                        Collect <span className="text-pink-400 font-medium">tokens</span> to grow your snake. See how many you can gather before your context is full.
-                      </p>
-                      <div className="flex justify-center gap-6 text-slate-400 mb-5">
-                        <div className="text-center">
-                          <div className="text-2xl mb-1">⌨️</div>
-                          <p className="text-xs text-slate-500">Arrow keys</p>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl mb-1">👆</div>
-                          <p className="text-xs text-slate-500">Swipe</p>
+                      <h3 className="text-cyan-400 font-bold text-sm mb-3">How to Play</h3>
+
+                      {/* Animated demo showing snake eating token */}
+                      <div className="relative w-48 h-24 mx-auto mb-4 bg-slate-900/80 rounded-lg border border-slate-700/50 overflow-hidden">
+                        {/* Mini grid background */}
+                        <div
+                          className="absolute inset-0 opacity-20"
+                          style={{
+                            backgroundImage: `
+                              linear-gradient(to right, rgba(148, 163, 184, 0.3) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(148, 163, 184, 0.3) 1px, transparent 1px)
+                            `,
+                            backgroundSize: '12px 12px',
+                          }}
+                        />
+
+                        {/* Animated snake moving right and eating token */}
+                        <motion.div
+                          className="absolute flex"
+                          initial={{ x: 20, y: 42 }}
+                          animate={{
+                            x: [20, 80, 80, 140],
+                            y: [42, 42, 42, 42],
+                          }}
+                          transition={{
+                            duration: 3,
+                            times: [0, 0.4, 0.5, 1],
+                            repeat: Infinity,
+                            repeatDelay: 1,
+                          }}
+                        >
+                          {/* Snake head */}
+                          <motion.div
+                            className="w-3 h-3 rounded-sm"
+                            style={{
+                              background: 'linear-gradient(135deg, #22D3EE, #4ADEE7)',
+                              boxShadow: '0 0 8px rgba(34, 211, 238, 0.6)',
+                            }}
+                          />
+                          {/* Snake body segments */}
+                          <motion.div
+                            className="w-3 h-3 rounded-sm -ml-0.5"
+                            style={{ background: 'rgba(34, 211, 238, 0.7)' }}
+                            animate={{
+                              width: [12, 12, 12, 24], // Grows after eating
+                            }}
+                            transition={{
+                              duration: 3,
+                              times: [0, 0.4, 0.5, 1],
+                              repeat: Infinity,
+                              repeatDelay: 1,
+                            }}
+                          />
+                        </motion.div>
+
+                        {/* First token that gets eaten */}
+                        <motion.div
+                          className="absolute w-3 h-3 rounded-full"
+                          style={{
+                            left: 80,
+                            top: 42,
+                            background: 'linear-gradient(135deg, #FB37FF, #E879F9)',
+                            boxShadow: '0 0 10px rgba(251, 55, 255, 0.6)',
+                          }}
+                          animate={{
+                            scale: [1, 1.2, 1, 1, 0, 0, 0, 0],
+                            opacity: [1, 1, 1, 1, 0, 0, 0, 0],
+                          }}
+                          transition={{
+                            duration: 4,
+                            times: [0, 0.15, 0.25, 0.35, 0.4, 0.5, 0.75, 1],
+                            repeat: Infinity,
+                            repeatDelay: 0.5,
+                          }}
+                        />
+
+                        {/* Second token that appears after first is eaten */}
+                        <motion.div
+                          className="absolute w-3 h-3 rounded-full"
+                          style={{
+                            left: 140,
+                            top: 42,
+                            background: 'linear-gradient(135deg, #FB37FF, #E879F9)',
+                            boxShadow: '0 0 10px rgba(251, 55, 255, 0.6)',
+                          }}
+                          animate={{
+                            scale: [0, 0, 0, 0, 0, 1, 1.2, 1],
+                            opacity: [0, 0, 0, 0, 0, 1, 1, 1],
+                          }}
+                          transition={{
+                            duration: 4,
+                            times: [0, 0.15, 0.25, 0.35, 0.4, 0.45, 0.55, 1],
+                            repeat: Infinity,
+                            repeatDelay: 0.5,
+                          }}
+                        />
+
+                        {/* Arrow key hint floating above */}
+                        <motion.div
+                          className="absolute top-2 right-3 flex items-center gap-1"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                          <FontAwesomeIcon icon={faArrowRight} className="text-cyan-400 text-xs" />
+                        </motion.div>
+
+                        {/* "Eat tokens" label */}
+                        <div className="absolute bottom-1 left-2 text-[9px] text-slate-500">
+                          eat tokens to grow
                         </div>
                       </div>
+
+                      {/* Controls section */}
+                      <div className="mb-4">
+                        <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-2">Controls</p>
+                        <div className="flex justify-center items-center gap-1 mb-2">
+                          {/* Arrow key cluster */}
+                          <div className="flex flex-col items-center gap-0.5">
+                            <motion.div
+                              className="w-6 h-6 rounded bg-slate-700 border border-slate-600 flex items-center justify-center"
+                              animate={{ scale: [1, 1.1, 1], borderColor: ['#475569', '#22D3EE', '#475569'] }}
+                              transition={{ duration: 2, repeat: Infinity, delay: 0 }}
+                            >
+                              <FontAwesomeIcon icon={faArrowUp} className="text-slate-300 text-[10px]" />
+                            </motion.div>
+                            <div className="flex gap-0.5">
+                              <motion.div
+                                className="w-6 h-6 rounded bg-slate-700 border border-slate-600 flex items-center justify-center"
+                                animate={{ scale: [1, 1.1, 1], borderColor: ['#475569', '#22D3EE', '#475569'] }}
+                                transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                              >
+                                <FontAwesomeIcon icon={faArrowLeft} className="text-slate-300 text-[10px]" />
+                              </motion.div>
+                              <motion.div
+                                className="w-6 h-6 rounded bg-slate-700 border border-slate-600 flex items-center justify-center"
+                                animate={{ scale: [1, 1.1, 1], borderColor: ['#475569', '#22D3EE', '#475569'] }}
+                                transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+                              >
+                                <FontAwesomeIcon icon={faArrowDown} className="text-slate-300 text-[10px]" />
+                              </motion.div>
+                              <motion.div
+                                className="w-6 h-6 rounded bg-slate-700 border border-slate-600 flex items-center justify-center"
+                                animate={{ scale: [1, 1.1, 1], borderColor: ['#475569', '#22D3EE', '#475569'] }}
+                                transition={{ duration: 2, repeat: Infinity, delay: 1.5 }}
+                              >
+                                <FontAwesomeIcon icon={faArrowRight} className="text-slate-300 text-[10px]" />
+                              </motion.div>
+                            </div>
+                          </div>
+
+                          <span className="text-slate-600 text-xs mx-2">or</span>
+
+                          {/* Swipe gesture */}
+                          <div className="relative w-12 h-12 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
+                            <motion.div
+                              className="absolute w-2 h-2 rounded-full bg-cyan-400"
+                              animate={{
+                                x: [0, 8, 0, -8, 0],
+                                y: [0, 0, 8, 0, -8],
+                              }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            />
+                            <span className="text-[8px] text-slate-500 absolute -bottom-3">swipe</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Warning */}
+                      <p className="text-slate-500 text-[10px] mb-4">
+                        Avoid hitting <span className="text-red-400">walls</span> or your own <span className="text-red-400">tail</span>
+                      </p>
+
                       <button
                         onClick={startGame}
                         className="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-cyan-400 hover:to-teal-400 transition-all"

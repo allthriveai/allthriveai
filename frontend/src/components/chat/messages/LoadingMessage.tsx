@@ -69,16 +69,16 @@ export function LoadingMessage({
     return (
       <div className="flex justify-start">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
+          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-500 dark:text-orange-400" />
         </div>
         <div className="glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
           <div className="flex items-center gap-3">
             <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2.5 h-2.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2.5 h-2.5 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="w-2.5 h-2.5 bg-orange-500 dark:bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2.5 h-2.5 bg-orange-500 dark:bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2.5 h-2.5 bg-orange-500 dark:bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <span className="text-base text-slate-400">
+            <span className="text-base text-slate-600 dark:text-slate-400">
               {currentTool && TOOL_DISPLAY_NAMES[currentTool]
                 ? TOOL_DISPLAY_NAMES[currentTool]
                 : THINKING_MESSAGES[thinkingIndex]}
@@ -87,7 +87,7 @@ export function LoadingMessage({
               <button
                 type="button"
                 onClick={onCancel}
-                className="ml-2 px-2 py-1 text-xs font-medium text-slate-400 hover:text-red-400 hover:bg-white/5 rounded transition-colors"
+                className="ml-2 px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors"
               >
                 Cancel
               </button>

@@ -1176,8 +1176,9 @@ def create_media_project(
     ROUTING LOGIC:
     1. If file_url is present → IMPORT FLOW (NEVER generation)
        - User uploaded an image, video, or gif
-       - For IMAGES/GIFS: Only tool_hint required - AI auto-generates title from image!
-       - For VIDEOS: Title is required (can't analyze video content)
+       - Only tool_hint required - AI auto-generates title for ALL media types!
+       - For images/gifs: AI vision analyzes and generates creative titles
+       - For videos: AI generates titles from filename + user context
        - Create project with uploaded file
 
     2. If video_url is present → VIDEO URL IMPORT FLOW
@@ -1228,28 +1229,17 @@ def create_media_project(
         media_type = _detect_media_type(filename or '')
 
         # Check if we need user input
-        # For images/gifs: only require tool_hint - AI will generate title from the image
-        # For videos: require title since we can't analyze video content
-        if media_type in ('image', 'gif'):
-            if not tool_hint:
-                return {
-                    'success': False,
-                    'needs_user_input': True,
-                    'missing': ['tool_hint'],
-                    'media_type': media_type,
-                    'file_url': file_url,
-                    'filename': filename,
-                    'message': 'What tool did you use? (e.g., Midjourney, DALL-E, Photoshop)',
-                }
-        elif media_type == 'video' and not title:
+        # For ALL media types: only require tool_hint - AI will generate title automatically
+        # Videos can also have AI-generated titles from filename + user context
+        if not tool_hint:
             return {
                 'success': False,
                 'needs_user_input': True,
-                'missing': ['title'],
+                'missing': ['tool_hint'],
                 'media_type': media_type,
                 'file_url': file_url,
                 'filename': filename,
-                'message': 'What would you like to call this video project?',
+                'message': 'What tool did you use to create this? (e.g., Runway, Midjourney, DALL-E, Photoshop)',
             }
 
         # For videos, use the existing video import logic

@@ -24,6 +24,7 @@ app.autodiscover_tasks(
         'core.sms',  # SMS notification tasks
         'core.ai_usage',  # Admin analytics tasks
         'services.weaviate',  # Weaviate sync tasks
+        'services.tagging',  # AI tagging tasks
         'core.engagement',  # Engagement tracking tasks
     ]
 )
@@ -254,6 +255,42 @@ app.conf.beat_schedule = {
         'options': {
             'expires': 7200,  # Expires after 2 hours
             'queue': 'engagement',
+        },
+    },
+    # AI Taxonomy Tagging tasks
+    'tagging-backfill-untagged-content': {
+        'task': 'services.tagging.tasks.backfill_tags',
+        'schedule': crontab(hour=5, minute=0),  # Daily at 5:00 AM
+        'options': {
+            'expires': 7200,  # Expires after 2 hours
+        },
+        'kwargs': {
+            'content_type': None,  # All types
+            'tier': 'bulk',
+            'limit': 100,
+        },
+    },
+    'tagging-retag-stale-content': {
+        'task': 'services.tagging.tasks.retag_stale_content',
+        'schedule': crontab(hour=6, minute=0, day_of_week=0),  # Weekly on Sunday at 6:00 AM
+        'options': {
+            'expires': 7200,  # Expires after 2 hours
+        },
+        'kwargs': {
+            'stale_days': 30,
+            'limit': 50,
+        },
+    },
+    'tagging-premium-high-engagement': {
+        'task': 'services.tagging.tasks.tag_high_engagement_premium',
+        'schedule': crontab(minute=30),  # Every hour at minute 30
+        'options': {
+            'expires': 3600,  # Expires after 1 hour
+        },
+        'kwargs': {
+            'lookback_hours': 24,
+            'engagement_threshold': 10,
+            'limit': 10,
         },
     },
 }

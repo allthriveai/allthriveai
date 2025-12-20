@@ -333,7 +333,7 @@ export function SidebarChatLayout({
 
             {/* Sidebar Panel */}
             <div
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-background/95 backdrop-blur-xl border-l border-white/10 z-50 flex flex-col shadow-2xl animate-slide-in-right"
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-white/95 dark:bg-background/95 backdrop-blur-xl border-l border-slate-200 dark:border-white/10 z-50 flex flex-col shadow-2xl animate-slide-in-right"
               onDragEnter={handlePanelDragEnter}
               onDragLeave={handlePanelDragLeave}
               onDragOver={handlePanelDragOver}
@@ -348,9 +348,9 @@ export function SidebarChatLayout({
                     WebkitBackdropFilter: 'blur(8px)',
                   }}
                 >
-                  <div className="text-center p-6 rounded-xl bg-background/80 border border-cyan-500/30">
-                    <div className="text-cyan-300 text-xl font-semibold mb-2">Drop files here</div>
-                    <div className="text-cyan-400/70 text-sm">
+                  <div className="text-center p-6 rounded-xl bg-white/80 dark:bg-background/80 border border-cyan-500/30">
+                    <div className="text-cyan-600 dark:text-cyan-300 text-xl font-semibold mb-2">Drop files here</div>
+                    <div className="text-cyan-500/70 dark:text-cyan-400/70 text-sm">
                       Images, videos, and documents supported
                     </div>
                   </div>
@@ -358,16 +358,16 @@ export function SidebarChatLayout({
               )}
 
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center">
-                    <FontAwesomeIcon icon={faDragon} className="w-5 h-5 text-orange-400" />
+                    <FontAwesomeIcon icon={faDragon} className="w-5 h-5 text-orange-500 dark:text-orange-400" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-white">Ember</h2>
+                    <h2 className="font-semibold text-slate-900 dark:text-white">Ember</h2>
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-green-400' : 'bg-amber-400 animate-pulse'}`} />
-                      <span className="text-slate-400">
+                      <span className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-green-500 dark:bg-green-400' : 'bg-amber-500 dark:bg-amber-400 animate-pulse'}`} />
+                      <span className="text-slate-500 dark:text-slate-400">
                         {state.isConnected ? 'Online' : 'Connecting...'}
                       </span>
                     </div>
@@ -375,9 +375,9 @@ export function SidebarChatLayout({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
                 >
-                  <XMarkIcon className="w-5 h-5 text-slate-400" />
+                  <XMarkIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                 </button>
               </div>
 
@@ -404,7 +404,7 @@ export function SidebarChatLayout({
                       {/* Quick actions (when no messages and no special context) */}
                       {shouldShowQuickActions && (
                         <div className="py-6">
-                          <p className="text-sm text-slate-400 mb-4">What would you like to do?</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">What would you like to do?</p>
                           <div className="flex flex-wrap gap-2">
                             {quickActions.map((action) => (
                               <button
@@ -413,7 +413,7 @@ export function SidebarChatLayout({
                                 className="px-3 py-1.5 rounded-full text-sm font-medium transition-all
                                   bg-gradient-to-r from-cyan-500/10 to-cyan-600/10
                                   border border-cyan-500/30
-                                  text-cyan-300 hover:text-cyan-200
+                                  text-cyan-600 dark:text-cyan-300 hover:text-cyan-500 dark:hover:text-cyan-200
                                   hover:border-cyan-400/50 hover:from-cyan-500/20 hover:to-cyan-600/20
                                   hover:shadow-[0_0_15px_rgba(34,211,238,0.2)]"
                               >

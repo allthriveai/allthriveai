@@ -115,9 +115,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Only return projects for the current user
             queryset = Project.objects.filter(user=self.request.user)
 
-        # Optimize with select_related for user and prefetch_related for tools to prevent N+1 queries
+        # Optimize with select_related for user and taxonomy FKs, prefetch_related for M2M to prevent N+1 queries
         return (
-            queryset.select_related('user').prefetch_related('tools', 'likes', 'reddit_thread').order_by('-created_at')
+            queryset.select_related(
+                'user',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+            )
+            .prefetch_related('tools', 'likes', 'reddit_thread')
+            .order_by('-created_at')
         )
 
     def create(self, request, *args, **kwargs):
@@ -462,7 +470,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Validate visual style
             if visual_style not in VALID_VISUAL_STYLES:
                 visual_style = 'cyberpunk'
-            new_image_url = self._regenerate_project_image(project, visual_style)
+            new_image_url = self._regenerate_project_image(project, visual_style, user=request.user)
             if new_image_url:
                 project.featured_image_url = new_image_url
                 updated = True
@@ -488,22 +496,26 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(project)
         return Response(serializer.data)
 
-    def _regenerate_project_image(self, project, visual_style: str = 'cyberpunk') -> str | None:
+    def _regenerate_project_image(self, project, visual_style: str = 'cyberpunk', user=None) -> str | None:
         """Regenerate featured image for a project using Gemini.
 
         Args:
             project: The project to regenerate image for
             visual_style: Visual style for the image (e.g., 'cyberpunk', 'dark_academia')
+            user: User making the request (for usage tracking)
 
         Returns:
             New image URL or None if generation fails
         """
+        import time
+
+        from core.ai_usage.tracker import AIUsageTracker
         from services.ai.provider import AIProvider
         from services.integrations.rss.sync import VISUAL_STYLE_PROMPTS
         from services.integrations.storage.storage_service import get_storage_service
 
         try:
-            ai = AIProvider(provider='gemini')
+            ai = AIProvider(provider='gemini', user_id=user.id if user else None)
 
             # Get style prompt
             style_prompt = VISUAL_STYLE_PROMPTS.get(visual_style, VISUAL_STYLE_PROMPTS['cyberpunk'])
@@ -538,7 +550,35 @@ CRITICAL REQUIREMENTS:
             )
 
             # Generate image
+            start_time = time.time()
             image_bytes, mime_type, _text = ai.generate_image(prompt=prompt, timeout=120)
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            # Track AI usage
+            if user:
+                try:
+                    from django.conf import settings
+
+                    gemini_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-2.0-flash')
+                    # Estimate tokens from prompt (image gen doesn't return token counts)
+                    estimated_input_tokens = len(prompt) // 4
+                    AIUsageTracker.track_usage(
+                        user=user,
+                        feature='project_image_regeneration',
+                        provider='gemini',
+                        model=gemini_model,
+                        input_tokens=estimated_input_tokens,
+                        output_tokens=0,
+                        latency_ms=latency_ms,
+                        status='success' if image_bytes else 'error',
+                        request_metadata={
+                            'project_id': project.id,
+                            'visual_style': visual_style,
+                            'image_size_bytes': len(image_bytes) if image_bytes else 0,
+                        },
+                    )
+                except Exception as tracking_error:
+                    logger.warning(f'Failed to track image regeneration usage: {tracking_error}')
 
             if not image_bytes:
                 logger.warning(f'No image generated for project: {project.id}')
@@ -648,7 +688,13 @@ def get_project_by_slug(request, username, slug):
     # Try to find the project
     try:
         project = (
-            Project.objects.select_related('user')
+            Project.objects.select_related(
+                'user',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+            )
             .prefetch_related('tools', 'likes', 'reddit_thread')
             .get(user=user, slug=slug)
         )
@@ -728,7 +774,13 @@ def public_user_projects(request, username):
             from django.db.models.functions import Coalesce
 
             showcase_projects = (
-                Project.objects.select_related('user')
+                Project.objects.select_related(
+                    'user',
+                    'content_type_taxonomy',
+                    'time_investment',
+                    'difficulty_taxonomy',
+                    'pricing_taxonomy',
+                )
                 .filter(user=user, is_showcased=True, is_archived=False)
                 .annotate(
                     sort_date=Coalesce('youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at')
@@ -737,7 +789,13 @@ def public_user_projects(request, username):
             )
         else:
             showcase_projects = (
-                Project.objects.select_related('user')
+                Project.objects.select_related(
+                    'user',
+                    'content_type_taxonomy',
+                    'time_investment',
+                    'difficulty_taxonomy',
+                    'pricing_taxonomy',
+                )
                 .filter(user=user, is_showcased=True, is_archived=False)
                 .order_by('-created_at')
             )
@@ -749,7 +807,13 @@ def public_user_projects(request, username):
                 from django.db.models.functions import Coalesce
 
                 playground_projects = (
-                    Project.objects.select_related('user')
+                    Project.objects.select_related(
+                        'user',
+                        'content_type_taxonomy',
+                        'time_investment',
+                        'difficulty_taxonomy',
+                        'pricing_taxonomy',
+                    )
                     .filter(user=user, is_archived=False)
                     .exclude(type=Project.ProjectType.CLIPPED)
                     .annotate(
@@ -761,7 +825,13 @@ def public_user_projects(request, username):
                 )
             else:
                 playground_projects = (
-                    Project.objects.select_related('user')
+                    Project.objects.select_related(
+                        'user',
+                        'content_type_taxonomy',
+                        'time_investment',
+                        'difficulty_taxonomy',
+                        'pricing_taxonomy',
+                    )
                     .filter(user=user, is_archived=False)
                     .exclude(type=Project.ProjectType.CLIPPED)
                     .order_by('-created_at')
@@ -784,7 +854,13 @@ def public_user_projects(request, username):
                     from django.db.models.functions import Coalesce
 
                     playground_projects = (
-                        Project.objects.select_related('user')
+                        Project.objects.select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .filter(user=user, is_archived=False)
                         .exclude(type=Project.ProjectType.CLIPPED)
                         .annotate(
@@ -796,7 +872,13 @@ def public_user_projects(request, username):
                     )
                 else:
                     playground_projects = (
-                        Project.objects.select_related('user')
+                        Project.objects.select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .filter(user=user, is_archived=False)
                         .exclude(type=Project.ProjectType.CLIPPED)
                         .order_by('-created_at')
@@ -863,7 +945,13 @@ def user_liked_projects(request, username):
             is_private=False,
             is_archived=False,
         )
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'likes')
         .order_by('-likes__created_at')
         .distinct()[:MAX_LIKED_PROJECTS]
@@ -912,7 +1000,13 @@ def user_clipped_projects(request, username):
             is_private=False,
             is_archived=False,
         )
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'likes')
     )
 
@@ -924,7 +1018,13 @@ def user_clipped_projects(request, username):
             is_private=False,
             is_archived=False,
         )
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'likes')
     )
 
@@ -976,7 +1076,13 @@ def explore_projects(request):
 
     queryset = (
         Project.objects.filter(is_private=False, is_archived=False)
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'categories')
     )
 
@@ -1471,7 +1577,13 @@ def semantic_search(request):
                     project_ids = [r.get('project_id') for r in weaviate_results if r.get('project_id')]
                     projects = (
                         Project.objects.filter(id__in=project_ids)
-                        .select_related('user')
+                        .select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .prefetch_related('tools', 'categories', 'likes')
                     )
                     project_map = {p.id: p for p in projects}
@@ -1489,7 +1601,13 @@ def semantic_search(request):
                             | Q(user__first_name__icontains=query)
                             | Q(user__last_name__icontains=query)
                         )
-                        .select_related('user')
+                        .select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .prefetch_related('tools', 'categories', 'likes')
                         .distinct()  # Required due to M2M joins
                         .order_by('-created_at')[:limit]

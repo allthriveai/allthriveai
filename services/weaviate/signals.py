@@ -247,6 +247,178 @@ def sync_user_similarity_preference(sender, instance, **kwargs):
         logger.error(f'Failed to queue Weaviate sync for user {instance.id}: {e}')
 
 
+@receiver(post_save, sender='core.Quiz')
+def sync_quiz_on_save(sender, instance, created, **kwargs):
+    """Sync quiz to Weaviate when saved."""
+    if not _should_sync_to_weaviate():
+        return
+
+    # Only sync published quizzes
+    if not getattr(instance, 'is_published', True):
+        return
+
+    try:
+        from .tasks import sync_quiz_to_weaviate
+
+        sync_quiz_to_weaviate.delay(str(instance.id))
+        logger.debug(f'Queued Weaviate sync for quiz {instance.id}')
+
+    except Exception as e:
+        logger.error(f'Failed to queue Weaviate sync for quiz {instance.id}: {e}')
+
+
+@receiver(post_save, sender='tools.Tool')
+def sync_tool_on_save(sender, instance, created, **kwargs):
+    """Sync tool to Weaviate when saved."""
+    if not _should_sync_to_weaviate():
+        return
+
+    # Only sync active tools
+    if not getattr(instance, 'is_active', True):
+        return
+
+    try:
+        from .tasks import sync_tool_to_weaviate
+
+        sync_tool_to_weaviate.delay(instance.id)
+        logger.debug(f'Queued Weaviate sync for tool {instance.id}')
+
+    except Exception as e:
+        logger.error(f'Failed to queue Weaviate sync for tool {instance.id}: {e}')
+
+
+@receiver(post_save, sender='learning_paths.MicroLesson')
+def sync_micro_lesson_on_save(sender, instance, created, **kwargs):
+    """Sync micro lesson to Weaviate when saved."""
+    if not _should_sync_to_weaviate():
+        return
+
+    # Only sync active lessons
+    if not getattr(instance, 'is_active', True):
+        return
+
+    try:
+        from .tasks import sync_micro_lesson_to_weaviate
+
+        sync_micro_lesson_to_weaviate.delay(instance.id)
+        logger.debug(f'Queued Weaviate sync for micro lesson {instance.id}')
+
+    except Exception as e:
+        logger.error(f'Failed to queue Weaviate sync for micro lesson {instance.id}: {e}')
+
+
+def _handle_content_taxonomy_change(sender, instance, action, content_type, **kwargs):
+    """
+    Handle M2M taxonomy changes on content models.
+
+    When users manually edit taxonomy (categories, topics), this:
+    1. Triggers Weaviate sync to update the content's search index
+    2. Marks the content as having manual taxonomy (overrides AI)
+    """
+    if not _should_sync_to_weaviate():
+        return
+
+    if action not in ['post_add', 'post_remove', 'post_clear']:
+        return
+
+    try:
+        # Import tasks based on content type
+        if content_type == 'project':
+            from .tasks import sync_project_to_weaviate
+
+            sync_project_to_weaviate.delay(instance.id)
+        elif content_type == 'quiz':
+            from .tasks import sync_quiz_to_weaviate
+
+            sync_quiz_to_weaviate.delay(str(instance.id))
+        elif content_type == 'tool':
+            from .tasks import sync_tool_to_weaviate
+
+            sync_tool_to_weaviate.delay(instance.id)
+        elif content_type == 'micro_lesson':
+            from .tasks import sync_micro_lesson_to_weaviate
+
+            sync_micro_lesson_to_weaviate.delay(instance.id)
+
+        logger.debug(f'Queued Weaviate sync for {content_type} {instance.id} (taxonomy M2M change)')
+
+    except Exception as e:
+        logger.error(f'Failed to queue Weaviate sync for {content_type} {instance.id}: {e}')
+
+
+def connect_m2m_signals():
+    """
+    Connect M2M signals for taxonomy changes.
+
+    These require the through models to be loaded, so we import them
+    dynamically rather than using decorators.
+    """
+    from django.db.models.signals import m2m_changed
+
+    try:
+        from core.projects.models import Project
+
+        # Project.categories M2M
+        m2m_changed.connect(
+            lambda sender, instance, action, **kwargs: _handle_content_taxonomy_change(
+                sender, instance, action, 'project', **kwargs
+            ),
+            sender=Project.categories.through,
+            weak=False,
+        )
+
+        # Project.topics M2M (if exists)
+        if hasattr(Project, 'topics'):
+            m2m_changed.connect(
+                lambda sender, instance, action, **kwargs: _handle_content_taxonomy_change(
+                    sender, instance, action, 'project', **kwargs
+                ),
+                sender=Project.topics.through,
+                weak=False,
+            )
+
+        # Project.topics_taxonomy M2M (new taxonomy)
+        if hasattr(Project, 'topics_taxonomy'):
+            m2m_changed.connect(
+                lambda sender, instance, action, **kwargs: _handle_content_taxonomy_change(
+                    sender, instance, action, 'project', **kwargs
+                ),
+                sender=Project.topics_taxonomy.through,
+                weak=False,
+            )
+
+        logger.debug('Connected Project taxonomy M2M signals')
+
+    except ImportError:
+        logger.warning('Could not connect Project M2M signals')
+
+    try:
+        from core.quizzes.models import Quiz
+
+        if hasattr(Quiz, 'categories'):
+            m2m_changed.connect(
+                lambda sender, instance, action, **kwargs: _handle_content_taxonomy_change(
+                    sender, instance, action, 'quiz', **kwargs
+                ),
+                sender=Quiz.categories.through,
+                weak=False,
+            )
+
+        if hasattr(Quiz, 'topics_taxonomy'):
+            m2m_changed.connect(
+                lambda sender, instance, action, **kwargs: _handle_content_taxonomy_change(
+                    sender, instance, action, 'quiz', **kwargs
+                ),
+                sender=Quiz.topics_taxonomy.through,
+                weak=False,
+            )
+
+        logger.debug('Connected Quiz taxonomy M2M signals')
+
+    except ImportError:
+        logger.warning('Could not connect Quiz M2M signals')
+
+
 def connect_signals():
     """
     Connect all Weaviate sync signals.
@@ -255,4 +427,5 @@ def connect_signals():
     """
     # Signals are connected via decorators, this function exists
     # for explicit initialization if needed
+    connect_m2m_signals()
     logger.info('Weaviate sync signals connected')

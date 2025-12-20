@@ -79,6 +79,9 @@ export default function UATScenariosPage() {
     if (filters.category) {
       params.category = filters.category;
     }
+    if (filters.priority) {
+      params.priority = filters.priority;
+    }
     if (searchQuery) {
       params.search = searchQuery;
     }
@@ -208,6 +211,7 @@ export default function UATScenariosPage() {
     let count = 0;
     if (filters.latestResult) count++;
     if (filters.category) count++;
+    if (filters.priority) count++;
     if (searchQuery) count++;
     return count;
   }, [filters, searchQuery]);

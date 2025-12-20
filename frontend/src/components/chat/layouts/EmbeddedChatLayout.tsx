@@ -341,9 +341,9 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                   WebkitBackdropFilter: 'blur(8px)',
                 }}
               >
-                <div className="text-center p-8 rounded-2xl bg-background/80 border border-orange-500/30">
-                  <div className="text-orange-300 text-2xl font-semibold mb-2">Drop files here</div>
-                  <div className="text-orange-400/70 text-base">
+                <div className="text-center p-8 rounded-2xl bg-white/80 dark:bg-background/80 border border-orange-500/30">
+                  <div className="text-orange-600 dark:text-orange-300 text-2xl font-semibold mb-2">Drop files here</div>
+                  <div className="text-orange-500/70 dark:text-orange-400/70 text-base">
                     Images, videos, and documents supported
                   </div>
                 </div>
@@ -369,10 +369,10 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                         <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
                       </div>
                       <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
-                        <div className="text-lg text-slate-200">
+                        <div className="text-lg text-slate-700 dark:text-slate-200">
                           <span className="whitespace-pre-wrap">{typedGreeting}</span>
                           {!isTypingComplete && (
-                            <span className="inline-block w-0.5 h-5 bg-orange-400 ml-0.5 animate-pulse" />
+                            <span className="inline-block w-0.5 h-5 bg-orange-500 dark:bg-orange-400 ml-0.5 animate-pulse" />
                           )}
                         </div>
                       </div>
@@ -390,7 +390,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                             className="px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300
                               bg-gradient-to-r from-orange-500/10 to-amber-500/10
                               border border-orange-500/30
-                              text-orange-300 hover:text-orange-200
+                              text-orange-600 dark:text-orange-300 hover:text-orange-500 dark:hover:text-orange-200
                               hover:border-orange-400/50 hover:from-orange-500/20 hover:to-amber-500/20
                               hover:shadow-[0_0_20px_rgba(251,146,60,0.3)]
                               transform hover:scale-105 active:scale-95"
@@ -460,8 +460,8 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
             {/* Connection status */}
             {!state.isConnected && (
-              <div className="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 glass-subtle border border-amber-500/30 rounded-full text-amber-300 text-sm flex items-center gap-2 z-50">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <div className="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 glass-subtle border border-amber-500/30 rounded-full text-amber-600 dark:text-amber-300 text-sm flex items-center gap-2 z-50">
+                <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse" />
                 Reconnecting...
               </div>
             )}

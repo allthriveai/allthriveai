@@ -24,6 +24,40 @@ class WeaviateSchema:
     USER_PROFILE_COLLECTION = 'UserProfile'
     TOOL_COLLECTION = 'Tool'
     QUIZ_COLLECTION = 'Quiz'
+    MICRO_LESSON_COLLECTION = 'MicroLesson'
+
+    # Content metadata taxonomy properties shared across content types
+    # These correspond to the ContentMetadataMixin and taxonomy fields
+    CONTENT_METADATA_PROPERTIES = [
+        {
+            'name': 'content_type_name',
+            'dataType': ['text'],
+            'description': 'Content format (article, video, code-repo, course, etc.)',
+            'indexFilterable': True,
+            'indexSearchable': True,
+        },
+        {
+            'name': 'time_investment_name',
+            'dataType': ['text'],
+            'description': 'Time to consume (quick, short, medium, deep-dive)',
+            'indexFilterable': True,
+            'indexSearchable': False,
+        },
+        {
+            'name': 'difficulty_taxonomy_name',
+            'dataType': ['text'],
+            'description': 'Content difficulty level (beginner, intermediate, advanced)',
+            'indexFilterable': True,
+            'indexSearchable': False,
+        },
+        {
+            'name': 'pricing_taxonomy_name',
+            'dataType': ['text'],
+            'description': 'Pricing tier (free, freemium, paid)',
+            'indexFilterable': True,
+            'indexSearchable': False,
+        },
+    ]
 
     @classmethod
     def get_project_schema(cls) -> dict:
@@ -42,6 +76,13 @@ class WeaviateSchema:
                     'name': 'project_id',
                     'dataType': ['int'],
                     'description': 'Django Project model ID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'weaviate_uuid',
+                    'dataType': ['text'],
+                    'description': 'Stable UUID for cross-referencing',
                     'indexFilterable': True,
                     'indexSearchable': False,
                 },
@@ -157,6 +198,35 @@ class WeaviateSchema:
                     'indexFilterable': True,
                     'indexSearchable': False,
                 },
+                # Content metadata taxonomy fields (from ContentMetadataMixin)
+                {
+                    'name': 'content_type_name',
+                    'dataType': ['text'],
+                    'description': 'Content format (article, video, code-repo, course, etc.)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'time_investment_name',
+                    'dataType': ['text'],
+                    'description': 'Time to consume (quick, short, medium, deep-dive)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'difficulty_taxonomy_name',
+                    'dataType': ['text'],
+                    'description': 'Content difficulty level (beginner, intermediate, advanced)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'pricing_taxonomy_name',
+                    'dataType': ['text'],
+                    'description': 'Pricing tier (free, freemium, paid)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
             ],
         }
 
@@ -262,6 +332,13 @@ class WeaviateSchema:
                     'indexSearchable': False,
                 },
                 {
+                    'name': 'weaviate_uuid',
+                    'dataType': ['text'],
+                    'description': 'Stable UUID for cross-referencing',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
                     'name': 'name',
                     'dataType': ['text'],
                     'description': 'Tool name',
@@ -323,6 +400,13 @@ class WeaviateSchema:
                     'name': 'quiz_id',
                     'dataType': ['text'],  # UUID stored as text
                     'description': 'Django Quiz model UUID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'weaviate_uuid',
+                    'dataType': ['text'],
+                    'description': 'Stable UUID for cross-referencing',
                     'indexFilterable': True,
                     'indexSearchable': False,
                 },
@@ -403,6 +487,142 @@ class WeaviateSchema:
                     'indexFilterable': True,
                     'indexSearchable': False,
                 },
+                # Content metadata taxonomy fields (from ContentMetadataMixin)
+                {
+                    'name': 'content_type_name',
+                    'dataType': ['text'],
+                    'description': 'Content format (article, video, code-repo, course, etc.)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'time_investment_name',
+                    'dataType': ['text'],
+                    'description': 'Time to consume (quick, short, medium, deep-dive)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'difficulty_taxonomy_name',
+                    'dataType': ['text'],
+                    'description': 'Content difficulty level (beginner, intermediate, advanced)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'pricing_taxonomy_name',
+                    'dataType': ['text'],
+                    'description': 'Pricing tier (free, freemium, paid)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+            ],
+        }
+
+    @classmethod
+    def get_micro_lesson_schema(cls) -> dict:
+        """
+        Schema for MicroLesson collection.
+
+        Stores micro-lesson embeddings for semantic search across
+        conversational learning content.
+        """
+        return {
+            'class': cls.MICRO_LESSON_COLLECTION,
+            'description': 'MicroLesson embeddings for semantic search',
+            'vectorizer': 'none',
+            'properties': [
+                {
+                    'name': 'lesson_id',
+                    'dataType': ['int'],
+                    'description': 'Django MicroLesson model ID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'weaviate_uuid',
+                    'dataType': ['text'],
+                    'description': 'Stable UUID for cross-referencing',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'title',
+                    'dataType': ['text'],
+                    'description': 'Lesson title',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'combined_text',
+                    'dataType': ['text'],
+                    'description': 'Combined text for keyword search (title + content)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'concept_name',
+                    'dataType': ['text'],
+                    'description': 'Name of the concept this lesson teaches',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'concept_topic',
+                    'dataType': ['text'],
+                    'description': 'Topic the concept belongs to',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'lesson_type',
+                    'dataType': ['text'],
+                    'description': 'Type of lesson (explanation, example, practice, tip)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'difficulty',
+                    'dataType': ['text'],
+                    'description': 'Difficulty level (beginner, intermediate, advanced)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'estimated_minutes',
+                    'dataType': ['int'],
+                    'description': 'Estimated reading/completion time',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'is_ai_generated',
+                    'dataType': ['boolean'],
+                    'description': 'Whether this was AI-generated vs curated',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'quality_score',
+                    'dataType': ['number'],
+                    'description': 'Quality score from feedback (0.0-1.0)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'is_active',
+                    'dataType': ['boolean'],
+                    'description': 'Whether lesson is active',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'created_at',
+                    'dataType': ['date'],
+                    'description': 'Lesson creation timestamp',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
             ],
         }
 
@@ -414,6 +634,7 @@ class WeaviateSchema:
             cls.get_user_profile_schema(),
             cls.get_tool_schema(),
             cls.get_quiz_schema(),
+            cls.get_micro_lesson_schema(),
         ]
 
     @classmethod

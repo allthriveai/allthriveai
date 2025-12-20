@@ -29,26 +29,26 @@ export function QuotaExceededBanner({
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
-              <p className="text-sm font-medium text-amber-300 mb-1">
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-300 mb-1">
                 AI Usage Limit Reached
               </p>
-              <p className="text-sm text-amber-400/80">
+              <p className="text-sm text-amber-500/80 dark:text-amber-400/80">
                 You've used all your AI requests for this period.
               </p>
-              <div className="mt-2 text-xs text-amber-500/80 space-y-1">
-                <p>Plan: <span className="font-medium text-amber-300">{info.tier}</span></p>
+              <div className="mt-2 text-xs text-amber-600/80 dark:text-amber-500/80 space-y-1">
+                <p>Plan: <span className="font-medium text-amber-700 dark:text-amber-300">{info.tier}</span></p>
                 {info.aiRequestsLimit > 0 && (
                   <p>Requests: {info.aiRequestsUsed} / {info.aiRequestsLimit} used</p>
                 )}
-                <p>Token Balance: <span className="font-medium text-amber-300">{info.tokenBalance.toLocaleString()}</span></p>
+                <p>Token Balance: <span className="font-medium text-amber-700 dark:text-amber-300">{info.tokenBalance.toLocaleString()}</span></p>
               </div>
             </div>
             <button
               onClick={onDismiss}
-              className="p-1 hover:bg-white/5 rounded transition-colors"
+              className="p-1 hover:bg-amber-200/50 dark:hover:bg-white/5 rounded transition-colors"
               aria-label="Dismiss"
             >
-              <XMarkIcon className="w-4 h-4 text-amber-400" />
+              <XMarkIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             </button>
           </div>
 
@@ -63,7 +63,7 @@ export function QuotaExceededBanner({
             )}
             <button
               onClick={() => onNavigate(info.upgradeUrl)}
-              className="flex-1 px-3 py-2 text-xs font-medium text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 rounded-md transition-colors"
+              className="flex-1 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 rounded-md transition-colors"
             >
               Upgrade Plan
             </button>

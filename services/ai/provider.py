@@ -18,6 +18,50 @@ logger = logging.getLogger(__name__)
 # Default timeout for AI API calls (in seconds)
 DEFAULT_AI_TIMEOUT = 60
 
+# Gateway detection
+_using_ai_gateway = None  # Cached gateway detection result
+
+
+def is_using_ai_gateway() -> bool:
+    """
+    Check if an AI gateway (like OpenRouter) is configured.
+
+    Returns:
+        True if OPENAI_BASE_URL is set (indicating gateway usage)
+    """
+    global _using_ai_gateway
+    if _using_ai_gateway is None:
+        base_url = getattr(settings, 'OPENAI_BASE_URL', None)
+        _using_ai_gateway = bool(base_url)
+    return _using_ai_gateway
+
+
+def parse_gateway_model(model_string: str) -> tuple[str | None, str]:
+    """
+    Parse a gateway model identifier to extract provider and model name.
+
+    Gateway services like OpenRouter return models in format "provider/model-name"
+    (e.g., "openai/gpt-4", "anthropic/claude-3-opus").
+
+    Args:
+        model_string: Model identifier, possibly with provider prefix
+
+    Returns:
+        Tuple of (gateway_provider, model_name)
+        - gateway_provider is None if no provider prefix found
+        - model_name is the model without provider prefix
+
+    Examples:
+        "openai/gpt-4" -> ("openai", "gpt-4")
+        "anthropic/claude-3-opus" -> ("anthropic", "claude-3-opus")
+        "gpt-4" -> (None, "gpt-4")
+    """
+    if '/' in model_string:
+        parts = model_string.split('/', 1)
+        return parts[0].lower(), parts[1]
+    return None, model_string
+
+
 # Token limit defaults (can be overridden in settings)
 DEFAULT_TOKEN_SOFT_LIMIT = 8000  # Warn above this
 DEFAULT_TOKEN_HARD_LIMIT = 32000  # Block above this
@@ -146,7 +190,13 @@ class AIProviderType(Enum):
 
 
 # Valid purpose types for model selection
-VALID_PURPOSES = ('default', 'reasoning', 'image', 'vision')
+# - default: General purpose (gpt-4o-mini)
+# - reasoning: Complex reasoning tasks (gpt-5-mini)
+# - image: Image generation (gemini-2.0-flash)
+# - vision: Image analysis/understanding
+# - tagging: Bulk content tagging (cheap model for high volume)
+# - tagging_premium: High-quality tagging for important content
+VALID_PURPOSES = ('default', 'reasoning', 'image', 'vision', 'tagging', 'tagging_premium')
 
 
 def get_model_for_purpose(provider: str, purpose: str = 'default') -> str:
@@ -583,12 +633,28 @@ class AIProvider:
         response = self._client.chat.completions.create(**request_params)
 
         # Store token usage for tracking
-        if hasattr(response, 'usage'):
-            self.last_usage = {
+        usage_data = {}
+        if hasattr(response, 'usage') and response.usage:
+            usage_data = {
                 'prompt_tokens': response.usage.prompt_tokens,
                 'completion_tokens': response.usage.completion_tokens,
                 'total_tokens': response.usage.total_tokens,
             }
+
+        # Capture gateway provider info (e.g., OpenRouter returns "openai/gpt-4")
+        # The response.model field contains the actual model used by the gateway
+        if is_using_ai_gateway() and hasattr(response, 'model') and response.model:
+            gateway_provider, actual_model = parse_gateway_model(response.model)
+            if gateway_provider:
+                usage_data['gateway_provider'] = gateway_provider
+                usage_data['gateway_model'] = actual_model
+                usage_data['requested_model'] = model_name
+                logger.debug(
+                    f'Gateway routing detected: requested={model_name}, '
+                    f'actual_provider={gateway_provider}, actual_model={actual_model}'
+                )
+
+        self.last_usage = usage_data if usage_data else None
 
         return response.choices[0].message.content
 
@@ -818,9 +884,40 @@ class AIProvider:
         if not reasoning:
             request_params['temperature'] = temperature
 
+        # Request usage stats in final chunk for streaming (OpenAI feature)
+        request_params['stream_options'] = {'include_usage': True}
+
         stream = self._client.chat.completions.create(**request_params)
 
+        gateway_model_captured = False
         for chunk in stream:
+            # Capture gateway provider info from first chunk with model field
+            # OpenRouter includes provider prefix in model (e.g., "openai/gpt-4")
+            if not gateway_model_captured and is_using_ai_gateway():
+                if hasattr(chunk, 'model') and chunk.model:
+                    gateway_provider, actual_model = parse_gateway_model(chunk.model)
+                    if gateway_provider:
+                        self.last_usage = self.last_usage or {}
+                        self.last_usage['gateway_provider'] = gateway_provider
+                        self.last_usage['gateway_model'] = actual_model
+                        self.last_usage['requested_model'] = model_name
+                        gateway_model_captured = True
+                        logger.debug(
+                            f'Gateway streaming routing: requested={model_name}, '
+                            f'actual_provider={gateway_provider}, actual_model={actual_model}'
+                        )
+
+            # Capture usage from final chunk (when stream_options.include_usage=True)
+            if hasattr(chunk, 'usage') and chunk.usage:
+                self.last_usage = self.last_usage or {}
+                self.last_usage.update(
+                    {
+                        'prompt_tokens': chunk.usage.prompt_tokens,
+                        'completion_tokens': chunk.usage.completion_tokens,
+                        'total_tokens': chunk.usage.total_tokens,
+                    }
+                )
+
             if chunk.choices and len(chunk.choices) > 0:
                 if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
@@ -879,6 +976,20 @@ class AIProvider:
         for chunk in response:
             if chunk.text:
                 yield chunk.text
+
+        # Capture usage metadata after streaming completes
+        # Gemini provides usage_metadata on the response object after all chunks are consumed
+        try:
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                usage = response.usage_metadata
+                self.last_usage = {
+                    'prompt_tokens': getattr(usage, 'prompt_token_count', 0),
+                    'completion_tokens': getattr(usage, 'candidates_token_count', 0),
+                    'total_tokens': getattr(usage, 'total_token_count', 0),
+                }
+                logger.debug(f'Gemini streaming usage: {self.last_usage}')
+        except Exception as e:
+            logger.debug(f'Could not capture Gemini streaming usage: {e}')
 
     @property
     def current_provider(self) -> str:

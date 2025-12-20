@@ -11,15 +11,14 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django_ratelimit.decorators import ratelimit
-from langchain_core.messages import HumanMessage
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
-from core.agents.circuit_breaker import CircuitBreakerOpenError, get_cached_faq_response, langraph_circuit_breaker
+from core.agents.circuit_breaker import CircuitBreakerOpenError, get_cached_faq_response
 from core.agents.security import output_validator, validate_chat_input
 from core.billing.permissions import CanMakeAIRequest
+from services.agents.ember import stream_ember_response
 from services.agents.hallucination_tracker import tracker
-from services.agents.project.agent import project_agent
 
 logger = logging.getLogger(__name__)
 
@@ -66,22 +65,10 @@ def project_chat_stream_v2(request):
 
         logger.info(f'[PROJECT_CHAT_V2] Session: {session_id}, Message: {user_message[:100]}')
 
-        # Configure for streaming with user context
-        config = {
-            'configurable': {'thread_id': session_id, 'user_id': request.user.id, 'username': request.user.username}
-        }
-
         async def event_stream():
-            """Generator for SSE events."""
+            """Generator for SSE events using unified Ember agent."""
             try:
-                # Create input state
-                input_state = {
-                    'messages': [HumanMessage(content=user_message)],
-                    'user_id': request.user.id,
-                    'username': request.user.username,
-                }
-
-                logger.info('[PROJECT_CHAT_V2] Invoking agent')
+                logger.info('[PROJECT_CHAT_V2] Invoking Ember agent')
 
                 # Stream agent execution
                 full_response = ''
@@ -90,55 +77,58 @@ def project_chat_stream_v2(request):
                 tool_outputs = []  # Collect tool outputs for hallucination tracking
 
                 try:
-                    # Wrap agent call with circuit breaker
-                    async for chunk in langraph_circuit_breaker.call(project_agent.astream, input_state, config):
-                        # Extract messages from chunk
-                        if 'agent' in chunk:
-                            agent_messages = chunk['agent'].get('messages', [])
-                            for msg in agent_messages:
-                                if hasattr(msg, 'content') and msg.content:
-                                    # Security: Validate output before streaming
-                                    is_safe, violations = output_validator.validate_output(msg.content)
-                                    if not is_safe:
-                                        logger.error(f'[SECURITY] Output validation failed: {violations}')
-                                        # Sanitize sensitive data
-                                        content = output_validator.sanitize_output(msg.content)
-                                    else:
-                                        content = msg.content
+                    # Use unified Ember agent for project chat
+                    async for event in stream_ember_response(
+                        user_message=user_message,
+                        user_id=request.user.id,
+                        username=request.user.username,
+                        session_id=session_id,
+                        is_onboarding=False,
+                    ):
+                        event_type = event.get('type')
 
-                                    # Stream content token by token
-                                    words = content.split()
-                                    for word in words:
-                                        yield f'data: {json.dumps({"type": "token", "content": word + " "})}\n\n'
-                                    full_response += content
+                        if event_type == 'token':
+                            content = event.get('content', '')
+                            if content:
+                                # Security: Validate output before streaming
+                                is_safe, violations = output_validator.validate_output(content)
+                                if not is_safe:
+                                    logger.error(f'[SECURITY] Output validation failed: {violations}')
+                                    content = output_validator.sanitize_output(content)
 
-                        # Check for tool results
-                        if 'tools' in chunk:
-                            tool_messages = chunk['tools'].get('messages', [])
-                            for msg in tool_messages:
-                                if hasattr(msg, 'content'):
-                                    try:
-                                        # Try to parse tool result
-                                        result = (
-                                            json.loads(msg.content) if isinstance(msg.content, str) else msg.content
-                                        )
-                                        # Collect tool output for hallucination tracking
-                                        tool_outputs.append(result)
+                                yield f'data: {json.dumps({"type": "token", "content": content})}\n\n'
+                                full_response += content
 
-                                        if isinstance(result, dict) and result.get('success'):
-                                            project_id = result.get('project_id')
-                                            project_slug = result.get('slug')
-                                    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
-                                        # Ignore parsing errors
-                                        pass
+                        elif event_type == 'tool_start':
+                            tool_name = event.get('tool', '')
+                            yield f'data: {json.dumps({"type": "tool_start", "tool": tool_name})}\n\n'
+
+                        elif event_type == 'tool_end':
+                            tool_name = event.get('tool', '')
+                            output = event.get('output', {})
+                            tool_outputs.append(output)
+
+                            # Check for project creation success
+                            if isinstance(output, dict) and output.get('success'):
+                                project_id = output.get('project_id')
+                                project_slug = output.get('slug')
+
+                            yield f'data: {json.dumps({"type": "tool_end", "tool": tool_name, "output": output})}\n\n'
+
+                        elif event_type == 'complete':
+                            pass  # Handled after the loop
+
+                        elif event_type == 'error':
+                            error_msg = event.get('message', 'Unknown error')
+                            yield f'data: {json.dumps({"type": "error", "message": error_msg})}\n\n'
 
                 except CircuitBreakerOpenError:
                     # Circuit breaker is open - use fallback
                     logger.warning('[PROJECT_CHAT_V2] Circuit breaker open, using fallback')
                     fallback_response = get_cached_faq_response()
-                    yield f'data: {json.dumps({"type": "token", "content": fallback_response})}\n\n'.encode()
+                    yield f'data: {json.dumps({"type": "token", "content": fallback_response})}\n\n'
                     msg = json.dumps({'type': 'fallback', 'message': 'Using cached response due to high load'})
-                    yield f'data: {msg}\n\n'.encode()
+                    yield f'data: {msg}\n\n'
                     return
 
                 logger.info('[PROJECT_CHAT_V2] Agent completed')

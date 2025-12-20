@@ -56,6 +56,29 @@ class GetProjectDetailsInput(BaseModel):
     project_title: str = Field(default='', description='Project title to search for (use if ID/slug not known)')
 
 
+class UnifiedSearchInput(BaseModel):
+    """Input for unified_search tool."""
+
+    query: str = Field(description='Search query - what the user is looking for')
+    content_types: list[str] | None = Field(
+        default=None,
+        description='Content types to search: "project", "quiz", "tool", "micro_lesson". Leave empty to auto-detect.',
+    )
+    difficulty: str | None = Field(
+        default=None,
+        description='Filter by difficulty: "beginner", "intermediate", "advanced"',
+    )
+    limit: int = Field(default=10, description='Maximum number of results (1-20)')
+
+
+class GetRelatedContentInput(BaseModel):
+    """Input for get_related_content tool."""
+
+    content_type: str = Field(description='Type of content: "project", "quiz", "tool", "micro_lesson"')
+    content_id: int | str = Field(description='ID of the content to find related items for')
+    limit: int = Field(default=5, description='Number of related items to return (1-10)')
+
+
 def _format_project_for_agent(project) -> dict:
     """Format a project object for agent consumption."""
     return {
@@ -449,8 +472,195 @@ def get_project_details(
         return {'success': False, 'error': str(e)}
 
 
+@tool(args_schema=UnifiedSearchInput)
+def unified_search(
+    query: str,
+    content_types: list[str] | None = None,
+    difficulty: str | None = None,
+    limit: int = 10,
+    state: dict | None = None,
+) -> dict:
+    """
+    Search across all content types: projects, quizzes, tools, and lessons.
+
+    Use this when the user wants to find content without specifying a type,
+    or when searching across multiple types. This is the primary search tool
+    for discovery.
+
+    Examples:
+    - "Find content about RAG" -> searches all types
+    - "Beginner content about agents" -> difficulty="beginner"
+    - "Quiz about LangGraph" -> content_types=["quiz"]
+    - "Tools for image generation" -> content_types=["tool"]
+    - "Learn about vector databases" -> auto-detects intent (lessons, projects)
+
+    Returns ranked results from all matching content types.
+    """
+    from services.search import UnifiedSearchService
+
+    logger.info(f'unified_search called: query={query}, types={content_types}, difficulty={difficulty}, limit={limit}')
+
+    # Clamp limit
+    limit = max(1, min(20, limit))
+
+    # Get user_id from state for personalization
+    user_id = state.get('user_id') if state else None
+
+    try:
+        service = UnifiedSearchService()
+        response = service.search_sync(
+            query=query,
+            user_id=user_id,
+            content_types=content_types,
+            difficulty=difficulty,
+            limit=limit,
+        )
+
+        if not response.results:
+            return {
+                'success': True,
+                'count': 0,
+                'results': [],
+                'searched_types': response.searched_types,
+                'detected_intent': response.detected_intent,
+                'message': f'No content found matching "{query}"',
+            }
+
+        # Format results for agent
+        formatted_results = []
+        for result in response.results:
+            formatted_results.append(
+                {
+                    'type': result.content_type,
+                    'id': result.content_id,
+                    'title': result.title,
+                    'score': round(result.score, 3),
+                    **result.metadata,
+                }
+            )
+
+        return {
+            'success': True,
+            'count': response.total_count,
+            'results': formatted_results,
+            'searched_types': response.searched_types,
+            'detected_intent': response.detected_intent,
+            'search_time_ms': response.search_time_ms,
+            'message': f'Found {response.total_count} result(s) across {", ".join(response.searched_types)}',
+        }
+
+    except Exception as e:
+        logger.error(f'unified_search error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+@tool(args_schema=GetRelatedContentInput)
+def get_related_content(
+    content_type: str,
+    content_id: int | str,
+    limit: int = 5,
+    state: dict | None = None,
+) -> dict:
+    """
+    Get content related to a specific item via knowledge graph.
+
+    Use this after the user engages with content to suggest "what's next"
+    or to show similar content across all types.
+
+    Examples:
+    - After showing a project: "What else should I check out?"
+    - "Show me more like this quiz"
+    - "Related content to project 123"
+
+    Returns similar content based on vector similarity.
+    """
+    import asyncio
+
+    from services.search import UnifiedSearchService
+
+    logger.info(f'get_related_content called: type={content_type}, id={content_id}, limit={limit}')
+
+    # Validate content type
+    valid_types = ['project', 'quiz', 'tool', 'micro_lesson']
+    if content_type not in valid_types:
+        return {
+            'success': False,
+            'error': f'Invalid content_type. Must be one of: {", ".join(valid_types)}',
+        }
+
+    # Clamp limit
+    limit = max(1, min(10, limit))
+
+    try:
+        service = UnifiedSearchService()
+
+        # Run async method synchronously with proper event loop handling
+        try:
+            loop = asyncio.get_running_loop()
+            # Already in async context - use run_coroutine_threadsafe
+            future = asyncio.run_coroutine_threadsafe(
+                service.get_related_content(
+                    content_type=content_type,
+                    content_id=content_id,
+                    limit=limit,
+                ),
+                loop,
+            )
+            results = future.result(timeout=30)
+        except RuntimeError:
+            # No running event loop - create a new one
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                results = loop.run_until_complete(
+                    service.get_related_content(
+                        content_type=content_type,
+                        content_id=content_id,
+                        limit=limit,
+                    )
+                )
+            finally:
+                loop.close()
+                asyncio.set_event_loop(None)
+
+        if not results:
+            return {
+                'success': True,
+                'count': 0,
+                'source_type': content_type,
+                'source_id': content_id,
+                'results': [],
+                'message': f'No related content found for {content_type} {content_id}',
+            }
+
+        # Format results for agent
+        formatted_results = []
+        for result in results:
+            formatted_results.append(
+                {
+                    'type': result.content_type,
+                    'id': result.content_id,
+                    'title': result.title,
+                    'similarity_score': round(result.score, 3),
+                }
+            )
+
+        return {
+            'success': True,
+            'count': len(results),
+            'source_type': content_type,
+            'source_id': content_id,
+            'results': formatted_results,
+            'message': f'Found {len(results)} related item(s) to {content_type} {content_id}',
+        }
+
+    except Exception as e:
+        logger.error(f'get_related_content error: {e}', exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
 # Tools that need state injection (for user context)
-TOOLS_NEEDING_STATE = {'get_recommendations'}
+TOOLS_NEEDING_STATE = {'get_recommendations', 'unified_search', 'get_related_content'}
 
 # All discovery tools
 DISCOVERY_TOOLS = [
@@ -459,6 +669,8 @@ DISCOVERY_TOOLS = [
     find_similar_projects,
     get_trending_projects,
     get_project_details,
+    unified_search,
+    get_related_content,
 ]
 
 # Tool lookup by name

@@ -5,6 +5,9 @@
 // Test result options
 export type TestResult = 'pass' | 'fail' | 'na' | null;
 
+// Priority options
+export type Priority = 'low' | 'medium' | 'high' | 'critical';
+
 // UAT Category
 export interface UATCategory {
   id: number;
@@ -43,6 +46,8 @@ export interface UATScenario {
   id: number;
   title: string;
   description: string;
+  priority: Priority;
+  priorityDisplay: string;
   // FK IDs for writes
   category: number | null;
   // Nested details for reads
@@ -66,6 +71,7 @@ export interface CreateUATScenarioPayload {
   title: string;
   description?: string;
   category?: number | null;
+  priority?: Priority;
 }
 
 // Update scenario payload
@@ -73,6 +79,7 @@ export interface UpdateUATScenarioPayload {
   title?: string;
   description?: string;
   category?: number | null;
+  priority?: Priority;
   isArchived?: boolean;
 }
 
@@ -96,6 +103,7 @@ export interface UATScenarioQueryParams {
   search?: string;
   latestResult?: string; // 'pass', 'fail', 'na', 'not_tested'
   category?: number;
+  priority?: string; // 'low', 'medium', 'high', 'critical'
   archived?: boolean;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
@@ -105,6 +113,7 @@ export interface UATScenarioQueryParams {
 export interface UATScenarioFilters {
   latestResult?: TestResult | 'not_tested';
   category?: number | null;
+  priority?: Priority | null;
   search?: string;
 }
 

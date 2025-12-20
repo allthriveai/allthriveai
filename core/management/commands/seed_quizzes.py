@@ -271,7 +271,7 @@ class Command(BaseCommand):
                 quiz.estimated_time = quiz_data['estimated_time']
                 quiz.thumbnail_url = quiz_data.get('thumbnail_url', '')
                 quiz.is_published = quiz_data['is_published']
-                quiz.topics = topic_tags
+                quiz.topics.set(topic_tags)
                 quiz.save()
                 updated_quizzes += 1
                 self.stdout.write(self.style.WARNING(f'↻ Updated quiz: {quiz.title}'))

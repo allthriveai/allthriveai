@@ -98,6 +98,7 @@ class UATScenarioSerializer(serializers.ModelSerializer):
     test_runs = UATTestRunSerializer(many=True, read_only=True)
     test_run_count = serializers.IntegerField(read_only=True)
     latest_test_run = UATTestRunSerializer(read_only=True)
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
 
     class Meta:
         model = UATScenario
@@ -105,6 +106,8 @@ class UATScenarioSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'description',
+            'priority',
+            'priority_display',
             # FK IDs for writes
             'category',
             # Nested details for reads
@@ -132,6 +135,7 @@ class UATScenarioSerializer(serializers.ModelSerializer):
             'test_runs',
             'test_run_count',
             'latest_test_run',
+            'priority_display',
         ]
 
 

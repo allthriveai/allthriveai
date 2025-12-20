@@ -3,13 +3,20 @@ import uuid
 from django.conf import settings
 from django.db import models
 
+from core.taxonomy.mixins import ContentMetadataMixin, WeaviateSyncMixin
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
 
 
-class Quiz(models.Model):
-    """A collection of quiz questions on a specific topic"""
+class Quiz(WeaviateSyncMixin, ContentMetadataMixin, models.Model):
+    """A collection of quiz questions on a specific topic.
 
+    Inherits from:
+        WeaviateSyncMixin: Provides weaviate_uuid and last_indexed_at for vector search
+        ContentMetadataMixin: Provides content_type_taxonomy, time_investment, etc.
+    """
+
+    # DEPRECATED: Use difficulty_taxonomy from ContentMetadataMixin instead
     DIFFICULTY_CHOICES = [
         ('beginner', 'Beginner'),
         ('intermediate', 'Intermediate'),
@@ -22,7 +29,13 @@ class Quiz(models.Model):
         max_length=200, unique=True, null=True, blank=True, help_text='URL-friendly version of title'
     )
     description = models.TextField()
-    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
+    # DEPRECATED: Use difficulty_taxonomy from ContentMetadataMixin instead
+    difficulty = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_CHOICES,
+        default='beginner',
+        help_text='DEPRECATED: Use difficulty_taxonomy instead',
+    )
     estimated_time = models.IntegerField(help_text='Estimated time in minutes')
     thumbnail_url = models.URLField(blank=True, null=True)
     is_published = models.BooleanField(default=False)

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.auth.serializers import UserSerializer
+from core.taxonomy.models import Taxonomy
 from core.taxonomy.serializers import TaxonomySerializer
 from core.tools.serializers import ToolListSerializer
 
@@ -50,6 +51,34 @@ class QuizSerializer(serializers.ModelSerializer):
     user_completed = serializers.SerializerMethodField()
     user_latest_score = serializers.SerializerMethodField()
 
+    # Content metadata taxonomy fields - read-only nested representation
+    content_type_details = serializers.SerializerMethodField()
+    time_investment_details = serializers.SerializerMethodField()
+    difficulty_details = serializers.SerializerMethodField()
+    pricing_details = serializers.SerializerMethodField()
+
+    # Write validation for taxonomy FK fields
+    content_type_taxonomy = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='content_type', is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    time_investment = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='time_investment', is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    difficulty_taxonomy = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='difficulty', is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    pricing_taxonomy = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='pricing', is_active=True),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = Quiz
         fields = [
@@ -57,7 +86,6 @@ class QuizSerializer(serializers.ModelSerializer):
             'title',
             'slug',
             'description',
-            'topic',
             'topics',
             'topics_taxonomy',
             'tools',
@@ -75,51 +103,129 @@ class QuizSerializer(serializers.ModelSerializer):
             'user_attempt_count',
             'user_completed',
             'user_latest_score',
+            # Content metadata taxonomy fields
+            'content_type_taxonomy',
+            'content_type_details',
+            'time_investment',
+            'time_investment_details',
+            'difficulty_taxonomy',
+            'difficulty_details',
+            'pricing_taxonomy',
+            'pricing_details',
+            'ai_tag_metadata',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'question_count']
+        read_only_fields = [
+            'id',
+            'created_at',
+            'updated_at',
+            'question_count',
+            'content_type_details',
+            'time_investment_details',
+            'difficulty_details',
+            'pricing_details',
+        ]
 
     def get_user_has_attempted(self, obj):
-        """Check if the current user has attempted this quiz"""
+        """Check if the current user has attempted this quiz.
+
+        Uses annotated _user_has_attempted if available (set by view for N+1 prevention),
+        otherwise falls back to database query.
+        """
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).exists()
-        return False
+        if not request or not request.user.is_authenticated:
+            return False
+        # Use pre-annotated value if available (avoids N+1 in list views)
+        if hasattr(obj, '_user_has_attempted'):
+            return obj._user_has_attempted
+        # Fallback to query (for single-object serialization)
+        return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).exists()
 
     def get_user_best_score(self, obj):
-        """Get the user's best score percentage for this quiz"""
+        """Get the user's best score percentage for this quiz.
+
+        Uses annotated _user_best_score if available (set by view for N+1 prevention),
+        otherwise falls back to database query.
+        """
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            attempts = QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False)
-            if attempts.exists():
-                best_attempt = max(attempts, key=lambda x: x.percentage_score)
-                return round(best_attempt.percentage_score, 1)
+        if not request or not request.user.is_authenticated:
+            return None
+        # Use pre-annotated value if available (avoids N+1 in list views)
+        if hasattr(obj, '_user_best_score') and obj._user_best_score is not None:
+            return round(obj._user_best_score, 1)
+        # Fallback to query (for single-object serialization)
+        attempts = QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False)
+        if attempts.exists():
+            best_attempt = max(attempts, key=lambda x: x.percentage_score)
+            return round(best_attempt.percentage_score, 1)
         return None
 
     def get_user_attempt_count(self, obj):
-        """Get the number of times the user has completed this quiz"""
+        """Get the number of times the user has completed this quiz.
+
+        Uses annotated _user_attempt_count if available (set by view for N+1 prevention),
+        otherwise falls back to database query.
+        """
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).count()
-        return 0
+        if not request or not request.user.is_authenticated:
+            return 0
+        # Use pre-annotated value if available (avoids N+1 in list views)
+        if hasattr(obj, '_user_attempt_count'):
+            return obj._user_attempt_count
+        # Fallback to query (for single-object serialization)
+        return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).count()
 
     def get_user_completed(self, obj):
-        """Check if the user has completed this quiz"""
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False).exists()
-        return False
+        """Check if the user has completed this quiz.
+
+        Uses annotated _user_has_attempted if available (same as has_attempted).
+        """
+        # This is functionally identical to get_user_has_attempted
+        return self.get_user_has_attempted(obj)
 
     def get_user_latest_score(self, obj):
-        """Get the user's most recent score percentage for this quiz"""
+        """Get the user's most recent score percentage for this quiz.
+
+        Uses annotated _user_latest_score if available (set by view for N+1 prevention),
+        otherwise falls back to database query.
+        """
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            latest_attempt = (
-                QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False)
-                .order_by('-completed_at')
-                .first()
-            )
-            if latest_attempt:
-                return round(latest_attempt.percentage_score, 1)
+        if not request or not request.user.is_authenticated:
+            return None
+        # Use pre-annotated value if available (avoids N+1 in list views)
+        if hasattr(obj, '_user_latest_score') and obj._user_latest_score is not None:
+            return round(obj._user_latest_score, 1)
+        # Fallback to query (for single-object serialization)
+        latest_attempt = (
+            QuizAttempt.objects.filter(quiz=obj, user=request.user, completed_at__isnull=False)
+            .order_by('-completed_at')
+            .first()
+        )
+        if latest_attempt:
+            return round(latest_attempt.percentage_score, 1)
+        return None
+
+    def get_content_type_details(self, obj):
+        """Get content type taxonomy details."""
+        if obj.content_type_taxonomy:
+            return TaxonomySerializer(obj.content_type_taxonomy).data
+        return None
+
+    def get_time_investment_details(self, obj):
+        """Get time investment taxonomy details."""
+        if obj.time_investment:
+            return TaxonomySerializer(obj.time_investment).data
+        return None
+
+    def get_difficulty_details(self, obj):
+        """Get difficulty taxonomy details."""
+        if obj.difficulty_taxonomy:
+            return TaxonomySerializer(obj.difficulty_taxonomy).data
+        return None
+
+    def get_pricing_details(self, obj):
+        """Get pricing taxonomy details."""
+        if obj.pricing_taxonomy:
+            return TaxonomySerializer(obj.pricing_taxonomy).data
         return None
 
 

@@ -211,20 +211,9 @@ class OrchestratorExecutor:
             enhanced_message = user_message
 
         # Route to appropriate agent streamer
-        # Note: handoff context is already incorporated into enhanced_message
-        if agent_type == AgentType.DISCOVERY:
-            async for event in self._stream_discovery(enhanced_message):
-                yield event
-
-        elif agent_type == AgentType.LEARNING:
-            async for event in self._stream_learning(enhanced_message):
-                yield event
-
-        elif agent_type == AgentType.PROJECT:
-            async for event in self._stream_project(enhanced_message):
-                yield event
-
-        elif agent_type == AgentType.IMAGE_GENERATION:
+        # Note: All chat now goes through unified Ember agent (see tasks.py)
+        # Discovery, Learning, and Project agent types now route to support fallback
+        if agent_type == AgentType.IMAGE_GENERATION:
             async for event in self._stream_image_generation(enhanced_message):
                 yield event
 
@@ -232,51 +221,6 @@ class OrchestratorExecutor:
             # Fallback to support
             async for event in self._stream_support(enhanced_message):
                 yield event
-
-    async def _stream_discovery(self, message: str) -> AsyncGenerator[dict, None]:
-        """Stream response from discovery agent.
-
-        Note: Handoff context is already incorporated into the message.
-        """
-        from services.agents.discovery.agent import stream_discovery_response
-
-        async for event in stream_discovery_response(
-            user_message=message,
-            user_id=self.user_id,
-            username=self.username,
-            session_id=self.session_id,
-        ):
-            yield event
-
-    async def _stream_learning(self, message: str) -> AsyncGenerator[dict, None]:
-        """Stream response from learning agent.
-
-        Note: Handoff context is already incorporated into the message.
-        """
-        from services.agents.learning.agent import stream_learning_response
-
-        async for event in stream_learning_response(
-            user_message=message,
-            user_id=self.user_id,
-            username=self.username,
-            session_id=self.session_id,
-        ):
-            yield event
-
-    async def _stream_project(self, message: str) -> AsyncGenerator[dict, None]:
-        """Stream response from project agent.
-
-        Note: Handoff context is already incorporated into the message.
-        """
-        from services.agents.project.agent import stream_agent_response
-
-        async for event in stream_agent_response(
-            user_message=message,
-            user_id=self.user_id,
-            username=self.username,
-            session_id=self.session_id,
-        ):
-            yield event
 
     async def _stream_image_generation(self, message: str) -> AsyncGenerator[dict, None]:
         """Handle image generation (not a streaming agent).

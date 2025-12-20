@@ -182,7 +182,13 @@ if ! docker-compose ps db 2>/dev/null | grep -q "Up"; then
     exit 1
 fi
 
-# Drop and recreate the database
+# Stop services that use the database to avoid "database in use" error
+echo "Stopping backend services..."
+docker-compose stop web celery celery-beat 2>/dev/null || true
+sleep 2
+
+# Terminate any remaining connections and drop/recreate the database
+docker-compose exec -T db psql -U ${POSTGRES_USER:-allthrive} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${POSTGRES_DB:-allthrive_ai}' AND pid <> pg_backend_pid();" 2>/dev/null || true
 docker-compose exec -T db psql -U ${POSTGRES_USER:-allthrive} -d postgres -c "DROP DATABASE IF EXISTS ${POSTGRES_DB:-allthrive_ai};"
 docker-compose exec -T db psql -U ${POSTGRES_USER:-allthrive} -d postgres -c "CREATE DATABASE ${POSTGRES_DB:-allthrive_ai};"
 
@@ -229,6 +235,11 @@ if [ -n "${PRESERVE_USERNAMES}" ]; then
 fi
 
 docker-compose exec -T web python manage.py anonymize_users ${ANONYMIZE_ARGS}
+
+# Restart all services
+echo ""
+echo "Restarting services..."
+docker-compose start celery celery-beat 2>/dev/null || true
 
 echo ""
 echo "=== Database Pull Complete ==="

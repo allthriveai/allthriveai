@@ -33,8 +33,20 @@ class UATScenario(models.Model):
     Test runs track WHEN/WHO/RESULT of each test execution.
     """
 
+    class Priority(models.TextChoices):
+        LOW = 'low', 'Low'
+        MEDIUM = 'medium', 'Medium'
+        HIGH = 'high', 'High'
+        CRITICAL = 'critical', 'Critical'
+
     title = models.CharField(max_length=255, help_text='Scenario name/title')
     description = models.TextField(blank=True, help_text='Test steps and expected behavior')
+    priority = models.CharField(
+        max_length=10,
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
+        help_text='Priority level: low, medium, high, critical',
+    )
 
     # Category for grouping
     category = models.ForeignKey(

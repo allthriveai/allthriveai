@@ -265,7 +265,7 @@ def process_avatar_generation_task(
             AIUsageTracker.track_usage(
                 user=user,
                 feature='avatar_generation',
-                provider='google',
+                provider='gemini',
                 model=gemini_model,
                 input_tokens=estimated_input_tokens,
                 output_tokens=estimated_output_tokens,

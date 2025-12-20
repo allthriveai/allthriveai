@@ -251,15 +251,23 @@ export async function hasMediaPreview(page: Page): Promise<boolean> {
  */
 export async function hasAttachmentPreview(page: Page): Promise<boolean> {
   // Look for the attachment preview chips that show file names with paperclip icons
-  const attachmentChips = page.locator('.flex.flex-wrap.gap-2 .bg-slate-800\\/50');
-  return (await attachmentChips.count()) > 0;
+  // The chips are in a flex container with gap-2 and have paperclip icons
+  // Also check for text containing typical file extensions
+  const attachmentChips = page.locator('.mb-2.flex.flex-wrap.gap-2 > div');
+  const chipCount = await attachmentChips.count();
+
+  if (chipCount > 0) return true;
+
+  // Fallback: look for text containing file extension in the input area
+  const fileNameVisible = await page.locator('text=.png, text=.jpg, text=.jpeg, text=.mp4, text=.webm').first().isVisible().catch(() => false);
+  return fileNameVisible;
 }
 
 /**
  * Get count of attached files
  */
 export async function getAttachmentCount(page: Page): Promise<number> {
-  const attachmentChips = page.locator('.flex.flex-wrap.gap-2 .bg-slate-800\\/50');
+  const attachmentChips = page.locator('.mb-2.flex.flex-wrap.gap-2 > div');
   return await attachmentChips.count();
 }
 

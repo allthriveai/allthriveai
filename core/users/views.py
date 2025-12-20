@@ -20,6 +20,7 @@ from .serializers import (
     ProfileSectionsSerializer,
     UserFollowSerializer,
     UserProfileWithSectionsSerializer,
+    UserTaxonomyPreferencesSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -1034,3 +1035,100 @@ def track_onboarding_path(request):
             'already_set': True,
         }
     )
+
+
+# ============================================================================
+# TAXONOMY PREFERENCES API
+# ============================================================================
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def taxonomy_preferences(request):
+    """Get or update user's taxonomy preferences.
+
+    GET: Returns current taxonomy preferences (personality, roles, goals, etc.)
+    PATCH: Updates taxonomy preferences (partial update)
+
+    These are EXPLICIT preferences set by the user during onboarding.
+    For INFERRED preferences from behavior, see UserTag endpoints.
+
+    PATCH body accepts:
+    - personality_id: int (single taxonomy ID)
+    - learning_style_ids: list[int] (array of taxonomy IDs)
+    - role_ids: list[int]
+    - goal_ids: list[int]
+    - interest_ids: list[int]
+    - industry_ids: list[int]
+
+    Returns nested taxonomy objects for all fields.
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        # Prefetch M2M relationships for efficiency
+        user = (
+            User.objects.prefetch_related(
+                'learning_styles',
+                'roles',
+                'goals',
+                'interests',
+                'industries',
+            )
+            .select_related('personality')
+            .get(pk=user.pk)
+        )
+
+        serializer = UserTaxonomyPreferencesSerializer(user)
+
+        StructuredLogger.log_service_operation(
+            service_name='TaxonomyPreferences',
+            operation='get',
+            success=True,
+            metadata={'user_id': user.id},
+            logger_instance=logger,
+        )
+
+        return Response(serializer.data)
+
+    elif request.method == 'PATCH':
+        serializer = UserTaxonomyPreferencesSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+
+            # Refetch with prefetch for response
+            user = (
+                User.objects.prefetch_related(
+                    'learning_styles',
+                    'roles',
+                    'goals',
+                    'interests',
+                    'industries',
+                )
+                .select_related('personality')
+                .get(pk=user.pk)
+            )
+
+            response_serializer = UserTaxonomyPreferencesSerializer(user)
+
+            StructuredLogger.log_service_operation(
+                service_name='TaxonomyPreferences',
+                operation='update',
+                success=True,
+                metadata={
+                    'user_id': user.id,
+                    'updated_fields': list(request.data.keys()),
+                },
+                logger_instance=logger,
+            )
+
+            return Response(response_serializer.data)
+
+        StructuredLogger.log_service_operation(
+            service_name='TaxonomyPreferences',
+            operation='update',
+            success=False,
+            metadata={'user_id': user.id, 'errors': serializer.errors},
+            logger_instance=logger,
+        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

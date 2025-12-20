@@ -612,6 +612,21 @@ class RSSFeedSyncService:
 
             logger.info(f'Created RSS feed item: {project.title} ({feed_item.feed_item_id})')
 
+            # Queue async AI taxonomy tagging for richer classification
+            try:
+                from services.tagging.tasks import tag_content_task
+
+                tag_content_task.delay(
+                    content_type='project',
+                    content_id=project.id,
+                    tier='bulk',  # Use cheap model for imported content
+                    force=False,
+                )
+                logger.debug(f'Queued AI tagging for RSS project {project.id}')
+            except Exception as e:
+                # Don't fail project creation if tagging queue fails
+                logger.warning(f'Failed to queue AI tagging for project {project.id}: {e}')
+
     @classmethod
     def _update_feed_item(cls, feed_item: RSSFeedItem, item_data: dict):
         """Update an existing RSS feed item."""

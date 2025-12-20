@@ -2,7 +2,7 @@ import logging
 
 import bleach
 from django.db import transaction
-from django.db.models import Avg, F, Q
+from django.db.models import Avg, Count, Exists, F, OuterRef, Q, Subquery
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -37,8 +37,42 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = (
-            Quiz.objects.filter(is_published=True).select_related('created_by').prefetch_related('tools', 'categories')
+            Quiz.objects.filter(is_published=True)
+            .select_related(
+                'created_by',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+            )
+            .prefetch_related('tools', 'categories')
         )
+
+        # Add user-specific annotations to prevent N+1 queries in serializer
+        if self.request.user.is_authenticated:
+            user = self.request.user
+            completed_attempts = QuizAttempt.objects.filter(
+                quiz=OuterRef('pk'),
+                user=user,
+                completed_at__isnull=False,
+            )
+            queryset = queryset.annotate(
+                _user_has_attempted=Exists(completed_attempts),
+                _user_attempt_count=Count(
+                    'attempts',
+                    filter=Q(attempts__user=user, attempts__completed_at__isnull=False),
+                ),
+                _user_best_score=Subquery(
+                    completed_attempts.annotate(pct=F('score') * 100.0 / F('total_questions'))
+                    .order_by('-pct')
+                    .values('pct')[:1]
+                ),
+                _user_latest_score=Subquery(
+                    completed_attempts.annotate(pct=F('score') * 100.0 / F('total_questions'))
+                    .order_by('-completed_at')
+                    .values('pct')[:1]
+                ),
+            )
 
         # Filter by tools (OR logic - match quizzes with ANY of the selected tools)
         tools_list = self.request.query_params.getlist('tools')

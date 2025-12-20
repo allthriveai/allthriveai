@@ -1,17 +1,22 @@
 /**
  * UATScenarioTableView - Table view for UAT scenarios with test history
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { UATScenario, UATCategory, UATScenarioAssignee, UATTestRun } from '@/types/uatScenarios';
 import {
   ChevronUpIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   TrashIcon,
   TicketIcon,
   PlusCircleIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon, XCircleIcon, MinusCircleIcon } from '@heroicons/react/24/solid';
+import ReactMarkdown from 'react-markdown';
+
+const ITEMS_PER_PAGE = 25;
 
 interface UATScenarioTableViewProps {
   scenarios: UATScenario[];
@@ -25,8 +30,20 @@ interface UATScenarioTableViewProps {
   onAddTestRun: (scenario: UATScenario) => void;
 }
 
-type SortField = 'title' | 'category' | 'testRunCount' | 'latestResult' | 'createdAt';
+type SortField = 'title' | 'category' | 'priority' | 'testRunCount' | 'latestResult' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
+
+// Priority color mapping
+const priorityColorMap: Record<string, { bg: string; text: string; dot: string }> = {
+  low: { bg: 'bg-slate-100 dark:bg-slate-500/20', text: 'text-slate-600 dark:text-slate-400', dot: 'bg-slate-400' },
+  medium: { bg: 'bg-blue-100 dark:bg-blue-500/20', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
+  high: { bg: 'bg-orange-100 dark:bg-orange-500/20', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
+  critical: { bg: 'bg-red-100 dark:bg-red-500/20', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
+};
+
+function getPriorityColors(priority: string) {
+  return priorityColorMap[priority] || priorityColorMap.medium;
+}
 
 // Color mapping
 const colorMap: Record<string, { bg: string; text: string }> = {
@@ -87,9 +104,10 @@ export function UATScenarioTableView({
   void _admins;
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Sort scenarios
-  const sortedScenarios = [...scenarios].sort((a, b) => {
+  const sortedScenarios = useMemo(() => [...scenarios].sort((a, b) => {
     let comparison = 0;
 
     switch (sortField) {
@@ -99,6 +117,11 @@ export function UATScenarioTableView({
       case 'category':
         comparison = (a.categoryDetail?.name || '').localeCompare(b.categoryDetail?.name || '');
         break;
+      case 'priority': {
+        const priorityOrder = { critical: 1, high: 2, medium: 3, low: 4 };
+        comparison = (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
+        break;
+      }
       case 'testRunCount':
         comparison = a.testRunCount - b.testRunCount;
         break;
@@ -115,9 +138,23 @@ export function UATScenarioTableView({
     }
 
     return sortDirection === 'asc' ? comparison : -comparison;
-  });
+  }), [scenarios, sortField, sortDirection]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(sortedScenarios.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedScenarios = sortedScenarios.slice(startIndex, endIndex);
+
+  // Reset to page 1 when scenarios change (e.g., filtering)
+  useMemo(() => {
+    if (currentPage > 1 && startIndex >= sortedScenarios.length) {
+      setCurrentPage(1);
+    }
+  }, [sortedScenarios.length, currentPage, startIndex]);
 
   const handleSort = useCallback((field: SortField) => {
+    setCurrentPage(1); // Reset to page 1 when sorting
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -195,6 +232,16 @@ export function UATScenarioTableView({
                   <SortIcon field="category" />
                 </button>
               </th>
+              {/* Priority */}
+              <th className="px-4 py-3 text-left">
+                <button
+                  onClick={() => handleSort('priority')}
+                  className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  Priority
+                  <SortIcon field="priority" />
+                </button>
+              </th>
               {/* Test History */}
               <th className="px-4 py-3 text-left min-w-[220px]">
                 <button
@@ -210,7 +257,7 @@ export function UATScenarioTableView({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-            {sortedScenarios.map((scenario) => {
+            {paginatedScenarios.map((scenario) => {
               const isSelected = selectedIds.includes(scenario.id);
               const categoryColors = scenario.categoryDetail
                 ? getColorClasses(scenario.categoryDetail.color)
@@ -246,11 +293,13 @@ export function UATScenarioTableView({
                   </td>
                   {/* Description */}
                   <td className="px-4 py-3 align-top">
-                    <div className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
-                      {scenario.description || (
-                        <span className="text-slate-400 dark:text-slate-500 italic">No description</span>
-                      )}
-                    </div>
+                    {scenario.description ? (
+                      <div className="text-sm text-slate-600 dark:text-slate-400 prose prose-sm dark:prose-invert prose-headings:text-sm prose-headings:font-semibold prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none line-clamp-4">
+                        <ReactMarkdown>{scenario.description}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400 dark:text-slate-500 italic">No description</span>
+                    )}
                   </td>
                   {/* Category */}
                   <td className="px-4 py-3 align-top">
@@ -261,6 +310,20 @@ export function UATScenarioTableView({
                         {scenario.categoryDetail.name}
                       </span>
                     )}
+                  </td>
+                  {/* Priority */}
+                  <td className="px-4 py-3 align-top">
+                    {(() => {
+                      const priorityColors = getPriorityColors(scenario.priority);
+                      return (
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded ${priorityColors.bg} ${priorityColors.text}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${priorityColors.dot}`} />
+                          {scenario.priorityDisplay}
+                        </span>
+                      );
+                    })()}
                   </td>
                   {/* Test History */}
                   <td className="px-4 py-3 align-top">
@@ -340,6 +403,77 @@ export function UATScenarioTableView({
       {scenarios.length === 0 && (
         <div className="py-12 text-center text-slate-500 dark:text-slate-400">
           No scenarios found
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
+            Showing {startIndex + 1}-{Math.min(endIndex, sortedScenarios.length)} of {sortedScenarios.length} scenarios
+          </div>
+          <div className="flex items-center gap-1">
+            {/* Previous button */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Previous page"
+            >
+              <ChevronLeftIcon className="w-5 h-5" />
+            </button>
+
+            {/* Page numbers */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  // Show first, last, current, and neighbors
+                  if (page === 1 || page === totalPages) return true;
+                  if (Math.abs(page - currentPage) <= 1) return true;
+                  return false;
+                })
+                .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
+                  // Add ellipsis between gaps
+                  if (idx > 0 && page - (arr[idx - 1] as number) > 1) {
+                    acc.push('ellipsis');
+                  }
+                  acc.push(page);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === 'ellipsis' ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      className="px-2 text-slate-400 dark:text-slate-500"
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item)}
+                      className={`min-w-[36px] h-9 px-3 rounded-lg font-medium text-sm transition-colors ${
+                        currentPage === item
+                          ? 'bg-purple-600 dark:bg-purple-500 text-white'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+            </div>
+
+            {/* Next button */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Next page"
+            >
+              <ChevronRightIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
     </div>

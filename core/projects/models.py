@@ -4,6 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from core.integrations.utils import normalize_slug
+from core.taxonomy.mixins import WeaviateSyncMixin
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
 
@@ -35,12 +36,15 @@ class ProjectQuerySet(models.QuerySet):
         return self.filter(user__username=username)
 
 
-class Project(models.Model):
+class Project(WeaviateSyncMixin, models.Model):
     """User project that appears in profile showcase/playground and has a unique URL.
 
     Projects are always scoped to a single user and identified publicly by
     `/{username}/{slug}`. The `content` field stores the structured layout
     blocks used to render the portfolio-style page.
+
+    Inherits from:
+        WeaviateSyncMixin: Provides weaviate_uuid and last_indexed_at for vector search
     """
 
     class ProjectType(models.TextChoices):
@@ -179,14 +183,67 @@ class Project(models.Model):
             'and should not be auto-updated during resync'
         ),
     )
-    # Difficulty level for content personalization (not user-facing)
+
+    # ============================================================================
+    # CONTENT METADATA TAXONOMY FIELDS
+    # ============================================================================
+    # These fields can be AI-populated or manually set. When tags_manually_edited
+    # is True, AI will not overwrite these fields during resync.
+
+    content_type_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='projects_of_type',
+        limit_choices_to={'taxonomy_type': 'content_type', 'is_active': True},
+        help_text='Content format (article, video, code-repo, course, etc.)',
+    )
+
+    time_investment = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='projects_with_time',
+        limit_choices_to={'taxonomy_type': 'time_investment', 'is_active': True},
+        help_text='Time to consume (quick, short, medium, deep-dive)',
+    )
+
+    difficulty_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='projects_with_difficulty',
+        limit_choices_to={'taxonomy_type': 'difficulty', 'is_active': True},
+        help_text='Content difficulty level (beginner, intermediate, advanced)',
+    )
+
+    pricing_taxonomy = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='projects_with_pricing',
+        limit_choices_to={'taxonomy_type': 'pricing', 'is_active': True},
+        help_text='Pricing tier (free, freemium, paid)',
+    )
+
+    ai_tag_metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='AI-generated tag metadata: {field: {confidence, model, timestamp}}',
+    )
+
+    # DEPRECATED: Use difficulty_taxonomy instead. Kept for backwards compatibility.
     difficulty_level = models.CharField(
         max_length=20,
         choices=DifficultyLevel.choices,
         blank=True,
         default='',
         db_index=True,
-        help_text='Content difficulty: beginner, intermediate, advanced (for personalization)',
+        help_text='DEPRECATED: Use difficulty_taxonomy. Content difficulty for personalization.',
     )
     # Personalization metrics (updated by Celery tasks)
     engagement_velocity = models.FloatField(

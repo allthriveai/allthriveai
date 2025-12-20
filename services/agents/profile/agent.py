@@ -20,6 +20,7 @@ from langgraph.graph.message import add_messages
 
 from core.ai_usage.tracker import AIUsageTracker
 from services.ai import AIProvider
+from services.ai.callbacks import TokenTrackingCallback, estimate_tokens
 
 from .prompts import SYSTEM_PROMPT
 from .tools import PROFILE_TOOLS
@@ -454,8 +455,17 @@ async def stream_profile_generation(
     start_time = time.time()
     total_output_chars = 0
 
+    # Create token tracking callback for accurate usage
+    token_callback = TokenTrackingCallback()
+
+    # Add callback to config for LLM calls
+    config_with_callbacks = {
+        **config,
+        'callbacks': [token_callback],
+    }
+
     try:
-        async for event in agent.astream_events(input_state, config, version='v1'):
+        async for event in agent.astream_events(input_state, config_with_callbacks, version='v1'):
             kind = event['event']
             run_id = event.get('run_id', '')
 
@@ -546,10 +556,17 @@ async def stream_profile_generation(
             User = get_user_model()
             user = User.objects.get(id=user_id)
 
-            estimated_input_tokens = len(user_message) // 4 + len(SYSTEM_PROMPT) // 4
-            estimated_output_tokens = total_output_chars // 4
-
             latency_ms = int((time.time() - start_time) * 1000)
+
+            # Use actual tokens from callback if available, otherwise estimate
+            if token_callback.has_token_data:
+                input_tokens = token_callback.total_input_tokens
+                output_tokens = token_callback.total_output_tokens
+                is_estimated = False
+            else:
+                input_tokens = estimate_tokens(user_message) + estimate_tokens(SYSTEM_PROMPT)
+                output_tokens = estimate_tokens(str(total_output_chars))
+                is_estimated = True
 
             ai_provider = AIProvider()
             AIUsageTracker.track_usage(
@@ -557,11 +574,16 @@ async def stream_profile_generation(
                 feature='langgraph_profile_agent',
                 provider=ai_provider.current_provider,
                 model=ai_provider.current_model,
-                input_tokens=estimated_input_tokens,
-                output_tokens=estimated_output_tokens,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
                 latency_ms=latency_ms,
                 status='success',
-                request_metadata={'session_id': session_id, 'estimated': True},
+                request_metadata={
+                    'session_id': session_id,
+                    'estimated': is_estimated,
+                    'llm_calls': token_callback.llm_calls,
+                },
+                gateway_metadata=token_callback.gateway_metadata,
             )
         except Exception as tracking_error:
             logger.warning(f'Failed to track profile agent usage: {tracking_error}')

@@ -3,6 +3,7 @@ from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.utils.text import slugify
 
+from core.taxonomy.mixins import WeaviateSyncMixin
 from core.taxonomy.models import Taxonomy
 
 
@@ -64,10 +65,13 @@ class Company(models.Model):
         return self.tools.filter(is_active=True).count()
 
 
-class Tool(models.Model):
+class Tool(WeaviateSyncMixin, models.Model):
     """
     Comprehensive model for AI tools and technologies in the directory.
     Supports both AI tools (ChatGPT, Claude) and technologies (React, Python).
+
+    Inherits from:
+        WeaviateSyncMixin: Provides weaviate_uuid and last_indexed_at for vector search
     """
 
     class ToolType(models.TextChoices):
