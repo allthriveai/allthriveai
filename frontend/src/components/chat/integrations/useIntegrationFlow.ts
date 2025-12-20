@@ -106,22 +106,6 @@ export function useIntegrationFlow({
     loading: false,
   });
 
-  // Handle OAuth callback for Figma
-  useEffect(() => {
-    const connected = searchParams.get('connected');
-    if (connected === 'figma') {
-      searchParams.delete('connected');
-      setSearchParams(searchParams, { replace: true });
-      setFigmaState({
-        step: 'select',
-        message: 'Paste a Figma file URL below to import your design.',
-        error: null,
-      });
-      setActiveFlow('figma');
-      onHasInteracted?.();
-    }
-  }, [searchParams, setSearchParams, onHasInteracted]);
-
   // Fetch connection statuses
   const fetchConnectionStatuses = useCallback(async () => {
     setConnectionStatus((prev) => ({ ...prev, loading: true }));
@@ -215,8 +199,10 @@ export function useIntegrationFlow({
     const backendUrl = import.meta.env.VITE_API_URL;
     if (!backendUrl) return;
     const frontendUrl = window.location.origin;
-    const returnPath = window.location.pathname + window.location.search;
-    window.location.href = `${backendUrl}/accounts/github/login/?process=connect&next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    // Add ?connected=github so we can detect the return from OAuth
+    const returnUrl = new URL(window.location.pathname, frontendUrl);
+    returnUrl.searchParams.set('connected', 'github');
+    window.location.href = `${backendUrl}/accounts/github/login/?process=connect&next=${encodeURIComponent(returnUrl.toString())}`;
   }, []);
 
   const handleInstallGitHubApp = useCallback(() => {
@@ -287,8 +273,10 @@ export function useIntegrationFlow({
     const backendUrl = import.meta.env.VITE_API_URL;
     if (!backendUrl) return;
     const frontendUrl = window.location.origin;
-    const returnPath = window.location.pathname + window.location.search;
-    window.location.href = `${backendUrl}/api/v1/social/connect/gitlab/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    // Add ?connected=gitlab so we can detect the return from OAuth
+    const returnUrl = new URL(window.location.pathname, frontendUrl);
+    returnUrl.searchParams.set('connected', 'gitlab');
+    window.location.href = `${backendUrl}/api/v1/social/connect/gitlab/?next=${encodeURIComponent(returnUrl.toString())}`;
   }, []);
 
   const handleSelectGitLabProject = useCallback((project: GitLabProject) => {
@@ -337,8 +325,10 @@ export function useIntegrationFlow({
     const backendUrl = import.meta.env.VITE_API_URL;
     if (!backendUrl) return;
     const frontendUrl = window.location.origin;
-    const returnPath = window.location.pathname + window.location.search;
-    window.location.href = `${backendUrl}/api/v1/social/connect/figma/?next=${encodeURIComponent(frontendUrl + returnPath)}`;
+    // Add ?connected=figma so we can detect the return from OAuth
+    const returnUrl = new URL(window.location.pathname, frontendUrl);
+    returnUrl.searchParams.set('connected', 'figma');
+    window.location.href = `${backendUrl}/api/v1/social/connect/figma/?next=${encodeURIComponent(returnUrl.toString())}`;
   }, []);
 
   const handleFigmaUrlImport = useCallback(async (url: string) => {
@@ -415,6 +405,31 @@ export function useIntegrationFlow({
   const closePicker = useCallback(() => {
     setShowPicker(false);
   }, []);
+
+  // Handle OAuth callback - detect ?connected=github or ?connected=gitlab
+  useEffect(() => {
+    const connected = searchParams.get('connected');
+    if (connected === 'github') {
+      // Clear the query param and start GitHub flow
+      searchParams.delete('connected');
+      setSearchParams(searchParams, { replace: true });
+      startGitHubFlow();
+      return;
+    }
+    if (connected === 'gitlab') {
+      // Clear the query param and start GitLab flow
+      searchParams.delete('connected');
+      setSearchParams(searchParams, { replace: true });
+      startGitLabFlow();
+      return;
+    }
+    if (connected === 'figma') {
+      // Clear the query param and start Figma flow
+      searchParams.delete('connected');
+      setSearchParams(searchParams, { replace: true });
+      startFigmaFlow();
+    }
+  }, [searchParams, setSearchParams, startGitHubFlow, startGitLabFlow, startFigmaFlow]);
 
   return {
     state: {
