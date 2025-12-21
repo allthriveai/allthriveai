@@ -95,34 +95,24 @@ const COMPLETE_FLOW = `flowchart TD
     BATTLE_START --> GAME_PLAY
 
     %% LEARN SOMETHING NEW FLOW
-    P4 --> LEARN_MSG["What brings you here today?<br/>This helps me personalize your learning path."]
-    LEARN_MSG --> LEARN_GOALS{Learning Goals}
+    P4 --> LEARN_MSG["What brings you here today?"]
+    LEARN_MSG --> LG1["Build AI Projects"]
+    LEARN_MSG --> LG2["Understand AI Concepts"]
+    LEARN_MSG --> LG3["Career Exploration"]
+    LEARN_MSG --> LG4["Just Exploring"]
 
-    LEARN_GOALS --> LG1["Build AI Projects<br/><i>Get hands-on with tools like LangChain</i>"]
-    LEARN_GOALS --> LG2["Understand AI Concepts<br/><i>Learn fundamentals of AI models, prompting</i>"]
-    LEARN_GOALS --> LG3["Career Exploration<br/><i>Discover how AI can boost your career</i>"]
-    LEARN_GOALS --> LG4["Just Exploring<br/><i>I'm curious about AI</i>"]
-    LEARN_GOALS --> LG_SKIP["Skip for now"]
+    LG1 --> LEARN_CONTENT["Here are some resources for you:<br/>Videos | Projects | Quizzes | Lessons"]
+    LG2 --> LEARN_CONTENT
+    LG3 --> LEARN_CONTENT
+    LG4 --> LEARN_CONTENT
 
-    LG1 --> LEARN_PATH["Creating your personalized path..."]
-    LG2 --> LEARN_PATH
-    LG3 --> LEARN_PATH
-    LG4 --> LEARN_PATH
-    LG_SKIP --> LEARN_PATH
+    LEARN_CONTENT --> LEARN_CHOICE{User Choice}
+    LEARN_CHOICE --> LC_VIEW["View Content"]
+    LEARN_CHOICE --> LC_PATH["Turn into Learning Path?"]
 
-    LEARN_PATH --> LEARN_CONTENT["Here are some resources for you:"]
-    LEARN_CONTENT --> LC_CARDS["Learning Content Cards<br/>(Videos, Projects, Quizzes, Lessons)"]
-    LC_CARDS --> LC_SELECT{User selects content}
-
-    LC_SELECT --> LC_VIDEO["Watch Video"]
-    LC_SELECT --> LC_PROJECT["View Project"]
-    LC_SELECT --> LC_QUIZ["Take Quiz"]
-    LC_SELECT --> LC_LESSON["Read Lesson"]
-
-    LC_VIDEO --> CONTENT_PAGE([Content Page])
-    LC_PROJECT --> CONTENT_PAGE
-    LC_QUIZ --> CONTENT_PAGE
-    LC_LESSON --> CONTENT_PAGE
+    LC_VIEW --> CONTENT_PAGE([Content Page])
+    LC_PATH --> LP_CREATE["Creating your personalized path..."]
+    LP_CREATE --> LP_DONE([Learning Path Created])
 
     %% OTHER PILLS - Direct responses
     P3 --> CHALLENGE_RESP["Shows weekly challenge details"]
