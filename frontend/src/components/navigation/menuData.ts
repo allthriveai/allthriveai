@@ -52,7 +52,7 @@ export const getMenuSections = (
   {
     title: 'PLAY',
     icon: faGamepad,
-    path: '/challenges',
+    path: '/play/games',
     items: [
       { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
       { label: 'Games', path: '/play/games', icon: faGamepad },

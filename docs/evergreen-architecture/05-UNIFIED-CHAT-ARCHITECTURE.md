@@ -1,6 +1,6 @@
 # Unified Chat Architecture
 
-**Last Updated:** 2025-12-19
+**Last Updated:** 2025-12-20
 **Status:** Active - Unified ChatCore + Ember Agent
 **Purpose:** Document the intelligent chat system with unified frontend and backend
 
@@ -11,7 +11,7 @@
 AllThrive AI's intelligent chat system uses a **unified architecture** on both frontend and backend:
 
 - **Frontend**: Single `ChatCore` component with render props pattern, consumed by two layouts
-- **Backend**: Unified Ember agent with access to all 38 tools
+- **Backend**: Unified Ember agent with access to all 31 tools
 
 ### Key Design Principles
 - **One backend, two UIs**: Same WebSocket connection, different visual presentations
@@ -20,7 +20,7 @@ AllThrive AI's intelligent chat system uses a **unified architecture** on both f
 - **Clean separation**: Core logic separated from UI components
 
 ### Key Stats
-- **Total Tools:** 38 across 5 categories
+- **Total Tools:** 31 across 5 categories
 - **Architecture:** Single unified Ember agent (no supervisor routing)
 - **Token Tracking:** Full usage tracking via `AIUsageTracker`
 - **Frontend:** ChatCore + 2 layouts (EmbeddedChatLayout, SidebarChatLayout)
@@ -216,11 +216,11 @@ Backend (Django Channels + Celery)
     ├── services/agents/ember/
     │   ├── agent.py               # LangGraph agent + streaming
     │   ├── prompts.py             # System prompts
-    │   └── tools.py               # Unified tool registry (38 tools)
+    │   └── tools.py               # Unified tool registry (31 tools)
     │
     └── Tool Categories:
-        ├── Discovery (5 tools)    # Search, recommendations
-        ├── Learning (14 tools)    # Quiz help, progress, mentorship, sessions
+        ├── Discovery (9 tools)    # Search, recommendations, challenges, connections
+        ├── Learning (3 tools)     # Simplified: find content, create path, update profile
         ├── Project (9 tools)      # Create, import projects
         ├── Orchestration (7 tools)# Navigation, UI control, games
         └── Profile (3 tools)      # Profile generation
@@ -276,7 +276,7 @@ ws://backend:8000/ws/chat/{conversation_id}/
 
 ## Tool Reference
 
-### Discovery Tools (5 tools)
+### Discovery Tools (9 tools)
 
 | Tool | Description | Needs State |
 |------|-------------|-------------|
@@ -285,34 +285,20 @@ ws://backend:8000/ws/chat/{conversation_id}/
 | `find_similar_projects` | Find projects similar to a given project | No |
 | `get_trending_projects` | Get trending projects from day/week/month | No |
 | `get_project_details` | Get detailed info about a specific project | No |
+| `unified_search` | Search across all content types (projects, quizzes, tools, lessons) | **Yes** |
+| `get_related_content` | Get content related to a specific item via knowledge graph | **Yes** |
+| `get_current_challenge` | Get the current weekly challenge with user participation status | **Yes** |
+| `find_people_to_connect` | Find people to follow based on shared interests, roles, and goals | **Yes** |
 
-### Learning Tools (14 tools)
+### Learning Tools (3 tools)
 
-#### Core Learning (5 tools)
+*Simplified from 14 tools to 3 tools. Learner context (profile, stats, progress, suggestions) is now injected at conversation start via `LearnerContextService` - no tool call needed.*
+
 | Tool | Description | Needs State |
 |------|-------------|-------------|
-| `get_learning_progress` | User's learning paths with skill levels | **Yes** |
-| `get_quiz_hint` | Hint for quiz question WITHOUT revealing answer | No |
-| `explain_concept` | Explain topic at user's skill level | No |
-| `suggest_next_activity` | Recommend next quiz based on progress | **Yes** |
-| `get_quiz_details` | Detailed info about a specific quiz | No |
-
-#### Enhanced Mentorship (6 tools)
-| Tool | Description | Needs State |
-|------|-------------|-------------|
-| `get_learner_profile` | Understand user's learning style, streak, preferences | **Yes** |
-| `get_concept_mastery` | See what concepts user has mastered or is learning | **Yes** |
-| `find_knowledge_gaps` | Identify areas where user needs more practice | **Yes** |
-| `get_due_reviews` | Concepts ready for spaced repetition review | **Yes** |
-| `deliver_micro_lesson` | Teach a concept with personalized content | **Yes** |
-| `record_learning_event` | Track learning interactions (lessons, practice, etc.) | **Yes** |
-
-#### Conversational Sessions (3 tools)
-| Tool | Description | Needs State |
-|------|-------------|-------------|
-| `start_learning_session` | Begin interactive learning by asking what to learn | **Yes** |
-| `set_learning_topic` | After user picks topic, show available formats | **Yes** |
-| `get_learning_content` | Get content (videos, quizzes, articles) or AI fallback | **Yes** |
+| `find_learning_content` | Find learning content (tools, projects, quizzes, games) about a topic. Returns renderable content (inline_game, project_card, quiz_card, tool_info). | **Yes** |
+| `create_learning_path` | Generate a structured learning path for a topic. Creates a curriculum mixing videos, articles, quizzes, games, and code repos. Saved to user's profile. | **Yes** |
+| `update_learner_profile` | Save learner preferences, interests, and skills discovered during conversation. Updates learning style, difficulty level, session length, interests, and skill proficiencies. | **Yes** |
 
 ### Project Tools (9 tools)
 
@@ -367,7 +353,7 @@ This is handled automatically by `create_tool_node_with_state_injection()` in `e
 |---------|-------------------|-------------------|
 | WebSocket chat | ✅ | ✅ |
 | Streaming responses | ✅ | ✅ |
-| Tool execution (38 tools) | ✅ | ✅ |
+| Tool execution (31 tools) | ✅ | ✅ |
 | GitHub integration | ✅ | ✅ |
 | GitLab integration | ✅ | ✅ |
 | Figma integration | ✅ | ✅ |
@@ -588,20 +574,21 @@ The following components are kept for backward compatibility but should be migra
 - [ ] File upload (images, videos, documents)
 - [ ] Drag-and-drop attachments
 
-### Discovery Tools (5)
+### Discovery Tools (9)
 - [ ] `search_projects` - Search by keyword
 - [ ] `get_recommendations` - Personalized suggestions
 - [ ] `find_similar_projects` - Similar project matching
 - [ ] `get_trending_projects` - Trending feed
 - [ ] `get_project_details` - Project deep dive
+- [ ] `unified_search` - Cross-content search (projects, quizzes, tools, lessons)
+- [ ] `get_related_content` - Related content via knowledge graph
+- [ ] `get_current_challenge` - Weekly challenge display
+- [ ] `find_people_to_connect` - Connection suggestions
 
-### Learning Tools (14)
-- [ ] `get_learning_progress` - User stats
-- [ ] `get_quiz_hint` - Quiz hints (no answers!)
-- [ ] `explain_concept` - Concept explanations
-- [ ] `start_learning_session` → `set_learning_topic` → `get_learning_content` flow
-- [ ] `deliver_micro_lesson` - AI teaching
-- [ ] `record_learning_event` - Progress tracking
+### Learning Tools (3)
+- [ ] `find_learning_content` - Find tools, projects, quizzes, games (returns inline_game, project_card, etc.)
+- [ ] `create_learning_path` - Generate structured curriculum
+- [ ] `update_learner_profile` - Save preferences, interests, skills
 
 ### Project Tools (9)
 - [ ] `import_from_url` - GitHub URL
@@ -617,8 +604,9 @@ The following components are kept for backward compatibility but should be migra
 - [ ] `highlight_element` - UI highlighting
 - [ ] `open_tray` - Panel opening
 - [ ] `show_toast` - Notifications
-- [ ] `launch_inline_game` - Snake/quiz game in chat
 - [ ] `trigger_action` - Start battle/quiz
+- [ ] `get_fun_activities` - Fun activity suggestions / surprise me
+- [ ] `launch_inline_game` - Snake/quiz/ethics/prompt_battle game in chat
 
 ### Profile Tools (3)
 - [ ] `gather_user_data` - Data collection

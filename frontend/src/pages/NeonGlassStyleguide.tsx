@@ -160,22 +160,34 @@ export default function NeonGlassStyleguide() {
               <TierSwatch name="Evergreen" color="#22d3ee" gradientFrom="#22d3ee" gradientTo="#0891b2" description="Legendary" />
             </div>
 
-            {/* Category Colors */}
-            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Category Colors</h4>
-            <p className="text-sm text-slate-400 mb-4">Ocean-inspired palette for project categories</p>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
-              <CategorySwatch name="Blue" color="#3b82f6" />
-              <CategorySwatch name="Indigo" color="#6366f1" />
-              <CategorySwatch name="Sky" color="#0ea5e9" />
-              <CategorySwatch name="Cyan" color="#06b6d4" />
-              <CategorySwatch name="Teal" color="#14b8a6" />
-              <CategorySwatch name="Emerald" color="#10b981" />
-              <CategorySwatch name="Green" color="#22c55e" />
-              <CategorySwatch name="Lime" color="#84cc16" />
-              <CategorySwatch name="Ocean" color="#2563eb" />
-              <CategorySwatch name="Slate" color="#64748b" />
-              <CategorySwatch name="Turquoise" color="#22d3ee" />
-              <CategorySwatch name="Aqua" color="#2dd4bf" />
+            {/* Category Colors (Jewel Tones) */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Category Colors (Jewel Tones)</h4>
+            <p className="text-sm text-slate-400 mb-4">Rich gemstone colors for content categories. See <code className="text-cyan-bright">categoryColors.ts</code></p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+              <JewelSwatch name="Sapphire" hex="#0F52BA" category="Chatbots & Conversation" />
+              <JewelSwatch name="Tanzanite" hex="#4B0082" category="AI Models & Research" />
+              <JewelSwatch name="Amethyst" hex="#5a175d" category="Data & Analytics" />
+              <JewelSwatch name="Rose Quartz" hex="#AA336A" category="Audio & Multimodal" />
+              <JewelSwatch name="Emerald" hex="#046307" category="AI Agents" />
+              <JewelSwatch name="Morganite" hex="#C46480" category="Design (UI)" />
+              <JewelSwatch name="Jade" hex="#00A86B" category="Developer & Coding" />
+              <JewelSwatch name="Ruby" hex="#9B111E" category="Games & Interactive" />
+              <JewelSwatch name="Topaz" hex="#E27D12" category="Images & Video" />
+              <JewelSwatch name="Peridot" hex="#5E8C31" category="Podcasts & Education" />
+            </div>
+
+            {/* Section/Concept Gradients */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Section Gradients (App Navigation)</h4>
+            <p className="text-sm text-slate-400 mb-4">
+              Wayfinding colors for app sections. Same gradient on pill → page header. See <code className="text-cyan-bright">sectionColors.ts</code>
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+              <SectionSwatch name="Play" from="#8B5CF6" to="#7C3AED" description="Games & battles" />
+              <SectionSwatch name="Learn" from="#F59E0B" to="#D97706" description="Tutorials & courses" />
+              <SectionSwatch name="Explore" from="#0EA5E9" to="#0891B2" description="Discover (brand)" />
+              <SectionSwatch name="Share" from="#10B981" to="#059669" description="Create & portfolio" />
+              <SectionSwatch name="Connect" from="#EC4899" to="#DB2777" description="Community & social" />
+              <SectionSwatch name="Challenge" from="#EF4444" to="#DC2626" description="Weekly challenges" />
             </div>
 
             {/* Achievement Rarity Colors */}
@@ -1209,17 +1221,6 @@ function TierSwatch({ name, color, gradientFrom, gradientTo, description }: {
   );
 }
 
-function CategorySwatch({ name, color }: { name: string; color: string }) {
-  return (
-    <div className="text-center">
-      <div
-        className="h-10 rounded-lg mb-1 border border-white/10"
-        style={{ backgroundColor: color }}
-      />
-      <p className="text-xs font-medium text-slate-300">{name}</p>
-    </div>
-  );
-}
 
 function RaritySwatch({ name, gradientFrom, gradientTo }: {
   name: string;
@@ -1247,6 +1248,43 @@ function ActivitySwatch({ name, color }: { name: string; color: string }) {
         style={{ backgroundColor: color }}
       />
       <p className="text-xs text-slate-400 truncate">{name}</p>
+    </div>
+  );
+}
+
+function JewelSwatch({ name, hex, category }: { name: string; hex: string; category: string }) {
+  return (
+    <div className="text-center">
+      <div
+        className="h-16 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+        style={{ backgroundColor: hex }}
+      >
+        <span className="text-white text-xs font-bold drop-shadow-md">{name}</span>
+      </div>
+      <p className="text-sm font-medium" style={{ color: hex }}>{name}</p>
+      <p className="text-xs text-slate-500 truncate">{category}</p>
+      <code className="text-xs text-slate-400">{hex}</code>
+    </div>
+  );
+}
+
+function SectionSwatch({ name, from, to, description }: {
+  name: string;
+  from: string;
+  to: string;
+  description: string;
+}) {
+  return (
+    <div className="text-center">
+      <div
+        className="h-16 rounded-xl mb-2 border border-white/10 flex items-center justify-center"
+        style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+      >
+        <span className="text-white text-sm font-bold drop-shadow-md">{name}</span>
+      </div>
+      <p className="text-sm font-medium" style={{ color: from }}>{name}</p>
+      <p className="text-xs text-slate-500">{description}</p>
+      <code className="text-xs text-slate-400">{from} → {to}</code>
     </div>
   );
 }

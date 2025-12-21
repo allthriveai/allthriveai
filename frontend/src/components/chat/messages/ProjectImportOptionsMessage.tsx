@@ -89,22 +89,22 @@ export function ProjectImportOptionsMessage({ onOptionSelect }: ProjectImportOpt
           >
             <div
               className="relative h-full p-4 overflow-hidden shadow-lg hover:shadow-neon cursor-pointer
-                bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 dark:from-slate-800/50 dark:via-slate-900/50 dark:to-slate-800/50
-                border border-orange-200 dark:border-orange-500/20 hover:border-orange-300 dark:hover:border-orange-400/40
+                bg-gradient-to-br from-cyan-50 via-teal-50 to-cyan-50 dark:from-slate-800/50 dark:via-slate-900/50 dark:to-slate-800/50
+                border border-cyan-200 dark:border-cyan-500/20 hover:border-cyan-300 dark:hover:border-cyan-400/40
                 transition-all duration-300"
               style={{ borderRadius: 'var(--radius)' }}
             >
               {/* Icon */}
               <div
-                className="w-10 h-10 mb-3 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20
-                  border border-orange-200 dark:border-orange-500/30 flex items-center justify-center
-                  group-hover:from-orange-200 group-hover:to-amber-200 dark:group-hover:from-orange-500/30 dark:group-hover:to-amber-500/30
+                className="w-10 h-10 mb-3 bg-gradient-to-br from-cyan-100 to-teal-100 dark:from-cyan-500/20 dark:to-teal-500/20
+                  border border-cyan-200 dark:border-cyan-500/30 flex items-center justify-center
+                  group-hover:from-cyan-200 group-hover:to-teal-200 dark:group-hover:from-cyan-500/30 dark:group-hover:to-teal-500/30
                   transition-all duration-300"
                 style={{ borderRadius: 'var(--radius)' }}
               >
                 <FontAwesomeIcon
                   icon={option.icon}
-                  className="w-5 h-5 text-orange-500 dark:text-orange-400 group-hover:text-orange-600 dark:group-hover:text-orange-300 transition-colors"
+                  className="w-5 h-5 text-cyan-600 dark:text-cyan-400 group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-colors"
                 />
               </div>
 
@@ -120,7 +120,7 @@ export function ProjectImportOptionsMessage({ onOptionSelect }: ProjectImportOpt
 
               {/* Hover glow effect */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-amber-500/5" />
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-teal-500/5" />
               </div>
             </div>
           </motion.button>

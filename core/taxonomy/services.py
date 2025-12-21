@@ -542,3 +542,75 @@ def auto_tag_from_search(user, search_query: str) -> list[UserTag]:
         user_tags.append(user_tag)
 
     return user_tags
+
+
+def auto_tag_from_conversation(user, message: str) -> list[UserTag]:
+    """
+    Auto-tag a user based on their conversation with Ember.
+
+    When users discuss specific tools or topics in chat, this indicates
+    interest. Create/update UserTags with AUTO_CONVERSATION source.
+
+    Args:
+        user: User instance who sent the message
+        message: The chat message text
+
+    Returns:
+        List of created/updated UserTag instances
+    """
+    if not user or not message:
+        return []
+
+    # Extract tools mentioned in the message
+    tools = extract_tools_from_text(message)
+
+    if not tools:
+        # No tools detected, just return empty (normal for most conversations)
+        return []
+
+    logger.info(f'Detected {len(tools)} tools in conversation by {user.username}: {[t.name for t in tools]}')
+
+    user_tags = []
+
+    for tool in tools:
+        # Get tool's taxonomy
+        taxonomy = tool.taxonomy
+        if not taxonomy:
+            logger.warning(f"Tool '{tool.name}' has no linked taxonomy, skipping")
+            continue
+
+        # Conversation-based tags start with slightly higher confidence than search (0.45)
+        # because asking about something in chat is more intentional than a quick search
+        base_confidence = 0.45
+
+        # Get or create UserTag
+        user_tag, created = UserTag.objects.get_or_create(
+            user=user,
+            taxonomy=taxonomy,
+            defaults={
+                'name': tool.name,
+                'source': UserTag.TagSource.AUTO_CONVERSATION,
+                'confidence_score': base_confidence,
+                'interaction_count': 1,
+            },
+        )
+
+        if not created:
+            # Update existing tag - increment interaction count
+            user_tag.interaction_count += 1
+
+            # Boost confidence for repeat mentions (cap at 0.85)
+            new_confidence = min(base_confidence + (user_tag.interaction_count - 1) * 0.1, 0.85)
+            user_tag.confidence_score = max(user_tag.confidence_score, new_confidence)
+            user_tag.updated_at = timezone.now()
+            user_tag.save(update_fields=['interaction_count', 'confidence_score', 'updated_at'])
+            logger.info(
+                f"Updated UserTag '{user_tag.name}' for {user.username} from conversation "
+                f'(interactions: {user_tag.interaction_count}, confidence: {user_tag.confidence_score:.2f})'
+            )
+        else:
+            logger.info(f"Created UserTag '{user_tag.name}' for {user.username} from conversation")
+
+        user_tags.append(user_tag)
+
+    return user_tags

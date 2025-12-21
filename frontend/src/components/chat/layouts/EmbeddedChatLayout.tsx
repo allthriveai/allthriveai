@@ -29,6 +29,7 @@ import { checkGitHubConnection } from '@/services/github';
 import { checkGitLabConnection } from '@/services/gitlab';
 import { checkFigmaConnection } from '@/services/figma';
 import { api } from '@/services/api';
+import { getSectionFromFeeling, getSectionColor } from '@/utils/sectionColors';
 
 // Feeling options that show based on user's signup interests
 interface FeelingOption {
@@ -708,24 +709,37 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                   {showPills && !showGamePicker && (
                     <div className="flex justify-start pl-16">
                       <div className="flex flex-wrap gap-3 max-w-[85%]">
-                        {feelingOptions.map((option, idx) => (
-                          <button
-                            key={option.id}
-                            onClick={() => handleFeelingClick(option)}
-                            className="px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300
-                              bg-gradient-to-r from-cyan-500/10 to-teal-500/10
-                              border border-cyan-500/30
-                              text-cyan-600 dark:text-cyan-300 hover:text-cyan-500 dark:hover:text-cyan-200
-                              hover:border-cyan-400/50 hover:from-cyan-500/20 hover:to-teal-500/20
-                              hover:shadow-neon
-                              transform hover:scale-105 active:scale-95"
-                            style={{
-                              animation: `fadeInUp 0.4s ease-out ${idx * 0.1}s both`,
-                            }}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
+                        {feelingOptions.map((option, idx) => {
+                          const sectionId = getSectionFromFeeling(option.id);
+                          const sectionColor = getSectionColor(sectionId);
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => handleFeelingClick(option)}
+                              className="px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300
+                                border hover:shadow-lg transform hover:scale-105 active:scale-95"
+                              style={{
+                                animation: `fadeInUp 0.4s ease-out ${idx * 0.1}s both`,
+                                background: `linear-gradient(to right, ${sectionColor.gradientFrom}15, ${sectionColor.gradientTo}15)`,
+                                borderColor: `${sectionColor.gradientFrom}50`,
+                                color: sectionColor.textLight,
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = `linear-gradient(to right, ${sectionColor.gradientFrom}25, ${sectionColor.gradientTo}25)`;
+                                e.currentTarget.style.borderColor = `${sectionColor.gradientFrom}70`;
+                                e.currentTarget.style.boxShadow = `0 0 20px ${sectionColor.gradientFrom}30`;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = `linear-gradient(to right, ${sectionColor.gradientFrom}15, ${sectionColor.gradientTo}15)`;
+                                e.currentTarget.style.borderColor = `${sectionColor.gradientFrom}50`;
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
+                              <span className="dark:hidden">{option.label}</span>
+                              <span className="hidden dark:inline" style={{ color: sectionColor.textDark }}>{option.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

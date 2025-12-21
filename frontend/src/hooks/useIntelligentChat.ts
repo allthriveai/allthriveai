@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { buildWebSocketUrl, logWebSocketUrl } from '@/utils/websocket';
 import { saveChatMessages, loadChatMessages, clearChatMessages } from '@/utils/chatStorage';
+import { trackInteraction } from '@/services/personalization';
 import type { ChatMessage as SharedChatMessage } from '@/types/chat';
 
 // Simple cookie reader for CSRF token (mirrors frontend/src/services/api.ts)
@@ -1034,6 +1035,19 @@ export function useIntelligentChat({
     };
     addMessageWithDedup(userMessage);
 
+    // Track conversation interaction for personalization (fire-and-forget)
+    // This helps the personalization engine learn from chat interactions
+    trackInteraction({
+      interactionType: 'conversation',
+      metadata: {
+        message: content,
+        conversationId,
+      },
+    }).catch((err) => {
+      // Silent fail - don't interrupt chat flow for tracking errors
+      console.debug('Failed to track conversation interaction:', err);
+    });
+
     // Check WebSocket connection AFTER adding user message
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       // Don't show alarming error - just try to reconnect silently
@@ -1049,7 +1063,7 @@ export function useIntelligentChat({
       console.error('Failed to send message:', error);
       onError?.('Failed to send message');
     }
-  }, [onError, addMessageWithDedup]);
+  }, [onError, addMessageWithDedup, conversationId]);
 
   // Clear dedup Set when conversation changes to prevent memory leak
   useEffect(() => {
