@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
+import { api } from '@/services/api';
 
 // Legacy IDs for backwards compatibility, new IDs for avatar-focused onboarding
 export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize' | 'play' | 'learn';
@@ -166,31 +167,30 @@ export function useEmberOnboarding() {
     if (state.welcomePointsAwarded) return;
 
     try {
-      const response = await fetch('/api/v1/me/thrive-circle/welcome-points/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
+      const response = await api.post<{
+        awarded?: boolean;
+        alreadyAwarded?: boolean;
+        points: number;
+        totalPoints?: number;
+      }>('/me/thrive-circle/welcome-points/');
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.awarded) {
-          // Update legacy state for backwards compatibility
-          setPointsAwarded(data.points);
-          setShowPointsOverlay(true);
+      const data = response.data;
+      if (data.awarded) {
+        // Update legacy state for backwards compatibility
+        setPointsAwarded(data.points);
+        setShowPointsOverlay(true);
 
-          // Show global points notification via context
-          if (pointsNotification) {
-            pointsNotification.showPointsNotification({
-              points: data.points,
-              title: 'Welcome Bonus!',
-              message: "You've earned your first points!",
-              activityType: 'welcome',
-            });
-          }
+        // Show global points notification via context
+        if (pointsNotification) {
+          pointsNotification.showPointsNotification({
+            points: data.points,
+            title: 'Welcome Bonus!',
+            message: "You've earned your first points!",
+            activityType: 'welcome',
+          });
         }
-        setState((prev) => ({ ...prev, welcomePointsAwarded: true }));
       }
+      setState((prev) => ({ ...prev, welcomePointsAwarded: true }));
     } catch (error) {
       console.error('[EmberOnboarding] Failed to award welcome points:', error);
     }

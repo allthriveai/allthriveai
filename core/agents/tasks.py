@@ -1108,9 +1108,7 @@ def _process_image_generation(
                 'Please try rephrasing your message or using a different image.'
             )
         else:
-            error_message = (
-                'I encountered an issue generating your image. Please try again with a different description!'
-            )
+            error_message = "Couldn't generate that image—try a different description?"
 
         # Send error message
         async_to_sync(channel_layer.group_send)(

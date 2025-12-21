@@ -101,9 +101,9 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'room_event',
                 'event': 'user_joined',
-                'user_id': str(self.user.id),
+                'userId': str(self.user.id),
                 'username': self.user.username,
-                'avatar_url': getattr(self.user, 'avatar_url', None),
+                'avatarUrl': getattr(self.user, 'avatar_url', None),
             },
         )
 
@@ -121,7 +121,7 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                 {
                     'type': 'room_event',
                     'event': 'user_left',
-                    'user_id': str(self.user.id),
+                    'userId': str(self.user.id),
                 },
             )
 
@@ -233,9 +233,9 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'room_event',
                 'event': 'typing',
-                'user_id': str(self.user.id),
+                'userId': str(self.user.id),
                 'username': self.user.username,
-                'is_typing': is_typing,
+                'isTyping': is_typing,
             },
         )
 
@@ -257,7 +257,7 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                 {
                     'event': 'message_history',
                     'messages': messages,
-                    'has_more': len(messages) == limit,
+                    'hasMore': len(messages) == limit,
                     'cursor': messages[-1]['id'] if messages else None,
                 }
             )
@@ -284,11 +284,11 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                         'name': room.name,
                         'description': room.description,
                         'icon': room.icon,
-                        'room_type': room.room_type,
-                        'member_count': room.member_count,
+                        'roomType': room.room_type,
+                        'memberCount': room.member_count,
                     },
                     'messages': messages,
-                    'online_users': online_users,
+                    'onlineUsers': online_users,
                 }
             )
         )
@@ -377,24 +377,24 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _serialize_message(self, message: Message) -> dict:
-        """Serialize message for WebSocket transmission."""
+        """Serialize message for WebSocket transmission (uses camelCase for frontend)."""
         return {
             'id': str(message.id),
-            'room_id': str(message.room_id),
+            'roomId': str(message.room_id),
             'author': {
                 'id': str(message.author.id) if message.author else None,
                 'username': message.author.username if message.author else 'Unknown',
-                'avatar_url': getattr(message.author, 'avatar_url', None) if message.author else None,
+                'avatarUrl': getattr(message.author, 'avatar_url', None) if message.author else None,
             },
             'content': message.content,
-            'message_type': message.message_type,
+            'messageType': message.message_type,
             'attachments': message.attachments,
             'mentions': message.mentions,
-            'reply_to_id': str(message.reply_to_id) if message.reply_to_id else None,
-            'reaction_counts': message.reaction_counts,
-            'is_edited': message.is_edited,
-            'is_pinned': message.is_pinned,
-            'created_at': message.created_at.isoformat(),
+            'replyToId': str(message.reply_to_id) if message.reply_to_id else None,
+            'reactionCounts': message.reaction_counts,
+            'isEdited': message.is_edited,
+            'isPinned': message.is_pinned,
+            'createdAt': message.created_at.isoformat(),
         }
 
     @database_sync_to_async
@@ -421,21 +421,21 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
         return [
             {
                 'id': str(msg.id),
-                'room_id': str(msg.room_id),
+                'roomId': str(msg.room_id),
                 'author': {
                     'id': str(msg.author.id) if msg.author else None,
                     'username': msg.author.username if msg.author else 'Unknown',
-                    'avatar_url': getattr(msg.author, 'avatar_url', None) if msg.author else None,
+                    'avatarUrl': getattr(msg.author, 'avatar_url', None) if msg.author else None,
                 },
                 'content': msg.content,
-                'message_type': msg.message_type,
+                'messageType': msg.message_type,
                 'attachments': msg.attachments,
                 'mentions': msg.mentions,
-                'reply_to_id': str(msg.reply_to_id) if msg.reply_to_id else None,
-                'reaction_counts': msg.reaction_counts,
-                'is_edited': msg.is_edited,
-                'is_pinned': msg.is_pinned,
-                'created_at': msg.created_at.isoformat(),
+                'replyToId': str(msg.reply_to_id) if msg.reply_to_id else None,
+                'reactionCounts': msg.reaction_counts,
+                'isEdited': msg.is_edited,
+                'isPinned': msg.is_pinned,
+                'createdAt': msg.created_at.isoformat(),
             }
             for msg in reversed(messages)  # Reverse to get chronological order
         ]
@@ -479,7 +479,7 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
 
         key = f'community:presence:{self.room_id}'
         presence = cache.get(key, {})
-        return [{'user_id': user_id, 'username': data['username']} for user_id, data in presence.items()]
+        return [{'userId': user_id, 'username': data['username']} for user_id, data in presence.items()]
 
     async def _check_rate_limit(self) -> bool:
         """Check if user is within rate limits."""
@@ -623,9 +623,9 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'dm_event',
                 'event': 'typing',
-                'user_id': str(self.user.id),
+                'userId': str(self.user.id),
                 'username': self.user.username,
-                'is_typing': is_typing,
+                'isTyping': is_typing,
             },
         )
 
