@@ -341,46 +341,14 @@ class EmberState(TypedDict):
 # =============================================================================
 
 
-def _execute_tool_with_timeout(tool, args: dict, timeout: int = TOOL_EXECUTION_TIMEOUT):
-    """
-    Execute a tool with a timeout to prevent hung requests.
-
-    Uses concurrent.futures to run the tool in a thread pool with a timeout.
-    This ensures users don't see a spinner forever if a tool hangs.
-
-    Args:
-        tool: The LangChain tool to execute
-        args: Arguments to pass to the tool
-        timeout: Maximum execution time in seconds
-
-    Returns:
-        Tool result (dict, string, or other)
-
-    Raises:
-        TimeoutError: If the tool doesn't complete within the timeout
-        Exception: Re-raises any exception from the tool
-    """
-    from concurrent.futures import ThreadPoolExecutor
-    from concurrent.futures import TimeoutError as FuturesTimeoutError
-
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(tool.invoke, args)
-        try:
-            return future.result(timeout=timeout)
-        except FuturesTimeoutError:
-            # Cancel the future (best effort - may not actually stop execution)
-            future.cancel()
-            raise TimeoutError(f'Tool execution timed out after {timeout}s') from None
-
-
 # =============================================================================
 # State Injection for Tools
 # =============================================================================
 
 
-def tools_node(state: EmberState) -> dict:
+async def tools_node(state: EmberState) -> dict:
     """
-    Tool execution node that injects user state into tools that need it.
+    Async tool execution node that injects user state into tools that need it.
 
     This is a LangGraph node function (not ToolNode) that receives the current
     state at runtime, allowing us to inject user_id, username, and session_id
@@ -393,20 +361,26 @@ def tools_node(state: EmberState) -> dict:
     """
     from langchain_core.messages import ToolMessage as LCToolMessage
 
+    logger.info('[TOOLS_NODE] ========== ENTERING tools_node ==========')
     messages = state.get('messages', [])
+    logger.info(f'[TOOLS_NODE] Message count: {len(messages)}')
 
     # Find the last AI message with tool calls
     tool_calls_to_execute = []
     for msg in reversed(messages):
         if isinstance(msg, AIMessage) and msg.tool_calls:
             tool_calls_to_execute = msg.tool_calls
+            logger.info(f'[TOOLS_NODE] Found {len(tool_calls_to_execute)} tool calls to execute')
+            for tc in tool_calls_to_execute:
+                logger.info(f'[TOOLS_NODE] Tool call: {tc.get("name")} (id={tc.get("id")})')
             break
 
     if not tool_calls_to_execute:
+        logger.info('[TOOLS_NODE] No tool calls found, returning empty')
         return {'messages': []}
 
     # Log state for debugging
-    logger.debug(f'tools_node: user_id={state.get("user_id")}, username={state.get("username")}')
+    logger.info(f'[TOOLS_NODE] user_id={state.get("user_id")}, username={state.get("username")}')
 
     # Execute each tool with state injection
     tool_results = []
@@ -431,8 +405,8 @@ def tools_node(state: EmberState) -> dict:
             if tool.name == tool_name:
                 try:
                     logger.info(f'Executing tool: {tool_name}')
-                    # Execute with timeout to prevent hung requests
-                    tool_result = _execute_tool_with_timeout(tool, tool_args, timeout=TOOL_EXECUTION_TIMEOUT)
+                    # Execute with timeout (async, non-blocking)
+                    tool_result = await _execute_tool_with_timeout(tool, tool_args, timeout=TOOL_EXECUTION_TIMEOUT)
                     logger.info(f'Tool {tool_name} completed successfully')
                 except TimeoutError:
                     logger.error(f'Tool {tool_name} timed out after {TOOL_EXECUTION_TIMEOUT}s')
@@ -471,7 +445,9 @@ def tools_node(state: EmberState) -> dict:
             name=tool_name,
         )
         tool_results.append(tool_message)
+        logger.info(f'[TOOLS_NODE] Created ToolMessage for {tool_name} (id={tool_id})')
 
+    logger.info(f'[TOOLS_NODE] ========== EXITING tools_node with {len(tool_results)} results ==========')
     return {'messages': tool_results}
 
 
@@ -481,9 +457,10 @@ def tools_node(state: EmberState) -> dict:
 
 
 def create_agent_node(model_name: str | None = None):
-    """Create the agent node that calls the LLM with tools bound.
+    """Create the async agent node that calls the LLM with tools bound.
 
     Uses the AI gateway configuration from settings.AI_MODELS.
+    Returns an async function for non-blocking LLM calls.
     """
     # Get model from AI gateway config if not specified
     resolved_model = model_name or get_default_model()
@@ -491,13 +468,26 @@ def create_agent_node(model_name: str | None = None):
     llm = ChatOpenAI(model=resolved_model, temperature=0.7)
     llm_with_tools = llm.bind_tools(EMBER_TOOLS)
 
-    def agent_node(state: EmberState) -> dict:
-        """Process messages and decide next action."""
+    async def agent_node(state: EmberState) -> dict:
+        """Process messages and decide next action (async)."""
+        logger.info('[AGENT_NODE] ========== ENTERING agent_node ==========')
         messages = state.get('messages', [])
+        logger.info(f'[AGENT_NODE] Message count: {len(messages)}')
+
+        # Log message types for debugging
+        for i, msg in enumerate(messages[-5:]):  # Last 5 messages
+            msg_type = type(msg).__name__
+            has_tool_calls = hasattr(msg, 'tool_calls') and msg.tool_calls
+            content_preview = str(msg.content)[:100] if hasattr(msg, 'content') else 'N/A'
+            logger.info(
+                f'[AGENT_NODE] Msg[-{len(messages)-i}]: {msg_type}, '
+                f'tool_calls={has_tool_calls}, content={content_preview}...'
+            )
 
         # Determine which system prompt to use
         is_onboarding = state.get('is_onboarding', False)
         base_prompt = EMBER_FULL_ONBOARDING_PROMPT if is_onboarding else EMBER_SYSTEM_PROMPT
+        logger.info(f'[AGENT_NODE] is_onboarding={is_onboarding}')
 
         # Inject member context for personalization
         member_context = state.get('member_context')
@@ -510,10 +500,20 @@ def create_agent_node(model_name: str | None = None):
 
         # Build full message list with system prompt
         full_messages = [SystemMessage(content=system_prompt)] + list(messages)
+        logger.info(f'[AGENT_NODE] Calling LLM with {len(full_messages)} messages')
 
-        # Call LLM
-        response = llm_with_tools.invoke(full_messages)
+        # Call LLM (async - non-blocking)
+        response = await llm_with_tools.ainvoke(full_messages)
 
+        # Log response details
+        has_tool_calls = hasattr(response, 'tool_calls') and response.tool_calls
+        response_preview = str(response.content)[:200] if hasattr(response, 'content') else 'N/A'
+        logger.info(f'[AGENT_NODE] LLM response: tool_calls={has_tool_calls}, content={response_preview}...')
+        if has_tool_calls:
+            for tc in response.tool_calls:
+                logger.info(f'[AGENT_NODE] Tool call requested: {tc.get("name")} (id={tc.get("id")})')
+
+        logger.info('[AGENT_NODE] ========== EXITING agent_node ==========')
         return {'messages': [response]}
 
     return agent_node
@@ -744,6 +744,7 @@ async def _track_ember_usage(
         return
 
     try:
+        from asgiref.sync import sync_to_async
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
@@ -751,7 +752,8 @@ async def _track_ember_usage(
 
         feature = 'ember_onboarding' if is_onboarding else 'ember_chat'
 
-        AIUsageTracker.track_usage(
+        # Wrap sync Django ORM call for async context
+        await sync_to_async(AIUsageTracker.track_usage)(
             user=user,
             feature=feature,
             provider='openai',
@@ -800,29 +802,36 @@ async def _execute_tool_with_timeout(
     tool,
     tool_args: dict,
     timeout: float = TOOL_EXECUTION_TIMEOUT,
-) -> dict:
+):
     """
     Execute a tool with timeout protection.
 
-    Prevents a single slow tool from hanging the entire request.
-    Critical for maintaining responsiveness at scale.
+    Runs the sync tool.invoke() in an executor to avoid blocking the event loop,
+    with a timeout to prevent hung requests.
+
+    Args:
+        tool: The LangChain tool to execute
+        tool_args: Arguments to pass to the tool
+        timeout: Maximum execution time in seconds
+
+    Returns:
+        Raw tool result (dict, string, or other)
+
+    Raises:
+        TimeoutError: If tool doesn't complete within timeout
+        Exception: Re-raises any exception from the tool
     """
     loop = asyncio.get_event_loop()
 
     try:
         # Run sync tool in executor with timeout
-        result = await asyncio.wait_for(
+        return await asyncio.wait_for(
             loop.run_in_executor(None, tool.invoke, tool_args),
             timeout=timeout,
         )
-        return {'success': True, 'result': result}
     except TimeoutError:
-        return {
-            'success': False,
-            'error': f'Tool execution timed out after {timeout}s',
-        }
-    except Exception as e:
-        return {'success': False, 'error': str(e)}
+        raise TimeoutError(f'Tool execution timed out after {timeout}s') from None
+    # Let other exceptions propagate naturally
 
 
 async def stream_ember_response(
@@ -957,9 +966,20 @@ async def stream_ember_response(
                     }
 
                     # Stream agent execution with astream_events
+                    logger.info('[STREAM] ========== Starting astream_events ==========')
+                    event_count = 0
                     async for event in agent.astream_events(input_state, config_with_callbacks, version='v1'):
                         kind = event['event']
                         run_id = event.get('run_id', '')
+                        event_count += 1
+
+                        # Log all event types for debugging
+                        if kind not in ('on_chat_model_stream',):  # Skip noisy token events
+                            event_name = event.get('name', '')
+                            run_id_short = run_id[:8] if run_id else 'none'
+                            logger.info(
+                                f'[STREAM] Event #{event_count}: {kind} ' f'name={event_name} (run_id={run_id_short})'
+                            )
 
                         # Stream LLM tokens
                         if kind == 'on_chat_model_stream':
@@ -1038,7 +1058,11 @@ async def stream_ember_response(
 
                         # Reset stream tracking when entering new nodes
                         elif kind == 'on_chain_start':
+                            chain_name = event.get('name', 'unknown')
+                            logger.info(f'[STREAM] on_chain_start: {chain_name} - resetting current_stream_run_id')
                             current_stream_run_id = None
+
+                    logger.info(f'[STREAM] ========== Finished astream_events ({event_count} total events) ==========')
 
         # Track usage on successful completion (after context managers exit)
         latency_ms = int((time.time() - start_time) * 1000)

@@ -88,24 +88,24 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
 
   // Local state for editing social links
   const [socialLinkEdits, setSocialLinkEdits] = useState<SocialLinksUpdate>({
-    websiteUrl: user.website_url || '',
-    githubUrl: user.github_url || '',
-    linkedinUrl: user.linkedin_url || '',
-    twitterUrl: user.twitter_url || '',
-    youtubeUrl: user.youtube_url || '',
-    instagramUrl: user.instagram_url || '',
+    websiteUrl: user.websiteUrl || '',
+    githubUrl: user.githubUrl || '',
+    linkedinUrl: user.linkedinUrl || '',
+    twitterUrl: user.twitterUrl || '',
+    youtubeUrl: user.youtubeUrl || '',
+    instagramUrl: user.instagramUrl || '',
   });
 
   // Combine user's social links with custom links (for display in non-edit mode)
   const userLinks: LinkItem[] = [];
 
   // Add user's social links if they exist
-  if (user.website_url) userLinks.push({ label: 'Website', url: user.website_url, icon: 'website' });
-  if (user.github_url) userLinks.push({ label: 'GitHub', url: user.github_url, icon: 'github' });
-  if (user.linkedin_url) userLinks.push({ label: 'LinkedIn', url: user.linkedin_url, icon: 'linkedin' });
-  if (user.twitter_url) userLinks.push({ label: 'Twitter', url: user.twitter_url, icon: 'twitter' });
-  if (user.youtube_url) userLinks.push({ label: 'YouTube', url: user.youtube_url, icon: 'youtube' });
-  if (user.instagram_url) userLinks.push({ label: 'Instagram', url: user.instagram_url, icon: 'instagram' });
+  if (user.websiteUrl) userLinks.push({ label: 'Website', url: user.websiteUrl, icon: 'website' });
+  if (user.githubUrl) userLinks.push({ label: 'GitHub', url: user.githubUrl, icon: 'github' });
+  if (user.linkedinUrl) userLinks.push({ label: 'LinkedIn', url: user.linkedinUrl, icon: 'linkedin' });
+  if (user.twitterUrl) userLinks.push({ label: 'Twitter', url: user.twitterUrl, icon: 'twitter' });
+  if (user.youtubeUrl) userLinks.push({ label: 'YouTube', url: user.youtubeUrl, icon: 'youtube' });
+  if (user.instagramUrl) userLinks.push({ label: 'Instagram', url: user.instagramUrl, icon: 'instagram' });
 
   // Combine with custom links from content
   const customLinks = content?.links || [];

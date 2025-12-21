@@ -259,8 +259,8 @@ export function GlobalSearchModal() {
                   startIndex={0}
                   onResultClick={handleResultClick}
                   renderResult={(result: ProjectSearchResult, isSelected) => {
-                    const toolNames = result.toolNames || (result as any).tool_names || [];
-                    const imageUrl = result.featuredImageUrl || (result as any).featured_image_url;
+                    const toolNames = result.toolNames || [];
+                    const imageUrl = result.featuredImageUrl;
                     return (
                       <div className="flex items-center gap-3 min-w-0">
                         {imageUrl ? (
@@ -303,9 +303,9 @@ export function GlobalSearchModal() {
                   startIndex={filteredResults.projects.length}
                   onResultClick={handleResultClick}
                   renderResult={(result: ToolSearchResult, isSelected) => {
-                    const logoUrl = result.logoUrl || (result as any).logo_url;
-                    const title = result.title || (result as any).name;
-                    const hasFreeTier = result.hasFreeTier || (result as any).has_free_tier;
+                    const logoUrl = result.logoUrl;
+                    const title = result.title || result.name;
+                    const hasFreeTier = result.hasFreeTier;
                     return (
                       <div className="flex items-center gap-3 min-w-0">
                         {logoUrl ? (
@@ -378,9 +378,9 @@ export function GlobalSearchModal() {
                   }
                   onResultClick={handleResultClick}
                   renderResult={(result: UserSearchResult, isSelected) => {
-                    const avatarUrl = result.avatarUrl || (result as any).avatar_url;
-                    const fullName = result.fullName || (result as any).full_name;
-                    const projectCount = result.projectCount || (result as any).project_count || 0;
+                    const avatarUrl = result.avatarUrl;
+                    const fullName = result.fullName;
+                    const projectCount = result.projectCount || 0;
                     const username = result.username || 'user';
                     return (
                       <div className="flex items-center gap-3 min-w-0">

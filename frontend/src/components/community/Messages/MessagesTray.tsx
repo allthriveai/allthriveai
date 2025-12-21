@@ -5,18 +5,21 @@
  * Shows thread list on the left, active conversation on the right.
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { XMarkIcon, ArrowLeftIcon, MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { useMessagesTray } from '@/context/MessagesTrayContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useDMThread } from '@/hooks/useDMThread';
-import { getDMThreads } from '@/services/community';
+import { useDMSuggestions } from '@/hooks/useDMSuggestions';
+import { getDMThreads, createDMThread } from '@/services/community';
+import { globalSearch } from '@/services/globalSearch';
 import { DMThreadList } from './DMThreadList';
 import { MessageBubble } from '../Room/MessageBubble';
 import { MessageComposer } from '../Room/MessageComposer';
 import type { DirectMessageThread } from '@/types/community';
+import type { UserSearchResult } from '@/types/search';
 
 export function MessagesTray() {
   const { isOpen, selectedThreadId, closeMessagesTray, selectThread } = useMessagesTray();
@@ -110,7 +113,7 @@ export function MessagesTray() {
               <div className="flex items-center gap-2">
                 <FontAwesomeIcon icon={faEnvelope} className="text-cyan-400" />
                 <h2 className="text-lg font-semibold text-white">
-                  {selectedThreadId ? 'Conversation' : 'Messages'}
+                  {selectedThreadId ? 'Conversation' : 'My Messages'}
                 </h2>
               </div>
             </div>
@@ -150,7 +153,7 @@ export function MessagesTray() {
   );
 }
 
-// Thread List View
+// Thread List View with Search
 function ThreadListView({
   threads,
   isLoading,
@@ -160,6 +163,69 @@ function ThreadListView({
   isLoading: boolean;
   onSelectThread: (threadId: string) => void;
 }) {
+  const [isNewMessageMode, setIsNewMessageMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const { data: suggestions, isLoading: isLoadingSuggestions } = useDMSuggestions(6);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await globalSearch({
+          query: searchQuery,
+          types: ['users'],
+          limit: 5,
+        });
+        setSearchResults(response.results.users || []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Handle clicking on a user to start a conversation
+  const handleUserClick = useCallback(async (userId: number | string) => {
+    if (isCreatingThread) return;
+
+    setIsCreatingThread(true);
+    try {
+      const numericId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+      const thread = await createDMThread({
+        participantIds: [numericId],
+      });
+      setIsNewMessageMode(false);
+      setSearchQuery('');
+      onSelectThread(thread.id);
+    } catch (error) {
+      console.error('Failed to create DM thread:', error);
+    } finally {
+      setIsCreatingThread(false);
+    }
+  }, [isCreatingThread, onSelectThread]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -168,12 +234,171 @@ function ThreadListView({
     );
   }
 
+  // New message mode - show search and suggestions
+  if (isNewMessageMode || threads.length === 0) {
+    return (
+      <div className="h-full flex flex-col">
+        {/* Header with back button (only if has threads) */}
+        {threads.length > 0 && (
+          <div className="flex-shrink-0 px-4 py-2 border-b border-white/10">
+            <button
+              onClick={() => {
+                setIsNewMessageMode(false);
+                setSearchQuery('');
+              }}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              <ArrowLeftIcon className="w-4 h-4" />
+              Back to conversations
+            </button>
+          </div>
+        )}
+
+        {/* Search Input */}
+        <div className="flex-shrink-0 p-4">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for someone to message..."
+              className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
+              autoFocus
+            />
+            {isSearching && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {/* Search Results */}
+          {searchQuery.trim() && searchResults.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                Search Results
+              </h3>
+              <div className="space-y-2">
+                {searchResults.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => handleUserClick(user.id)}
+                    disabled={isCreatingThread}
+                    className="w-full flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all disabled:opacity-50"
+                  >
+                    {user.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.username}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 flex items-center justify-center">
+                        <span className="text-white font-medium">
+                          {user.username.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 text-left">
+                      <p className="text-white font-medium">{user.fullName || user.username}</p>
+                      <p className="text-sm text-slate-400">@{user.username}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Search Results */}
+          {searchQuery.trim() && !isSearching && searchResults.length === 0 && (
+            <div className="text-center py-4">
+              <p className="text-slate-400 text-sm">No users found for "{searchQuery}"</p>
+            </div>
+          )}
+
+          {/* Suggested Users (when not searching) */}
+          {!searchQuery.trim() && (
+            <>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                Suggested
+              </h3>
+              {isLoadingSuggestions ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : suggestions && suggestions.length > 0 ? (
+                <div className="space-y-2">
+                  {suggestions.map((user) => (
+                    <button
+                      key={user.userId}
+                      onClick={() => handleUserClick(user.userId)}
+                      disabled={isCreatingThread}
+                      className="w-full flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all disabled:opacity-50"
+                    >
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.username}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30 flex items-center justify-center">
+                          <span className="text-white font-medium">
+                            {user.username.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex-1 text-left">
+                        <p className="text-white font-medium">{user.displayName || user.username}</p>
+                        <p className="text-sm text-slate-400">@{user.username}</p>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-full text-slate-400 bg-slate-500/10">
+                        {user.matchReason}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  Search for someone to start a conversation
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Normal thread list view
   return (
-    <div className="h-full overflow-y-auto">
-      <DMThreadList
-        threads={threads}
-        onThreadSelect={onSelectThread}
-      />
+    <div className="h-full flex flex-col">
+      {/* New Message Button */}
+      <div className="flex-shrink-0 p-3 border-b border-white/10">
+        <button
+          onClick={() => setIsNewMessageMode(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 text-cyan-400 rounded-xl transition-all"
+        >
+          <PlusIcon className="w-5 h-5" />
+          New Message
+        </button>
+      </div>
+
+      {/* Thread List */}
+      <div className="flex-1 overflow-y-auto">
+        <DMThreadList
+          threads={threads}
+          onThreadSelect={onSelectThread}
+        />
+      </div>
     </div>
   );
 }

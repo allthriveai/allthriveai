@@ -8,7 +8,9 @@ import {
   RocketLaunchIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
+import { useMessagesTrayOptional } from '@/context/MessagesTrayContext';
 import type { User } from '@/types/models';
 
 interface UserMenuProps {
@@ -22,6 +24,7 @@ export function UserMenu({ user }: UserMenuProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const messagesTray = useMessagesTrayOptional();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -55,6 +58,18 @@ export function UserMenu({ user }: UserMenuProps) {
         setIsOpen(false);
       },
     },
+    ...(messagesTray
+      ? [
+          {
+            label: 'My Messages',
+            icon: EnvelopeIcon,
+            onClick: () => {
+              messagesTray.openMessagesTray();
+              setIsOpen(false);
+            },
+          },
+        ]
+      : []),
     {
       label: 'Account Settings',
       onClick: () => {

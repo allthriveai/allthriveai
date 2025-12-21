@@ -98,9 +98,9 @@ export interface GallerySectionContent {
 
 export interface VideoSectionContent {
   url: string;               // Watch URL (e.g., youtube.com/watch?v=...) or direct video URL (S3/MinIO)
-  embed_url?: string;        // Embed URL (e.g., youtube.com/embed/...)
+  embedUrl?: string;         // Embed URL (e.g., youtube.com/embed/...)
   platform: 'youtube' | 'vimeo' | 'loom' | 'direct' | 'other';
-  video_id: string;          // Platform-specific video ID (empty for direct uploads)
+  videoId: string;           // Platform-specific video ID (empty for direct uploads)
   thumbnail?: string;        // Video thumbnail URL
   title?: string;            // Optional section title
   filename?: string;         // Original filename (for direct uploads)

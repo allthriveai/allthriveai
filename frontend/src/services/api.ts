@@ -14,6 +14,11 @@
  *
  * ESLint will warn about snake_case in type properties.
  * See: eslint.config.js → @typescript-eslint/naming-convention
+ *
+ * EXCEPTIONS:
+ * - The `content` field in Project requests is skipped (backend expects camelCase)
+ * - WebSocket messages are NOT transformed (see useIntelligentChat.ts)
+ * - URL query parameters must be manually converted (use keysToSnake)
  */
 
 import axios from 'axios';

@@ -271,7 +271,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       setChatContext('default');
       setAboutOpen(false);
       setEventsOpen(false);
-    } else if (menuItem === 'Messages') {
+    } else if (menuItem === 'My Messages') {
       // Open messages tray
       messagesTray?.openMessagesTray();
     }

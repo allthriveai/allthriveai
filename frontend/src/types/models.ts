@@ -285,11 +285,11 @@ export interface ProjectContent {
   // TL;DR section styling
   tldrBgColor?: string;
   // Game teaser fields (for game type projects)
-  game_url?: string; // URL to the game (e.g., /play/context-snake)
-  game_id?: string; // Game ID from games config
+  gameUrl?: string; // URL to the game (e.g., /play/context-snake)
+  gameId?: string; // Game ID from games config
   difficulty?: string; // Game difficulty level
-  learning_outcomes?: string[]; // What users will learn
-  topic_tags?: string[]; // Topic tags for the game
+  learningOutcomes?: string[]; // What users will learn
+  topicTags?: string[]; // Topic tags for the game
 }
 
 // Base block interface

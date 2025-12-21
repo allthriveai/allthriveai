@@ -94,7 +94,7 @@ export function MessageBubble({ message, isOwn, onReact }: MessageProps) {
         )}
 
         {/* Reactions */}
-        {Object.keys(message.reactionCounts).length > 0 && (
+        {message.reactionCounts && Object.keys(message.reactionCounts).length > 0 && (
           <div className={`flex gap-1 mt-1 ${isOwn ? 'justify-end' : ''}`}>
             {Object.entries(message.reactionCounts).map(([emoji, count]) => (
               <button

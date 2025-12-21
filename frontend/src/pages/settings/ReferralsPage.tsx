@@ -64,26 +64,9 @@ export default function ReferralsPage() {
           api.get('/me/referrals/')
         ]);
 
-        // Convert snake_case to camelCase
-        const codeData = codeResponse.data;
-        setReferralCode({
-          id: codeData.id,
-          code: codeData.code,
-          referralUrl: codeData.referral_url,
-          usesCount: codeData.uses_count,
-          maxUses: codeData.max_uses,
-          isValid: codeData.is_valid,
-          createdAt: codeData.created_at,
-        });
-
-        const statsData = statsResponse.data;
-        setReferralStats({
-          totalReferrals: statsData.total_referrals,
-          pendingReferrals: statsData.pending_referrals,
-          completedReferrals: statsData.completed_referrals,
-          rewardedReferrals: statsData.rewarded_referrals,
-          totalUses: statsData.total_uses,
-        });
+        // API interceptor automatically converts snake_case → camelCase
+        setReferralCode(codeResponse.data);
+        setReferralStats(statsResponse.data);
 
         // Process referrals list - handle both array and paginated responses
         const data = referralsResponse.data;

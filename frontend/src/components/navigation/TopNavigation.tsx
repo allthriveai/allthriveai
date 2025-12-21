@@ -19,7 +19,6 @@ import { UserMenu } from './UserMenu';
 import { ActiveQuestIndicator } from '@/components/side-quests/ActiveQuestIndicator';
 import { GlobalSearchModal } from '@/components/search/GlobalSearchModal';
 import { useMessagesTrayOptional } from '@/context/MessagesTrayContext';
-import { PointsBadge } from './PointsBadge';
 
 interface TopNavigationProps {
   onMenuClick: (menuItem: string) => void;
@@ -144,9 +143,6 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
                 />
               )}
 
-              {/* Points Badge - Shows user's total points */}
-              <PointsBadge />
-
               {/* Search Button - Hidden on mobile, in hamburger menu */}
               <button
                 onClick={openSearch}
@@ -184,8 +180,8 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
                 <button
                   onClick={() => messagesTray.openMessagesTray()}
                   className="hidden sm:block p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300 hover:scale-105"
-                  aria-label="Open messages"
-                  title="Messages"
+                  aria-label="Open my messages"
+                  title="My Messages"
                 >
                   <EnvelopeIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
                 </button>

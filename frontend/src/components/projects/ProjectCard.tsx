@@ -103,7 +103,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   const [isDismissing, setIsDismissing] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   // Game projects link directly to the game URL
-  const gameUrl = project.type === 'game' ? project.content?.game_url : null;
+  const gameUrl = project.type === 'game' ? project.content?.gameUrl : null;
   const projectUrl = gameUrl || `/${project.username}/${project.slug}`;
 
   // Check if user is admin (includes superusers via isAdminRole)

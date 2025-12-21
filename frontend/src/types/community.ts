@@ -79,7 +79,7 @@ export interface Message {
   attachments: MessageAttachment[];
   mentions: string[];
   replyTo: ReplyPreview | null;
-  reactionCounts: Record<string, number>;
+  reactionCounts?: Record<string, number>;
   isEdited: boolean;
   isPinned: boolean;
   createdAt: string;

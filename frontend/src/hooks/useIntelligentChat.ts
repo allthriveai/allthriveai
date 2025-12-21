@@ -25,6 +25,14 @@ const MAX_RECONNECT_DELAY = 30000; // 30 seconds
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 const CONNECTION_TIMEOUT = 10000; // 10 seconds
 
+/**
+ * WebSocket Message Interface
+ *
+ * NOTE: This interface intentionally uses snake_case for field names.
+ * WebSocket messages bypass the axios API interceptor that normally
+ * converts snake_case ↔ camelCase. The Django backend sends snake_case
+ * directly over the WebSocket connection.
+ */
 export interface WebSocketMessage {
   event: string;
   conversation_id?: string;

@@ -22,115 +22,49 @@ import type {
 
 /**
  * Get current user's tier status and recent point activities
+ * Note: API interceptor automatically converts snake_case → camelCase
  */
 export async function getMyThriveCircleStatus(): Promise<ThriveCircleStatus> {
   const response = await api.get('/me/thrive-circle/my_status/');
 
-  // Convert snake_case to camelCase
   return {
-    tierStatus: {
-      ...response.data,
-      tierDisplay: response.data.tier_display,
-      totalPoints: response.data.total_points,
-      level: response.data.level,
-      tier: response.data.tier,
-      // Progress fields
-      pointsToNextLevel: response.data.points_to_next_level,
-      pointsToNextTier: response.data.points_to_next_tier,
-      // Phase 2: Streak fields
-      currentStreakDays: response.data.current_streak_days,
-      longestStreakDays: response.data.longest_streak_days,
-      lastActivityDate: response.data.last_activity_date,
-      // Phase 2: Lifetime stats
-      lifetimeQuizzesCompleted: response.data.lifetime_quizzes_completed,
-      lifetimeProjectsCreated: response.data.lifetime_projects_created,
-      lifetimeSideQuestsCompleted: response.data.lifetime_side_quests_completed,
-      lifetimeCommentsPosted: response.data.lifetime_comments_posted,
-    },
-    recentActivities: response.data.recent_activities.map((activity: any) => ({
-      ...activity,
-      activityType: activity.activity_type,
-      activityTypeDisplay: activity.activity_type_display,
-      tierAtTime: activity.tier_at_time,
-      createdAt: activity.created_at,
-    })),
+    tierStatus: response.data,
+    recentActivities: response.data.recentActivities,
   };
 }
 
 /**
  * Award points to the current user
+ * Note: API interceptor automatically converts snake_case ↔ camelCase
  */
 export async function awardPoints(request: AwardPointsRequest): Promise<AwardPointsResponse> {
   const response = await api.post('/me/thrive-circle/award_points/', {
     amount: request.amount,
-    activity_type: request.activityType,
+    activityType: request.activityType,
     description: request.description || '',
   });
 
-  // Convert snake_case to camelCase
-  return {
-    tierStatus: {
-      ...response.data.tier_status,
-      tierDisplay: response.data.tier_status.tier_display,
-      totalPoints: response.data.tier_status.total_points,
-      level: response.data.tier_status.level,
-      createdAt: response.data.tier_status.created_at,
-      updatedAt: response.data.tier_status.updated_at,
-    },
-    pointActivity: {
-      ...response.data.point_activity,
-      activityType: response.data.point_activity.activity_type,
-      activityTypeDisplay: response.data.point_activity.activity_type_display,
-      tierAtTime: response.data.point_activity.tier_at_time,
-      createdAt: response.data.point_activity.created_at,
-    },
-    tierUpgraded: response.data.tier_upgraded,
-    oldTier: response.data.old_tier,
-    newTier: response.data.new_tier,
-  };
+  return response.data;
 }
 
 /**
  * Get all point activities for the current user
+ * Note: API interceptor automatically converts snake_case → camelCase
  */
 export async function getMyPointActivities(): Promise<PointActivity[]> {
   const response = await api.get('/me/point-activities/');
 
   // Handle paginated response
-  const activities = response.data.results || response.data;
-
-  // Convert snake_case to camelCase
-  return activities.map((activity: any) => ({
-    ...activity,
-    activityType: activity.activity_type,
-    activityTypeDisplay: activity.activity_type_display,
-    tierAtTime: activity.tier_at_time,
-    createdAt: activity.created_at,
-  }));
+  return response.data.results || response.data;
 }
 
 /**
  * Get weekly goals for the current user (Phase 2)
+ * Note: API interceptor automatically converts snake_case → camelCase
  */
 export async function getMyWeeklyGoals(): Promise<WeeklyGoal[]> {
   const response = await api.get('/me/thrive-circle/weekly_goals/');
-
-  // Convert snake_case to camelCase
-  return response.data.map((goal: any) => ({
-    ...goal,
-    goalType: goal.goal_type,
-    goalTypeDisplay: goal.goal_type_display,
-    weekStart: goal.week_start,
-    weekEnd: goal.week_end,
-    currentProgress: goal.current_progress,
-    targetProgress: goal.target_progress,
-    progressPercentage: goal.progress_percentage,
-    isCompleted: goal.is_completed,
-    completedAt: goal.completed_at,
-    pointsReward: goal.points_reward,
-    createdAt: goal.created_at,
-    updatedAt: goal.updated_at,
-  }));
+  return response.data;
 }
 
 /**

@@ -152,6 +152,10 @@ export function useDMThread(threadId: string | null): UseDMThreadReturn {
             case 'new_message': {
               const msgEvent = data as NewMessageEvent;
               setMessages((prev) => {
+                // Deduplicate - don't add if message already exists
+                if (prev.some((m) => m.id === msgEvent.message.id)) {
+                  return prev;
+                }
                 const newMessages = [...prev, msgEvent.message];
                 return newMessages.slice(-MAX_MESSAGES);
               });
@@ -258,25 +262,40 @@ export function useDMThread(threadId: string | null): UseDMThreadReturn {
     );
   }, []);
 
+  // Track current threadId to prevent duplicate connections
+  const currentThreadIdRef = useRef<string | null>(null);
+
   // Load thread info and connect when threadId changes
   useEffect(() => {
-    if (threadId && isAuthenticated) {
-      loadThreadInfo();
-      connect();
+    // Skip if same thread or already connecting
+    if (!threadId || !isAuthenticated) {
+      return;
     }
 
-    return () => {
-      cleanup();
-    };
-  }, [threadId, isAuthenticated, connect, cleanup, loadThreadInfo]);
+    // Prevent duplicate connections for the same thread
+    if (currentThreadIdRef.current === threadId && wsRef.current) {
+      return;
+    }
 
-  // Reset state when thread changes
-  useEffect(() => {
+    // Reset state for new thread
     setMessages([]);
     setTypingUsers([]);
     setError(null);
     setThreadInfo(null);
-  }, [threadId]);
+
+    // Update current thread ref
+    currentThreadIdRef.current = threadId;
+
+    // Load info and connect
+    loadThreadInfo();
+    connect();
+
+    return () => {
+      cleanup();
+      currentThreadIdRef.current = null;
+    };
+
+  }, [threadId, isAuthenticated]);
 
   return {
     messages,

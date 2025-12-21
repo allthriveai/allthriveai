@@ -70,8 +70,8 @@ export const getMenuSections = (
     items: [
       { label: 'Your Thrive Circle', path: '/thrive-circle', icon: faUserGroup },
       { label: 'The Lounge', path: '/lounge', icon: faCouch },
-      { label: 'Messages', onClick: () => onMenuClick('Messages'), icon: faEnvelope },
-      { label: 'Perks', path: '/perks', icon: faGift },
+      { label: 'My Messages', onClick: () => onMenuClick('My Messages'), icon: faEnvelope },
+      { label: 'Membership Perks', path: '/perks', icon: faGift },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar'), icon: faCalendar },
     ],
   },
@@ -104,8 +104,8 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
     username ? path === `/${username}` && (search.includes('tab=playground') || !search.includes('tab=')) : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',
   'The Lounge': (path) => path === '/lounge' || path.startsWith('/lounge/'),
-  'Messages': (path) => path === '/messages' || path.startsWith('/messages/'),
-  'Perks': (path) => path === '/perks',
+  'My Messages': (path) => path === '/messages' || path.startsWith('/messages/'),
+  'Membership Perks': (path) => path === '/perks',
   'Marketplace': (path) => path === '/marketplace',
   'Tool Directory': (path) => path === '/tools',
 };

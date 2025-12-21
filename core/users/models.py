@@ -50,6 +50,23 @@ class User(AbstractUser):
     tagline = models.CharField(max_length=150, blank=True, help_text='Short headline or professional title')
     location = models.CharField(max_length=100, blank=True, help_text='City, state/country or "Remote"')
     pronouns = models.CharField(max_length=50, blank=True, help_text='e.g. she/her, he/him, they/them')
+
+    # Agent personality fields (only used for role='agent')
+    personality_prompt = models.TextField(
+        blank=True,
+        help_text='System prompt defining the agent personality for LLM interactions',
+    )
+    signature_phrases = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of characteristic phrases this agent uses',
+    )
+    agent_interests = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Topics this agent is interested in (for agents only)',
+    )
+
     current_status = models.CharField(
         max_length=200, blank=True, help_text="Current availability or what you're working on"
     )

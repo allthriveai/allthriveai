@@ -49,7 +49,7 @@ export function LearningTeaserCard({
   onNavigate,
   compact = false,
 }: LearningTeaserCardProps) {
-  const imageUrl = item.featured_image_url || item.thumbnail;
+  const imageUrl = item.featuredImageUrl || item.thumbnail;
   const hasImage = !!imageUrl;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -82,11 +82,11 @@ export function LearningTeaserCard({
           )}
 
           {/* Small author avatar */}
-          {item.author_avatar_url && (
+          {item.authorAvatarUrl && (
             <div className="absolute bottom-1.5 left-1.5">
               <img
-                src={item.author_avatar_url}
-                alt={item.author_username || 'Author'}
+                src={item.authorAvatarUrl}
+                alt={item.authorUsername || 'Author'}
                 className="w-6 h-6 rounded-full border border-white/60 object-cover"
               />
             </div>

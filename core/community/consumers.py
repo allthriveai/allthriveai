@@ -682,5 +682,11 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
             },
             'content': message.content,
             'messageType': message.message_type,
+            'attachments': message.attachments,
+            'mentions': message.mentions,
+            'replyToId': str(message.reply_to_id) if message.reply_to_id else None,
+            'reactionCounts': message.reaction_counts,
+            'isEdited': message.is_edited,
+            'isPinned': message.is_pinned,
             'createdAt': message.created_at.isoformat(),
         }

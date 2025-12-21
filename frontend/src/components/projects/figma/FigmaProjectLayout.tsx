@@ -96,10 +96,10 @@ export function FigmaProjectLayout({ project }: FigmaProjectLayoutProps) {
       </div>
 
       {/* Thumbnail */}
-      {file.thumbnail_url && (
+      {file.thumbnailUrl && (
         <div className="mb-12">
           <img
-            src={file.thumbnail_url}
+            src={file.thumbnailUrl}
             alt={`${file.name} thumbnail`}
             className="w-full rounded-lg shadow-lg"
           />

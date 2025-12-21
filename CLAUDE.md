@@ -144,6 +144,187 @@ cd frontend && npm test                      # Run tests
 - **Cache/Queue**: Redis (via Docker)
 - **Design System**: Neon Glass aesthetic (see `/styleguide-neon`)
 
+## User Model Reference
+
+**Key facts about the User model (`core/users/models.py`):**
+
+- **IDs are integers** (auto-increment), not UUIDs
+- **Display name**: Use `user.get_full_name()` method, NOT `user.display_name` (doesn't exist)
+- **Username**: Always lowercase, used in URL paths
+- **Tiers**: `seedling`, `sprout`, `blossom`, `bloom`, `evergreen`, `curation` (AI agents)
+- **Roles**: `explorer`, `learner`, `expert`, `creator`, `mentor`, `patron`, `admin`, `agent`, `vendor`
+
+```python
+# ✅ CORRECT
+display_name = user.get_full_name() or user.username
+
+# ❌ WRONG - attribute doesn't exist
+display_name = user.display_name
+```
+
+**Points/Gamification:**
+```python
+# ✅ CORRECT - Use the method (handles race conditions)
+user.add_points(amount=10, activity_type='project_like', description='Liked a project')
+
+# ❌ WRONG - Never update directly
+user.total_points += 10
+user.save()
+```
+
+## Serializer Patterns
+
+**Common patterns in DRF serializers:**
+
+```python
+# Use minimal serializers for nested relationships
+class ProjectSerializer(serializers.ModelSerializer):
+    creator = UserMinimalSerializer(read_only=True)  # Not full UserSerializer
+
+    # Write with ID, read with nested object
+    category_id = serializers.PrimaryKeyRelatedField(write_only=True)
+    category = CategorySerializer(read_only=True)
+
+    # M2M: *_ids for write, * for read
+    tag_ids = serializers.ListField(write_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+```
+
+**N+1 Prevention:**
+```python
+# In ViewSet.get_queryset()
+def get_queryset(self):
+    return Project.objects.select_related('creator', 'category').prefetch_related('tags')
+```
+
+## API Conventions: snake_case vs camelCase
+
+**CRITICAL: The frontend expects camelCase, the backend uses snake_case.**
+
+### REST API (Automatic Conversion)
+- Django serializers use `snake_case` field names
+- Axios interceptors automatically convert between formats:
+  - Request: `camelCase` → `snake_case`
+  - Response: `snake_case` → `camelCase`
+- **No manual conversion needed** for REST endpoints
+
+### WebSocket Messages (Manual Conversion Required)
+- WebSocket messages **bypass axios interceptors**
+- You **must manually use camelCase** in WebSocket consumer responses
+- This applies to all `consumers.py` files
+
+**Correct WebSocket serialization:**
+```python
+# ✅ CORRECT - Use camelCase for WebSocket responses
+{
+    'userId': str(user.id),
+    'avatarUrl': user.avatar_url,
+    'createdAt': message.created_at.isoformat(),
+    'messageType': message.message_type,
+    'isTyping': is_typing,
+    'roomId': str(room.id),
+    'memberCount': room.member_count,
+    'onlineUsers': online_users,
+    'hasMore': has_more,
+    'reactionCounts': reaction_counts,
+    'isEdited': is_edited,
+    'isPinned': is_pinned,
+    'replyToId': str(reply_to_id) if reply_to_id else None,
+}
+
+# ❌ WRONG - snake_case will break frontend
+{
+    'user_id': str(user.id),
+    'avatar_url': user.avatar_url,
+    'created_at': message.created_at.isoformat(),
+}
+```
+
+**Common fields that need conversion:**
+| Backend (snake_case) | Frontend (camelCase) |
+|---------------------|---------------------|
+| `user_id` | `userId` |
+| `avatar_url` | `avatarUrl` |
+| `created_at` | `createdAt` |
+| `message_type` | `messageType` |
+| `is_typing` | `isTyping` |
+| `room_id` | `roomId` |
+| `member_count` | `memberCount` |
+| `online_users` | `onlineUsers` |
+| `has_more` | `hasMore` |
+| `reaction_counts` | `reactionCounts` |
+| `is_edited` | `isEdited` |
+| `is_pinned` | `isPinned` |
+| `reply_to_id` | `replyToId` |
+| `room_type` | `roomType` |
+| `display_name` | `displayName` |
+
+### Django Channels Group Names
+- Group names must use alphanumerics, hyphens, underscores, or periods only
+- **No colons allowed** in group names
+- Use dots as namespace separators: `community.room.{id}` not `community:room:{id}`
+
+## Frontend TypeScript Conventions
+
+**Type definitions location:** `frontend/src/types/`
+- `models.ts` - Main types (User, Project, Taxonomy, etc.)
+- `community.ts` - Community/messaging types
+- `api.ts` - API response wrappers
+
+**Type naming:**
+```typescript
+// Interfaces use PascalCase
+interface User { ... }
+interface ProjectDetail { ... }
+
+// Union types for enums
+type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor';
+type UserTier = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation';
+
+// API responses
+interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+```
+
+## Common Gotchas
+
+### Curation Tier Users
+AI agents and curators have `tier='curation'`. Always exclude them from user lists:
+```python
+User.objects.filter(is_active=True).exclude(tier='curation')
+```
+
+### Avatar URLs
+Only whitelisted domains allowed. Check `ALLOWED_AVATAR_DOMAINS` in settings.
+
+### Username Changes
+Usernames are tracked in `UsernameHistory` for redirects. Old URLs auto-redirect.
+
+### Content Moderation
+User bios are sanitized with `bleach`. Only allowed HTML tags: `p, br, strong, em, a, ul, ol, li`
+
+### Taxonomy Filtering
+Always filter by `taxonomy_type` and `is_active`:
+```python
+Taxonomy.objects.filter(taxonomy_type='interest', is_active=True)
+```
+
+## Key File Locations
+
+| What | Where |
+|------|-------|
+| User model | `core/users/models.py` |
+| User serializers | `core/users/serializers.py` |
+| Permissions | `core/permissions.py` |
+| API case transform | `frontend/src/services/api.ts` |
+| TypeScript types | `frontend/src/types/models.ts` |
+| WebSocket consumers | `core/*/consumers.py` |
+| Django settings | `config/settings.py` |
+
 ## Notes
 - Run `make help` to see all available commands
 - The web container is named `web` (not `backend`) in docker-compose
