@@ -9,8 +9,8 @@ Tools:
 2. create_learning_path - Generate rich structured curriculum
 3. update_learner_profile - Save preferences/interests/skills
 
-Learner context (profile, stats, progress, suggestions) is injected at
-conversation start via LearnerContextService - no tool call needed.
+Member context (profile, stats, progress, suggestions, personalization)
+is injected at conversation start via MemberContextService - no tool call needed.
 """
 
 import logging
@@ -49,7 +49,7 @@ class FindLearningContentInput(BaseModel):
     )
     state: dict | None = Field(
         default=None,
-        description='Internal - injected by agent with user context and learner_context',
+        description='Internal - injected by agent with user context and member_context',
     )
 
 
@@ -91,7 +91,7 @@ def find_learning_content(
     )
 
     user_id = state.get('user_id') if state else None
-    learner_context = state.get('learner_context') if state else None
+    member_context = state.get('member_context') if state else None
 
     try:
         result = ContentFinder.find(
@@ -99,7 +99,7 @@ def find_learning_content(
             content_type=content_type,
             limit=limit,
             user_id=user_id,
-            learner_context=learner_context,
+            member_context=member_context,
         )
 
         # Build response with renderable content
@@ -235,7 +235,7 @@ class CreateLearningPathInput(BaseModel):
     )
     state: dict | None = Field(
         default=None,
-        description='Internal - injected by agent with user context and learner_context',
+        description='Internal - injected by agent with user context and member_context',
     )
 
 
@@ -268,7 +268,7 @@ def create_learning_path(
     )
 
     user_id = state.get('user_id') if state else None
-    learner_context = state.get('learner_context') if state else None
+    member_context = state.get('member_context') if state else None
 
     if not user_id:
         return {'success': False, 'error': 'You need to be logged in to create a learning path.'}
@@ -280,10 +280,10 @@ def create_learning_path(
 
         from core.learning_paths.models import LearnerProfile
 
-        # Get user's difficulty preference from profile or learner context
+        # Get user's difficulty preference from profile or member context
         actual_difficulty = difficulty
-        if not actual_difficulty and learner_context:
-            actual_difficulty = learner_context.get('profile', {}).get('difficulty_level', 'beginner')
+        if not actual_difficulty and member_context:
+            actual_difficulty = member_context.get('learning', {}).get('difficulty_level', 'beginner')
         if not actual_difficulty:
             actual_difficulty = 'beginner'
 
@@ -293,7 +293,7 @@ def create_learning_path(
             content_type='',  # Get all types
             limit=10,
             user_id=user_id,
-            learner_context=learner_context,
+            member_context=member_context,
         )
 
         # Build curriculum from found content
@@ -447,10 +447,10 @@ def create_learning_path(
         profile.current_focus_topic = query
         profile.save(update_fields=['generated_path', 'current_focus_topic', 'updated_at'])
 
-        # Invalidate learner context cache
-        from .components import LearnerContextService
+        # Invalidate member context cache
+        from services.agents.context import MemberContextService
 
-        LearnerContextService.invalidate_cache(user_id)
+        MemberContextService.invalidate_cache(user_id)
 
         return {
             'success': True,
@@ -662,10 +662,10 @@ def update_learner_profile(
         # Save profile
         profile.save()
 
-        # Invalidate learner context cache
-        from .components import LearnerContextService
+        # Invalidate member context cache
+        from services.agents.context import MemberContextService
 
-        LearnerContextService.invalidate_cache(user_id)
+        MemberContextService.invalidate_cache(user_id)
 
         return {
             'success': True,
@@ -684,7 +684,7 @@ def update_learner_profile(
 # Tool Registry
 # =============================================================================
 
-# Tools that need state injection (user_id, username, session_id, learner_context)
+# Tools that need state injection (user_id, username, session_id, member_context)
 TOOLS_NEEDING_STATE = {
     'find_learning_content',
     'create_learning_path',

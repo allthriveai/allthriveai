@@ -273,3 +273,155 @@ You're helping a new user get started on AllThrive AI. Your goals:
 
 # Combine for full onboarding experience
 EMBER_FULL_ONBOARDING_PROMPT = EMBER_SYSTEM_PROMPT + EMBER_ONBOARDING_PROMPT
+
+
+# =============================================================================
+# Member Context Formatting
+# =============================================================================
+
+
+def format_member_context(context: dict | None) -> str:
+    """
+    Format member context for injection into the system prompt.
+
+    Converts the MemberContext dict into a readable format that helps
+    Ember personalize responses.
+
+    Args:
+        context: MemberContext dict or None
+
+    Returns:
+        Formatted string for system prompt, or empty string if no context
+    """
+    if not context:
+        return ''
+
+    sections = []
+
+    # Learning preferences
+    learning = context.get('learning', {})
+    if learning:
+        prefs = []
+        if learning.get('learning_style') and learning['learning_style'] != 'mixed':
+            style_map = {
+                'visual': 'prefers videos and visual content',
+                'hands_on': 'prefers hands-on practice and coding',
+                'conceptual': 'prefers reading and conceptual explanations',
+            }
+            prefs.append(style_map.get(learning['learning_style'], learning['learning_style']))
+
+        if learning.get('difficulty_level') and learning['difficulty_level'] != 'beginner':
+            prefs.append(f"{learning['difficulty_level']} level")
+
+        if learning.get('learning_goal') and learning['learning_goal'] != 'exploring':
+            goal_map = {
+                'build_projects': 'wants to build projects',
+                'understand_concepts': 'wants to understand concepts deeply',
+                'career': 'focused on career development',
+            }
+            prefs.append(goal_map.get(learning['learning_goal'], learning['learning_goal']))
+
+        if prefs:
+            sections.append(f"**Learning style**: {', '.join(prefs)}")
+
+    # Learning stats (only if meaningful)
+    stats = context.get('stats', {})
+    if stats:
+        stat_parts = []
+        if stats.get('streak_days', 0) > 0:
+            stat_parts.append(f"{stats['streak_days']}-day learning streak")
+        if stats.get('total_xp', 0) > 0:
+            stat_parts.append(f"{stats['total_xp']} XP earned")
+        if stats.get('quizzes_completed', 0) > 0:
+            stat_parts.append(f"{stats['quizzes_completed']} quizzes completed")
+        if stats.get('concepts_mastered', 0) > 0:
+            stat_parts.append(f"{stats['concepts_mastered']} concepts mastered")
+
+        if stat_parts:
+            sections.append(f"**Progress**: {', '.join(stat_parts)}")
+
+    # Current learning progress
+    progress = context.get('progress', [])
+    if progress:
+        topics = [p['topic_display'] for p in progress[:3]]
+        sections.append(f"**Currently learning**: {', '.join(topics)}")
+
+    # Tool preferences
+    tool_preferences = context.get('tool_preferences', [])
+    if tool_preferences:
+        tools = [t['name'] for t in tool_preferences[:5]]
+        sections.append(f"**Interested in tools**: {', '.join(tools)}")
+
+    # General interests
+    interests = context.get('interests', [])
+    if interests:
+        interest_names = [i['name'] for i in interests[:5]]
+        sections.append(f"**Interests**: {', '.join(interest_names)}")
+
+    # Profile context
+    if context.get('is_new_member'):
+        sections.append('**Status**: New member (joined recently)')
+    elif context.get('project_count', 0) > 0:
+        sections.append(f"**Projects**: Has {context['project_count']} project(s)")
+
+    # User-configured taxonomy preferences from settings
+    taxonomy_prefs = context.get('taxonomy_preferences', {})
+    if taxonomy_prefs:
+        # Personality (MBTI type)
+        if taxonomy_prefs.get('personality'):
+            sections.append(f"**Personality**: {taxonomy_prefs['personality']}")
+
+        # Learning styles from settings (different from auto-detected learning_style)
+        if taxonomy_prefs.get('learning_styles'):
+            sections.append(f"**Preferred learning styles**: {', '.join(taxonomy_prefs['learning_styles'])}")
+
+        # Professional roles
+        if taxonomy_prefs.get('roles'):
+            sections.append(f"**Roles**: {', '.join(taxonomy_prefs['roles'])}")
+
+        # Goals
+        if taxonomy_prefs.get('goals'):
+            sections.append(f"**Goals**: {', '.join(taxonomy_prefs['goals'])}")
+
+        # User-configured interests (from settings, not auto-detected)
+        if taxonomy_prefs.get('user_interests'):
+            sections.append(f"**Selected interests**: {', '.join(taxonomy_prefs['user_interests'])}")
+
+        # Industries
+        if taxonomy_prefs.get('industries'):
+            sections.append(f"**Industries**: {', '.join(taxonomy_prefs['industries'])}")
+
+    # Feature interests and discovery preferences
+    feature_interests = context.get('feature_interests', {})
+    if feature_interests:
+        if feature_interests.get('excited_features'):
+            sections.append(f"**Excited about**: {', '.join(feature_interests['excited_features'])}")
+
+        # Discovery balance (0=familiar, 100=surprise me)
+        discovery = feature_interests.get('discovery_balance', 50)
+        if discovery != 50:  # Only mention if not default
+            if discovery < 30:
+                sections.append('**Discovery preference**: Prefers familiar content')
+            elif discovery > 70:
+                sections.append('**Discovery preference**: Loves surprises and new discoveries')
+
+    # Learning suggestions (what to recommend)
+    suggestions = context.get('suggestions', [])
+    if suggestions:
+        suggestion_topics = []
+        for s in suggestions[:3]:
+            reason = s.get('reason', '')
+            topic = s.get('topic_display', '')
+            if reason == 'knowledge_gap':
+                suggestion_topics.append(f'{topic} (needs practice)')
+            elif reason == 'due_review':
+                suggestion_topics.append(f'{topic} (due for review)')
+            elif reason == 'continue':
+                suggestion_topics.append(f'{topic} (in progress)')
+        if suggestion_topics:
+            sections.append(f"**Suggested topics**: {', '.join(suggestion_topics)}")
+
+    if not sections:
+        return ''
+
+    return '\n\n## About This Member\n' + '\n'.join(f'- {s}' for s in sections)

@@ -1,8 +1,8 @@
 # AI Architecture
 
-**Source of Truth** | **Last Updated**: 2025-11-29
+**Source of Truth** | **Last Updated**: 2025-12-20
 
-This document defines the AI architecture for AllThrive AI, including LangGraph state machines, AI provider integrations, prompt engineering, and observability.
+This document defines the AI architecture for AllThrive AI, including the unified Ember agent, AI provider integrations, tool system, and observability.
 
 ---
 
@@ -17,164 +17,133 @@ This document defines the AI architecture for AllThrive AI, including LangGraph 
 ┌────────────────────▼────────────────────────────────────────┐
 │                  Celery Task Queue                          │
 │  - Async processing                                         │
-│  - Circuit breaker                                          │
-│  - Rate limiting                                            │
+│  - Circuit breaker + Rate limiting                          │
+│  - AIUsageTracker (quota management)                        │
 └────────────────────┬────────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────────┐
-│               LangGraph Agent Layer                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  Auth Agent  │  │ Project Agent│  │  Chat Agent  │      │
-│  │ (StateGraph) │  │ (StateGraph) │  │ (StateGraph) │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│         │                  │                  │             │
-│         └──────────────────┴──────────────────┘             │
+│            Unified Ember Agent (LangGraph)                  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  services/agents/ember/                               │  │
+│  │  - agent.py: LangGraph StateGraph + streaming         │  │
+│  │  - prompts.py: System prompts + learner context       │  │
+│  │  - tools.py: Unified registry (31 tools)              │  │
+│  └──────────────────────────────────────────────────────┘  │
+│         │                                                   │
+│  ┌──────┴──────────────────────────────────────────────┐   │
+│  │  Tool Categories (5):                                │   │
+│  │  - Discovery (9): Search, recommendations, challenges│   │
+│  │  - Learning (3): Content, paths, profile updates     │   │
+│  │  - Project (9): Create, import, media handling       │   │
+│  │  - Orchestration (7): Navigation, UI, games          │   │
+│  │  - Profile (3): Data gathering, section generation   │   │
+│  └─────────────────────────────────────────────────────┘   │
 └────────────────────┬────────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────────┐
 │                AI Provider Abstraction                       │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │ Azure OpenAI│  │   OpenAI    │  │  Anthropic  │  │  Gemini     │ │
-│  │   (GPT-4)   │  │  (GPT-4o)   │  │ (Claude 3.5)│  │(Flash 1.5/3)│ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   OpenAI    │  │  Anthropic  │  │   Gemini    │         │
+│  │ (gpt-4o-mini│  │(Claude 3.5) │  │(2.0 Flash)  │         │
+│  │   default)  │  │             │  │ Image Gen   │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
 └─────────────────────────────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────────┐
 │               Observability & Tracking                       │
 │  - LangSmith tracing                                        │
-│  - Cost tracking (tokens, $)                                │
-│  - Performance metrics                                      │
+│  - AIUsageLog per-request tracking                          │
+│  - Quota management (daily/monthly limits)                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## LangGraph Agents
+## Unified Ember Agent
 
 ### Agent Architecture
 
-AllThrive AI uses **LangGraph** for building stateful, conversational AI agents. Each agent is a directed graph where:
-- **Nodes** represent processing steps (functions)
-- **Edges** define transitions between steps
-- **State** is persisted in Redis for multi-turn conversations
-- **Conditional edges** enable branching logic
+AllThrive AI uses a **single unified Ember agent** built on LangGraph. The agent has access to 31 tools across 5 categories and handles all chat interactions.
 
-### Key Agents
+**Key Characteristics**:
+- **Single agent**: No supervisor routing - one agent handles all requests
+- **Tool-based**: 31 tools organized into discovery, learning, project, orchestration, and profile categories
+- **State injection**: Tools receive user context (user_id, username, session_id) automatically
+- **Streaming**: Token-by-token streaming via Redis Pub/Sub → WebSocket
+- **Learner context**: Learning-related context injected at conversation start via `LearnerContextService`
 
-#### 1. Auth Agent
+### Location
 
-**Purpose**: Conversational onboarding for signup/login.
+```
+services/agents/ember/
+├── agent.py           # LangGraph StateGraph + streaming + state injection
+├── prompts.py         # System prompts with learner context building
+└── tools.py           # Unified tool registry (imports from all categories)
 
-**Location**: `services/auth_agent/`
+services/agents/
+├── discovery/tools.py   # 9 discovery tools
+├── learning/tools.py    # 3 learning tools
+├── project/tools.py     # 9 project tools
+├── orchestration/tools.py # 7 orchestration tools
+└── profile/tools.py     # 3 profile tools
+```
 
-**State Schema**:
+### State Schema
+
 ```python
-class AuthState(TypedDict):
-    messages: list[dict]  # Conversation history
-    mode: str  # 'signup' or 'login'
-    email: str
-    username: str
-    name: str
-    password: str
-    interests: list[str]
-    user_exists: bool
-    step: str  # Current step in the flow
-    suggested_usernames: list[str]
-```
-
-**Flow Graph**:
-```
-welcome
-   │
-   ├─→ ask_email ─→ check_email ─┬─→ (exists) ─→ ask_password ─→ complete_login
-   │                              │
-   │                              └─→ (new) ─→ ask_username_suggest
-   │                                           │
-   │                                           ├─→ confirm_username ─→ ask_name
-   │                                           │
-   │                                           └─→ ask_username_custom ─→ confirm_username
-   │
-   └─→ ask_name ─→ ask_password ─→ ask_interests ─→ show_values ─→ ask_agreement ─→ complete_signup
-```
-
-**Key Nodes**:
-- `welcome_node`: Initial greeting
-- `ask_email_node`: Collect email
-- `check_email_node`: Check if user exists in DB
-- `ask_username_suggest_node`: AI-generated username suggestions
-- `confirm_username_node`: Validate username availability
-- `complete_signup_node`: Create user account, award points
-
-**Persistence**: State saved to Redis with `thread_id` (conversation ID)
-
----
-
-#### 2. Project Agent
-
-**Purpose**: Guided project creation via conversational interface.
-
-**Location**: `services/project_agent/`
-
-**State Schema**:
-```python
-class ProjectState(TypedDict):
-    messages: list[dict]
-    title: str
-    description: str
-    type: str  # github_repo, figma_design, prompt, etc.
-    is_showcase: bool
-    step: str
-    project_id: int | None
-```
-
-**Flow Graph**:
-```
-welcome
-   │
-   ├─→ process_title ─→ (wait for input)
-   │
-   ├─→ process_description ─→ (wait for input)
-   │
-   ├─→ process_type ─→ (wait for input)
-   │
-   ├─→ process_showcase ─→ (wait for confirmation)
-   │
-   └─→ create_project ─→ (create in DB, award points) ─→ END
-```
-
-**Key Features**:
-- Real-time validation (e.g., title length, type enum)
-- AI suggestions (e.g., "Based on your description, this sounds like a 'prompt' project")
-- Interrupts for user corrections
-- Automatic Thrive Circle point award (50 points)
-
----
-
-#### 3. Chat Agent (General)
-
-**Purpose**: General-purpose conversational AI for Q&A, help, etc.
-
-**Location**: `core/agents/` (consumer + tasks)
-
-**State Schema**:
-```python
-class ChatState(TypedDict):
-    messages: list[dict]
-    conversation_id: str
+class EmberState(TypedDict):
+    messages: Annotated[list, add_messages]  # Conversation history
     user_id: int
-    context: dict  # Optional context (e.g., project data)
+    username: str
+    session_id: str
+    context: dict  # Page context, attachments, etc.
 ```
 
-**Flow**:
-- User sends message via WebSocket
-- Message queued to Celery
-- LangGraph agent processes with streaming
-- Responses streamed back via Redis Pub/Sub → WebSocket
+### Agent Graph
 
-**Features**:
-- Streaming responses (token-by-token)
-- Context-aware (can access user's projects, profile)
-- Tool calling (future: search projects, create reminders, etc.)
+```
+START
+   │
+   ▼
+┌─────────────┐     ┌──────────────┐
+│  LLM Node   │────▶│  Tool Node   │
+│ (gpt-4o-mini│◀────│ (31 tools)   │
+│  + tools)   │     └──────────────┘
+└─────────────┘
+   │
+   ▼ (no more tool calls)
+  END
+```
+
+### Tool Categories (31 total)
+
+| Category | Count | Purpose |
+|----------|-------|---------|
+| Discovery | 9 | Search projects, recommendations, challenges, connections |
+| Learning | 3 | Find content, create learning paths, update learner profile |
+| Project | 9 | Create projects, import from URLs, media handling |
+| Orchestration | 7 | Navigation, UI highlighting, toasts, inline games |
+| Profile | 3 | Gather user data, generate/save profile sections |
+
+*See `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` for complete tool reference.*
+
+### State Injection
+
+Tools that need user context receive a `state` dict with:
+- `user_id`: Authenticated user's database ID
+- `username`: User's username
+- `session_id`: WebSocket session ID
+
+Handled by `create_tool_node_with_state_injection()` in `ember/agent.py`.
+
+### Scalability Settings
+
+| Setting | Value | Location |
+|---------|-------|----------|
+| `EMBER_MAX_TOOL_ITERATIONS` | 10 | Django settings |
+| `EMBER_MAX_CONTEXT_MESSAGES` | 50 | Django settings |
+| `EMBER_TOOL_EXECUTION_TIMEOUT` | 30s | Django settings |
+| `EMBER_DEFAULT_MODEL` | gpt-4o-mini | AI gateway config |
 
 ---
 
@@ -182,7 +151,7 @@ class ChatState(TypedDict):
 
 **Technology**: Redis + LangGraph Checkpointer
 
-**Checkpointer**: `services/auth_agent/checkpointer.py`
+**Checkpointer**: `services/agents/auth/checkpointer.py`
 
 ```python
 from langgraph.checkpoint.redis import RedisSaver
@@ -194,8 +163,15 @@ def get_checkpointer():
 
 **Checkpoint Keys**:
 - Format: `langgraph:checkpoint:{thread_id}:{checkpoint_id}`
-- Thread ID = Conversation ID (UUID)
+- Thread ID = Conversation ID (e.g., `ember-home-{timestamp}`)
 - Checkpoints store full state at each step
+
+**Conversation ID Patterns**:
+- `ember-home-{timestamp}` - EmberHomePage full-page chat
+- `ember-learn-{timestamp}` - Learn page context
+- `ember-explore-{timestamp}` - Explore page context
+- `ember-project-{timestamp}` - Project page context
+- `ember-default-{timestamp}` - Default context
 
 **Benefits**:
 - Multi-turn conversations (state persists across requests)
@@ -206,21 +182,23 @@ def get_checkpointer():
 
 ## AI Provider Abstraction
 
+### Provider Overview
+
+| Provider | Use Case | Default Model |
+|----------|----------|---------------|
+| **OpenAI** | Chat (Ember agent) | `gpt-4o-mini` |
+| **Gemini** | Image generation (Nano Banana) | `gemini-2.0-flash-exp` |
+| **Anthropic** | Alternative (not currently used) | `claude-3-5-sonnet` |
+
 ### Unified API
 
 **Service**: `services/ai_provider.py`
-
-**Supported Providers**:
-1. **Azure OpenAI** (primary)
-2. **OpenAI** (fallback)
-3. **Anthropic** (Claude)
-4. **Gemini** (Google)
 
 **Usage**:
 ```python
 from services.ai_provider import AIProvider
 
-# Use default provider (from settings)
+# Use default provider (OpenAI)
 ai = AIProvider(user_id=request.user.id)
 response = ai.complete("Explain transformers", temperature=0.7)
 
@@ -233,30 +211,50 @@ for chunk in ai.stream("Tell me a story"):
     print(chunk, end='')
 ```
 
+### Gemini Image Generation (Nano Banana)
+
+**Purpose**: AI image generation directly in chat using Gemini 2.0 Flash.
+
+**Trigger Keywords**: "draw", "create image", "generate image", "make art", "infographic", "nano banana"
+
+**Flow**:
+1. User requests image in chat
+2. Orchestrator detects image keywords
+3. Routes to `_process_with_gemini_image()`
+4. Gemini 2.0 Flash generates image
+5. Image saved to S3, URL streamed back
+
+**Service**: `services/ai/gemini_service.py`
+
+```python
+from services.ai.gemini_service import generate_image_with_gemini
+
+result = await generate_image_with_gemini(
+    prompt="A dragon made of code",
+    user_id=user.id,
+    session_id=session_id
+)
+# Returns: {'image_url': 'https://...', 'filename': '...'}
+```
+
 ---
 
 ### Configuration
 
 **Environment Variables**:
 ```bash
-# Azure OpenAI (primary)
-AZURE_OPENAI_API_KEY=...
-AZURE_OPENAI_ENDPOINT=https://...openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
-
-# OpenAI (fallback)
+# OpenAI (primary for chat)
 OPENAI_API_KEY=...
+
+# Google Gemini (image generation)
+GOOGLE_API_KEY=...
+GEMINI_MODEL_NAME=gemini-2.0-flash-exp
 
 # Anthropic (alternative)
 ANTHROPIC_API_KEY=...
 
-# Google Gemini
-GOOGLE_API_KEY=...
-GEMINI_MODEL_NAME=gemini-1.5-flash
-
 # Default provider
-DEFAULT_AI_PROVIDER=azure  # or openai, anthropic, gemini
+DEFAULT_AI_PROVIDER=openai
 ```
 
 ---
@@ -264,10 +262,9 @@ DEFAULT_AI_PROVIDER=azure  # or openai, anthropic, gemini
 ### Model Selection
 
 **Default Models**:
-- **Azure OpenAI**: `gpt-4` (deployment name)
-- **OpenAI**: `gpt-4-turbo-preview`
-- **Anthropic**: `claude-3-5-sonnet-20240620`
-- **Gemini**: `gemini-1.5-flash`
+- **OpenAI**: `gpt-4o-mini` (Ember chat agent)
+- **Gemini**: `gemini-2.0-flash-exp` (image generation)
+- **Anthropic**: `claude-3-5-sonnet-20240620` (alternative)
 
 **Model Override**:
 ```python
@@ -297,43 +294,53 @@ print(ai.last_usage)
 
 ### System Prompts
 
-**Auth Agent System Prompt**:
-```
-You are a friendly onboarding AI agent for AllThrive AI, a community platform
-for the AI curious. Your role is to guide users through signup or login in a 
-conversational, helpful manner.
+**Ember System Prompt** (`services/agents/ember/prompts.py`):
 
-Guidelines:
-- Be concise and friendly
-- Validate input (e.g., email format, username availability)
-- Suggest creative usernames based on user's name
-- Explain Thrive Circles and achievements during signup
-- Never store passwords in state (only password hashes)
-```
+The Ember agent uses a dynamic system prompt that includes:
 
-**Project Agent System Prompt**:
-```
-You are an AI assistant helping users create projects on AllThrive AI.
-Ask clarifying questions to collect:
-1. Title (required, max 100 chars)
-2. Description (required, what the project does)
-3. Type (github_repo, figma_design, image_collection, prompt, video, other)
-4. Showcase preference (public or private)
+1. **Base personality**: Friendly AI companion named Ember
+2. **Tool instructions**: When and how to use each of the 31 tools
+3. **Learner context**: Injected at runtime via `LearnerContextService`
 
-Be encouraging and suggest improvements to titles/descriptions.
-```
+```python
+# Simplified structure
+EMBER_SYSTEM_PROMPT = """
+You are Ember, a friendly AI companion on AllThrive AI.
 
-**Chat Agent System Prompt**:
-```
-You are AllThrive AI, an AI assistant for a community of the AI curious.
 You help users:
-- Learn about AI tools and techniques
-- Get feedback on projects
-- Discover new ideas
+- Discover projects, tools, and content
+- Learn about AI through games, quizzes, and content
+- Create and import projects
 - Navigate the platform
+- Build their profiles
 
-Be helpful, technical when needed, and encouraging.
+## Tool Usage
+- Use `find_learning_content` when users want to learn about topics
+- Use `launch_inline_game` for "what is a context window?" → snake game
+- Use `navigate_to_page` when users say "take me to..."
+- Use `get_fun_activities` when users say "surprise me" or "I'm bored"
+...
+
+{learner_context}  # Injected at runtime
+"""
 ```
+
+### Learner Context Injection
+
+**Service**: `services/agents/learning/context.py` → `LearnerContextService`
+
+At conversation start, learner context is fetched and injected:
+
+```python
+learner_context = LearnerContextService.get_context_for_prompt(user_id)
+# Returns:
+# - Learning profile (style, preferred difficulty)
+# - Recent activity (quizzes completed, streaks)
+# - Skill levels and interests
+# - Personalized suggestions
+```
+
+This eliminates the need for tools like `get_learner_profile` or `get_learning_progress` - the context is already in the system prompt.
 
 ---
 
@@ -755,26 +762,33 @@ class ChatLoadTest(HttpUser):
 
 ---
 
+## Implemented Features (Previously Planned)
+
+The following features from the original roadmap are now implemented:
+
+| Feature | Status | Implementation |
+|---------|--------|----------------|
+| Tool calling | ✅ Implemented | 31 LangChain tools across 5 categories |
+| Multi-modal AI | ✅ Implemented | Gemini 2.0 Flash image generation (Nano Banana) |
+| RAG | ✅ Partial | Knowledge graph for related content, project search |
+
 ## Future Enhancements
 
 ### Planned Features
 
-1. **Multi-agent orchestration**: Agent coordination (e.g., auth agent → project agent)
-2. **Tool calling**: LangChain tools for search, calculations, API calls
-3. **RAG (Retrieval-Augmented Generation)**: Context from docs, projects
-4. **Voice interface**: Speech-to-text → AI → text-to-speech
-5. **Custom models**: Fine-tuned models for AllThrive-specific tasks
-6. **Agent marketplace**: User-created AI agents
+1. **Voice interface**: Speech-to-text → AI → text-to-speech
+2. **Custom models**: Fine-tuned models for AllThrive-specific tasks
+3. **Agent marketplace**: User-created AI agents
+4. **Enhanced RAG**: Full document embedding with vector search
 
 ### Research Areas
 
-1. **Prompt optimization**: Automated prompt tuning
-2. **Multi-modal AI**: Image analysis, generation
-3. **Reinforcement learning**: Agents learn from user feedback
-4. **Privacy-preserving AI**: Local models, federated learning
+1. **Prompt optimization**: Automated prompt tuning with evaluation
+2. **Reinforcement learning**: Agents learn from user feedback
+3. **Privacy-preserving AI**: Local models for sensitive data
 
 ---
 
-**Version**: 1.0  
-**Status**: Stable  
+**Version**: 2.0
+**Status**: Stable
 **Review Cadence**: Quarterly

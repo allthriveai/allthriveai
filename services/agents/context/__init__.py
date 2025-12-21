@@ -7,6 +7,30 @@ Provides unified context about a member including:
 - Profile information
 """
 
-from .member_context import MemberContextService
+from .member_context import (
+    FeatureInterests,
+    Interest,
+    LearningPreferences,
+    LearningProgress,
+    LearningStats,
+    LearningSuggestion,
+    MemberContext,
+    MemberContextService,
+    TaxonomyPreferences,
+    ToolPreference,
+)
 
-__all__ = ['MemberContextService']
+__all__ = [
+    # Service
+    'MemberContextService',
+    # TypedDicts for type hints
+    'MemberContext',
+    'LearningPreferences',
+    'LearningStats',
+    'LearningProgress',
+    'LearningSuggestion',
+    'ToolPreference',
+    'Interest',
+    'TaxonomyPreferences',
+    'FeatureInterests',
+]

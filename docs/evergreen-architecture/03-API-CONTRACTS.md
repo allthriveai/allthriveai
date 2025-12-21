@@ -1,6 +1,6 @@
 # API Contracts
 
-**Source of Truth** | **Last Updated**: 2025-11-29
+**Source of Truth** | **Last Updated**: 2025-12-20
 
 This document defines the REST and WebSocket API contracts for AllThrive AI, including endpoints, request/response schemas, authentication, and error handling.
 
@@ -902,19 +902,47 @@ X-CSRFToken: xyz789
 
 ### Connection
 
-**URL**: `wss://allthrive.ai/ws/chat/{conversation_id}/`  
+**URL**: `wss://allthrive.ai/ws/unified-chat/`
 **Protocol**: WebSocket (RFC 6455)
 
-**Authentication**: JWT token via query parameter or cookie
+**Authentication**: Two-step token authentication (resolves Safari/cross-origin issues)
 
-**Connection Example**:
+### Two-Step Token Authentication Flow
+
+**Problem Solved**: Standard cookie-based WebSocket auth fails in Safari and cross-origin scenarios because browsers don't send HTTP-only cookies with WebSocket upgrade requests.
+
+**Solution**: Generate a short-lived token via REST API, then pass it as a query parameter.
+
+**Step 1**: Get WebSocket Token (REST API)
+```http
+POST /api/v1/auth/ws-token/
+Cookie: sessionid=abc123
+
+Response:
+{
+  "token": "ws_abc123xyz789...",
+  "expires_at": "2025-12-20T12:05:00Z"
+}
+```
+
+**Step 2**: Connect with Token
 ```javascript
+// Frontend connection flow
+const response = await fetch('/api/v1/auth/ws-token/', {
+  method: 'POST',
+  credentials: 'include'
+});
+const { token } = await response.json();
+
 const ws = new WebSocket(
-  `wss://allthrive.ai/ws/chat/${conversationId}/`,
-  [], 
-  { headers: { 'Cookie': `sessionid=${sessionId}` } }
+  `wss://allthrive.ai/ws/unified-chat/?token=${token}`
 );
 ```
+
+**Token Properties**:
+- Expires in 5 minutes (single-use)
+- Tied to user session
+- Invalidated after WebSocket connection established
 
 ---
 
@@ -1319,6 +1347,6 @@ X-API-Alternative: /api/v2/projects/
 
 ---
 
-**Version**: 1.0  
-**Status**: Stable  
+**Version**: 1.1
+**Status**: Stable
 **Review Cadence**: Quarterly

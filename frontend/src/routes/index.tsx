@@ -72,6 +72,9 @@ const ThriveCirclePage = lazy(() => import('@/pages/ThriveCirclePage'));
 const GamesPage = lazy(() => import('@/pages/GamesPage'));
 const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
 
+// Community pages - lazy loaded
+const LoungePage = lazy(() => import('@/pages/community/LoungePage'));
+
 // Battle pages - lazy loaded
 const BattlesLobbyPage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattlesLobbyPage })));
 const BattlePage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattlePage })));
@@ -98,6 +101,7 @@ const AdminImpersonatePage = lazy(() => import('@/pages/admin/ImpersonatePage'))
 const AdminCircleManagementPage = lazy(() => import('@/pages/admin/CircleManagementPage'));
 const AdminTasksPage = lazy(() => import('@/pages/admin/TasksPage'));
 const AdminUATScenariosPage = lazy(() => import('@/pages/admin/UATScenariosPage'));
+const AdminEmberFlowsPage = lazy(() => import('@/pages/admin/EmberFlowsPage'));
 
 // Extension pages - lazy loaded
 const ExtensionAuthPage = lazy(() => import('@/pages/ExtensionAuthPage'));
@@ -300,6 +304,24 @@ export function AppRoutes() {
         }
       />
 
+      {/* The Lounge (Community Forums) - protected */}
+      <Route
+        path="/lounge"
+        element={
+          <ProtectedRoute>
+            <LoungePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/lounge/:roomId"
+        element={
+          <ProtectedRoute>
+            <LoungePage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Ember's Onboarding - protected */}
       <Route
         path="/onboarding"
@@ -383,6 +405,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminUATScenariosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/ember-flows"
+        element={
+          <ProtectedRoute>
+            <AdminEmberFlowsPage />
           </ProtectedRoute>
         }
       />

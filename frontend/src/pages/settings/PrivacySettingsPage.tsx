@@ -3,6 +3,13 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { updateProfile, deactivateAccount, deleteAccount } from '@/services/auth';
+import {
+  getPersonalizationSettings,
+  updatePersonalizationSettings,
+  exportPersonalizationData,
+  deletePersonalizationData,
+  type PersonalizationSettings,
+} from '@/services/personalization';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTriangleExclamation, faUserSlash, faTrash, faSpinner } from '@fortawesome/free-solid-svg-icons';
@@ -14,6 +21,17 @@ export default function PrivacySettingsPage() {
   const [isProfilePublic, setIsProfilePublic] = useState(user?.isProfilePublic ?? true);
   const [allowLlmTraining, setAllowLlmTraining] = useState(user?.allowLlmTraining ?? false);
   const [saving, setSaving] = useState(false);
+
+  // Personalization settings
+  const [personalizationSettings, setPersonalizationSettings] = useState<PersonalizationSettings | null>(null);
+  const [_personalizationLoading, setPersonalizationLoading] = useState(true);
+  const [_personalizationSaving, setPersonalizationSaving] = useState(false);
+
+  // Data management
+  const [_exportingData, setExportingData] = useState(false);
+  const [_showDeleteDataModal, setShowDeleteDataModal] = useState(false);
+  const [_deletingData, setDeletingData] = useState(false);
+  const [_dataActionError, setDataActionError] = useState<string | null>(null);
 
   // Account action modals
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -29,6 +47,21 @@ export default function PrivacySettingsPage() {
       setAllowLlmTraining(user.allowLlmTraining ?? false);
     }
   }, [user]);
+
+  // Fetch personalization settings
+  useEffect(() => {
+    async function fetchPersonalizationSettings() {
+      try {
+        const settings = await getPersonalizationSettings();
+        setPersonalizationSettings(settings);
+      } catch (error) {
+        console.error('Failed to fetch personalization settings:', error);
+      } finally {
+        setPersonalizationLoading(false);
+      }
+    }
+    fetchPersonalizationSettings();
+  }, []);
 
   const handleTogglePlayground = async (value: boolean) => {
     try {
@@ -75,6 +108,88 @@ export default function PrivacySettingsPage() {
       alert('Failed to update LLM training setting. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Handle personalization setting toggle
+  const _handlePersonalizationToggle = async (
+    key: keyof PersonalizationSettings,
+    value: boolean
+  ) => {
+    if (!personalizationSettings) return;
+
+    const previousValue = personalizationSettings[key];
+    try {
+      setPersonalizationSaving(true);
+      setPersonalizationSettings({ ...personalizationSettings, [key]: value });
+      await updatePersonalizationSettings({ [key]: value });
+    } catch (error) {
+      console.error(`Failed to update ${key}:`, error);
+      // Revert on error
+      setPersonalizationSettings({ ...personalizationSettings, [key]: previousValue });
+      alert('Failed to update setting. Please try again.');
+    } finally {
+      setPersonalizationSaving(false);
+    }
+  };
+
+  // Export personalization data
+  const _handleExportData = async () => {
+    try {
+      setExportingData(true);
+      setDataActionError(null);
+      const data = await exportPersonalizationData();
+
+      // Download as JSON file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `allthrive-personalization-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      setDataActionError('Failed to export data. Please try again.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  // Delete personalization data
+  const _handleDeletePersonalizationData = async () => {
+    try {
+      setDeletingData(true);
+      setDataActionError(null);
+      await deletePersonalizationData();
+
+      // Reset local state
+      setPersonalizationSettings({
+        useTopicSelections: true,
+        learnFromViews: true,
+        learnFromLikes: true,
+        considerSkillLevel: true,
+        factorContentDifficulty: true,
+        useSocialSignals: true,
+        discoveryBalance: 50,
+        allowTimeTracking: true,
+        allowScrollTracking: true,
+        excitedFeatures: [],
+        desiredIntegrations: [],
+        desiredIntegrationsOther: '',
+        createdAt: '',
+        updatedAt: '',
+      });
+
+      setShowDeleteDataModal(false);
+      alert('Personalization data has been deleted successfully.');
+    } catch (error) {
+      console.error('Failed to delete personalization data:', error);
+      setDataActionError('Failed to delete data. Please try again.');
+    } finally {
+      setDeletingData(false);
     }
   };
 

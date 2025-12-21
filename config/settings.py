@@ -109,6 +109,7 @@ INSTALLED_APPS = [
     'core.uat_scenarios',  # UAT scenario tracking for QA
     'core.avatars',  # AI-generated user avatars
     'core.games',  # Educational mini-games
+    'core.community',  # Community messaging (forums, DMs, circle chat)
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

@@ -499,6 +499,8 @@ urlpatterns = [
     path('admin/uat-scenarios/', include('core.uat_scenarios.urls')),
     # Educational games
     path('games/', include('core.games.urls')),
+    # Community messaging (forums, DMs, circle chat)
+    path('community/', include('core.community.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

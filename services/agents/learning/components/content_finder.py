@@ -95,7 +95,7 @@ class ContentFinder:
         content_type: str = '',
         limit: int = 5,
         user_id: int | None = None,
-        learner_context: dict | None = None,
+        member_context: dict | None = None,
     ) -> ContentFinderResult:
         """
         Find learning content matching the query.
@@ -105,7 +105,7 @@ class ContentFinder:
             content_type: Optional filter (video, article, quiz, game, etc.)
             limit: Maximum results per category
             user_id: User ID for personalization
-            learner_context: Injected learner context for prioritization
+            member_context: Injected member context for prioritization
 
         Returns:
             ContentFinderResult with tool, projects, quizzes, and games
@@ -126,7 +126,7 @@ class ContentFinder:
             query_normalized,
             content_type,
             limit,
-            learner_context,
+            member_context,
         )
 
         # Get quizzes
@@ -193,7 +193,7 @@ class ContentFinder:
         query: str,
         content_type: str,
         limit: int,
-        learner_context: dict | None,
+        member_context: dict | None,
     ) -> list[ProjectInfo]:
         """Find learning-eligible projects matching query."""
         from core.learning_paths.models import ProjectLearningMetadata
@@ -241,8 +241,8 @@ class ContentFinder:
 
             # Apply learner preference for content type prioritization
             preferred_style = None
-            if learner_context and learner_context.get('profile'):
-                preferred_style = learner_context['profile'].get('learning_style')
+            if member_context and member_context.get('learning'):
+                preferred_style = member_context['learning'].get('learning_style')
 
             # Sort by preference if available
             if preferred_style == 'visual':
