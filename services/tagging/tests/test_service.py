@@ -376,15 +376,14 @@ class TagContentIntegrationTests(TestCase):
         """Successful tagging extracts and resolves tags."""
         mock_ai = MagicMock()
         mock_ai_provider_class.return_value = mock_ai
-        mock_ai.complete.return_value = {
-            'content': """{
-                "content_type": {"value": "test-tutorial", "confidence": 0.9},
-                "difficulty": {"value": "test-intermediate-2", "confidence": 0.85},
-                "topics": [{"value": "test-ml", "confidence": 0.95}]
-            }""",
-            'model': 'gpt-4',
-            'usage': {'total_tokens': 100},
-        }
+        # AIProvider.complete() returns a string directly
+        mock_ai.complete.return_value = """{
+            "content_type": {"value": "test-tutorial", "confidence": 0.9},
+            "difficulty": {"value": "test-intermediate-2", "confidence": 0.85},
+            "topics": [{"value": "test-ml", "confidence": 0.95}]
+        }"""
+        # Usage info is accessed via last_usage attribute
+        mock_ai.last_usage = {'model': 'gpt-4', 'total_tokens': 100}
 
         content = MagicMock()
         content.title = 'Test Tutorial'
@@ -432,14 +431,13 @@ class TagContentIntegrationTests(TestCase):
         """Low confidence tags are filtered out."""
         mock_ai = MagicMock()
         mock_ai_provider_class.return_value = mock_ai
-        mock_ai.complete.return_value = {
-            'content': """{
-                "content_type": {"value": "test-tutorial", "confidence": 0.3},
-                "topics": [{"value": "test-ml", "confidence": 0.95}]
-            }""",
-            'model': 'gpt-4',
-            'usage': {'total_tokens': 50},
-        }
+        # AIProvider.complete() returns a string directly
+        mock_ai.complete.return_value = """{
+            "content_type": {"value": "test-tutorial", "confidence": 0.3},
+            "topics": [{"value": "test-ml", "confidence": 0.95}]
+        }"""
+        # Usage info is accessed via last_usage attribute
+        mock_ai.last_usage = {'model': 'gpt-4', 'total_tokens': 50}
 
         content = MagicMock()
         content.title = 'Test'

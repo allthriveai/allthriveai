@@ -611,9 +611,9 @@ def auto_tag_project_on_save(sender, instance, created, **kwargs):
         logger.error(f"Error auto-tagging project '{instance.title}': {e}", exc_info=True)
 
     # Ensure project topics are tracked in the taxonomy
-    if instance.topics:
+    if instance.topics.exists():
         try:
-            ensure_topics_in_taxonomy(instance.topics)
+            ensure_topics_in_taxonomy([t.name for t in instance.topics.all()])
         except Exception as e:
             logger.error(f"Error syncing topics to taxonomy for '{instance.title}': {e}", exc_info=True)
 

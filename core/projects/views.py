@@ -712,10 +712,12 @@ CRITICAL REQUIREMENTS:
             if project.type == Project.ProjectType.REDDIT_THREAD and hasattr(project, 'reddit_thread'):
                 self._record_reddit_thread_deletion(project, request.user)
 
-        deleted_count, _ = queryset.delete()
+        # Count projects before delete (delete() returns total including cascade-deleted related objects)
+        project_count = queryset.count()
+        queryset.delete()
 
         # Invalidate cache for all affected users
-        if deleted_count > 0:
+        if project_count > 0:
             from core.users.models import User
 
             for user_id in affected_users:
@@ -726,7 +728,7 @@ CRITICAL REQUIREMENTS:
                     pass
 
         return Response(
-            {'deleted_count': deleted_count, 'message': f'Successfully deleted {deleted_count} project(s)'},
+            {'deleted_count': project_count, 'message': f'Successfully deleted {project_count} project(s)'},
             status=status.HTTP_200_OK,
         )
 
