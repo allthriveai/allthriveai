@@ -867,6 +867,14 @@ async def stream_ember_response(
                         # Tool execution completed
                         elif kind == 'on_tool_end':
                             tool_name = event.get('name', '')
+                            run_id = event.get('run_id', '')
+
+                            # Skip if already processed (use _end suffix to avoid collision with start)
+                            end_key = f'{run_id}_end'
+                            if end_key in processed_tool_calls:
+                                continue
+                            processed_tool_calls.add(end_key)
+
                             raw_output = event.get('data', {}).get('output', {})
                             # Serialize output to ensure it's JSON-compatible for Redis
                             output = _serialize_tool_output(raw_output)

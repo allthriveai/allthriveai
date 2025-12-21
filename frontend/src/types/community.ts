@@ -241,3 +241,16 @@ export interface RoomListProps {
   selectedRoomId?: string;
   onRoomSelect: (roomId: string) => void;
 }
+
+// DM Suggestion types
+export interface DMSuggestion {
+  userId: number;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  tier: string | null;
+  level: number;
+  matchReason: string;
+  sharedInterests: string[];
+  isFollowing: boolean;
+}

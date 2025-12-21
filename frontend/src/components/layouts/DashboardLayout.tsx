@@ -7,6 +7,8 @@ import { RightEventsCalendarPanel } from '@/components/events/RightEventsCalenda
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { CommentTray } from '@/components/projects/CommentTray';
 import { QuestTray } from '@/components/side-quests/QuestTray';
+import { MessagesTray } from '@/components/community/Messages/MessagesTray';
+import { useMessagesTrayOptional } from '@/context/MessagesTrayContext';
 import { Footer } from '@/components/landing/Footer';
 import { PendingBattleBanner } from '@/components/battles';
 import { AsyncBattleBanner } from '@/components/battles/AsyncBattleBanner';
@@ -113,6 +115,9 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   // Get colors and category for the selected quest
   const selectedQuestColors = getQuestColors(selectedQuest);
   const selectedQuestCategory = getQuestCategory(selectedQuest);
+
+  // Messages tray context
+  const messagesTray = useMessagesTrayOptional();
 
   // Generate ember-prefixed conversation ID that routes to unified Ember agent
   // The ID includes context so the backend knows which tools to prioritize
@@ -247,8 +252,11 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
       setChatContext('default');
       setAboutOpen(false);
       setEventsOpen(false);
+    } else if (menuItem === 'Messages') {
+      // Open messages tray
+      messagesTray?.openMessagesTray();
     }
-  }, [location.pathname]);
+  }, [location.pathname, messagesTray]);
 
   const handleCloseAbout = () => {
     setAboutOpen(false);
@@ -365,6 +373,9 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
           colors={selectedQuestColors}
           category={selectedQuestCategory}
         />
+
+        {/* Messages Tray - DM conversations */}
+        <MessagesTray />
 
         {/* Overlay when about is open */}
         {aboutOpen && (

@@ -589,41 +589,7 @@ export function useIntelligentChat({
                 });
                 seenMessageIdsRef.current.add(gameMessageId);
               }
-              // Check for learning content results (projects, videos, quizzes, etc.)
-              if (data.tool === 'get_learning_content' && data.output?.items && data.output.items.length > 0) {
-                const learningContentId = `learning-content-${Date.now()}`;
-                setMessages((prev) => {
-                  // Check for duplicate
-                  if (prev.some(m => m.id === learningContentId)) {
-                    return prev;
-                  }
-                  const newMessages = [
-                    ...prev,
-                    {
-                      id: learningContentId,
-                      content: '', // Content is rendered via metadata
-                      sender: 'assistant' as const,
-                      timestamp: new Date(),
-                      metadata: {
-                        type: 'learning_content' as const,
-                        learningContent: {
-                          topic: data.output?.topic || '',
-                          topicDisplay: data.output?.topic_display || data.output?.topic || '',
-                          contentType: data.output?.content_type || 'projects',
-                          sourceType: data.output?.source_type || 'curated',
-                          items: data.output?.items || [],
-                          hasContent: data.output?.has_content ?? true,
-                          message: data.output?.message,
-                        },
-                      },
-                    },
-                  ];
-                  return newMessages.slice(-MAX_MESSAGES);
-                });
-                seenMessageIdsRef.current.add(learningContentId);
-              }
-
-              // Handle find_learning_content tool with content array (new unified tool)
+              // Handle find_learning_content tool with content array
               console.log('[useIntelligentChat] tool_end received:', data.tool, 'output:', data.output);
               if (data.tool === 'find_learning_content' && data.output?.content && data.output.content.length > 0) {
                 console.log('[useIntelligentChat] Processing find_learning_content content array:', data.output.content);
@@ -655,6 +621,10 @@ export function useIntelligentChat({
                 seenMessageIdsRef.current.add(eventKey);
 
                 const newContentMessages: ChatMessage[] = [];
+                // Group items by type to create single messages with multiple items
+                const projectItems: LearningContentItem[] = [];
+                const quizItems: LearningContentItem[] = [];
+
                 contentArray.forEach((item, index) => {
                   const itemId = `${eventKey}-${index}`;
 
@@ -673,8 +643,8 @@ export function useIntelligentChat({
                     };
                     console.log('[useIntelligentChat] Creating inline_game message:', gameMessage);
                     newContentMessages.push(gameMessage);
-                  } else if (item.type === 'project_card' || item.type === 'quiz_card') {
-                    const learningItem = {
+                  } else if (item.type === 'project_card') {
+                    projectItems.push({
                       id: item.id || itemId,
                       title: item.title || '',
                       description: item.description || '',
@@ -683,33 +653,65 @@ export function useIntelligentChat({
                       featured_image_url: item.thumbnail || '',
                       difficulty: item.difficulty,
                       question_count: item.question_count,
-                    };
-                    newContentMessages.push({
-                      id: itemId,
-                      content: '',
-                      sender: 'assistant',
-                      timestamp: new Date(),
-                      metadata: {
-                        type: 'learning_content',
-                        learningContent: {
-                          topic: data.output?.query || '',
-                          topicDisplay: data.output?.query || '',
-                          contentType: item.type === 'quiz_card' ? 'quizzes' : 'projects',
-                          sourceType: 'curated',
-                          items: [learningItem],
-                          hasContent: true,
-                        },
-                      },
+                    });
+                  } else if (item.type === 'quiz_card') {
+                    quizItems.push({
+                      id: item.id || itemId,
+                      title: item.title || '',
+                      description: item.description || '',
+                      url: item.url || '',
+                      thumbnail: item.thumbnail || '',
+                      featured_image_url: item.thumbnail || '',
+                      difficulty: item.difficulty,
+                      question_count: item.question_count,
                     });
                   } else if (item.type === 'tool_info') {
-                    newContentMessages.push({
-                      id: itemId,
-                      content: `**${item.name}**: ${item.description}`,
-                      sender: 'assistant',
-                      timestamp: new Date(),
-                    });
+                    // Skip tool_info - the AI's text response already explains the topic
+                    // and showing it separately creates duplicate content
                   }
                 });
+
+                // Create single message for all projects (grouped together)
+                if (projectItems.length > 0) {
+                  newContentMessages.push({
+                    id: `${eventKey}-projects`,
+                    content: '',
+                    sender: 'assistant',
+                    timestamp: new Date(),
+                    metadata: {
+                      type: 'learning_content',
+                      learningContent: {
+                        topic: data.output?.query || '',
+                        topicDisplay: data.output?.query || '',
+                        contentType: 'projects',
+                        sourceType: 'curated',
+                        items: projectItems,
+                        hasContent: true,
+                      },
+                    },
+                  });
+                }
+
+                // Create single message for all quizzes (grouped together)
+                if (quizItems.length > 0) {
+                  newContentMessages.push({
+                    id: `${eventKey}-quizzes`,
+                    content: '',
+                    sender: 'assistant',
+                    timestamp: new Date(),
+                    metadata: {
+                      type: 'learning_content',
+                      learningContent: {
+                        topic: data.output?.query || '',
+                        topicDisplay: data.output?.query || '',
+                        contentType: 'quizzes',
+                        sourceType: 'curated',
+                        items: quizItems,
+                        hasContent: true,
+                      },
+                    },
+                  });
+                }
 
                 // Store messages to add after streaming completes (for correct ordering)
                 if (newContentMessages.length > 0) {

@@ -10,6 +10,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     BlockView,
     DirectMessageViewSet,
+    DMSuggestionsView,
     MessageViewSet,
     ModerationQueueViewSet,
     RoomViewSet,
@@ -22,6 +23,8 @@ router.register(r'dm', DirectMessageViewSet, basename='dm')
 router.register(r'moderation', ModerationQueueViewSet, basename='moderation')
 
 urlpatterns = [
+    # DM suggestions - must come before router to avoid /dm/<id> matching
+    path('dm/suggestions/', DMSuggestionsView.as_view(), name='dm-suggestions'),
     path('', include(router.urls)),
     # Nested routes for messages within rooms
     path(

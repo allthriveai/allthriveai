@@ -33,6 +33,8 @@ export interface User {
   playgroundIsPublic?: boolean;
   isProfilePublic?: boolean;
   allowLlmTraining?: boolean;
+  gamificationIsPublic?: boolean;
+  allowSimilarityMatching?: boolean;
   createdAt: string;
   lastLogin?: string;
   level?: number;

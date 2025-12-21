@@ -17,6 +17,7 @@ import type {
   Thread,
   RoomMembership,
   DirectMessageThread,
+  DMSuggestion,
   CreateRoomRequest,
   SendMessageRequest,
   CreateDMRequest,
@@ -233,7 +234,12 @@ export async function getRoomThreads(roomId: string): Promise<Thread[]> {
 export async function getDMThreads(): Promise<DirectMessageThread[]> {
   try {
     const response = await api.get(`${BASE_URL}/dm/`);
-    return response.data;
+    // Handle both paginated response and direct array
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    // DRF pagination returns { results: [...], count, next, previous }
+    return response.data.results || [];
   } catch (error) {
     handleError('CommunityService.getDMThreads', error, { showAlert: false });
     throw error;
@@ -262,6 +268,20 @@ export async function createDMThread(data: CreateDMRequest): Promise<DirectMessa
     return response.data;
   } catch (error) {
     handleError('CommunityService.createDMThread', error);
+    throw error;
+  }
+}
+
+/**
+ * Get suggested users to message
+ * Returns users prioritized by: circle members, following, recommendations
+ */
+export async function getDMSuggestions(limit: number = 10): Promise<DMSuggestion[]> {
+  try {
+    const response = await api.get(`${BASE_URL}/dm/suggestions/`, { params: { limit } });
+    return response.data.suggestions;
+  } catch (error) {
+    handleError('CommunityService.getDMSuggestions', error, { showAlert: false });
     throw error;
   }
 }

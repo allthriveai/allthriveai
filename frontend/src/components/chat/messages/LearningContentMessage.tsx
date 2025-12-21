@@ -34,8 +34,8 @@ export function LearningContentMessage({
   onNavigate,
   sourceType,
 }: LearningContentMessageProps) {
-  // Always use horizontal scroll for chat content (trending, personalized, etc.)
-  const useCompactGrid = false;
+  // Always use compact grid for learning content (projects, videos, quizzes)
+  const useCompactGrid = true;
 
   if (!hasContent && message) {
     // AI fallback message - just show the message

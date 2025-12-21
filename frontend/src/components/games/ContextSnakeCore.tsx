@@ -32,24 +32,16 @@ interface Position {
 type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 type GameState = 'intro' | 'ready' | 'playing' | 'ended';
 
-// Score tier thresholds
-const SCORE_TIERS = {
-  LOW: 10,
-  MEDIUM: 30,
-};
-
-// Fun facts about context windows
-const CONTEXT_FACTS = [
-  "Claude's context window is 200K tokens — about 150,000 words or 500 pages.",
-  "The word 'tokenization' breaks text into chunks. 'Hello' is 1 token, but 'Hello!' is 2.",
-  'GPT-2 (2019) had only 1,024 tokens. Today\'s models have 100x more.',
-  'Images use tokens too — a single photo can cost 1,000+ tokens.',
-  'Code uses more tokens than plain English because of symbols and formatting.',
-  'The average novel is about 100K tokens. Claude can read one in a single prompt.',
-  "Tokens aren't words — 'chatting' might be split into 'chat' + 'ting'.",
-  'Context windows are like RAM for AI — bigger means more working memory.',
-  'Early chatbots had ~50 token windows. They forgot everything immediately.',
-  "Longer context doesn't always mean better answers — focus matters more.",
+// Metaphor hints that explain the game → AI connection
+const GAME_METAPHOR_HINTS = [
+  'Longer snake = more context used',
+  'Each pink orb = 1 token of text',
+  "You're simulating an AI's memory!",
+  "Running out of room? That's a context limit!",
+  'Your snake is the conversation history',
+  'Tokens fill up the context window',
+  'Hit a wall = exceeded the limit',
+  'More tokens = harder to manage',
 ];
 
 export interface ContextSnakeCoreProps {
@@ -80,9 +72,6 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
     },
   });
 
-  // End-game animation states
-  const [showCrashFlash, setShowCrashFlash] = useState(false);
-  const [isShaking, setIsShaking] = useState(false);
 
   // Token eaten particle bursts (full version only)
   const [particleBursts, setParticleBursts] = useState<
@@ -113,7 +102,7 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
 
   // Game state
   const initialPos = Math.floor(GRID_SIZE / 2);
-  const [gameState, setGameState] = useState<GameState>(isMini ? 'ready' : 'intro');
+  const [gameState, setGameState] = useState<GameState>('intro');
   const [snake, setSnake] = useState<Position[]>([{ x: initialPos, y: initialPos }]);
   const [token, setToken] = useState<Position>({ x: initialPos + 3, y: initialPos });
   const [, setDirection] = useState<Direction>('RIGHT');
@@ -125,20 +114,20 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
   const touchStartRef = useRef<Position | null>(null);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fun fact rotation (full version only)
-  const [factIndex, setFactIndex] = useState(0);
-  const shuffledFacts = useMemo(() => {
-    return [...CONTEXT_FACTS].sort(() => Math.random() - 0.5);
+  // Metaphor hint rotation
+  const [hintIndex, setHintIndex] = useState(0);
+  const shuffledHints = useMemo(() => {
+    return [...GAME_METAPHOR_HINTS].sort(() => Math.random() - 0.5);
   }, []);
 
-  // Rotate facts every 5 seconds
+  // Rotate hints every 4 seconds (both versions)
   useEffect(() => {
-    if (isMini) return;
+    if (gameState !== 'playing') return;
     const interval = setInterval(() => {
-      setFactIndex((prev) => (prev + 1) % shuffledFacts.length);
-    }, 5000);
+      setHintIndex((prev) => (prev + 1) % shuffledHints.length);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [shuffledFacts.length, isMini]);
+  }, [shuffledHints.length, gameState]);
 
   // Responsive cell size (full version only)
   useEffect(() => {
@@ -260,8 +249,6 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
     setGameState('playing');
     setShowPointsEarned(false);
     setPointsEarnedData(null);
-    setShowCrashFlash(false);
-    setIsShaking(false);
     setParticleBursts([]);
     hasSubmittedRef.current = false;
     spawnToken([{ x: pos, y: pos }]);
@@ -423,30 +410,14 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
 
   // Trigger end-game animations based on score tier
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
-
     if (gameState === 'ended') {
       if (tokenCount >= HIGH_SCORE_THRESHOLD) {
         confettiReward();
-      } else if (isMini) {
-        emojiReward();
-      } else if (tokenCount < SCORE_TIERS.LOW) {
-        setIsShaking(true);
-        setShowCrashFlash(true);
-        timeoutId = setTimeout(() => {
-          setIsShaking(false);
-          setShowCrashFlash(false);
-        }, 400);
       } else {
-        setIsShaking(true);
-        timeoutId = setTimeout(() => setIsShaking(false), 300);
+        emojiReward();
       }
     }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [gameState, tokenCount, confettiReward, emojiReward, isMini, HIGH_SCORE_THRESHOLD]);
+  }, [gameState, tokenCount, confettiReward, emojiReward, HIGH_SCORE_THRESHOLD]);
 
   const gridPixelSize = GRID_SIZE * cellSize;
 
@@ -458,8 +429,17 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
     controlButton: isMini ? 'w-10 h-10' : 'w-12 h-12',
   };
 
+  // Calculate context percentage for meter
+  const maxTokens = GRID_SIZE * GRID_SIZE - 1; // Max possible snake length
+  const contextPercentage = Math.round((snake.length / maxTokens) * 100);
+  const getMeterColor = () => {
+    if (contextPercentage < 40) return 'from-green-500 to-emerald-500';
+    if (contextPercentage < 70) return 'from-yellow-500 to-amber-500';
+    return 'from-red-500 to-rose-500';
+  };
+
   return (
-    <div className={`flex flex-col items-center ${isMini ? 'gap-3' : 'gap-4'}`}>
+    <div className={`flex flex-col items-center ${isMini ? 'gap-2' : 'gap-4'}`}>
       {/* Confetti anchor */}
       <span
         id={confettiId}
@@ -480,7 +460,27 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
         </div>
       )}
 
-      {/* Game canvas */}
+      {/* Tips - above game (both versions) */}
+      {gameState === 'playing' && (
+        <div className={`w-full ${isMini ? 'max-w-[264px]' : 'max-w-sm'}`}>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={hintIndex}
+              className={`text-center text-slate-400 ${isMini ? 'text-xs' : 'text-sm'} italic`}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.2 }}
+            >
+              {shuffledHints[hintIndex]}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Game container */}
+      <div className="flex flex-col items-center">
+        {/* Game canvas */}
       <motion.div
         ref={gameContainerRef}
         className={`relative border border-slate-700/50 rounded-lg overflow-hidden ${isMini ? 'touch-none' : ''}`}
@@ -489,22 +489,7 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
           height: gridPixelSize,
           background: 'rgba(2, 6, 23, 0.9)',
         }}
-        animate={isShaking ? { x: [0, -8, 8, -8, 8, 0] } : { x: 0 }}
-        transition={{ duration: 0.4 }}
       >
-        {/* Red flash overlay for crash effect */}
-        <AnimatePresence>
-          {showCrashFlash && (
-            <motion.div
-              className="absolute inset-0 bg-red-500/30 pointer-events-none z-50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            />
-          )}
-        </AnimatePresence>
-
         {/* Grid lines */}
         <div
           className="absolute inset-0 pointer-events-none opacity-10"
@@ -617,27 +602,30 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
           </AnimatePresence>
         )}
 
-        {/* Intro overlay (full version only) */}
+        {/* Intro overlay - explains the game metaphor (shows for both versions) */}
         <AnimatePresence>
-          {gameState === 'intro' && !isMini && (
+          {gameState === 'intro' && (
             <motion.div
-              className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-sm p-4"
+              className={`absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-sm ${isMini ? 'p-3' : 'p-4'}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="text-center max-w-[280px]">
-                <p className="text-slate-300 text-sm leading-relaxed mb-3">
-                  AI models have a <span className="text-cyan-400 font-medium">context window</span>{' '}
-                  — a limit on how much text they can process at once.
-                </p>
-                <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                  Text is split into <span className="text-pink-400 font-medium">tokens</span>, and
-                  when the window fills up, things break.
-                </p>
+              <div className={`text-center ${isMini ? 'max-w-[220px]' : 'max-w-[280px]'}`}>
+                <h3 className={`text-cyan-400 font-bold ${isMini ? 'text-sm mb-2' : 'text-base mb-3'}`}>
+                  You are the context window
+                </h3>
+                <div className={`space-y-2 ${isMini ? 'text-xs' : 'text-sm'} mb-4`}>
+                  <p className="text-slate-300">
+                    <span className="text-pink-400">Eat tokens</span> → your context fills up
+                  </p>
+                  <p className="text-slate-300">
+                    <span className="text-cyan-400">Grow too long</span> → context overflow!
+                  </p>
+                </div>
                 <button
                   onClick={() => setGameState('ready')}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-cyan-400 hover:to-teal-400 transition-all"
+                  className={`w-full ${isMini ? 'px-4 py-2 text-sm' : 'px-6 py-3'} bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-cyan-400 hover:to-teal-400 transition-all`}
                 >
                   Next
                 </button>
@@ -840,9 +828,11 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
               exit={{ opacity: 0 }}
             >
               <h2 className={`${isMini ? 'text-sm' : 'text-xl'} font-bold text-slate-300 mb-1`}>
-                Context full.
+                Context overflow!
               </h2>
-              {!isMini && <p className="text-slate-600 text-sm mb-3">Too much context.</p>}
+              <p className={`text-slate-500 ${isMini ? 'text-[10px] mb-2 px-2' : 'text-sm mb-3 px-6'}`}>
+                {isMini ? 'Too many tokens!' : 'Just like when a prompt is too long for AI to handle.'}
+              </p>
 
               <div className="text-center mb-2">
                 <span className={`text-cyan-400 font-mono ${sizes.score} font-bold`}>
@@ -905,6 +895,29 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
           )}
         </AnimatePresence>
       </motion.div>
+      </div>
+
+      {/* Context meter - below game (both versions) */}
+      {gameState === 'playing' && (
+        <div className={`w-full ${isMini ? 'max-w-[264px]' : 'max-w-sm'}`}>
+          <div className={`flex items-center gap-2 ${isMini ? 'px-1' : 'px-2'}`}>
+            <span className={`text-slate-500 ${isMini ? 'text-[10px]' : 'text-xs'} whitespace-nowrap`}>
+              Context Window
+            </span>
+            <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50">
+              <motion.div
+                className={`h-full bg-gradient-to-r ${getMeterColor()} rounded-full`}
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.max(contextPercentage, 2)}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+            <span className={`text-slate-400 ${isMini ? 'text-[10px]' : 'text-xs'} font-mono w-8 text-right`}>
+              {contextPercentage}%
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Token count during gameplay */}
       {gameState === 'playing' && (
@@ -943,29 +956,6 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Fun facts (full version only) */}
-      {!isMini && (
-        <div className="mt-2 w-full max-w-sm">
-          <div className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30 min-h-[80px]">
-            <p className="text-cyan-400 font-medium text-xs uppercase tracking-wide mb-2">
-              Did you know?
-            </p>
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={factIndex}
-                className="text-slate-400 text-sm leading-relaxed"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-              >
-                {shuffledFacts[factIndex]}
-              </motion.p>
-            </AnimatePresence>
           </div>
         </div>
       )}

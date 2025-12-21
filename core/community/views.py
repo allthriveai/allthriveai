@@ -514,6 +514,131 @@ class ModerationQueueViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(queue_item).data)
 
 
+class DMSuggestionsView(APIView):
+    """
+    API for getting suggested users to message.
+
+    GET /community/dm/suggestions/ - Get suggested users for DM
+
+    Returns users prioritized by:
+    1. Thrive Circle members (current weekly circle)
+    2. Users the person follows but hasn't messaged
+    3. Smart recommendations (shared interests, same tier)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get suggested users for starting a DM conversation."""
+        from core.thrive_circle.models import CircleMembership
+        from core.users.models import User, UserFollow
+
+        user = request.user
+        limit = int(request.query_params.get('limit', 10))
+        suggestions = []
+        seen_ids = set()
+        seen_ids.add(user.id)  # Exclude self
+
+        # Get existing DM participants to exclude
+        existing_dm_user_ids = set()
+        for thread in DirectMessageThread.objects.filter(participants=user):
+            for participant in thread.participants.all():
+                if participant.id != user.id:
+                    existing_dm_user_ids.add(participant.id)
+
+        # Get blocked user IDs
+        blocked_ids = BlockService.get_blocked_user_ids(user)
+
+        def add_suggestion(u, match_reason):
+            """Helper to add a user suggestion."""
+            if u.id in seen_ids or u.id in blocked_ids:
+                return
+            # Skip curation tier users (AI agents/curators)
+            if hasattr(u, 'tier') and u.tier == 'curation':
+                return
+            seen_ids.add(u.id)
+
+            # Check if user follows this person
+            is_following = UserFollow.objects.filter(follower=user, following=u).exists()
+
+            suggestions.append(
+                {
+                    'userId': u.id,
+                    'username': u.username,
+                    'displayName': u.display_name or u.username,
+                    'avatarUrl': u.avatar_url if hasattr(u, 'avatar_url') else None,
+                    'tier': u.tier if hasattr(u, 'tier') else None,
+                    'level': u.level if hasattr(u, 'level') else 1,
+                    'matchReason': match_reason,
+                    'sharedInterests': [],  # TODO: compute from user interests
+                    'isFollowing': is_following,
+                }
+            )
+
+        # 1. Circle members (highest priority - people in current weekly circle)
+        current_circle_membership = (
+            CircleMembership.objects.filter(
+                user=user,
+                is_active=True,
+            )
+            .select_related('circle')
+            .order_by('-joined_at')
+            .first()
+        )
+
+        if current_circle_membership:
+            circle_members = (
+                User.objects.filter(
+                    circle_memberships__circle=current_circle_membership.circle,
+                    circle_memberships__is_active=True,
+                    is_active=True,
+                )
+                .exclude(id=user.id)
+                .exclude(tier='curation')[:4]
+            )
+
+            for member in circle_members:
+                add_suggestion(member, 'In your Thrive Circle')
+
+        # 2. Following (users they follow but haven't messaged)
+        following_users = (
+            User.objects.filter(
+                followers_set__follower=user,
+                is_active=True,
+            )
+            .exclude(id__in=existing_dm_user_ids)
+            .exclude(id=user.id)
+            .exclude(tier='curation')[:4]
+        )
+
+        for followed in following_users:
+            add_suggestion(followed, 'You follow')
+
+        # 3. Smart recommendations (fill remaining slots - same tier, recently active)
+        remaining = limit - len(suggestions)
+        if remaining > 0:
+            recommended = (
+                User.objects.filter(
+                    is_active=True,
+                )
+                .exclude(id__in=seen_ids)
+                .exclude(id__in=blocked_ids)
+                .exclude(tier='curation')
+            )
+
+            # Prefer same tier
+            if hasattr(user, 'tier') and user.tier:
+                recommended = recommended.filter(tier=user.tier)
+
+            # Order by recent activity
+            recommended = recommended.order_by('-last_login')[:remaining]
+
+            for rec_user in recommended:
+                add_suggestion(rec_user, 'Recommended')
+
+        return Response({'suggestions': suggestions[:limit]})
+
+
 class BlockView(APIView):
     """
     API for blocking/unblocking users.

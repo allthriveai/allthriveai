@@ -10,6 +10,7 @@ import {
   SunIcon,
   MoonIcon,
   ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import { getMenuSections } from './menuData';
 import { NavDropdown } from './NavDropdown';
@@ -17,6 +18,7 @@ import { MobileMenu } from './MobileMenu';
 import { UserMenu } from './UserMenu';
 import { ActiveQuestIndicator } from '@/components/side-quests/ActiveQuestIndicator';
 import { GlobalSearchModal } from '@/components/search/GlobalSearchModal';
+import { useMessagesTrayOptional } from '@/context/MessagesTrayContext';
 
 interface TopNavigationProps {
   onMenuClick: (menuItem: string) => void;
@@ -31,6 +33,7 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openSearch } = useSearchStore();
+  const messagesTray = useMessagesTrayOptional();
 
   const menuSections = getMenuSections(onMenuClick, user?.username);
 
@@ -169,6 +172,18 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
                 >
                   <ChatBubbleLeftRightIcon className="w-4 h-4" />
                   <span className="hidden md:inline">Chat</span>
+                </button>
+              )}
+
+              {/* Messages Button - Opens DM tray */}
+              {isAuthenticated && messagesTray && (
+                <button
+                  onClick={() => messagesTray.openMessagesTray()}
+                  className="hidden sm:block p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300 hover:scale-105"
+                  aria-label="Open messages"
+                  title="Messages"
+                >
+                  <EnvelopeIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
                 </button>
               )}
 

@@ -6,13 +6,14 @@ import { updateProfile, deactivateAccount, deleteAccount } from '@/services/auth
 import {
   getPersonalizationSettings,
   updatePersonalizationSettings,
+  resetPersonalizationSettings,
   exportPersonalizationData,
   deletePersonalizationData,
   type PersonalizationSettings,
 } from '@/services/personalization';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTriangleExclamation, faUserSlash, faTrash, faSpinner, faDownload, faShieldHalved } from '@fortawesome/free-solid-svg-icons';
+import { faTriangleExclamation, faUserSlash, faTrash, faSpinner, faDownload, faShieldHalved, faRotateLeft, faTrophy, faUsers } from '@fortawesome/free-solid-svg-icons';
 
 export default function PrivacySettingsPage() {
   const { user, refreshUser, logout: authLogout } = useAuth();
@@ -20,7 +21,10 @@ export default function PrivacySettingsPage() {
   const [playgroundIsPublic, setPlaygroundIsPublic] = useState(user?.playgroundIsPublic ?? true);
   const [isProfilePublic, setIsProfilePublic] = useState(user?.isProfilePublic ?? true);
   const [allowLlmTraining, setAllowLlmTraining] = useState(user?.allowLlmTraining ?? false);
+  const [gamificationIsPublic, setGamificationIsPublic] = useState(user?.gamificationIsPublic ?? true);
+  const [allowSimilarityMatching, setAllowSimilarityMatching] = useState(user?.allowSimilarityMatching ?? true);
   const [saving, setSaving] = useState(false);
+  const [resettingSettings, setResettingSettings] = useState(false);
 
   // Personalization settings
   const [personalizationSettings, setPersonalizationSettings] = useState<PersonalizationSettings | null>(null);
@@ -45,6 +49,8 @@ export default function PrivacySettingsPage() {
       setPlaygroundIsPublic(user.playgroundIsPublic ?? true);
       setIsProfilePublic(user.isProfilePublic ?? true);
       setAllowLlmTraining(user.allowLlmTraining ?? false);
+      setGamificationIsPublic(user.gamificationIsPublic ?? true);
+      setAllowSimilarityMatching(user.allowSimilarityMatching ?? true);
     }
   }, [user]);
 
@@ -111,6 +117,38 @@ export default function PrivacySettingsPage() {
     }
   };
 
+  const handleToggleGamificationPublic = async (value: boolean) => {
+    try {
+      setSaving(true);
+      setGamificationIsPublic(value);
+      await updateProfile({ gamificationIsPublic: value });
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to update gamification visibility:', error);
+      // Revert on error
+      setGamificationIsPublic(!value);
+      alert('Failed to update gamification visibility. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleSimilarityMatching = async (value: boolean) => {
+    try {
+      setSaving(true);
+      setAllowSimilarityMatching(value);
+      await updateProfile({ allowSimilarityMatching: value });
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to update similarity matching setting:', error);
+      // Revert on error
+      setAllowSimilarityMatching(!value);
+      alert('Failed to update similarity matching setting. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Handle personalization setting toggle
   const handlePersonalizationToggle = async (
     key: keyof PersonalizationSettings,
@@ -130,6 +168,21 @@ export default function PrivacySettingsPage() {
       alert('Failed to update setting. Please try again.');
     } finally {
       setPersonalizationSaving(false);
+    }
+  };
+
+  // Reset personalization settings to defaults
+  const handleResetSettings = async () => {
+    try {
+      setResettingSettings(true);
+      setDataActionError(null);
+      const result = await resetPersonalizationSettings();
+      setPersonalizationSettings(result.settings);
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+      setDataActionError('Failed to reset settings. Please try again.');
+    } finally {
+      setResettingSettings(false);
     }
   };
 
@@ -312,6 +365,33 @@ export default function PrivacySettingsPage() {
                     </label>
                   </div>
                 </div>
+
+                {/* Gamification Public Toggle */}
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <FontAwesomeIcon icon={faTrophy} className="text-amber-500" />
+                        <h3 className="font-medium text-slate-900 dark:text-slate-100">
+                          Public Achievements
+                        </h3>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Display your achievements, level, and Thrive Circle tier on your public profile.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={gamificationIsPublic}
+                        onChange={(e) => handleToggleGamificationPublic(e.target.checked)}
+                        disabled={saving}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -469,6 +549,52 @@ export default function PrivacySettingsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Collaborative Filtering */}
+                  <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 mb-4">
+                      <FontAwesomeIcon icon={faUsers} className="text-primary-600 dark:text-primary-400" />
+                      <h3 className="font-medium text-slate-900 dark:text-slate-100">Collaborative Filtering</h3>
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 pr-4">
+                        <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Allow similarity matching</h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                          Enable recommendations based on users with similar interests. When enabled, your anonymous activity patterns help improve recommendations for you and others.
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                          Disabling this means your recommendations will only use your own activity and selected topics.
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked={allowSimilarityMatching} onChange={(e) => handleToggleSimilarityMatching(e.target.checked)} disabled={saving} className="sr-only peer" />
+                        <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Reset to Defaults */}
+                  <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 pr-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FontAwesomeIcon icon={faRotateLeft} className="text-slate-500" />
+                          <h3 className="font-medium text-slate-900 dark:text-slate-100">Reset to Defaults</h3>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Reset all personalization settings to their default values. This will enable all learning signals and tracking options.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleResetSettings}
+                        disabled={resettingSettings || personalizationSaving}
+                        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors flex-shrink-0 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {resettingSettings && <FontAwesomeIcon icon={faSpinner} spin />}
+                        {resettingSettings ? 'Resetting...' : 'Reset'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
@@ -603,9 +729,11 @@ export default function PrivacySettingsPage() {
                     <strong>Privacy Settings Guide:</strong>
                   </p>
                   <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 list-disc list-inside">
-                    <li><strong>Public Profile:</strong> Controls visibility to search engines. Disable for complete privacy.</li>
-                    <li><strong>Public Playground:</strong> Controls who can view your Playground projects.</li>
-                    <li><strong>AI Model Training:</strong> Opt-out by default. Enable to help improve AI models like ChatGPT and Claude.</li>
+                    <li><strong>Profile Visibility:</strong> Control what appears publicly on your profile, including achievements and projects.</li>
+                    <li><strong>Personalization:</strong> Control how AllThrive learns from your activity. These settings also affect what Ember knows about you.</li>
+                    <li><strong>Similarity Matching:</strong> When disabled, recommendations use only your activity - not patterns from similar users.</li>
+                    <li><strong>AI Training:</strong> Opt-out by default. Enable to help improve external AI models.</li>
+                    <li><strong>Your Data:</strong> Export your data anytime or delete personalization data to reset Ember's knowledge.</li>
                   </ul>
                 </div>
               </div>

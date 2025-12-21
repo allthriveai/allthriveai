@@ -7,6 +7,8 @@ import type { User, Project } from '@/types/models';
 import { getUserByUsername } from '@/services/auth';
 import { getUserProjects, bulkDeleteProjects, getClippedProjects } from '@/services/projects';
 import { followService } from '@/services/followService';
+import { createDMThread } from '@/services/community';
+import { useMessagesTray } from '@/context/MessagesTrayContext';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { getUserAchievements } from '@/services/achievements';
@@ -89,6 +91,7 @@ export default function ProfilePage() {
   const { user, isAuthenticated, refreshUser } = useAuth();
   const { tierStatus, isLoading: isTierLoading } = useThriveCircle();
   const { trackProfile } = useQuestTracking();
+  const { openMessagesTray } = useMessagesTray();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -144,6 +147,9 @@ export default function ProfilePage() {
   const [followError, setFollowError] = useState<string | null>(null);
   const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null);
   const followErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track follow error timeout
+
+  // Message state
+  const [isMessageLoading, setIsMessageLoading] = useState<boolean>(false);
 
   // Achievement state for the profile being viewed
   const [achievementsByCategory, setAchievementsByCategory] = useState<AchievementProgressData | null>(null);
@@ -868,6 +874,24 @@ export default function ProfilePage() {
     }
   };
 
+  // Handle starting a DM with this user
+  const handleMessage = async () => {
+    if (!profileUser?.id || isMessageLoading || !isAuthenticated) return;
+
+    setIsMessageLoading(true);
+    try {
+      const thread = await createDMThread({
+        participantIds: [profileUser.id.toString()],
+      });
+      // Open the messages tray with this thread selected
+      openMessagesTray(thread.id);
+    } catch (error) {
+      logError('ProfilePage.handleMessage', error, { userId: profileUser.id });
+    } finally {
+      setIsMessageLoading(false);
+    }
+  };
+
   // Fetch projects
   useEffect(() => {
     async function loadProjects() {
@@ -1093,6 +1117,8 @@ export default function ProfilePage() {
               onFollowToggle={handleToggleFollow}
               onShowFollowers={() => setShowFollowModal('followers')}
               onShowFollowing={() => setShowFollowModal('following')}
+              onMessage={handleMessage}
+              isMessageLoading={isMessageLoading}
               isEditing={isEditingShowcase}
               onExitEdit={async () => {
                 await saveProfileSectionsNow();

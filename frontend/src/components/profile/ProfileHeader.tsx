@@ -26,6 +26,7 @@ import {
   faGlobe,
   faUserPlus,
   faSpinner,
+  faEnvelope,
 } from '@fortawesome/free-solid-svg-icons';
 import type { User } from '@/types/models';
 import type { ProfileTemplate } from '@/types/profileSections';
@@ -42,6 +43,8 @@ interface ProfileHeaderProps {
   onFollowToggle: () => void;
   onShowFollowers: () => void;
   onShowFollowing: () => void;
+  onMessage?: () => void;
+  isMessageLoading?: boolean;
   isEditing?: boolean;
   onExitEdit?: () => void;
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
@@ -75,6 +78,8 @@ export function ProfileHeader({
   onFollowToggle,
   onShowFollowers,
   onShowFollowing,
+  onMessage,
+  isMessageLoading,
   isEditing,
   onExitEdit,
   saveStatus = 'idle',
@@ -332,6 +337,24 @@ export function ProfileHeader({
                     <>
                       <FontAwesomeIcon icon={faUserPlus} className="w-4 h-4" />
                       Follow
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Message Button */}
+              {!isOwnProfile && isAuthenticated && onMessage && (
+                <button
+                  onClick={onMessage}
+                  disabled={isMessageLoading}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                >
+                  {isMessageLoading ? (
+                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4" />
+                      Message
                     </>
                   )}
                 </button>

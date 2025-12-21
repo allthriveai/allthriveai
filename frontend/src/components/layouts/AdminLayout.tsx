@@ -40,6 +40,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/analytics']);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const prevPathRef = useRef<string>(location.pathname);
   const currentPath = location.pathname;
 
   // Redirect if not admin
@@ -49,19 +50,23 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
     }
   }, [user, isLoading, navigate]);
 
-  // Auto-expand parent menus when on child pages
+  // Auto-expand parent menus only when navigating to a NEW parent section
+  // This prevents re-expansion after manual collapse
   useEffect(() => {
-    const newExpanded: string[] = [];
-    if (currentPath.startsWith('/admin/analytics') && !expandedItems.includes('/admin/analytics')) {
-      newExpanded.push('/admin/analytics');
+    const prevPath = prevPathRef.current;
+    prevPathRef.current = currentPath;
+
+    // Only auto-expand if we navigated from a different parent section
+    const prevParent = prevPath.startsWith('/admin/analytics') ? '/admin/analytics' :
+                       prevPath.startsWith('/admin/users') ? '/admin/users' : null;
+    const currentParent = currentPath.startsWith('/admin/analytics') ? '/admin/analytics' :
+                          currentPath.startsWith('/admin/users') ? '/admin/users' : null;
+
+    // If we're entering a new parent section, expand it
+    if (currentParent && currentParent !== prevParent) {
+      setExpandedItems(prev => prev.includes(currentParent) ? prev : [...prev, currentParent]);
     }
-    if (currentPath.startsWith('/admin/users') && !expandedItems.includes('/admin/users')) {
-      newExpanded.push('/admin/users');
-    }
-    if (newExpanded.length > 0) {
-      setExpandedItems(prev => [...prev, ...newExpanded]);
-    }
-  }, [currentPath, expandedItems]);
+  }, [currentPath]);
 
   const analyticsSubItems: AdminSidebarItem[] = [
     { label: 'Overview', path: '/admin/analytics/overview', icon: ChartBarIcon },
@@ -273,13 +278,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
                   {hasChildren ? (
                     // Parent with children - expandable
                     <button
-                      onClick={() => {
-                        toggleExpand(item.path);
-                        // Navigate to overview when expanding
-                        if (!isExpanded && item.children) {
-                          navigate(item.children[0].path);
-                        }
-                      }}
+                      onClick={() => toggleExpand(item.path)}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                         isParentActive
                           ? 'bg-primary-500/10 dark:bg-cyan-500/10 text-primary-600 dark:text-cyan-neon border border-primary-500/20 dark:border-cyan-500/20 shadow-sm'
@@ -293,9 +292,14 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
                             : 'text-slate-500 dark:text-slate-500'
                         }`}
                       />
-                      <span>{item.label}</span>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.badge && (
+                        <span className="px-2 py-0.5 text-xs font-bold bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-accent rounded-full animate-pulse">
+                          {item.badge}
+                        </span>
+                      )}
                       <ChevronDownIcon
-                        className={`w-4 h-4 ml-auto transition-transform duration-200 ${
+                        className={`w-4 h-4 transition-transform duration-200 ${
                           isExpanded ? 'rotate-180' : ''
                         }`}
                       />
