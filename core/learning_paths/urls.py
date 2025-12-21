@@ -14,6 +14,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('users/<str:username>/learning-paths/', views.UserLearningPathsView.as_view(), name='user-learning-paths'),
     path('learning-paths/topics/', views.AllTopicsView.as_view(), name='all-topics'),
+    path('learning-paths/<str:slug>/', views.LearningPathBySlugView.as_view(), name='learning-path-by-slug'),
     # New learning endpoints
     path('me/learner-profile/', views.LearnerProfileView.as_view(), name='learner-profile'),
     path('me/learning-events/', views.LearningEventsView.as_view(), name='learning-events'),
@@ -32,5 +33,31 @@ urlpatterns = [
         'projects/<int:project_id>/toggle-learning-eligible/',
         views.ToggleLearningEligibilityView.as_view(),
         name='toggle-learning-eligible',
+    ),
+    # Feedback endpoints - Human feedback loops
+    path(
+        'me/feedback/conversation/',
+        views.ConversationFeedbackView.as_view(),
+        name='conversation-feedback',
+    ),
+    path(
+        'me/feedback/proactive-offers/',
+        views.ProactiveOfferResponseView.as_view(),
+        name='proactive-offer-response',
+    ),
+    path(
+        'me/feedback/content-helpfulness/',
+        views.ContentHelpfulnessView.as_view(),
+        name='content-helpfulness',
+    ),
+    path(
+        'me/feedback/goal-checkins/',
+        views.GoalCheckInView.as_view(),
+        name='goal-checkins',
+    ),
+    path(
+        'me/feedback/summary/',
+        views.FeedbackSummaryView.as_view(),
+        name='feedback-summary',
     ),
 ]

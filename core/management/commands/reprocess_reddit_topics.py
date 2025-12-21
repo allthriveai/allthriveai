@@ -85,10 +85,9 @@ class Command(BaseCommand):
                 )
 
                 success_count += 1
+                topic_names = list(project.topics.values_list('name', flat=True))
                 self.stdout.write(
-                    self.style.SUCCESS(
-                        f'  ✅ Updated topics: {project.topics[:5]}{"..." if len(project.topics) > 5 else ""}'
-                    )
+                    self.style.SUCCESS(f'  ✅ Updated topics: {topic_names[:5]}{"..." if len(topic_names) > 5 else ""}')
                 )
 
             except Exception as e:

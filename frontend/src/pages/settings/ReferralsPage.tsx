@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { ReferralCodeDisplay } from '@/components/referrals/ReferralCodeDisplay';
 import { api } from '@/services/api';
+import { getErrorMessage } from '@/utils/errors';
 
 interface ReferralCodeData {
   id: number;
@@ -130,10 +131,9 @@ export default function ReferralsPage() {
         isValid: updatedCode.is_valid,
         createdAt: updatedCode.created_at,
       });
-    } catch (error: any) {
-      console.error('Failed to update code:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to update code';
-      throw new Error(errorMsg);
+    } catch (error) {
+      console.error('Failed to update code:', getErrorMessage(error));
+      throw new Error(getErrorMessage(error) || 'Failed to update code');
     }
   };
 

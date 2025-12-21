@@ -620,7 +620,6 @@ export interface WeeklyGoal {
   isCompleted: boolean;
   completedAt: string | null;
   pointsReward: number;
-  xpReward?: number;
   createdAt: string;
   updatedAt: string;
 }

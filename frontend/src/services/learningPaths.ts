@@ -184,3 +184,43 @@ export async function completeLearningSetup(learningGoal: LearningGoal): Promise
 export async function resetLearningSetup(): Promise<void> {
   await api.delete('/me/learning-setup/');
 }
+
+// =============================================================================
+// GENERATED LEARNING PATH BY SLUG
+// =============================================================================
+
+/**
+ * Curriculum item in a generated learning path
+ */
+export interface CurriculumItem {
+  order: number;
+  type: 'tool' | 'video' | 'article' | 'quiz' | 'game' | 'code-repo' | 'other';
+  title: string;
+  project_id?: number;
+  tool_slug?: string;
+  quiz_id?: number;
+  game_slug?: string;
+  url?: string;
+}
+
+/**
+ * Generated learning path structure (stored in LearnerProfile.generated_path)
+ */
+export interface GeneratedLearningPath {
+  id: string;
+  slug: string;
+  title: string;
+  curriculum: CurriculumItem[];
+  tools_covered: string[];
+  topics_covered: string[];
+  difficulty: string;
+  estimated_hours: number;
+}
+
+/**
+ * Get a generated learning path by its slug
+ */
+export async function getLearningPathBySlug(slug: string): Promise<GeneratedLearningPath> {
+  const response = await api.get<GeneratedLearningPath>(`/learning-paths/${slug}/`);
+  return response.data;
+}

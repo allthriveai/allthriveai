@@ -480,8 +480,8 @@ class PersonalizationEngine:
             topic_scores: dict[str, float] = {}
             for project in engaged_projects:
                 time_weight = min(project_times.get(project.id, 0) / 300, 1.0)  # Normalize by 5 min
-                for topic in project.topics or []:
-                    topic_scores[topic] = topic_scores.get(topic, 0) + time_weight
+                for topic in project.topics.all():
+                    topic_scores[topic.name] = topic_scores.get(topic.name, 0) + time_weight
 
             # Normalize and cap at 0.3
             max_score = max(topic_scores.values(), default=1)
@@ -573,8 +573,8 @@ class PersonalizationEngine:
             for dismissal in dismissals:
                 dismissed_ids.add(dismissal.project_id)
                 # Count topics from dismissed projects
-                for topic in dismissal.project.topics or []:
-                    topic_counts[topic] = topic_counts.get(topic, 0) + 1
+                for topic in dismissal.project.topics.all():
+                    topic_counts[topic.name] = topic_counts.get(topic.name, 0) + 1
 
             # Only return topics with 3+ dismissals
             penalized_topics = {t: c for t, c in topic_counts.items() if c >= 3}

@@ -69,8 +69,10 @@ export function DMEmptyState({ onStartThread }: DMEmptyStateProps) {
 
     setIsCreatingThread(true);
     try {
+      // Ensure userId is a number for the API
+      const numericId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
       const thread = await createDMThread({
-        participantIds: [userId.toString()],
+        participantIds: [numericId],
       });
       onStartThread(thread.id);
     } catch (error) {

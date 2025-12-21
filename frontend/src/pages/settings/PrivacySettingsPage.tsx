@@ -14,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTriangleExclamation, faUserSlash, faTrash, faSpinner, faDownload, faShieldHalved, faRotateLeft, faTrophy, faUsers } from '@fortawesome/free-solid-svg-icons';
+import { getErrorMessage } from '@/utils/errors';
 
 export default function PrivacySettingsPage() {
   const { user, refreshUser, logout: authLogout } = useAuth();
@@ -261,9 +262,9 @@ export default function PrivacySettingsPage() {
           }
         });
       }
-    } catch (error: any) {
-      console.error('Failed to deactivate account:', error);
-      setAccountActionError(error?.error || 'Failed to deactivate account. Please try again.');
+    } catch (error) {
+      console.error('Failed to deactivate account:', getErrorMessage(error));
+      setAccountActionError(getErrorMessage(error) || 'Failed to deactivate account. Please try again.');
     } finally {
       setAccountActionLoading(false);
     }
@@ -289,9 +290,9 @@ export default function PrivacySettingsPage() {
           }
         });
       }
-    } catch (error: any) {
-      console.error('Failed to delete account:', error);
-      setAccountActionError(error?.error || 'Failed to delete account. Please try again.');
+    } catch (error) {
+      console.error('Failed to delete account:', getErrorMessage(error));
+      setAccountActionError(getErrorMessage(error) || 'Failed to delete account. Please try again.');
     } finally {
       setAccountActionLoading(false);
     }

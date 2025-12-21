@@ -34,9 +34,6 @@ export function LearningContentMessage({
   onNavigate,
   sourceType,
 }: LearningContentMessageProps) {
-  // Always use compact grid for learning content (projects, videos, quizzes)
-  const useCompactGrid = true;
-
   if (!hasContent && message) {
     // AI fallback message - just show the message
     return (
@@ -70,33 +67,18 @@ export function LearningContentMessage({
           </p>
         </div>
 
-        {/* Compact grid for trending, horizontal scroll for others */}
-        {useCompactGrid ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {items.map((item) => (
-              <LearningTeaserCard
-                key={item.id}
-                item={item}
-                contentType={contentType}
-                onNavigate={onNavigate}
-                compact
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto pb-2 -mx-2 px-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            <div className="flex gap-3">
-              {items.map((item) => (
-                <LearningTeaserCard
-                  key={item.id}
-                  item={item}
-                  contentType={contentType}
-                  onNavigate={onNavigate}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Compact grid for learning content */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {items.map((item) => (
+            <LearningTeaserCard
+              key={item.id}
+              item={item}
+              contentType={contentType}
+              onNavigate={onNavigate}
+              compact
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

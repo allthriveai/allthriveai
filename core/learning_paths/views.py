@@ -1,34 +1,57 @@
 """Views for Learning Paths API."""
 
+from django.db import IntegrityError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.throttles import FeedbackReadThrottle, FeedbackThrottle
 from core.users.models import User
 from services.gamification import LearningPathService
 
 from .models import (
     Concept,
+    ContentHelpfulness,
+    ConversationFeedback,
+    GoalCheckIn,
     LearnerProfile,
     LearningEvent,
+    ProactiveOfferResponse,
     ProjectLearningMetadata,
     UserConceptMastery,
 )
 from .serializers import (
     ConceptSerializer,
+    ContentHelpfulnessSerializer,
+    ConversationFeedbackSerializer,
+    CreateContentHelpfulnessSerializer,
+    CreateConversationFeedbackSerializer,
+    CreateGoalCheckInSerializer,
     CreateLearningEventSerializer,
+    CreateProactiveOfferResponseSerializer,
+    GoalCheckInSerializer,
     LearnerProfileSerializer,
     LearningEventSerializer,
     LearningPathDetailSerializer,
     LearningStatsSerializer,
+    ProactiveOfferResponseSerializer,
     ProjectLearningMetadataSerializer,
     TopicRecommendationSerializer,
     UserConceptMasterySerializer,
     UserLearningPathSerializer,
 )
 from .services import LearningEventService
+
+
+def safe_int(value, default: int, max_value: int = 100) -> int:
+    """Safely parse integer with bounds checking."""
+    try:
+        result = int(value)
+        return min(max(1, result), max_value)
+    except (ValueError, TypeError):
+        return default
 
 
 class MyLearningPathsViewSet(viewsets.ViewSet):
@@ -142,6 +165,32 @@ class AllTopicsView(APIView):
             for t in topic_taxonomies
         ]
         return Response(topics)
+
+
+class LearningPathBySlugView(APIView):
+    """View for fetching a generated learning path by its slug."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slug):
+        """
+        GET /api/v1/learning-paths/{slug}/
+
+        Returns the user's generated learning path by slug.
+        Users can only access their own learning paths.
+        """
+        profile = LearnerProfile.objects.filter(
+            user=request.user,
+            generated_path__slug=slug,
+        ).first()
+
+        if not profile or not profile.generated_path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(profile.generated_path)
 
 
 # ============================================================================
@@ -501,5 +550,370 @@ class ToggleLearningEligibilityView(APIView):
             {
                 'projectId': project_id,
                 'isLearningEligible': metadata.is_learning_eligible,
+            }
+        )
+
+
+# ============================================================================
+# FEEDBACK VIEWS - Human feedback loop endpoints
+# ============================================================================
+
+
+class ConversationFeedbackView(APIView):
+    """View for submitting and retrieving conversation feedback."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        """Apply different throttles for read vs write."""
+        if self.request.method == 'GET':
+            return [FeedbackReadThrottle()]
+        return [FeedbackThrottle()]
+
+    def get(self, request):
+        """
+        GET /api/v1/me/feedback/conversation/
+
+        Returns recent conversation feedback from the user.
+        """
+        limit = safe_int(request.query_params.get('limit'), default=20, max_value=100)
+        feedback = (
+            ConversationFeedback.objects.filter(user=request.user)
+            .select_related('concept')
+            .order_by('-created_at')[:limit]
+        )
+        serializer = ConversationFeedbackSerializer(feedback, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """
+        POST /api/v1/me/feedback/conversation/
+
+        Submit feedback on an Ember response.
+
+        Request body:
+        {
+            "session_id": "abc-123",
+            "message_id": "msg-456",
+            "feedback": "helpful" | "not_helpful" | "confusing" | "too_basic" | "too_advanced" | "incorrect",
+            "context_type": "general" | "lesson" | "quiz" | "project_help" | "troubleshooting",
+            "topic_slug": "ai-models-research",
+            "concept_slug": "prompt-engineering",
+            "comment": "Optional user comment"
+        }
+        """
+        serializer = CreateConversationFeedbackSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+
+        # Resolve concept from slug if provided
+        concept = None
+        if data.get('concept_slug'):
+            concept = Concept.objects.filter(slug=data['concept_slug']).first()
+
+        feedback = ConversationFeedback.objects.create(
+            user=request.user,
+            session_id=data['session_id'],
+            message_id=data['message_id'],
+            feedback=data['feedback'],
+            context_type=data.get('context_type', 'general'),
+            topic_slug=data.get('topic_slug', ''),
+            concept=concept,
+            comment=data.get('comment', ''),
+        )
+
+        result_serializer = ConversationFeedbackSerializer(feedback)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ProactiveOfferResponseView(APIView):
+    """View for recording responses to proactive intervention offers."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        """Apply different throttles for read vs write."""
+        if self.request.method == 'GET':
+            return [FeedbackReadThrottle()]
+        return [FeedbackThrottle()]
+
+    def get(self, request):
+        """
+        GET /api/v1/me/feedback/proactive-offers/
+
+        Returns recent proactive offer responses.
+        """
+        limit = safe_int(request.query_params.get('limit'), default=20, max_value=100)
+        responses = (
+            ProactiveOfferResponse.objects.filter(user=request.user)
+            .select_related('concept')
+            .order_by('-offered_at')[:limit]
+        )
+        serializer = ProactiveOfferResponseSerializer(responses, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """
+        POST /api/v1/me/feedback/proactive-offers/
+
+        Record user's response to a proactive offer.
+
+        Request body:
+        {
+            "intervention_type": "simplify_explanation",
+            "response": "accepted" | "declined" | "ignored" | "helpful_after" | "not_helpful_after",
+            "struggle_confidence": 0.75,
+            "topic_slug": "ai-models-research",
+            "concept_slug": "neural-networks",
+            "session_id": "abc-123"
+        }
+        """
+        from django.utils import timezone
+
+        serializer = CreateProactiveOfferResponseSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+
+        response = ProactiveOfferResponse.objects.create(
+            user=request.user,
+            intervention_type=data['intervention_type'],
+            response=data['response'],
+            struggle_confidence=data['struggle_confidence'],
+            topic_slug=data.get('topic_slug', ''),
+            concept_slug=data.get('concept_slug', ''),
+            session_id=data.get('session_id', ''),
+            responded_at=timezone.now(),
+        )
+
+        # If user accepted, clear the intervention cooldown
+        if data['response'] in ('accepted', 'helpful_after'):
+            from services.agents.proactive.intervention_service import get_intervention_service
+
+            get_intervention_service().clear_cooldown(request.user.id)
+
+        result_serializer = ProactiveOfferResponseSerializer(response)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ContentHelpfulnessView(APIView):
+    """View for submitting helpfulness feedback on learning content."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        """Apply different throttles for read vs write."""
+        if self.request.method == 'GET':
+            return [FeedbackReadThrottle()]
+        return [FeedbackThrottle()]
+
+    def get(self, request):
+        """
+        GET /api/v1/me/feedback/content-helpfulness/
+
+        Returns recent content helpfulness feedback.
+        """
+        limit = safe_int(request.query_params.get('limit'), default=20, max_value=100)
+        content_type = request.query_params.get('content_type')
+
+        queryset = ContentHelpfulness.objects.filter(user=request.user).select_related('micro_lesson', 'concept')
+        if content_type:
+            queryset = queryset.filter(content_type=content_type)
+
+        feedback = queryset.order_by('-created_at')[:limit]
+        serializer = ContentHelpfulnessSerializer(feedback, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """
+        POST /api/v1/me/feedback/content-helpfulness/
+
+        Submit helpfulness feedback on learning content.
+
+        Request body:
+        {
+            "content_type": "micro_lesson" | "quiz" | "project_example" | ...
+            "content_id": "lesson-123",
+            "helpfulness": "very_helpful" | "helpful" | "neutral" | "not_helpful" | "confusing",
+            "topic_slug": "ai-models-research",
+            "concept_slug": "transformers",
+            "difficulty_perception": "too_easy" | "just_right" | "too_hard",
+            "comment": "Optional feedback",
+            "time_spent_seconds": 300
+        }
+        """
+        serializer = CreateContentHelpfulnessSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+
+        # Use update_or_create to handle duplicates gracefully (unique_together constraint)
+        try:
+            feedback, created = ContentHelpfulness.objects.update_or_create(
+                user=request.user,
+                content_type=data['content_type'],
+                content_id=data['content_id'],
+                defaults={
+                    'helpfulness': data['helpfulness'],
+                    'topic_slug': data.get('topic_slug', ''),
+                    'concept_slug': data.get('concept_slug', ''),
+                    'difficulty_perception': data.get('difficulty_perception'),
+                    'comment': data.get('comment', ''),
+                    'time_spent_seconds': data.get('time_spent_seconds'),
+                },
+            )
+        except IntegrityError:
+            return Response(
+                {'error': 'Unable to save feedback. Please try again.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        result_serializer = ContentHelpfulnessSerializer(feedback)
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(result_serializer.data, status=status_code)
+
+
+class GoalCheckInView(APIView):
+    """View for periodic goal progress check-ins."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        """Apply different throttles for read vs write."""
+        if self.request.method == 'GET':
+            return [FeedbackReadThrottle()]
+        return [FeedbackThrottle()]
+
+    def get(self, request):
+        """
+        GET /api/v1/me/feedback/goal-checkins/
+
+        Returns recent goal check-ins and whether a check-in is due.
+        """
+        limit = safe_int(request.query_params.get('limit'), default=10, max_value=50)
+        checkins = (
+            GoalCheckIn.objects.filter(user=request.user)
+            .select_related('learning_path')
+            .order_by('-created_at')[:limit]
+        )
+
+        # Check if a check-in is due
+        is_checkin_due = GoalCheckIn.is_checkin_due(request.user.id)
+
+        # Get user's learning goal
+        profile = LearnerProfile.objects.filter(user=request.user).first()
+        learning_goal = profile.learning_goal if profile else None
+
+        serializer = GoalCheckInSerializer(checkins, many=True)
+        return Response(
+            {
+                'checkins': serializer.data,
+                'is_checkin_due': is_checkin_due,
+                'learning_goal': learning_goal,
+            }
+        )
+
+    def post(self, request):
+        """
+        POST /api/v1/me/feedback/goal-checkins/
+
+        Submit a goal progress check-in.
+
+        Request body:
+        {
+            "goal_description": "Learn to build AI agents",
+            "progress": "on_track" | "ahead" | "behind" | "stuck" | "goal_changed" | "goal_achieved",
+            "satisfaction": "very_satisfied" | "satisfied" | "neutral" | "unsatisfied" | "very_unsatisfied",
+            "whats_working": "The project examples are really helpful",
+            "whats_not_working": "Some explanations are too abstract",
+            "blockers": "Limited time to practice",
+            "new_goal": "Optional new goal if changing direction"
+        }
+        """
+        serializer = CreateGoalCheckInSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+
+        # Get current learning goal from profile
+        profile = LearnerProfile.objects.filter(user=request.user).first()
+        goal_description = data.get('goal_description', '')
+        if not goal_description and profile:
+            goal_description = profile.learning_goal or ''
+
+        checkin = GoalCheckIn.objects.create(
+            user=request.user,
+            goal_description=goal_description,
+            progress=data['progress'],
+            satisfaction=data['satisfaction'],
+            whats_working=data.get('whats_working', ''),
+            whats_not_working=data.get('whats_not_working', ''),
+            blockers=data.get('blockers', ''),
+            new_goal=data.get('new_goal', ''),
+        )
+
+        result_serializer = GoalCheckInSerializer(checkin)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class FeedbackSummaryView(APIView):
+    """View for aggregated feedback summary for the user."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [FeedbackReadThrottle]
+
+    def get(self, request):
+        """
+        GET /api/v1/me/feedback/summary/
+
+        Returns an aggregated summary of all feedback from this user.
+        Useful for the AI to understand user preferences.
+        """
+        user = request.user
+
+        # Conversation feedback stats
+        conv_feedback = ConversationFeedback.objects.filter(user=user)
+        total_feedback = conv_feedback.count()
+        helpful_count = conv_feedback.filter(feedback__in=['helpful']).count()
+        helpful_percentage = (helpful_count / total_feedback * 100) if total_feedback > 0 else 0
+
+        # Proactive offer stats
+        proactive_responses = ProactiveOfferResponse.objects.filter(user=user)
+        total_offers = proactive_responses.count()
+        accepted_count = proactive_responses.filter(response__in=['accepted', 'helpful_after']).count()
+        acceptance_rate = (accepted_count / total_offers * 100) if total_offers > 0 else 0
+
+        # Content helpfulness stats
+        content_feedback = ContentHelpfulness.objects.filter(user=user)
+        # Calculate helpfulness score from choices
+        helpfulness_scores = {
+            'very_helpful': 5,
+            'helpful': 4,
+            'neutral': 3,
+            'not_helpful': 2,
+            'confusing': 1,
+        }
+        content_scores = [helpfulness_scores.get(f.helpfulness, 3) for f in content_feedback[:100]]
+        avg_content_score = sum(content_scores) / len(content_scores) if content_scores else 3.0
+
+        # Last goal check-in
+        last_checkin = GoalCheckIn.objects.filter(user=user).order_by('-created_at').first()
+
+        # Recent conversation feedback
+        recent_feedback = conv_feedback.select_related('concept').order_by('-created_at')[:5]
+
+        return Response(
+            {
+                'total_feedback_count': total_feedback,
+                'helpful_percentage': round(helpful_percentage, 1),
+                'proactive_acceptance_rate': round(acceptance_rate, 1),
+                'content_helpfulness_score': round(avg_content_score, 2),
+                'last_goal_checkin': GoalCheckInSerializer(last_checkin).data if last_checkin else None,
+                'recent_feedback': ConversationFeedbackSerializer(recent_feedback, many=True).data,
             }
         )

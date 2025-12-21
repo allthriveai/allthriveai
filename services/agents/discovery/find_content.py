@@ -142,32 +142,75 @@ class SearchContext:
 
     @classmethod
     def from_state(cls, state: dict | None) -> 'SearchContext':
-        """Extract search context from agent state."""
-        if not state:
+        """
+        Extract search context from agent state.
+
+        Uses defensive programming to handle malformed state gracefully.
+        If any field has an unexpected type, it falls back to safe defaults.
+        """
+        if not state or not isinstance(state, dict):
             return cls()
 
         user_id = state.get('user_id')
-        member_context = state.get('member_context') or {}
+        member_context = state.get('member_context')
 
-        # Extract learning preferences
-        learning = member_context.get('learning') or {}
+        # Ensure member_context is a dict
+        if not isinstance(member_context, dict):
+            member_context = {}
 
-        # Extract tool/topic interests
-        tool_prefs = member_context.get('tool_preferences') or []
-        interests = member_context.get('interests') or []
-        feature_interests = member_context.get('feature_interests') or {}
+        # Extract learning preferences (must be dict)
+        learning = member_context.get('learning')
+        if not isinstance(learning, dict):
+            learning = {}
+
+        # Extract tool/topic interests (must be lists of dicts)
+        tool_prefs = member_context.get('tool_preferences')
+        if not isinstance(tool_prefs, list):
+            tool_prefs = []
+
+        interests = member_context.get('interests')
+        if not isinstance(interests, list):
+            interests = []
+
+        feature_interests = member_context.get('feature_interests')
+        if not isinstance(feature_interests, dict):
+            feature_interests = {}
+
+        recent_queries = member_context.get('recent_queries')
+        if not isinstance(recent_queries, list):
+            recent_queries = []
+
+        # Safely extract slugs from tool preferences (each item should be a dict)
+        tool_interest_slugs = []
+        for t in tool_prefs:
+            if isinstance(t, dict) and t.get('slug'):
+                tool_interest_slugs.append(t['slug'])
+
+        # Safely extract slugs from interests (each item should be a dict)
+        topic_interest_slugs = []
+        for i in interests:
+            if isinstance(i, dict) and i.get('slug'):
+                topic_interest_slugs.append(i['slug'])
 
         return cls(
             user_id=user_id,
-            difficulty_level=learning.get('difficulty_level', 'beginner'),
-            learning_style=learning.get('learning_style', 'mixed'),
-            learning_goal=learning.get('learning_goal', 'exploring'),
-            tool_interests=[t.get('slug', '') for t in tool_prefs if t.get('slug')],
-            topic_interests=[i.get('slug', '') for i in interests if i.get('slug')],
-            recent_queries=member_context.get('recent_queries') or [],
-            is_new_member=member_context.get('is_new_member', True),
-            has_projects=member_context.get('has_projects', False),
-            discovery_balance=feature_interests.get('discovery_balance', 50),
+            difficulty_level=learning.get('difficulty_level', 'beginner')
+            if isinstance(learning.get('difficulty_level'), str)
+            else 'beginner',
+            learning_style=learning.get('learning_style', 'mixed')
+            if isinstance(learning.get('learning_style'), str)
+            else 'mixed',
+            learning_goal=learning.get('learning_goal', 'exploring')
+            if isinstance(learning.get('learning_goal'), str)
+            else 'exploring',
+            tool_interests=tool_interest_slugs,
+            topic_interests=topic_interest_slugs,
+            recent_queries=[q for q in recent_queries if isinstance(q, str)],
+            is_new_member=bool(member_context.get('is_new_member', True)),
+            has_projects=bool(member_context.get('has_projects', False)),
+            discovery_balance=int(feature_interests.get('discovery_balance', 50))
+            if isinstance(feature_interests.get('discovery_balance'), int | float)
+            else 50,
         )
 
     def get_preferred_content_types(self) -> list[str]:
@@ -928,7 +971,8 @@ def find_content(
             if not User.objects.filter(id=context.user_id, is_active=True).exists():
                 logger.warning(f'Invalid user_id: {context.user_id}')
                 context.user_id = None
-        except Exception:
+        except Exception as e:
+            logger.debug(f'Failed to verify user existence: {e}')
             context.user_id = None
 
     # Check cache

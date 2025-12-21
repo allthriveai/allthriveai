@@ -1,13 +1,14 @@
 """
-Simplified learning tools for Ember agent.
+Learning tools for Ember agent.
 
-Reduces 14 tools to 3 tools + injected state + backend middleware.
-See: /docs/learning-tool-simplification.md
+Tools for creating learning paths and updating learner profiles.
+
+NOTE: find_learning_content has been consolidated into find_content.py
+in the discovery module. This file only contains path/profile tools.
 
 Tools:
-1. find_learning_content - Discover Tools + Projects + Quizzes + Games
-2. create_learning_path - Generate rich structured curriculum
-3. update_learner_profile - Save preferences/interests/skills
+1. create_learning_path - Generate rich structured curriculum
+2. update_learner_profile - Save preferences/interests/skills
 
 Member context (profile, stats, progress, suggestions, personalization)
 is injected at conversation start via MemberContextService - no tool call needed.
@@ -25,195 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Tool 1: find_learning_content
-# =============================================================================
-
-
-class FindLearningContentInput(BaseModel):
-    """Input for find_learning_content tool."""
-
-    model_config = {'extra': 'allow'}
-
-    query: str = Field(
-        description='Tool slug, topic slug, or search term (e.g., "langchain", "rag", "ai-agents")',
-    )
-    content_type: str = Field(
-        default='',
-        description='Optional filter: "video", "article", "quiz", "game", "code-repo", etc.',
-    )
-    limit: int = Field(
-        default=5,
-        ge=1,
-        le=50,
-        description='Maximum results per category (1-50, default 5)',
-    )
-    state: dict | None = Field(
-        default=None,
-        description='Internal - injected by agent with user context and member_context',
-    )
-
-
-@tool(args_schema=FindLearningContentInput)
-def find_learning_content(
-    query: str,
-    content_type: str = '',
-    limit: int = 5,
-    state: dict | None = None,
-) -> dict:
-    """
-    Find and return learning content about a tool or topic.
-
-    Use this when the user wants to:
-    - Learn about a specific tool (LangChain, Claude, React)
-    - Explore a topic (RAG, AI Agents, Prompt Engineering)
-    - Find specific content types (videos, quizzes, articles)
-    - Understand a concept (context windows, tokens, LLMs)
-
-    Returns RENDERABLE CONTENT that the frontend will display:
-    - inline_game: Interactive game widget embedded in chat
-    - project_card: Project cards with thumbnails
-    - quiz_card: Quiz cards with difficulty
-    - tool_info: Tool information panel
-
-    IMPORTANT: When games are found, they are returned as `inline_game` content
-    that the frontend automatically renders as playable widgets. You do NOT
-    need to call any other tool to embed games.
-
-    Examples:
-    - "What is a context window?" → Returns inline_game (Context Snake)
-    - "I want to learn about LangChain" → Returns tool_info + projects
-    - "Show me videos about RAG" → Returns project_cards
-    - "What quizzes are there about AI agents?" → Returns quiz_cards
-    """
-    logger.info(
-        'find_learning_content called',
-        extra={'query': query, 'content_type': content_type, 'user_id': state.get('user_id') if state else None},
-    )
-
-    user_id = state.get('user_id') if state else None
-    member_context = state.get('member_context') if state else None
-
-    try:
-        result = ContentFinder.find(
-            query=query,
-            content_type=content_type,
-            limit=limit,
-            user_id=user_id,
-            member_context=member_context,
-        )
-
-        # Build response with renderable content
-        response = {
-            'success': True,
-            'query': query,
-            'content': [],  # Renderable content items for frontend
-        }
-
-        # Add inline games FIRST (highest priority for learning)
-        # These are rendered as playable widgets in chat
-        if result['games']:
-            for game in result['games']:
-                # Map game slug to inline game type
-                game_type_map = {
-                    'context-snake': 'snake',
-                    'ethics-defender': 'ethics',  # Not yet inline
-                    'prompt-battle': 'battle',  # Not yet inline
-                }
-                inline_type = game_type_map.get(game['slug'], 'snake')
-
-                # Only add if it's an inline-capable game
-                if inline_type in ('snake', 'quiz'):
-                    response['content'].append(
-                        {
-                            'type': 'inline_game',
-                            'game_type': inline_type,
-                            'title': game['title'],
-                            'description': game['description'],
-                            'explanation': game.get('topic_explanation', ''),
-                            'url': game['url'],
-                        }
-                    )
-
-            response['games'] = result['games']
-            response['game_count'] = len(result['games'])
-
-        # Add tool info if found
-        if result['tool']:
-            response['content'].append(
-                {
-                    'type': 'tool_info',
-                    'name': result['tool']['name'],
-                    'slug': result['tool']['slug'],
-                    'description': result['tool']['description'],
-                    'key_features': result['tool'].get('key_features', []),
-                    'url': f"/tools/{result['tool']['slug']}",
-                }
-            )
-            response['tool'] = result['tool']
-
-        # Add projects as cards
-        if result['projects']:
-            for project in result['projects'][:3]:  # Limit to 3 cards in chat
-                response['content'].append(
-                    {
-                        'type': 'project_card',
-                        'id': project['id'],
-                        'title': project['title'],
-                        'description': project.get('description', ''),
-                        'thumbnail': project.get('thumbnail', ''),
-                        'url': project['url'],
-                        'content_type': project.get('content_type', ''),
-                        'difficulty': project.get('difficulty', ''),
-                    }
-                )
-            response['projects'] = result['projects']
-            response['project_count'] = len(result['projects'])
-        else:
-            response['projects'] = []
-            response['project_count'] = 0
-
-        # Add quizzes as cards
-        if result['quizzes']:
-            for quiz in result['quizzes'][:2]:  # Limit to 2 quiz cards
-                response['content'].append(
-                    {
-                        'type': 'quiz_card',
-                        'id': quiz['id'],
-                        'title': quiz['title'],
-                        'description': quiz.get('description', ''),
-                        'difficulty': quiz.get('difficulty', 'beginner'),
-                        'question_count': quiz.get('question_count', 0),
-                        'url': quiz['url'],
-                    }
-                )
-            response['quizzes'] = result['quizzes']
-            response['quiz_count'] = len(result['quizzes'])
-        else:
-            response['quizzes'] = []
-            response['quiz_count'] = 0
-
-        # Add helpful message based on results
-        content_count = len(response['content'])
-        if content_count == 0:
-            response['message'] = (
-                f"I couldn't find specific content about '{query}'. Let me explain what I know about it."
-            )
-        elif response.get('game_count', 0) > 0:
-            response['message'] = f"Here's an interactive way to learn about {query}!"
-        elif response.get('tool'):
-            response['message'] = f"Found information about {result['tool']['name']} and related content."
-        else:
-            response['message'] = f"Found {content_count} learning resources about '{query}'."
-
-        return response
-
-    except Exception as e:
-        logger.error('find_learning_content error', extra={'query': query, 'error': str(e)}, exc_info=True)
-        return {'success': False, 'error': str(e)}
-
-
-# =============================================================================
-# Tool 2: create_learning_path
+# Tool 1: create_learning_path
 # =============================================================================
 
 
@@ -478,7 +291,7 @@ def create_learning_path(
 
 
 # =============================================================================
-# Tool 3: update_learner_profile
+# Tool 2: update_learner_profile
 # =============================================================================
 
 
@@ -686,14 +499,12 @@ def update_learner_profile(
 
 # Tools that need state injection (user_id, username, session_id, member_context)
 TOOLS_NEEDING_STATE = {
-    'find_learning_content',
     'create_learning_path',
     'update_learner_profile',
 }
 
-# All learning tools (simplified from 14 to 3)
+# All learning tools (find_learning_content moved to find_content.py)
 LEARNING_TOOLS = [
-    find_learning_content,
     create_learning_path,
     update_learner_profile,
 ]

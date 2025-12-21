@@ -549,6 +549,14 @@ class DMSuggestionsView(APIView):
         # Get blocked user IDs
         blocked_ids = BlockService.get_blocked_user_ids(user)
 
+        def get_shared_interests(other_user, max_count=3):
+            """Get shared interest names between current user and another user."""
+            user_interest_ids = set(user.interests.values_list('id', flat=True))
+            if not user_interest_ids:
+                return []
+            shared = other_user.interests.filter(id__in=user_interest_ids).values_list('name', flat=True)[:max_count]
+            return list(shared)
+
         def add_suggestion(u, match_reason):
             """Helper to add a user suggestion."""
             if u.id in seen_ids or u.id in blocked_ids:
@@ -565,12 +573,12 @@ class DMSuggestionsView(APIView):
                 {
                     'userId': u.id,
                     'username': u.username,
-                    'displayName': u.display_name or u.username,
+                    'displayName': u.get_full_name() or u.username,
                     'avatarUrl': u.avatar_url if hasattr(u, 'avatar_url') else None,
                     'tier': u.tier if hasattr(u, 'tier') else None,
                     'level': u.level if hasattr(u, 'level') else 1,
                     'matchReason': match_reason,
-                    'sharedInterests': [],  # TODO: compute from user interests
+                    'sharedInterests': get_shared_interests(u),
                     'isFollowing': is_following,
                 }
             )

@@ -1,8 +1,14 @@
 """
-Embedding generation service for Weaviate personalization.
+Embedding generation service for Weaviate personalization and learning intelligence.
 
-Uses OpenAI for generating embeddings from project content, user preferences,
-and tool descriptions.
+Uses OpenAI for generating embeddings from:
+- Project content, user preferences, and tool descriptions (personalization)
+- Knowledge states, concepts, and learning gaps (learning intelligence)
+
+Learning Intelligence Embeddings:
+- KnowledgeState: Embeds what a user KNOWS (not content about topics)
+- Concept: Embeds learnable concepts for semantic path generation
+- LearningGap: Embeds detected confusion patterns for proactive help
 
 Includes circuit breaker pattern for resilience against API outages.
 """
@@ -642,10 +648,10 @@ class EmbeddingService:
                 else:
                     weight = 0.5
 
-            # Extract topics
-            if project.topics:
-                for topic in project.topics:
-                    viewed_topics[topic] += weight
+            # Extract topics (topics is a ManyToManyField)
+            topic_names = list(project.topics.values_list('name', flat=True))
+            for topic in topic_names:
+                viewed_topics[topic] += weight
 
             # Extract tool names
             tool_names = list(project.tools.values_list('name', flat=True))
@@ -701,6 +707,182 @@ class EmbeddingService:
             parts.append(f'Category: {tool.category}')
 
         return '\n'.join(parts)
+
+    # =========================================================================
+    # Learning Intelligence Embeddings
+    # =========================================================================
+
+    def generate_knowledge_state_embedding_text(self, mastery) -> str:
+        """
+        Generate text for user knowledge state embedding.
+
+        This embeds what a user KNOWS (not content about the topic), enabling:
+        - Find concepts the user should learn next (similar to known concepts)
+        - Identify gaps (concepts needed but unknown)
+        - Match users with similar knowledge profiles
+
+        Args:
+            mastery: UserConceptMastery model instance with concept prefetched
+
+        Returns:
+            Text representing user's understanding of this concept
+        """
+        parts = []
+        concept = mastery.concept
+
+        # Concept identification
+        parts.append(f'Knowledge of {concept.name}.')
+
+        # Topic context
+        if concept.topic_taxonomy:
+            parts.append(f'Topic area: {concept.topic_taxonomy.name}.')
+        elif concept.topic:
+            parts.append(f'Topic area: {concept.topic}.')
+
+        # Mastery level context
+        mastery_descriptions = {
+            'unknown': f'User is not familiar with {concept.name}.',
+            'aware': f'User has heard of {concept.name} but lacks understanding.',
+            'learning': f'User is actively learning {concept.name}, needs guidance.',
+            'practicing': f'User is practicing {concept.name}, building confidence.',
+            'proficient': f'User can apply {concept.name} independently in projects.',
+            'expert': f'User has mastered {concept.name} and can teach others.',
+        }
+        mastery_text = mastery_descriptions.get(
+            mastery.mastery_level,
+            f'User has {mastery.mastery_level} level in {concept.name}.',
+        )
+        parts.append(mastery_text)
+
+        # Mastery score context
+        if mastery.mastery_score >= 0.8:
+            parts.append('Strong understanding demonstrated.')
+        elif mastery.mastery_score >= 0.5:
+            parts.append('Moderate understanding, needs more practice.')
+        elif mastery.mastery_score >= 0.2:
+            parts.append('Beginning to understand, still learning fundamentals.')
+        else:
+            parts.append('Just starting to learn this concept.')
+
+        # Prerequisites context (helps with gap detection)
+        if hasattr(concept, 'prerequisites') and concept.prerequisites.exists():
+            prereq_names = list(concept.prerequisites.values_list('name', flat=True))
+            if prereq_names:
+                parts.append(f'Builds on: {", ".join(prereq_names)}.')
+
+        # Practice context
+        if mastery.times_practiced > 0:
+            parts.append(f'Practiced {mastery.times_practiced} times.')
+
+        return ' '.join(parts)
+
+    def generate_concept_embedding_text(self, concept) -> str:
+        """
+        Generate text for concept embedding.
+
+        This embeds the concept itself for semantic path generation, enabling:
+        - Find semantically similar concepts
+        - Generate learning paths
+        - Match concepts to user interests
+
+        Args:
+            concept: Concept model instance
+
+        Returns:
+            Text representing the concept for embedding
+        """
+        parts = []
+
+        # Concept name (repeated for weight)
+        if concept.name:
+            parts.append(concept.name)
+            parts.append(concept.name)
+
+        # Description
+        if concept.description:
+            parts.append(concept.description)
+
+        # Topic context
+        if concept.topic_taxonomy:
+            parts.append(f'Topic: {concept.topic_taxonomy.name}.')
+        elif concept.topic:
+            parts.append(f'Topic: {concept.topic}.')
+
+        # Difficulty context
+        if concept.difficulty:
+            parts.append(f'Difficulty: {concept.difficulty}.')
+
+        # Prerequisites (important for learning paths)
+        if hasattr(concept, 'prerequisites') and concept.prerequisites.exists():
+            prereq_names = list(concept.prerequisites.values_list('name', flat=True))
+            if prereq_names:
+                parts.append(f'Prerequisites: {", ".join(prereq_names)}.')
+
+        # What this concept unlocks
+        if hasattr(concept, 'unlocks') and concept.unlocks.exists():
+            unlocks_names = list(concept.unlocks.values_list('name', flat=True))
+            if unlocks_names:
+                parts.append(f'Unlocks: {", ".join(unlocks_names)}.')
+
+        # Related tools
+        if hasattr(concept, 'related_tools') and concept.related_tools.exists():
+            tool_names = list(concept.related_tools.values_list('name', flat=True))
+            if tool_names:
+                parts.append(f'Related tools: {", ".join(tool_names)}.')
+
+        return ' '.join(parts)
+
+    def generate_learning_gap_embedding_text(
+        self,
+        concept_name: str,
+        topic_slug: str,
+        gap_type: str,
+        evidence_summary: str,
+    ) -> str:
+        """
+        Generate text for learning gap embedding.
+
+        This embeds detected learning gaps for pattern matching, enabling:
+        - Find if user struggled with similar topics before
+        - Match common confusion patterns across users
+        - Suggest interventions based on similar past gaps
+
+        Args:
+            concept_name: Name of the concept with detected gap
+            topic_slug: Topic taxonomy slug
+            gap_type: Type of gap (confusion, prerequisite, practice, retention)
+            evidence_summary: Summary of evidence for this gap
+
+        Returns:
+            Text representing the learning gap for embedding
+        """
+        parts = []
+
+        # Gap identification
+        parts.append(f'Learning gap in {concept_name}.')
+
+        # Topic context
+        if topic_slug:
+            parts.append(f'Topic: {topic_slug}.')
+
+        # Gap type context
+        gap_type_descriptions = {
+            'confusion': 'User expressed confusion or asked for clarification.',
+            'prerequisite': 'User is missing prerequisite knowledge.',
+            'practice': 'User needs more practice with this concept.',
+            'retention': 'User may have forgotten previously learned material.',
+        }
+        gap_description = gap_type_descriptions.get(
+            gap_type,
+            f'Gap type: {gap_type}.',
+        )
+        parts.append(gap_description)
+
+        # Evidence summary (helps match similar patterns)
+        if evidence_summary:
+            parts.append(f'Evidence: {evidence_summary}')
+
+        return ' '.join(parts)
 
 
 # Singleton instance

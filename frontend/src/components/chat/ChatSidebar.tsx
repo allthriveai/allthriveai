@@ -8,6 +8,7 @@
  */
 
 import { SidebarChatLayout } from './layouts';
+import { useStableConversationId, type ChatContext as StableChatContext } from '@/hooks/useStableConversationId';
 import type { ChatContext, ArchitectureRegenerateContext, LearningSetupContext } from './core';
 
 export interface ChatSidebarProps {
@@ -33,8 +34,15 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   // If productCreationMode is true, use 'project' context (for product creation flows)
   const effectiveContext = productCreationMode ? 'project' : context;
-  // Generate a conversation ID if not provided
-  const effectiveConversationId = conversationId || `ember-${effectiveContext}-${Date.now()}`;
+
+  // Generate stable conversation ID if not provided
+  // This ensures chat history persists across page refreshes via LangGraph checkpointing
+  const stableConversationId = useStableConversationId({
+    context: effectiveContext as StableChatContext,
+  });
+
+  // Use provided conversationId if available, otherwise use stable fallback
+  const effectiveConversationId = conversationId || stableConversationId;
 
   return (
     <SidebarChatLayout

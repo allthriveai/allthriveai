@@ -741,7 +741,7 @@ Return ONLY the JSON, no other text.
             is_winner = submission.user_id == battle.winner_id
             points = winner_points if is_winner else participation_points
 
-            # Award XP to user using add_points() to create PointActivity record
+            # Award points to user using add_points() to create PointActivity record
             activity_type = 'prompt_battle_win' if is_winner else 'prompt_battle'
             challenge_preview = (battle.challenge_text or 'Battle')[:50]
             description = f'{"Won" if is_winner else "Participated in"} battle: {challenge_preview}'

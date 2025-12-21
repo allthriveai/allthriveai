@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { TopNavigation } from '@/components/navigation/TopNavigation';
@@ -15,8 +15,11 @@ import { AsyncBattleBanner } from '@/components/battles/AsyncBattleBanner';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { TopicTrayProvider } from '@/context/TopicTrayContext';
 import { ProjectPreviewTrayProvider, useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
+import { PointsNotificationProvider } from '@/context/PointsNotificationContext';
+import { GlobalPointsAwardOverlay } from '@/components/thrive-circle/PointsAwardOverlay';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveQuest } from '@/hooks/useActiveQuest';
+import { useStableConversationId } from '@/hooks/useStableConversationId';
 import type { Project, UserSideQuest, LearningGoal } from '@/types/models';
 
 // Constants
@@ -119,10 +122,12 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   // Messages tray context
   const messagesTray = useMessagesTrayOptional();
 
-  // Generate ember-prefixed conversation ID that routes to unified Ember agent
-  // The ID includes context so the backend knows which tools to prioritize
-  // Note: This changes when context changes, but the chat panel remounts anyway on close/open
-  const conversationId = useMemo(() => `ember-${chatContext}-${Date.now()}`, [chatContext]);
+  // Use stable conversation ID for LangGraph checkpointing persistence
+  // This ensures chat history is preserved across page refreshes
+  // The ID is stable per user+context, so conversations persist
+  const conversationId = useStableConversationId({
+    context: chatContext as 'default' | 'learn' | 'explore' | 'project',
+  });
 
   // Auto-open about panel when prop is true
   useEffect(() => {
@@ -145,6 +150,20 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setCommentPanelOpen(false);
     setCommentPanelProject(null);
   }, [location.pathname]);
+
+  // Define handleOpenAddProject before effects that use it
+  const handleOpenAddProject = useCallback((options: boolean | OpenChatOptions = false) => {
+    // Handle backwards compatibility - boolean means welcomeMode (now ignored)
+    const opts: OpenChatOptions = typeof options === 'boolean'
+      ? { welcomeMode: options }
+      : options;
+
+    // Open Ember chat panel with context-aware quick actions
+    setAddProjectOpen(true);
+    setChatContext(opts.context ?? 'default');
+    setAboutOpen(false);
+    setEventsOpen(false);
+  }, []);
 
   // Check for GitHub OAuth return and auto-open Add Project panel
   useEffect(() => {
@@ -173,7 +192,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     localStorage.removeItem(GITHUB_OAUTH_TIMESTAMP_KEY);
 
     handleOpenAddProject();
-  }, []);
+  }, [handleOpenAddProject]);
 
   // Check for Ember onboarding "Add Project" adventure - open chat in welcome mode
   useEffect(() => {
@@ -188,7 +207,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
         handleOpenAddProject(true); // Open in welcome mode
       }, 300);
     }
-  }, [location.pathname]);
+  }, [location.pathname, handleOpenAddProject]);
 
   // Listen for custom event to open add project chat (used by ClippedTab, etc.)
   useEffect(() => {
@@ -197,7 +216,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     };
     window.addEventListener('openAddProject', handleOpenAddProjectEvent);
     return () => window.removeEventListener('openAddProject', handleOpenAddProjectEvent);
-  }, []);
+  }, [handleOpenAddProject]);
 
   // Listen for architecture regeneration event (from ArchitectureSection)
   useEffect(() => {
@@ -266,19 +285,6 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     setEventsOpen(false);
   };
 
-  const handleOpenAddProject = useCallback((options: boolean | OpenChatOptions = false) => {
-    // Handle backwards compatibility - boolean means welcomeMode (now ignored)
-    const opts: OpenChatOptions = typeof options === 'boolean'
-      ? { welcomeMode: options }
-      : options;
-
-    // Open Ember chat panel with context-aware quick actions
-    setAddProjectOpen(true);
-    setChatContext(opts.context ?? 'default');
-    setAboutOpen(false);
-    setEventsOpen(false);
-  }, []);
-
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);
     setArchitectureRegenerateContext(null);
@@ -299,6 +305,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   };
 
   return (
+    <PointsNotificationProvider>
     <TopicTrayProvider>
     <ProjectPreviewTrayProvider>
     <div className="relative h-screen w-full overflow-hidden">
@@ -405,5 +412,8 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     </div>
     </ProjectPreviewTrayProvider>
     </TopicTrayProvider>
+    {/* Global Points Award Overlay - shows when any component triggers a points notification */}
+    <GlobalPointsAwardOverlay />
+    </PointsNotificationProvider>
   );
 }

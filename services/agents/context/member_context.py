@@ -109,6 +109,79 @@ class FeatureInterests(TypedDict):
 
 
 # =============================================================================
+# Learning Intelligence TypedDicts (Weaviate-powered)
+# =============================================================================
+
+
+class DetectedGap(TypedDict):
+    """A detected knowledge gap from Weaviate."""
+
+    topic: str
+    topic_display: str
+    concept: str | None
+    concept_id: int | None
+    confidence: float  # 0.0 - 1.0
+    reason: str  # low_mastery, missing_prerequisite, past_struggle, confusion_pattern
+    reason_display: str
+
+
+class StruggleSignal(TypedDict):
+    """Real-time struggle signal from conversation analysis."""
+
+    confidence: float  # 0.0 - 1.0
+    struggle_type: str  # concept_confusion, frustration, stuck_on_topic, rapid_questions
+    topic: str | None
+    signals: list[str]  # List of signals that contributed to detection
+    suggested_intervention: str  # simplify_explanation, suggest_prerequisite, etc.
+
+
+class ProactiveOffer(TypedDict):
+    """A proactive intervention offer."""
+
+    intervention_type: str  # simplify_explanation, suggest_prerequisite, etc.
+    message_hint: str  # Suggested phrasing for the agent
+    context_prefix: str  # Context to add to system prompt
+    topic: str | None
+
+
+class SemanticSuggestion(TypedDict):
+    """A Weaviate-powered learning suggestion."""
+
+    topic: str
+    topic_display: str
+    reason: str  # fills_gap, next_in_path, reinforces_learning
+    content_type: str | None  # quiz, project, micro_lesson
+    content_id: int | None
+
+
+# =============================================================================
+# Feedback Context TypedDicts (Human Feedback Loop)
+# =============================================================================
+
+
+class FeedbackPreferences(TypedDict):
+    """User's inferred preferences from feedback patterns."""
+
+    prefers_simple_explanations: bool
+    prefers_examples: bool
+    prefers_detailed_theory: bool
+    prefers_proactive_help: bool
+    difficulty_sweet_spot: str  # too_easy, just_right, too_hard
+    best_content_types: list[str]
+    problematic_topics: list[str]
+
+
+class FeedbackContext(TypedDict):
+    """Aggregated feedback for personalization."""
+
+    preferences: FeedbackPreferences
+    proactive_acceptance_rate: float  # 0-100
+    satisfaction_trend: str | None  # improving, stable, declining
+    current_blockers: list[str]  # From goal check-ins
+    recent_struggles: list[str]  # Topics with recent negative feedback
+
+
+# =============================================================================
 # Full Member Context
 # =============================================================================
 
@@ -140,6 +213,15 @@ class MemberContext(TypedDict):
     has_projects: bool  # Have they created any projects?
     project_count: int  # How many projects do they have?
     is_new_member: bool  # Are they a new member (< 7 days)?
+
+    # Learning Intelligence (Weaviate-powered) - populated at runtime
+    detected_gaps: list[DetectedGap]  # Knowledge gaps from gap detector
+    current_struggle: StruggleSignal | None  # Real-time struggle (set by agent)
+    proactive_offer: ProactiveOffer | None  # Intervention offer (set by agent)
+    semantic_suggestions: list[SemanticSuggestion]  # Weaviate-powered suggestions
+
+    # Human feedback loop context
+    feedback: FeedbackContext | None  # Aggregated feedback for personalization
 
 
 class MemberContextService:
@@ -284,6 +366,13 @@ class MemberContextService:
             'has_projects': False,
             'project_count': 0,
             'is_new_member': True,
+            # Learning Intelligence (populated at runtime)
+            'detected_gaps': [],
+            'current_struggle': None,
+            'proactive_offer': None,
+            'semantic_suggestions': [],
+            # Human feedback loop
+            'feedback': None,
         }
 
     @classmethod
@@ -305,6 +394,12 @@ class MemberContextService:
         # Get user-configured preferences (taxonomy + feature interests)
         user_preferences = cls._get_user_preferences(user_id)
 
+        # Get semantic intelligence from Weaviate
+        semantic_data = cls._get_semantic_intelligence(user_id)
+
+        # Get feedback context (human feedback loop)
+        feedback_data = cls._get_feedback_context(user_id)
+
         # Check if new member (created within last 7 days)
         from django.contrib.auth import get_user_model
 
@@ -313,6 +408,7 @@ class MemberContextService:
             user = User.objects.only('date_joined').get(id=user_id)
             is_new = user.date_joined > timezone.now() - timedelta(days=7)
         except User.DoesNotExist:
+            logger.debug(f'User not found when checking new member status: user_id={user_id}')
             is_new = True
 
         return {
@@ -328,6 +424,13 @@ class MemberContextService:
             'has_projects': profile_data['has_projects'],
             'project_count': profile_data['project_count'],
             'is_new_member': is_new,
+            # Learning Intelligence (Weaviate-powered)
+            'detected_gaps': semantic_data['detected_gaps'],
+            'current_struggle': None,  # Set by agent at runtime
+            'proactive_offer': None,  # Set by agent at runtime
+            'semantic_suggestions': semantic_data['semantic_suggestions'],
+            # Human feedback loop
+            'feedback': feedback_data,
         }
 
     @classmethod
@@ -543,7 +646,7 @@ class MemberContextService:
                 'industries': [ind.name for ind in user.industries.all()],
             }
         except User.DoesNotExist:
-            pass
+            logger.debug(f'User not found for taxonomy preferences: user_id={user_id}')
 
         # Get PersonalizationSettings (feature interests, discovery balance)
         try:
@@ -556,7 +659,7 @@ class MemberContextService:
                 'discovery_balance': settings.discovery_balance,
             }
         except PersonalizationSettings.DoesNotExist:
-            pass
+            logger.debug(f'PersonalizationSettings not found: user_id={user_id}')
 
         return {
             'taxonomy_preferences': taxonomy_prefs,
@@ -675,3 +778,114 @@ class MemberContextService:
             )
 
         return suggestions[:5]
+
+    @classmethod
+    def _get_semantic_intelligence(cls, user_id: int) -> dict:
+        """
+        Get Weaviate-powered semantic intelligence.
+
+        Detects knowledge gaps and generates semantic suggestions
+        based on the user's learning state.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            dict with 'detected_gaps' and 'semantic_suggestions'
+        """
+        detected_gaps: list[DetectedGap] = []
+        semantic_suggestions: list[SemanticSuggestion] = []
+
+        try:
+            from services.agents.learning.components.gap_detector import get_gap_detector
+
+            gap_detector = get_gap_detector()
+
+            # Detect knowledge gaps (limit to top 5)
+            gaps = gap_detector.detect_gaps(user_id, limit=5)
+            for gap in gaps:
+                detected_gaps.append(
+                    {
+                        'topic': gap.get('topic', ''),
+                        'topic_display': gap.get('topic_display', ''),
+                        'concept': gap.get('concept'),
+                        'concept_id': gap.get('concept_id'),
+                        'confidence': gap.get('confidence', 0.5),
+                        'reason': gap.get('reason', 'unknown'),
+                        'reason_display': gap.get('reason_display', 'Unknown'),
+                    }
+                )
+
+            # Generate semantic suggestions from gaps
+            # Convert high-confidence gaps to suggestions
+            for gap in detected_gaps[:3]:
+                if gap['confidence'] >= 0.5:
+                    semantic_suggestions.append(
+                        {
+                            'topic': gap['topic'],
+                            'topic_display': gap['topic_display'],
+                            'reason': 'fills_gap',
+                            'content_type': None,  # Could be enhanced with content matching
+                            'content_id': None,
+                        }
+                    )
+
+        except Exception as e:
+            logger.warning(
+                f'Failed to get semantic intelligence for user {user_id}: {e}',
+                extra={'user_id': user_id},
+            )
+
+        return {
+            'detected_gaps': detected_gaps,
+            'semantic_suggestions': semantic_suggestions,
+        }
+
+    @classmethod
+    def _get_feedback_context(cls, user_id: int) -> FeedbackContext | None:
+        """
+        Get aggregated human feedback context.
+
+        Uses the FeedbackAggregator to collect insights from:
+        - Conversation feedback (thumbs up/down)
+        - Proactive offer responses
+        - Content helpfulness ratings
+        - Goal check-ins
+
+        Returns:
+            FeedbackContext or None if no feedback data exists
+        """
+        try:
+            from services.feedback.aggregator import FeedbackAggregator
+
+            aggregator = FeedbackAggregator(user_id)
+            feedback_data = aggregator.get_for_member_context()
+
+            # Return None if no meaningful feedback yet
+            if not feedback_data or not feedback_data.get('preferences'):
+                return None
+
+            preferences = feedback_data['preferences']
+
+            return {
+                'preferences': {
+                    'prefers_simple_explanations': preferences.get('prefers_simple_explanations', False),
+                    'prefers_examples': preferences.get('prefers_examples', True),
+                    'prefers_detailed_theory': preferences.get('prefers_detailed_theory', False),
+                    'prefers_proactive_help': preferences.get('prefers_proactive_help', True),
+                    'difficulty_sweet_spot': preferences.get('difficulty_sweet_spot', 'just_right'),
+                    'best_content_types': preferences.get('best_content_types', []),
+                    'problematic_topics': preferences.get('problematic_topics', []),
+                },
+                'proactive_acceptance_rate': feedback_data.get('proactive_acceptance_rate', 0),
+                'satisfaction_trend': feedback_data.get('satisfaction_trend'),
+                'current_blockers': feedback_data.get('current_blockers', []),
+                'recent_struggles': feedback_data.get('recent_struggles', []),
+            }
+
+        except Exception as e:
+            logger.warning(
+                f'Failed to get feedback context for user {user_id}: {e}',
+                extra={'user_id': user_id},
+            )
+            return None

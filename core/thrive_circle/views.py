@@ -197,6 +197,66 @@ class ThriveCircleViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @action(detail=False, methods=['post'], url_path='welcome-points')
+    def welcome_points(self, request):
+        """
+        Award welcome points to the authenticated user (once only).
+
+        This endpoint is specifically for awarding the one-time welcome bonus
+        when a user completes onboarding. It checks if points have already
+        been awarded to prevent duplicate awards.
+
+        Returns:
+            {
+                "awarded": true,
+                "points": 50,
+                "total_points": <new total>
+            }
+            or
+            {
+                "already_awarded": true,
+                "points": 0
+            }
+        """
+        user = request.user
+        WELCOME_POINTS = 50
+
+        # Check if welcome points have already been awarded
+        already_awarded = PointActivity.objects.filter(user=user, activity_type='welcome').exists()
+
+        if already_awarded:
+            return Response({'already_awarded': True, 'points': 0})
+
+        try:
+            # Award welcome points
+            user.add_points(
+                amount=WELCOME_POINTS, activity_type='welcome', description='Welcome bonus for completing onboarding'
+            )
+
+            # Refresh to get updated total
+            user.refresh_from_db()
+
+            logger.info(
+                f'Welcome points awarded: {WELCOME_POINTS} points',
+                extra={'user_id': user.id, 'amount': WELCOME_POINTS},
+            )
+
+            return Response(
+                {'awarded': True, 'points': WELCOME_POINTS, 'total_points': user.total_points},
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logger.error(
+                f'Failed to award welcome points: {e}',
+                exc_info=True,
+                extra={'user_id': user.id},
+            )
+            return Response(
+                {'error': 'Failed to award welcome points. Please try again later.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
     @action(detail=False, methods=['get'])
     def weekly_goals(self, request):
         """

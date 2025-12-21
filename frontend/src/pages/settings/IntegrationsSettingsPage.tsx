@@ -10,6 +10,7 @@ import { faChevronDown, faChevronUp, faCheck, faSpinner } from '@fortawesome/fre
 import { VideoPickerModal } from '@/components/integrations/VideoPickerModal';
 import { YouTubeImportProgressModal } from '@/components/integrations/YouTubeImportProgressModal';
 import { getUserFriendlyError, type UserFriendlyError, type ErrorResponse } from '@/utils/errorMessages';
+import { getErrorMessage } from '@/utils/errors';
 
 interface Integration {
   id: string;
@@ -223,26 +224,18 @@ export default function IntegrationsSettingsPage() {
                 )
               );
             }
-          } catch (error: any) {
-            console.error('[IntegrationsSettingsPage] Could not fetch YouTube channel:', error);
-            console.error('[IntegrationsSettingsPage] Error details:', {
-              message: error.message,
-              statusCode: error.statusCode
-            });
+          } catch (error) {
+            console.error('[IntegrationsSettingsPage] Could not fetch YouTube channel:', getErrorMessage(error));
             // If 401, YouTube needs reconnection for proper permissions
-            if (error.statusCode === 401) {
+            const errorResponse = error as ErrorResponse;
+            if (errorResponse?.statusCode === 401) {
               setYoutubeNeedsReconnect(true);
             }
             // Keep the email fallback already set above
           }
         }
-      } catch (error: any) {
-        console.error('[IntegrationsSettingsPage] Failed to fetch connection status:', error);
-        console.error('[IntegrationsSettingsPage] Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status
-        });
+      } catch (error) {
+        console.error('[IntegrationsSettingsPage] Failed to fetch connection status:', getErrorMessage(error));
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -277,8 +270,8 @@ export default function IntegrationsSettingsPage() {
             variant: 'error',
           });
         }
-      } catch (error: any) {
-        console.error('[IntegrationsSettingsPage] Failed to initiate LinkedIn OAuth:', error);
+      } catch (error) {
+        console.error('[IntegrationsSettingsPage] Failed to initiate LinkedIn OAuth:', getErrorMessage(error));
         const friendlyError = getUserFriendlyError(error as ErrorResponse, 'linkedin');
         setErrorMessage(friendlyError);
       }
@@ -315,13 +308,8 @@ export default function IntegrationsSettingsPage() {
             variant: 'error',
           });
         }
-      } catch (error: any) {
-        console.error('[IntegrationsSettingsPage] Failed to initiate Google OAuth:', error);
-        console.error('[IntegrationsSettingsPage] Error details:', {
-          message: error.message,
-          statusCode: error.statusCode,
-          error: error.error
-        });
+      } catch (error) {
+        console.error('[IntegrationsSettingsPage] Failed to initiate Google OAuth:', getErrorMessage(error));
         const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
         setErrorMessage(friendlyError);
       }
@@ -340,13 +328,8 @@ export default function IntegrationsSettingsPage() {
             variant: 'error',
           });
         }
-      } catch (error: any) {
-        console.error('[IntegrationsSettingsPage] Failed to initiate GitLab OAuth:', error);
-        console.error('[IntegrationsSettingsPage] Error details:', {
-          message: error.message,
-          statusCode: error.statusCode,
-          error: error.error
-        });
+      } catch (error) {
+        console.error('[IntegrationsSettingsPage] Failed to initiate GitLab OAuth:', getErrorMessage(error));
         const friendlyError = getUserFriendlyError(error as ErrorResponse);
         setErrorMessage(friendlyError);
       }
@@ -516,8 +499,8 @@ export default function IntegrationsSettingsPage() {
         );
         setSuccessMessage(response.data.message || `Auto-sync ${newSyncEnabled ? 'enabled' : 'disabled'}`);
       }
-    } catch (error: any) {
-      console.error('Failed to toggle sync:', error);
+    } catch (error) {
+      console.error('Failed to toggle sync:', getErrorMessage(error));
       const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
     }
@@ -546,8 +529,8 @@ export default function IntegrationsSettingsPage() {
         // Refresh sync status after a delay
         setTimeout(() => fetchSyncStatus(), 5000);
       }
-    } catch (error: any) {
-      console.error('Failed to import channel:', error);
+    } catch (error) {
+      console.error('Failed to import channel:', getErrorMessage(error));
       const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
     }
@@ -591,8 +574,8 @@ export default function IntegrationsSettingsPage() {
         setLastSyncedAt(new Date().toISOString());
         setSuccessMessage(response.data.message || `Found ${response.data.videosFound || 0} new videos. Syncing in progress...`);
       }
-    } catch (error: any) {
-      console.error('Failed to sync:', error);
+    } catch (error) {
+      console.error('Failed to sync:', getErrorMessage(error));
       const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
     } finally {
@@ -661,13 +644,8 @@ export default function IntegrationsSettingsPage() {
           navigate(`/${user.username}`);
         }
       }, 2000);
-    } catch (error: any) {
-      console.error('[IntegrationsSettingsPage] Failed to import videos:', error);
-      console.error('[IntegrationsSettingsPage] Import error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
+    } catch (error) {
+      console.error('[IntegrationsSettingsPage] Failed to import videos:', getErrorMessage(error));
       const friendlyError = getUserFriendlyError(error as ErrorResponse, 'youtube');
       setErrorMessage(friendlyError);
       throw error; // Re-throw to keep modal open

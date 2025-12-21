@@ -7,13 +7,15 @@
  * Wrapped in DashboardLayout for header/footer.
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { EmbeddedChatLayout } from '@/components/chat/layouts';
+import { useStableConversationId } from '@/hooks/useStableConversationId';
 
 function EmberHomeContent() {
-  // Generate a unique conversation ID for this session
-  const [conversationId] = useState(() => `ember-home-${Date.now()}`);
+  // Use stable conversation ID for LangGraph checkpointing persistence
+  // This ensures chat history is preserved across page refreshes
+  const conversationId = useStableConversationId({ context: 'home' });
 
   // Ensure page starts at top on mount
   useEffect(() => {

@@ -50,7 +50,8 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
         """Handle WebSocket connection to a room."""
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.user = self.scope.get('user')
-        self.group_name = f'community:room:{self.room_id}'
+        # Use dots instead of colons - channels doesn't allow colons in group names
+        self.group_name = f'community.room.{self.room_id}'
 
         # Validate origin
         headers = dict(self.scope.get('headers', []))
@@ -353,7 +354,7 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
             try:
                 reply_to = Message.objects.get(id=reply_to_id, room=room)
             except Message.DoesNotExist:
-                pass
+                logger.debug(f'Reply target message not found: {reply_to_id}')
 
         message = Message.objects.create(
             room=room,
@@ -413,7 +414,7 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                 cursor_message = Message.objects.get(id=cursor)
                 queryset = queryset.filter(created_at__lt=cursor_message.created_at)
             except Message.DoesNotExist:
-                pass
+                logger.debug(f'Cursor message not found, resetting pagination: {cursor}')
 
         messages = list(queryset[:limit])
 
@@ -449,7 +450,7 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                 user=self.user,
             ).update(last_read_at=message.created_at)
         except Message.DoesNotExist:
-            pass
+            logger.debug(f'Message not found for read receipt: {message_id}')
 
     # Redis operations for presence and rate limiting
 
@@ -505,7 +506,8 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
         """Handle WebSocket connection to a DM thread."""
         self.thread_id = self.scope['url_route']['kwargs']['thread_id']
         self.user = self.scope.get('user')
-        self.group_name = f'community:dm:{self.thread_id}'
+        # Use dots instead of colons - channels doesn't allow colons in group names
+        self.group_name = f'community.dm.{self.thread_id}'
 
         # Validate origin
         headers = dict(self.scope.get('headers', []))
@@ -670,15 +672,15 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _serialize_message(self, message: Message) -> dict:
-        """Serialize message for WebSocket transmission."""
+        """Serialize message for WebSocket transmission (uses camelCase for frontend)."""
         return {
             'id': str(message.id),
             'author': {
                 'id': str(message.author.id) if message.author else None,
                 'username': message.author.username if message.author else 'Unknown',
-                'avatar_url': getattr(message.author, 'avatar_url', None) if message.author else None,
+                'avatarUrl': getattr(message.author, 'avatar_url', None) if message.author else None,
             },
             'content': message.content,
-            'message_type': message.message_type,
-            'created_at': message.created_at.isoformat(),
+            'messageType': message.message_type,
+            'createdAt': message.created_at.isoformat(),
         }

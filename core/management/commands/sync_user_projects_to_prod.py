@@ -91,7 +91,7 @@ class Command(BaseCommand):
             'external_url': project.external_url or '',
             'tools_order': project.tools_order or [],
             'hide_categories': project.hide_categories,
-            'topics': project.topics or [],
+            'topics': list(project.topics.values_list('name', flat=True)),
             'content': project.content or {},
             'tags_manually_edited': project.tags_manually_edited,
             'difficulty_level': project.difficulty_level or '',

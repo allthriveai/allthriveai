@@ -589,25 +589,42 @@ export function useIntelligentChat({
                 });
                 seenMessageIdsRef.current.add(gameMessageId);
               }
-              // Handle find_learning_content tool with content array
-              console.log('[useIntelligentChat] tool_end received:', data.tool, 'output:', data.output);
-              if (data.tool === 'find_learning_content' && data.output?.content && data.output.content.length > 0) {
-                console.log('[useIntelligentChat] Processing find_learning_content content array:', data.output.content);
-                const contentArray = data.output.content as Array<{
+              // Handle find_content and find_learning_content tools with content array
+              // NOTE: Backend returns content array with camelCase keys (from find_content)
+              // or _frontend_content for legacy find_learning_content
+              {
+                // Support both new find_content (camelCase content array) and legacy find_learning_content (_frontend_content)
+                const outputData = data.output as Record<string, unknown> | undefined;
+                const frontendContent = (outputData?.content || outputData?._frontend_content) as Array<Record<string, unknown>> | undefined;
+                // find_content returns projects in a separate 'projects' array (not in content)
+                const projectsArray = outputData?.projects as Array<Record<string, unknown>> | undefined;
+
+              if ((data.tool === 'find_content' || data.tool === 'find_learning_content') &&
+                  ((frontendContent && frontendContent.length > 0) || (projectsArray && projectsArray.length > 0))) {
+                // Support both camelCase (find_content) and snake_case (legacy find_learning_content)
+                const contentArray = (frontendContent || []) as Array<{
                   type: string;
-                  game_type?: string;
+                  // Game fields (camelCase from find_content)
+                  gameType?: string;
+                  game_type?: string;  // Legacy snake_case
+                  topicExplanation?: string;
+                  // Common fields
                   title?: string;
                   explanation?: string;
                   description?: string;
                   url?: string;
                   id?: string;
                   thumbnail?: string;
-                  content_type?: string;
+                  // Project fields (camelCase)
+                  contentType?: string;
+                  content_type?: string;  // Legacy snake_case
                   difficulty?: string;
-                  question_count?: number;
+                  questionCount?: number;
+                  question_count?: number;  // Legacy snake_case
                   name?: string;
                   slug?: string;
-                  key_features?: string[];
+                  keyFeatures?: string[];
+                  key_features?: string[];  // Legacy snake_case
                 }>;
                 const timestamp = Date.now();
 
@@ -615,7 +632,6 @@ export function useIntelligentChat({
                 // Check and mark as seen BEFORE building, using a unique key for this event
                 const eventKey = `find-learning-${timestamp}`;
                 if (seenMessageIdsRef.current.has(eventKey)) {
-                  console.log('[useIntelligentChat] Skipping duplicate find_learning_content event:', eventKey);
                   break;
                 }
                 seenMessageIdsRef.current.add(eventKey);
@@ -628,22 +644,28 @@ export function useIntelligentChat({
                 contentArray.forEach((item, index) => {
                   const itemId = `${eventKey}-${index}`;
 
-                  if (item.type === 'inline_game') {
+                  // Support both camelCase (find_content) and snake_case (legacy)
+                  const gameType = item.gameType || item.game_type;
+                  const questionCount = item.questionCount || item.question_count;
+                  const explanation = item.topicExplanation || item.explanation;
+
+                  // Handle both inlineGame (new) and inline_game (legacy)
+                  if (item.type === 'inlineGame' || item.type === 'inline_game') {
                     const gameMessage: ChatMessage = {
                       id: itemId,
-                      content: item.explanation || '',
+                      content: explanation || '',
                       sender: 'assistant',
                       timestamp: new Date(),
                       metadata: {
                         type: 'inline_game',
-                        gameType: item.game_type as 'snake' | 'quiz' | 'random',
+                        gameType: gameType as 'snake' | 'quiz' | 'random',
                         gameConfig: {},
-                        explanation: item.explanation,
+                        explanation: explanation,
                       },
                     };
-                    console.log('[useIntelligentChat] Creating inline_game message:', gameMessage);
                     newContentMessages.push(gameMessage);
-                  } else if (item.type === 'project_card') {
+                  } else if (item.type === 'projectCard' || item.type === 'project_card') {
+                    // Render projects as cards in a grid (AI gives brief intro, cards show details)
                     projectItems.push({
                       id: item.id || itemId,
                       title: item.title || '',
@@ -652,9 +674,9 @@ export function useIntelligentChat({
                       thumbnail: item.thumbnail || '',
                       featured_image_url: item.thumbnail || '',
                       difficulty: item.difficulty,
-                      question_count: item.question_count,
+                      question_count: questionCount,
                     });
-                  } else if (item.type === 'quiz_card') {
+                  } else if (item.type === 'quizCard' || item.type === 'quiz_card') {
                     quizItems.push({
                       id: item.id || itemId,
                       title: item.title || '',
@@ -663,15 +685,52 @@ export function useIntelligentChat({
                       thumbnail: item.thumbnail || '',
                       featured_image_url: item.thumbnail || '',
                       difficulty: item.difficulty,
-                      question_count: item.question_count,
+                      question_count: questionCount,
                     });
-                  } else if (item.type === 'tool_info') {
+                  } else if (item.type === 'toolInfo' || item.type === 'tool_info') {
                     // Skip tool_info - the AI's text response already explains the topic
                     // and showing it separately creates duplicate content
                   }
                 });
 
-                // Create single message for all projects (grouped together)
+                // Process the separate 'projects' array from find_content response
+                // Projects render as cards in a grid - AI gives brief intro text only
+                if (projectsArray && projectsArray.length > 0) {
+                  projectsArray.forEach((project, index) => {
+                    const p = project as {
+                      id?: number | string;
+                      title?: string;
+                      slug?: string;
+                      description?: string;
+                      author?: string;
+                      authorAvatarUrl?: string;
+                      author_avatar_url?: string;
+                      featuredImageUrl?: string;
+                      featured_image_url?: string;
+                      thumbnail?: string;
+                      categories?: string[];
+                      url?: string;
+                      contentType?: string;
+                      content_type?: string;
+                      difficulty?: string;
+                    };
+                    projectItems.push({
+                      id: String(p.id || `${eventKey}-proj-${index}`),
+                      title: p.title || '',
+                      slug: p.slug,
+                      description: p.description || '',
+                      url: p.url || '',
+                      thumbnail: p.thumbnail || p.featuredImageUrl || p.featured_image_url || '',
+                      featured_image_url: p.featuredImageUrl || p.featured_image_url || p.thumbnail || '',
+                      author_username: p.author,
+                      author_avatar_url: p.authorAvatarUrl || p.author_avatar_url || '',
+                      key_techniques: p.categories,
+                      difficulty: p.difficulty,
+                    });
+                  });
+                }
+
+                // Create single message for all projects (rendered as grid of cards)
                 if (projectItems.length > 0) {
                   newContentMessages.push({
                     id: `${eventKey}-projects`,
@@ -715,128 +774,14 @@ export function useIntelligentChat({
 
                 // Store messages to add after streaming completes (for correct ordering)
                 if (newContentMessages.length > 0) {
-                  console.log('[useIntelligentChat] Queuing', newContentMessages.length, 'content messages for after streaming');
                   pendingContentMessagesRef.current.push(...newContentMessages);
                 }
               }
-
-              // Handle get_trending_projects tool - show as project cards
-              if (data.tool === 'get_trending_projects' && data.output?.projects && data.output.projects.length > 0) {
-                const trendingId = `trending-projects-${Date.now()}`;
-
-                // Check for duplicate
-                if (seenMessageIdsRef.current.has(trendingId)) {
-                  break;
-                }
-                seenMessageIdsRef.current.add(trendingId);
-
-                // Transform projects to LearningContentItem format
-                const projects = data.output.projects as Array<{
-                  id: number;
-                  title: string;
-                  slug: string;
-                  description: string;
-                  author: string;
-                  author_avatar_url?: string;
-                  thumbnail?: string;
-                  featured_image_url?: string;
-                  categories?: string[];
-                  url: string;
-                }>;
-
-                const items: LearningContentItem[] = projects.map((p) => ({
-                  id: String(p.id),
-                  title: p.title,
-                  slug: p.slug,
-                  description: p.description,
-                  url: p.url,
-                  featured_image_url: p.featured_image_url || p.thumbnail || '',
-                  thumbnail: p.thumbnail || p.featured_image_url || '',
-                  author_username: p.author,
-                  author_avatar_url: p.author_avatar_url || '',
-                  key_techniques: p.categories || [],
-                }));
-
-                const trendingMessage: ChatMessage = {
-                  id: trendingId,
-                  content: '',
-                  sender: 'assistant',
-                  timestamp: new Date(),
-                  metadata: {
-                    type: 'learning_content',
-                    learningContent: {
-                      topic: 'trending',
-                      topicDisplay: 'Trending Projects',
-                      contentType: 'projects',
-                      sourceType: 'trending',
-                      items,
-                      hasContent: true,
-                    },
-                  },
-                };
-
-                // Queue for after streaming completes
-                pendingContentMessagesRef.current.push(trendingMessage);
               }
 
-              // Handle get_recommendations tool - show personalized project cards
-              if (data.tool === 'get_recommendations' && data.output?.projects && data.output.projects.length > 0) {
-                const recommendationsId = `recommendations-${Date.now()}`;
-
-                // Check for duplicate
-                if (seenMessageIdsRef.current.has(recommendationsId)) {
-                  break;
-                }
-                seenMessageIdsRef.current.add(recommendationsId);
-
-                // Transform projects to LearningContentItem format
-                const projects = data.output.projects as Array<{
-                  id: number;
-                  title: string;
-                  slug: string;
-                  description: string;
-                  author: string;
-                  author_avatar_url?: string;
-                  thumbnail?: string;
-                  featured_image_url?: string;
-                  categories?: string[];
-                  url: string;
-                }>;
-
-                const items: LearningContentItem[] = projects.map((p) => ({
-                  id: String(p.id),
-                  title: p.title,
-                  slug: p.slug,
-                  description: p.description,
-                  url: p.url,
-                  featured_image_url: p.featured_image_url || p.thumbnail || '',
-                  thumbnail: p.thumbnail || p.featured_image_url || '',
-                  author_username: p.author,
-                  author_avatar_url: p.author_avatar_url || '',
-                  key_techniques: p.categories || [],
-                }));
-
-                const recommendationsMessage: ChatMessage = {
-                  id: recommendationsId,
-                  content: '',
-                  sender: 'assistant',
-                  timestamp: new Date(),
-                  metadata: {
-                    type: 'learning_content',
-                    learningContent: {
-                      topic: 'for-you',
-                      topicDisplay: 'For You',
-                      contentType: 'projects',
-                      sourceType: 'personalized',
-                      items,
-                      hasContent: true,
-                    },
-                  },
-                };
-
-                // Queue for after streaming completes
-                pendingContentMessagesRef.current.push(recommendationsMessage);
-              }
+              // NOTE: get_trending_projects and get_recommendations tools were removed
+              // All project discovery now goes through the unified find_content tool
+              // which is handled above (data.tool === 'find_content')
               break;
 
             case 'image_generating': {
@@ -899,7 +844,6 @@ export function useIntelligentChat({
 
               // Add any pending content messages (games, cards, etc.) AFTER streaming text
               if (pendingContentMessagesRef.current.length > 0) {
-                console.log('[useIntelligentChat] Adding', pendingContentMessagesRef.current.length, 'pending content messages');
                 const pendingMessages = [...pendingContentMessagesRef.current];
                 pendingContentMessagesRef.current = []; // Clear the ref
                 setMessages((prev) => [...prev, ...pendingMessages].slice(-MAX_MESSAGES));

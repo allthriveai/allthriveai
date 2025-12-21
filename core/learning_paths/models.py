@@ -1184,3 +1184,477 @@ class UserSkillProficiency(models.Model):
 
     def __str__(self):
         return f'{self.user.username}: {self.skill.name} ({self.proficiency_level})'
+
+
+# ============================================================================
+# HUMAN FEEDBACK LOOP MODELS
+# ============================================================================
+
+
+class ConversationFeedback(models.Model):
+    """
+    Captures explicit feedback on Ember's responses.
+
+    Enables the system to learn which explanations, recommendations,
+    and interactions are helpful vs confusing.
+    """
+
+    FEEDBACK_CHOICES = [
+        ('helpful', 'Helpful'),
+        ('not_helpful', 'Not Helpful'),
+        ('confusing', 'Confusing'),
+        ('too_basic', 'Too Basic'),
+        ('too_advanced', 'Too Advanced'),
+        ('incorrect', 'Incorrect Information'),
+    ]
+
+    CONTEXT_TYPE_CHOICES = [
+        ('explanation', 'Concept Explanation'),
+        ('recommendation', 'Content Recommendation'),
+        ('answer', 'Question Answer'),
+        ('proactive', 'Proactive Suggestion'),
+        ('game', 'Game/Quiz'),
+        ('general', 'General Response'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='conversation_feedback',
+    )
+    session_id = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text='Conversation session ID for grouping',
+    )
+    message_id = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text='Specific message this feedback is for',
+    )
+
+    feedback = models.CharField(
+        max_length=20,
+        choices=FEEDBACK_CHOICES,
+    )
+    context_type = models.CharField(
+        max_length=20,
+        choices=CONTEXT_TYPE_CHOICES,
+        default='general',
+    )
+
+    # Optional topic/concept context for learning from feedback
+    topic_slug = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text='Topic being discussed when feedback was given',
+    )
+    concept = models.ForeignKey(
+        Concept,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='conversation_feedback',
+        help_text='Concept being explained when feedback was given',
+    )
+
+    # Optional text feedback for qualitative analysis
+    comment = models.TextField(
+        blank=True,
+        help_text='Optional user comment explaining the feedback',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'feedback']),
+            models.Index(fields=['topic_slug', 'feedback']),
+            models.Index(fields=['context_type', 'feedback']),
+            models.Index(fields=['session_id', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.feedback} on {self.context_type}'
+
+
+class ProactiveOfferResponse(models.Model):
+    """
+    Tracks user responses to proactive intervention offers.
+
+    Records when Ember offers help ("Would you like me to explain differently?")
+    and whether the user accepts, declines, or ignores the offer.
+    """
+
+    RESPONSE_CHOICES = [
+        ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
+        ('ignored', 'Ignored'),  # No response within session
+        ('helpful_after', 'Accepted and Found Helpful'),
+        ('not_helpful_after', 'Accepted but Not Helpful'),
+    ]
+
+    INTERVENTION_TYPE_CHOICES = [
+        ('simplify_explanation', 'Simplify Explanation'),
+        ('suggest_prerequisite', 'Suggest Prerequisite'),
+        ('offer_example', 'Offer Example'),
+        ('offer_break', 'Offer Break'),
+        ('offer_help', 'General Help Offer'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='proactive_offer_responses',
+    )
+    session_id = models.CharField(
+        max_length=255,
+        db_index=True,
+    )
+
+    intervention_type = models.CharField(
+        max_length=30,
+        choices=INTERVENTION_TYPE_CHOICES,
+    )
+    response = models.CharField(
+        max_length=20,
+        choices=RESPONSE_CHOICES,
+    )
+
+    # Context about why the intervention was triggered
+    struggle_confidence = models.FloatField(
+        help_text='Confidence score of the struggle detection (0.0-1.0)',
+    )
+    struggle_type = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text='Type of struggle detected',
+    )
+    topic_slug = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+    )
+    concept = models.ForeignKey(
+        Concept,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='proactive_offer_responses',
+    )
+
+    # Timing
+    offered_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the user responded (null if ignored)',
+    )
+
+    class Meta:
+        ordering = ['-offered_at']
+        indexes = [
+            models.Index(fields=['user', 'intervention_type']),
+            models.Index(fields=['intervention_type', 'response']),
+            models.Index(fields=['struggle_confidence']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.response} to {self.intervention_type}'
+
+    @property
+    def was_successful(self) -> bool:
+        """Whether the intervention was accepted and found helpful."""
+        return self.response in ['accepted', 'helpful_after']
+
+    @property
+    def response_time_seconds(self) -> float | None:
+        """Time between offer and response in seconds."""
+        if self.responded_at:
+            return (self.responded_at - self.offered_at).total_seconds()
+        return None
+
+
+class ContentHelpfulness(models.Model):
+    """
+    Captures helpfulness feedback on learning content.
+
+    Allows users to rate lessons, quiz explanations, and other
+    educational content to improve quality over time.
+    """
+
+    CONTENT_TYPE_CHOICES = [
+        ('micro_lesson', 'Micro Lesson'),
+        ('quiz_explanation', 'Quiz Explanation'),
+        ('concept_explanation', 'Concept Explanation'),
+        ('project_learning', 'Project as Learning Resource'),
+        ('tool_info', 'Tool Information'),
+    ]
+
+    HELPFULNESS_CHOICES = [
+        ('very_helpful', 'Very Helpful'),
+        ('helpful', 'Helpful'),
+        ('neutral', 'Neutral'),
+        ('not_helpful', 'Not Helpful'),
+        ('confusing', 'Confusing'),
+    ]
+
+    DIFFICULTY_PERCEPTION_CHOICES = [
+        ('too_easy', 'Too Easy'),
+        ('just_right', 'Just Right'),
+        ('too_hard', 'Too Hard'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='content_helpfulness_feedback',
+    )
+
+    content_type = models.CharField(
+        max_length=30,
+        choices=CONTENT_TYPE_CHOICES,
+    )
+    content_id = models.CharField(
+        max_length=255,
+        help_text='ID of the content (lesson ID, quiz ID, etc.)',
+    )
+
+    helpfulness = models.CharField(
+        max_length=20,
+        choices=HELPFULNESS_CHOICES,
+    )
+
+    # Link to specific models if available
+    micro_lesson = models.ForeignKey(
+        MicroLesson,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='helpfulness_feedback',
+    )
+    concept = models.ForeignKey(
+        Concept,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='helpfulness_feedback',
+    )
+
+    # Optional comment
+    comment = models.TextField(
+        blank=True,
+        help_text='Optional feedback on how to improve',
+    )
+
+    # Context: what was the user trying to learn?
+    learning_goal = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='What the user was trying to learn',
+    )
+    prior_knowledge = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text='User-stated prior knowledge level',
+    )
+
+    # Additional context fields for analytics
+    topic_slug = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text='Topic slug for grouping feedback',
+    )
+    concept_slug = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text='Concept slug for grouping feedback',
+    )
+    difficulty_perception = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_PERCEPTION_CHOICES,
+        default='',
+        blank=True,
+        help_text='How the user perceived the difficulty',
+    )
+    time_spent_seconds = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='Approximate time spent on the content',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['user', 'content_type', 'content_id']
+        indexes = [
+            models.Index(fields=['content_type', 'helpfulness']),
+            models.Index(fields=['micro_lesson', 'helpfulness']),
+            models.Index(fields=['topic_slug', 'helpfulness']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.helpfulness} for {self.content_type}'
+
+    @classmethod
+    def get_helpfulness_score(cls, content_type: str, content_id: str) -> float:
+        """
+        Calculate aggregate helpfulness score for content (0.0-1.0).
+
+        Returns:
+            Score from 0.0 (all confusing) to 1.0 (all very helpful)
+        """
+        from django.db.models import Avg, Case, FloatField, When
+
+        score_mapping = {
+            'very_helpful': 1.0,
+            'helpful': 0.75,
+            'neutral': 0.5,
+            'not_helpful': 0.25,
+            'confusing': 0.0,
+        }
+
+        result = cls.objects.filter(
+            content_type=content_type,
+            content_id=content_id,
+        ).aggregate(
+            avg_score=Avg(
+                Case(
+                    *[When(helpfulness=k, then=v) for k, v in score_mapping.items()],
+                    output_field=FloatField(),
+                )
+            )
+        )
+
+        return result['avg_score'] or 0.5  # Default to neutral if no feedback
+
+
+class GoalCheckIn(models.Model):
+    """
+    Periodic check-ins to validate learning goal progress.
+
+    Prompts users to reflect on whether the learning content and
+    recommendations are helping them reach their stated goals.
+    """
+
+    PROGRESS_CHOICES = [
+        ('on_track', 'On Track'),
+        ('ahead', 'Ahead of Schedule'),
+        ('behind', 'Behind Schedule'),
+        ('stuck', 'Stuck'),
+        ('goal_changed', 'Goal Has Changed'),
+        ('goal_achieved', 'Goal Achieved'),
+    ]
+
+    SATISFACTION_CHOICES = [
+        ('very_satisfied', 'Very Satisfied'),
+        ('satisfied', 'Satisfied'),
+        ('neutral', 'Neutral'),
+        ('unsatisfied', 'Unsatisfied'),
+        ('very_unsatisfied', 'Very Unsatisfied'),
+    ]
+
+    GOAL_ADJUSTMENT_CHOICES = [
+        ('keep_same', 'Keep Same Goal'),
+        ('modify', 'Modify Goal'),
+        ('new_goal', 'Set New Goal'),
+        ('complete', 'Mark as Complete'),
+        ('pause', 'Pause Goal'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='goal_check_ins',
+    )
+
+    # Which goal is being checked
+    learning_path = models.ForeignKey(
+        UserLearningPath,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='check_ins',
+        help_text='Specific learning path being checked (optional)',
+    )
+    goal_description = models.CharField(
+        max_length=500,
+        help_text="User's stated learning goal at check-in time",
+    )
+
+    # Check-in responses
+    progress = models.CharField(
+        max_length=20,
+        choices=PROGRESS_CHOICES,
+    )
+    satisfaction = models.CharField(
+        max_length=20,
+        choices=SATISFACTION_CHOICES,
+    )
+
+    # What's working / not working
+    whats_working = models.TextField(
+        blank=True,
+        help_text='What aspects of learning are working well',
+    )
+    whats_not_working = models.TextField(
+        blank=True,
+        help_text='What aspects need improvement',
+    )
+    blockers = models.TextField(
+        blank=True,
+        help_text='Any blockers preventing progress',
+    )
+
+    # Updated goal if changed
+    new_goal = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text='New goal if user changed their goal',
+    )
+
+    # Metrics at check-in time (for tracking improvement)
+    xp_at_checkin = models.IntegerField(default=0)
+    concepts_mastered_at_checkin = models.IntegerField(default=0)
+    streak_days_at_checkin = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['progress', 'satisfaction']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.progress} ({self.created_at.date()})'
+
+    @classmethod
+    def get_last_checkin(cls, user_id: int):
+        """Get user's most recent check-in."""
+        return cls.objects.filter(user_id=user_id).first()
+
+    @classmethod
+    def is_checkin_due(cls, user_id: int, days_between: int = 7) -> bool:
+        """
+        Check if user is due for a goal check-in.
+
+        Args:
+            user_id: User to check
+            days_between: Minimum days between check-ins
+
+        Returns:
+            True if check-in is due
+        """
+        last = cls.get_last_checkin(user_id)
+        if not last:
+            return True
+
+        days_since = (timezone.now() - last.created_at).days
+        return days_since >= days_between

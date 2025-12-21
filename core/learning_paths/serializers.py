@@ -6,9 +6,13 @@ from core.taxonomy.serializers import TaxonomySerializer
 
 from .models import (
     Concept,
+    ContentHelpfulness,
+    ConversationFeedback,
+    GoalCheckIn,
     LearnerProfile,
     LearningEvent,
     MicroLesson,
+    ProactiveOfferResponse,
     ProjectLearningMetadata,
     UserConceptMastery,
     UserLearningPath,
@@ -370,3 +374,162 @@ class StructuredPathSerializer(serializers.Serializer):
     total_concepts = serializers.IntegerField()
     completed_concepts = serializers.IntegerField()
     topics = TopicSectionSerializer(many=True)
+
+
+# ============================================================================
+# FEEDBACK SERIALIZERS - Human feedback loop models
+# ============================================================================
+
+
+class ConversationFeedbackSerializer(serializers.ModelSerializer):
+    """Serializer for ConversationFeedback model."""
+
+    concept_slug = serializers.SlugRelatedField(
+        source='concept',
+        slug_field='slug',
+        queryset=Concept.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = ConversationFeedback
+        fields = [
+            'id',
+            'session_id',
+            'message_id',
+            'feedback',
+            'context_type',
+            'topic_slug',
+            'concept_slug',
+            'comment',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class CreateConversationFeedbackSerializer(serializers.Serializer):
+    """Serializer for creating conversation feedback."""
+
+    session_id = serializers.CharField(max_length=255)
+    message_id = serializers.CharField(max_length=255)
+    feedback = serializers.ChoiceField(choices=ConversationFeedback.FEEDBACK_CHOICES)
+    context_type = serializers.ChoiceField(
+        choices=ConversationFeedback.CONTEXT_TYPE_CHOICES,
+        default='general',
+    )
+    topic_slug = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    concept_slug = serializers.SlugField(required=False, allow_null=True)
+    comment = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+
+
+class ProactiveOfferResponseSerializer(serializers.ModelSerializer):
+    """Serializer for ProactiveOfferResponse model."""
+
+    class Meta:
+        model = ProactiveOfferResponse
+        fields = [
+            'id',
+            'intervention_type',
+            'response',
+            'struggle_confidence',
+            'topic_slug',
+            'concept_slug',
+            'session_id',
+            'offered_at',
+            'responded_at',
+        ]
+        read_only_fields = ['id', 'offered_at']
+
+
+class CreateProactiveOfferResponseSerializer(serializers.Serializer):
+    """Serializer for recording a proactive offer response."""
+
+    intervention_type = serializers.CharField(max_length=30)
+    response = serializers.ChoiceField(choices=ProactiveOfferResponse.RESPONSE_CHOICES)
+    struggle_confidence = serializers.FloatField(min_value=0.0, max_value=1.0)
+    topic_slug = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    concept_slug = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    session_id = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+
+class ContentHelpfulnessSerializer(serializers.ModelSerializer):
+    """Serializer for ContentHelpfulness model."""
+
+    class Meta:
+        model = ContentHelpfulness
+        fields = [
+            'id',
+            'content_type',
+            'content_id',
+            'helpfulness',
+            'topic_slug',
+            'concept_slug',
+            'difficulty_perception',
+            'comment',
+            'time_spent_seconds',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class CreateContentHelpfulnessSerializer(serializers.Serializer):
+    """Serializer for submitting content helpfulness feedback."""
+
+    content_type = serializers.ChoiceField(choices=ContentHelpfulness.CONTENT_TYPE_CHOICES)
+    content_id = serializers.CharField(max_length=255)
+    helpfulness = serializers.ChoiceField(choices=ContentHelpfulness.HELPFULNESS_CHOICES)
+    topic_slug = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    concept_slug = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    difficulty_perception = serializers.ChoiceField(
+        choices=ContentHelpfulness.DIFFICULTY_PERCEPTION_CHOICES,
+        required=False,
+        allow_null=True,
+    )
+    comment = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+    time_spent_seconds = serializers.IntegerField(required=False, min_value=0, allow_null=True)
+
+
+class GoalCheckInSerializer(serializers.ModelSerializer):
+    """Serializer for GoalCheckIn model."""
+
+    class Meta:
+        model = GoalCheckIn
+        fields = [
+            'id',
+            'goal_description',
+            'progress',
+            'satisfaction',
+            'whats_working',
+            'whats_not_working',
+            'blockers',
+            'new_goal',
+            'xp_at_checkin',
+            'concepts_mastered_at_checkin',
+            'streak_days_at_checkin',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class CreateGoalCheckInSerializer(serializers.Serializer):
+    """Serializer for submitting a goal check-in."""
+
+    goal_description = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    progress = serializers.ChoiceField(choices=GoalCheckIn.PROGRESS_CHOICES)
+    satisfaction = serializers.ChoiceField(choices=GoalCheckIn.SATISFACTION_CHOICES)
+    whats_working = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+    whats_not_working = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+    blockers = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+    new_goal = serializers.CharField(required=False, allow_blank=True, max_length=500)
+
+
+class FeedbackSummarySerializer(serializers.Serializer):
+    """Serializer for aggregated feedback summary."""
+
+    total_feedback_count = serializers.IntegerField()
+    helpful_percentage = serializers.FloatField()
+    proactive_acceptance_rate = serializers.FloatField()
+    content_helpfulness_score = serializers.FloatField()
+    last_goal_checkin = GoalCheckInSerializer(allow_null=True)
+    recent_feedback = ConversationFeedbackSerializer(many=True)

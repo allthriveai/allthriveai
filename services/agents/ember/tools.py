@@ -3,22 +3,35 @@ Unified tool registry for Ember agent.
 
 Combines all tools from specialized agents into a single registry,
 with unified state injection tracking.
+
+Tool consolidation (12 → 5 discovery/learning tools):
+- find_content: ONE tool for all discovery (replaces 6 discovery + 1 learning tool)
+- create_learning_path: Generate personalized learning paths
+- update_learner_profile: Update user preferences
+- get_current_challenge: Weekly challenge info
+- find_people_to_connect: Community connections
 """
 
 import logging
 
-# Import tools from specialized agents
+# Import the unified find_content tool (replaces 7 overlapping tools)
+from services.agents.discovery.find_content import (
+    FIND_CONTENT_TOOLS,
+)
+from services.agents.discovery.find_content import (
+    TOOLS_NEEDING_STATE as FIND_CONTENT_TOOLS_NEEDING_STATE,
+)
+
+# Import remaining discovery tools (kept)
 from services.agents.discovery.tools import (
-    DISCOVERY_TOOLS,
+    find_people_to_connect,
+    get_current_challenge,
 )
-from services.agents.discovery.tools import (
-    TOOLS_NEEDING_STATE as DISCOVERY_TOOLS_NEEDING_STATE,
-)
+
+# Import remaining learning tools (kept, minus find_learning_content)
 from services.agents.learning.tools import (
-    LEARNING_TOOLS,
-)
-from services.agents.learning.tools import (
-    TOOLS_NEEDING_STATE as LEARNING_TOOLS_NEEDING_STATE,
+    create_learning_path,
+    update_learner_profile,
 )
 from services.agents.orchestration.tools import ORCHESTRATION_TOOLS
 from services.agents.profile.agent import TOOLS_NEEDING_STATE as PROFILE_TOOLS_NEEDING_STATE
@@ -31,12 +44,22 @@ logger = logging.getLogger(__name__)
 # Unified Tool Registry
 # =============================================================================
 
+# Discovery + Learning tools (consolidated)
+# - find_content: ONE tool for all discovery/learning (replaces 7 overlapping tools)
+# - create_learning_path, update_learner_profile: Learning path tools
+# - get_current_challenge, find_people_to_connect: Community tools
+DISCOVERY_LEARNING_TOOLS = [
+    *FIND_CONTENT_TOOLS,  # find_content
+    create_learning_path,
+    update_learner_profile,
+    get_current_challenge,
+    find_people_to_connect,
+]
+
 # All tools available to Ember
 EMBER_TOOLS = [
-    # Discovery (5 tools) - Search, recommend, trending, similar, details
-    *DISCOVERY_TOOLS,
-    # Learning (3 tools) - find_learning_content, create_learning_path, update_learner_profile
-    *LEARNING_TOOLS,
+    # Discovery + Learning (5 tools) - Unified find_content + learning paths + community
+    *DISCOVERY_LEARNING_TOOLS,
     # Project (10+ tools) - Create, import, media, scrape, architecture
     *PROJECT_TOOLS,
     # Orchestration (7 tools) - Navigate, highlight, toast, tray, trigger, fun activities, inline games
@@ -55,10 +78,12 @@ EMBER_TOOLS_BY_NAME = {tool.name: tool for tool in EMBER_TOOLS}
 # Tools that need state injection (user_id, username, session_id)
 # Combined from all agent modules
 TOOLS_NEEDING_STATE = (
-    # Discovery tools needing state
-    DISCOVERY_TOOLS_NEEDING_STATE
-    # Learning tools needing state
-    | LEARNING_TOOLS_NEEDING_STATE
+    # Unified find_content tool
+    FIND_CONTENT_TOOLS_NEEDING_STATE
+    # Remaining learning tools
+    | {'create_learning_path', 'update_learner_profile'}
+    # Remaining discovery tools
+    | {'get_current_challenge', 'find_people_to_connect'}
     # Profile tools needing state
     | PROFILE_TOOLS_NEEDING_STATE
     # Project tools needing state (all need user context)
@@ -78,8 +103,7 @@ TOOLS_NEEDING_STATE = (
 
 # Tool count summary for logging/debugging
 TOOL_COUNTS = {
-    'discovery': len(DISCOVERY_TOOLS),
-    'learning': len(LEARNING_TOOLS),
+    'discovery_learning': len(DISCOVERY_LEARNING_TOOLS),  # Consolidated: 5 tools
     'project': len(PROJECT_TOOLS),
     'orchestration': len(ORCHESTRATION_TOOLS),
     'profile': len(PROFILE_TOOLS),

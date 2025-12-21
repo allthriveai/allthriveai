@@ -193,7 +193,7 @@ def process_avatar_generation_task(
                 else:
                     logger.warning(f'Failed to download reference image: HTTP {resp.status_code}')
             except Exception as e:
-                logger.warning(f'Failed to download reference image: {e}')
+                logger.warning(f'Failed to download reference image: {e}', exc_info=True)
 
         # Generate image using Gemini
         start_time = time.time()
@@ -279,7 +279,7 @@ def process_avatar_generation_task(
                 },
             )
         except Exception as tracking_error:
-            logger.warning(f'Failed to track avatar generation usage: {tracking_error}')
+            logger.warning(f'Failed to track avatar generation usage: {tracking_error}', exc_info=True)
 
         # Create iteration record
         iteration_order = session.iterations.count()
@@ -340,7 +340,7 @@ def process_avatar_generation_task(
         session.error_message = error_message if 'error_message' in locals() else 'Unknown error'
         session.save(update_fields=['status', 'error_message', 'updated_at'])
     except Exception as update_exc:
-        logger.warning(f'Failed to update session {session_id} status: {update_exc}')
+        logger.warning(f'Failed to update session {session_id} status: {update_exc}', exc_info=True)
 
     # Send error to user (camelCase keys for frontend compatibility)
     async_to_sync(channel_layer.group_send)(
@@ -399,7 +399,7 @@ def cleanup_old_reference_images():
                 cleaned_count += 1
 
         except Exception as e:
-            logger.warning(f'Failed to cleanup reference image for session {session.id}: {e}')
+            logger.warning(f'Failed to cleanup reference image for session {session.id}: {e}', exc_info=True)
 
     logger.info(f'Cleaned up {cleaned_count} old reference images')
     return {'cleaned': cleaned_count}

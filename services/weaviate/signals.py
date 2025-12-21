@@ -199,13 +199,20 @@ def remove_user_on_delete(sender, instance, **kwargs):
         return
 
     try:
-        from .tasks import remove_user_profile_from_weaviate
+        from .tasks import remove_user_knowledge_from_weaviate, remove_user_profile_from_weaviate
 
-        # Queue async deletion
+        # Queue async deletion of user profile
         remove_user_profile_from_weaviate.delay(instance.id)
         logger.info(
             f'GDPR: Queued Weaviate deletion for user {instance.id}',
             extra={'user_id': instance.id, 'gdpr_action': 'delete_user_profile'},
+        )
+
+        # Queue async deletion of user knowledge states and learning gaps
+        remove_user_knowledge_from_weaviate.delay(instance.id)
+        logger.info(
+            f'GDPR: Queued Weaviate knowledge deletion for user {instance.id}',
+            extra={'user_id': instance.id, 'gdpr_action': 'delete_user_knowledge'},
         )
 
     except Exception as e:
@@ -305,6 +312,62 @@ def sync_micro_lesson_on_save(sender, instance, created, **kwargs):
 
     except Exception as e:
         logger.error(f'Failed to queue Weaviate sync for micro lesson {instance.id}: {e}')
+
+
+# ============================================================================
+# LEARNING INTELLIGENCE SIGNALS
+# ============================================================================
+
+
+@receiver(post_save, sender='learning_paths.Concept')
+def sync_concept_on_save(sender, instance, created, **kwargs):
+    """
+    Sync concept to Weaviate when saved.
+
+    Only syncs active concepts to the Concept collection for semantic
+    learning path generation.
+    """
+    if not _should_sync_to_weaviate():
+        return
+
+    # Only sync active concepts
+    if not getattr(instance, 'is_active', True):
+        return
+
+    try:
+        from .tasks import sync_concept_to_weaviate
+
+        sync_concept_to_weaviate.delay(instance.id)
+        logger.debug(f'Queued Weaviate sync for concept {instance.id} ({instance.name})')
+
+    except Exception as e:
+        logger.error(f'Failed to queue Weaviate sync for concept {instance.id}: {e}')
+
+
+@receiver(post_save, sender='learning_paths.UserConceptMastery')
+def sync_mastery_on_save(sender, instance, created, **kwargs):
+    """
+    Sync user's knowledge state to Weaviate when mastery changes.
+
+    This powers semantic gap detection - enabling queries like
+    "What concepts similar to X does this user NOT know?"
+    """
+    if not _should_sync_to_weaviate():
+        return
+
+    try:
+        from .tasks import sync_knowledge_state_to_weaviate
+
+        sync_knowledge_state_to_weaviate.delay(instance.user_id, instance.concept_id)
+        logger.debug(
+            f'Queued Weaviate knowledge state sync for user {instance.user_id}, ' f'concept {instance.concept_id}'
+        )
+
+    except Exception as e:
+        logger.error(
+            f'Failed to queue Weaviate knowledge sync for user {instance.user_id}, '
+            f'concept {instance.concept_id}: {e}'
+        )
 
 
 def _handle_content_taxonomy_change(sender, instance, action, content_type, **kwargs):

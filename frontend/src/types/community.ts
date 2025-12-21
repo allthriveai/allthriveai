@@ -212,7 +212,7 @@ export interface SendMessageRequest {
 }
 
 export interface CreateDMRequest {
-  participantIds: string[];
+  participantIds: number[];
   initialMessage?: string;
 }
 

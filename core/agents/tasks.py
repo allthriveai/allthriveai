@@ -571,15 +571,9 @@ def _process_with_ember(
                     logger.info(f'Ember tool ended: {event.get("tool")}')
 
                 elif event_type == 'complete':
-                    logger.info('Ember agent completed')
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'completed',
-                            'conversation_id': conversation_id,
-                        },
-                    )
+                    # Just log - the task function will send the final 'completed' event
+                    # with additional data (project_created, etc.)
+                    logger.info('Ember agent stream completed')
 
                 elif event_type == 'error':
                     error_msg = event.get('message', 'Unknown error')
@@ -588,19 +582,13 @@ def _process_with_ember(
                         channel_name,
                         {
                             'type': 'chat.message',
-                            'event': 'chunk',
-                            'chunk': "I'm Ember, and I encountered an issue. Let me try that again!",
+                            'event': 'error',  # Use 'error' event so frontend triggers error handlers
+                            'error': 'Oops! Let me try that again.',
                             'conversation_id': conversation_id,
                         },
                     )
-                    await async_channel_layer.group_send(
-                        channel_name,
-                        {
-                            'type': 'chat.message',
-                            'event': 'completed',
-                            'conversation_id': conversation_id,
-                        },
-                    )
+                    # Don't send 'completed' here - let the task function send it
+                    # This prevents duplicate completed events
 
         except Exception as e:
             logger.error(f'Ember agent streaming error: {e}', exc_info=True)
@@ -608,42 +596,30 @@ def _process_with_ember(
                 channel_name,
                 {
                     'type': 'chat.message',
-                    'event': 'chunk',
-                    'chunk': "I'm Ember! I encountered an issue. Please try again.",
+                    'event': 'error',  # Use 'error' event so frontend triggers error handlers
+                    'error': 'Something went sideways—mind trying that again?',
                     'conversation_id': conversation_id,
                 },
             )
-            await async_channel_layer.group_send(
-                channel_name,
-                {
-                    'type': 'chat.message',
-                    'event': 'completed',
-                    'conversation_id': conversation_id,
-                },
-            )
+            # Don't send 'completed' here - the task function will send it
+            # This prevents duplicate completed events
 
     # Run the async function using centralized async runner
     try:
         _run_async(run_agent())
     except Exception as e:
+        # This catches errors from the async runner itself (rare)
         logger.error(f'Ember agent error: {e}', exc_info=True)
         async_to_sync(channel_layer.group_send)(
             channel_name,
             {
                 'type': 'chat.message',
-                'event': 'chunk',
-                'chunk': "I'm Ember! I encountered an issue. Please try again.",
+                'event': 'error',  # Use 'error' event so frontend triggers error handlers
+                'error': 'Something went sideways—mind trying that again?',
                 'conversation_id': conversation_id,
             },
         )
-        async_to_sync(channel_layer.group_send)(
-            channel_name,
-            {
-                'type': 'chat.message',
-                'event': 'completed',
-                'conversation_id': conversation_id,
-            },
-        )
+        # Don't send 'completed' here - the task function will send it
 
     # Note: Conversation history is handled by PostgreSQL checkpointer,
     # so no Redis caching needed for Ember responses.
@@ -717,8 +693,7 @@ def _process_with_ai_provider(
                 {
                     'type': 'chat.message',
                     'event': 'chunk',
-                    'chunk': "I'm here to help! However, I encountered an issue processing your request. "
-                    'Please try again.',
+                    'chunk': "Hmm, that didn't work. Want to try again?",
                     'conversation_id': conversation_id,
                 },
             )

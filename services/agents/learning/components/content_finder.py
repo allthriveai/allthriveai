@@ -159,7 +159,10 @@ class ContentFinder:
 
     @classmethod
     def _find_tool(cls, query: str) -> ToolInfo | None:
-        """Find tool by slug or name."""
+        """Find tool by slug or name - returns only description.
+
+        Full tool details (features, use cases, etc.) are available in ToolTray.
+        """
         from core.tools.models import Tool
 
         try:
@@ -172,16 +175,12 @@ class ContentFinder:
             if not tool:
                 return None
 
+            # Return ONLY essential fields - ToolTray has full details
             return {
                 'name': tool.name,
                 'slug': tool.slug,
-                'description': tool.description,
-                'key_features': tool.key_features or [],
-                'use_cases': tool.use_cases or [],
-                'usage_tips': tool.usage_tips or [],
-                'best_practices': tool.best_practices or [],
-                'documentation_url': tool.documentation_url or '',
-                'website_url': tool.website_url or '',
+                'description': tool.overview or tool.description,
+                # ToolTray handles: key_features, use_cases, usage_tips, best_practices, whats_new
             }
         except Exception as e:
             logger.error('Error finding tool', extra={'query': query, 'error': str(e)}, exc_info=True)

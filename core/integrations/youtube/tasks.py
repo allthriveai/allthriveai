@@ -20,6 +20,7 @@ from core.integrations.youtube.helpers import (
 )
 from core.integrations.youtube.service import QuotaExceededError, YouTubeService
 from core.projects.models import Project
+from core.projects.topic_utils import set_project_topics
 
 logger = logging.getLogger(__name__)
 
@@ -154,10 +155,9 @@ def import_youtube_video_task(
                     project.categories.set(ai_metadata['categories'])
                     logger.info(f'Added {len(ai_metadata["categories"])} categories to project')
 
-                # Apply topics
+                # Apply topics (using M2M helper)
                 if ai_metadata.get('topics'):
-                    project.topics = ai_metadata['topics']
-                    project.save()
+                    set_project_topics(project, ai_metadata['topics'])
                     logger.info(f'Added {len(ai_metadata["topics"])} topics to project')
 
             except Exception as e:

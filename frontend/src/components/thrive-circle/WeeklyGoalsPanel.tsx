@@ -95,7 +95,7 @@ export function WeeklyGoalsPanel({ goals, isLoading }: WeeklyGoalsPanelProps) {
                     </div>
                     {isCompleted && (
                       <div className="text-xs text-success-600 dark:text-success-400 font-medium">
-                        Completed • +{goal.xpReward} XP
+                        Completed • +{goal.pointsReward} Points
                       </div>
                     )}
                   </div>
@@ -103,7 +103,7 @@ export function WeeklyGoalsPanel({ goals, isLoading }: WeeklyGoalsPanelProps) {
 
                 {!isCompleted && (
                   <div className="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                    +{goal.xpReward} XP
+                    +{goal.pointsReward} Points
                   </div>
                 )}
               </div>

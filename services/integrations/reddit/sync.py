@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from core.integrations.reddit_models import RedditCommunityAgent, RedditThread
 from core.projects.models import Project
+from core.projects.topic_utils import set_project_topics
 from services.agents.moderation import ContentModerator, ImageModerator
 from services.integrations.reddit.video_downloader import RedditVideoDownloader
 
@@ -671,9 +672,9 @@ class RedditSyncService:
                 f'Assigned {len(detected_categories)} categories to project: {[c.name for c in detected_categories]}'
             )
 
-        # Clean and assign topics (limit to 15)
+        # Clean and assign topics (limit to 15) using M2M helper
         topics = list(set(topics))[:15]  # Remove duplicates and limit
-        project.topics = topics
+        set_project_topics(project, topics)
         project.save()
 
         logger.info(f'Assigned {len(topics)} topics to project: {topics}')

@@ -19,6 +19,7 @@ import { UserMenu } from './UserMenu';
 import { ActiveQuestIndicator } from '@/components/side-quests/ActiveQuestIndicator';
 import { GlobalSearchModal } from '@/components/search/GlobalSearchModal';
 import { useMessagesTrayOptional } from '@/context/MessagesTrayContext';
+import { PointsBadge } from './PointsBadge';
 
 interface TopNavigationProps {
   onMenuClick: (menuItem: string) => void;
@@ -142,6 +143,9 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
                   category={activeQuestCategory}
                 />
               )}
+
+              {/* Points Badge - Shows user's total points */}
+              <PointsBadge />
 
               {/* Search Button - Hidden on mobile, in hamburger menu */}
               <button

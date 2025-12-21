@@ -203,9 +203,9 @@ class ActivityInsightsService:
         ).exclude(type='clipped')
 
         for project in user_projects:
-            for topic in project.topics or []:
-                topic_scores[topic]['project_count'] += 1
-                topic_scores[topic]['points'] += 10
+            for topic in project.topics.all():
+                topic_scores[topic.name]['project_count'] += 1
+                topic_scores[topic.name]['points'] += 10
 
         # 3. Clipped/saved projects - shows interest in learning
         clipped_projects = Project.objects.filter(
@@ -215,9 +215,9 @@ class ActivityInsightsService:
         )
 
         for project in clipped_projects:
-            for topic in project.topics or []:
-                topic_scores[topic]['clipped_count'] += 1
-                topic_scores[topic]['points'] += 8  # Strong interest signal
+            for topic in project.topics.all():
+                topic_scores[topic.name]['clipped_count'] += 1
+                topic_scores[topic.name]['points'] += 8  # Strong interest signal
 
         # 4. Liked projects - shows appreciation/interest
         liked_projects = ProjectLike.objects.filter(
@@ -226,9 +226,9 @@ class ActivityInsightsService:
 
         for like in liked_projects:
             if like.project:
-                for topic in like.project.topics or []:
-                    topic_scores[topic]['liked_count'] += 1
-                    topic_scores[topic]['points'] += 3  # Lighter engagement signal
+                for topic in like.project.topics.all():
+                    topic_scores[topic.name]['liked_count'] += 1
+                    topic_scores[topic.name]['points'] += 3  # Lighter engagement signal
 
         # 5. Prompt battles participated in - count the tool's category if available
         battles = PromptBattle.objects.filter(

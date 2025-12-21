@@ -2,7 +2,7 @@
  * MatchmakingScreen Component
  *
  * Pre-battle screen for finding opponents.
- * Two primary options: Battle Pip (AI) or Battle a Human.
+ * Two primary options: Battle Pip (AI) or Battle a Friend.
  * Human battle opens modal with SMS invite or random match options.
  */
 
@@ -403,7 +403,7 @@ export function MatchmakingScreen({
                 </div>
               </motion.button>
 
-              {/* Battle a Human */}
+              {/* Battle a Friend */}
               <motion.button
                 whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
@@ -416,7 +416,7 @@ export function MatchmakingScreen({
                 </div>
 
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-                  Battle a Human
+                  Battle a Friend
                 </h3>
 
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-5">
@@ -525,7 +525,7 @@ export function MatchmakingScreen({
                     exit={{ opacity: 0 }}
                   >
                     <div className="flex items-center justify-between mb-6">
-                      <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Battle a Human</h3>
+                      <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Battle a Friend</h3>
                       <button
                         onClick={resetModal}
                         className="p-1 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"

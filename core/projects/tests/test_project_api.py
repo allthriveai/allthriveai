@@ -63,6 +63,7 @@ def project(user, db):
         slug='test-project',
         description='A test project description',
         is_showcased=True,
+        is_private=False,  # Explicitly set to public (default is True)
     )
 
 
@@ -549,6 +550,7 @@ class TestExploreProjects:
                 title=f'Project {i}',
                 slug=f'project-{i}',
                 is_showcased=True,
+                is_private=False,  # Must be public to appear in explore
             )
 
         response = api_client.get('/api/v1/projects/explore/')
@@ -579,6 +581,7 @@ class TestExploreProjects:
             title='Project With Tool',
             slug='project-with-tool',
             is_showcased=True,
+            is_private=False,  # Must be public to appear in explore
         )
         project.tools.add(tool)
 
@@ -593,18 +596,19 @@ class TestExploreProjects:
         )
         assert project_data is not None, 'Project not found in explore results'
 
-        # Verify tools_details is present and contains required fields for icon display
-        assert 'tools_details' in project_data, (
-            'tools_details missing from explore response - ' 'this breaks tool icon display on project cards!'
+        # Verify toolsDetails is present and contains required fields for icon display
+        # Note: API uses camelCase for field names
+        assert 'toolsDetails' in project_data, (
+            'toolsDetails missing from explore response - ' 'this breaks tool icon display on project cards!'
         )
-        assert len(project_data['tools_details']) == 1
+        assert len(project_data['toolsDetails']) == 1
 
-        tool_detail = project_data['tools_details'][0]
+        tool_detail = project_data['toolsDetails'][0]
         assert tool_detail['id'] == tool.id
         assert tool_detail['name'] == 'Test Tool'
         assert tool_detail['slug'] == 'test-tool'
         assert 'logo_url' in tool_detail, (
-            'logo_url missing from tools_details - ' 'frontend needs this for tool icon display!'
+            'logo_url missing from toolsDetails - ' 'frontend needs this for tool icon display!'
         )
         assert tool_detail['logo_url'] == 'https://example.com/logo.png'
 
@@ -638,3 +642,94 @@ class TestSemanticSearch:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['search_type'] == 'text_fallback'
+
+    def test_semantic_search_default_alpha_favors_keywords(self, api_client):
+        """Default alpha should favor keyword matching (0.3) over semantic (0.7)."""
+        response = api_client.post(
+            '/api/v1/search/semantic/',
+            {'query': 'test'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        # Default alpha should be 0.3 (70% keyword, 30% vector)
+        assert response.data['meta']['alpha'] == 0.3
+
+    def test_semantic_search_custom_alpha(self, api_client):
+        """Custom alpha can be passed to adjust keyword vs semantic weight."""
+        response = api_client.post(
+            '/api/v1/search/semantic/',
+            {'query': 'test', 'alpha': 0.8},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['meta']['alpha'] == 0.8
+
+    @patch('services.weaviate.get_weaviate_client')
+    @patch('services.weaviate.get_embedding_service')
+    def test_semantic_search_filters_low_score_results(self, mock_embedding, mock_weaviate, api_client, user, project):
+        """Results below score threshold should be filtered out."""
+        # Mock Weaviate as available
+        mock_client = mock_weaviate.return_value
+        mock_client.is_available.return_value = True
+
+        # Mock embedding service
+        mock_embed_service = mock_embedding.return_value
+        mock_embed_service.generate_embedding.return_value = [0.1] * 1536
+
+        # Mock hybrid search results with varying scores
+        mock_client.hybrid_search.return_value = [
+            {'project_id': project.id, '_additional': {'score': 0.8}},  # Above threshold
+            {'project_id': 999, '_additional': {'score': 0.1}},  # Below threshold (0.3)
+        ]
+
+        response = api_client.post(
+            '/api/v1/search/semantic/',
+            {'query': 'Test', 'types': ['projects']},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        # Only the high-score project should be returned
+        assert len(response.data['results']['projects']) == 1
+        assert response.data['results']['projects'][0]['id'] == project.id
+
+    @patch('services.weaviate.get_weaviate_client')
+    def test_semantic_search_text_fallback_matches_tools(self, mock_weaviate, api_client, user):
+        """Text fallback should find projects by tool name."""
+        from core.projects.models import Project
+        from core.tools.models import Tool
+
+        # Create a tool
+        tool = Tool.objects.create(
+            name='LangChain',
+            slug='langchain',
+            is_active=True,
+        )
+
+        # Create project with this tool
+        project = Project.objects.create(
+            user=user,
+            title='AI Agent Project',
+            description='Building agents',
+            is_private=False,
+        )
+        project.tools.add(tool)
+
+        # Mock Weaviate as unavailable to force text fallback
+        mock_client = mock_weaviate.return_value
+        mock_client.is_available.return_value = False
+
+        response = api_client.post(
+            '/api/v1/search/semantic/',
+            {'query': 'langchain', 'types': ['projects']},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['search_type'] == 'text_fallback'
+        # Should find project by tool name
+        assert len(response.data['results']['projects']) >= 1
+        project_ids = [p['id'] for p in response.data['results']['projects']]
+        assert project.id in project_ids

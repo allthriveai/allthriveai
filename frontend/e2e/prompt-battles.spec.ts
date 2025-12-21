@@ -39,10 +39,10 @@ test.describe('Prompt Battles - Guest Invite Flow', () => {
     await challengerPage.goto('/battles');
     await challengerPage.waitForLoadState('domcontentloaded');
 
-    // Click "Battle a Human" button
-    const battleHumanButton = challengerPage.getByRole('button', { name: /battle.*human/i })
+    // Click "Battle a Friend" button
+    const battleHumanButton = challengerPage.getByRole('button', { name: /battle.*friend/i })
       .or(challengerPage.locator('[data-testid="battle-human-button"]'))
-      .or(challengerPage.getByText('Battle a Human'));
+      .or(challengerPage.getByText('Battle a Friend'));
 
     await expect(battleHumanButton).toBeVisible({ timeout: 10000 });
     await battleHumanButton.click();

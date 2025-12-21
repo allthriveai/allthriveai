@@ -44,6 +44,8 @@ User Query
 | `WeaviateSchema` | `services/weaviate/schema.py` | Collection definitions |
 | Signal handlers | `services/weaviate/signals.py` | Auto-sync on model changes |
 | Celery tasks | `services/weaviate/tasks.py` | Async indexing pipeline |
+| `find_content` | `services/agents/discovery/find_content.py` | Unified discovery tool with hybrid search |
+| `ContentFinder` | `services/agents/learning/components/content_finder.py` | Learning content aggregator |
 
 ---
 
@@ -192,19 +194,75 @@ full_reindex_projects()  # Orchestrator
 
 ### 7.1 Hybrid Search
 
-Combines vector similarity (α) with keyword matching (1-α):
+Combines keyword matching with vector similarity using configurable alpha:
 
 ```python
 client.hybrid_search(
     collection='Project',
     query='RAG systems',
     vector=query_embedding,
-    alpha=0.7,  # 70% vector, 30% keyword
+    alpha=0.3,  # 70% keyword, 30% semantic - favors robust tagging system
     filters={'difficulty_taxonomy_name': 'beginner'}
 )
 ```
 
-### 7.2 Security Enforcement
+**Alpha Tuning** (default: 0.3):
+- `alpha=0.0`: Pure keyword matching
+- `alpha=0.3`: 70% keyword, 30% semantic (**current default** - favors our robust tagging)
+- `alpha=0.5`: Balanced hybrid
+- `alpha=1.0`: Pure semantic/vector matching
+
+**Relevance Threshold**:
+```python
+MIN_HYBRID_RELEVANCE_SCORE = 0.15  # Filter low-quality matches
+```
+
+Results below this threshold are filtered out to prevent confusing users with irrelevant content.
+
+### 7.2 Personalized Search Scoring
+
+The unified `find_content` tool applies personalization boosts on top of hybrid search results:
+
+**Difficulty Matching**:
+- Projects at user's level: +15% score
+- Slight challenge (one level up): +5% score
+- Too advanced (2+ levels up): -10% penalty
+
+**Learning Style Boost** (+10%):
+| User Style | Boosted Content Types |
+|------------|----------------------|
+| `visual` | video |
+| `hands_on` | code-repo, project |
+| `conceptual` | article |
+| `mixed` | video, article, code-repo |
+
+**Tool Interest Boost** (+10%):
+Projects using tools the user follows get priority.
+
+**Popularity Factor**:
+- 50+ likes: +5%
+- 10+ likes: +2%
+
+```python
+# services/agents/discovery/find_content.py
+scored_results = []
+for project, base_reason, base_score in semantic_results:
+    score = base_score
+
+    # Difficulty match
+    if project_diff_idx == user_diff_idx:
+        score += 0.15
+
+    # Learning style
+    if content_type in preferred_types:
+        score += 0.1
+
+    # Tool interests
+    if matching_tools:
+        score += 0.1
+```
+
+### 7.3 Security Enforcement
 
 All Project searches auto-apply visibility filter:
 ```python
@@ -217,7 +275,7 @@ All Project searches auto-apply visibility filter:
 }
 ```
 
-### 7.3 Collaborative Filtering
+### 7.4 Collaborative Filtering
 
 For users with `allow_similarity_matching=True`:
 ```python

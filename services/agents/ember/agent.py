@@ -29,8 +29,24 @@ from langgraph.graph.message import add_messages
 from core.ai_usage.tracker import AIUsageTracker
 from services.ai.callbacks import TokenTrackingCallback
 
-from .prompts import EMBER_FULL_ONBOARDING_PROMPT, EMBER_SYSTEM_PROMPT, format_member_context
+from .prompts import (
+    EMBER_FULL_ONBOARDING_PROMPT,
+    EMBER_SYSTEM_PROMPT,
+    format_learning_intelligence,
+    format_member_context,
+)
 from .tools import EMBER_TOOLS, TOOLS_NEEDING_STATE
+
+# Lua script for atomic lock release (compare-and-delete)
+# This prevents race conditions where another worker could acquire the lock
+# between checking the value and deleting it
+REDIS_LOCK_RELEASE_SCRIPT = """
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+else
+    return 0
+end
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -141,12 +157,30 @@ async def _acquire_distributed_lock(thread_id: str, timeout: int = REDIS_LOCK_TI
 
     finally:
         if acquired:
-            # Only release if we still hold the lock (check value)
+            # Atomically release lock only if we still hold it (using Lua script)
+            # This prevents race conditions in check-then-delete operations
             try:
-                current_value = cache.get(lock_key)
-                if current_value == lock_value:
-                    cache.delete(lock_key)
+                redis_client = cache._cache.get_client()
+                # Execute Lua script atomically: only delete if value matches
+                result = redis_client.eval(
+                    REDIS_LOCK_RELEASE_SCRIPT,
+                    1,  # number of keys
+                    lock_key,  # KEYS[1]
+                    lock_value,  # ARGV[1]
+                )
+                if result:
                     logger.debug(f'Released distributed lock for {thread_id}')
+                else:
+                    logger.warning(f'Lock for {thread_id} was already released or stolen')
+            except AttributeError:
+                # Fallback for non-Redis cache backends (local dev)
+                try:
+                    current_value = cache.get(lock_key)
+                    if current_value == lock_value:
+                        cache.delete(lock_key)
+                        logger.debug(f'Released distributed lock for {thread_id} (fallback)')
+                except Exception as e:
+                    logger.warning(f'Error releasing lock (fallback) for {thread_id}: {e}')
             except Exception as e:
                 logger.warning(f'Error releasing distributed lock for {thread_id}: {e}')
 
@@ -303,6 +337,43 @@ class EmberState(TypedDict):
 
 
 # =============================================================================
+# Tool Execution with Timeout
+# =============================================================================
+
+
+def _execute_tool_with_timeout(tool, args: dict, timeout: int = TOOL_EXECUTION_TIMEOUT):
+    """
+    Execute a tool with a timeout to prevent hung requests.
+
+    Uses concurrent.futures to run the tool in a thread pool with a timeout.
+    This ensures users don't see a spinner forever if a tool hangs.
+
+    Args:
+        tool: The LangChain tool to execute
+        args: Arguments to pass to the tool
+        timeout: Maximum execution time in seconds
+
+    Returns:
+        Tool result (dict, string, or other)
+
+    Raises:
+        TimeoutError: If the tool doesn't complete within the timeout
+        Exception: Re-raises any exception from the tool
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FuturesTimeoutError
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(tool.invoke, args)
+        try:
+            return future.result(timeout=timeout)
+        except FuturesTimeoutError:
+            # Cancel the future (best effort - may not actually stop execution)
+            future.cancel()
+            raise TimeoutError(f'Tool execution timed out after {timeout}s') from None
+
+
+# =============================================================================
 # State Injection for Tools
 # =============================================================================
 
@@ -354,14 +425,22 @@ def tools_node(state: EmberState) -> dict:
             }
             logger.debug(f'Injected state into {tool_name}: user_id={state.get("user_id")}')
 
-        # Find and execute the tool
+        # Find and execute the tool with timeout
         tool_result = None
         for tool in EMBER_TOOLS:
             if tool.name == tool_name:
                 try:
                     logger.info(f'Executing tool: {tool_name}')
-                    tool_result = tool.invoke(tool_args)
+                    # Execute with timeout to prevent hung requests
+                    tool_result = _execute_tool_with_timeout(tool, tool_args, timeout=TOOL_EXECUTION_TIMEOUT)
                     logger.info(f'Tool {tool_name} completed successfully')
+                except TimeoutError:
+                    logger.error(f'Tool {tool_name} timed out after {TOOL_EXECUTION_TIMEOUT}s')
+                    tool_result = {
+                        'error': 'Taking a bit longer than usual—give me another moment!',
+                        'success': False,
+                        'timeout': True,
+                    }
                 except Exception as e:
                     logger.error(f'Tool {tool_name} failed: {e}', exc_info=True)
                     tool_result = {'error': str(e), 'success': False}
@@ -372,10 +451,16 @@ def tools_node(state: EmberState) -> dict:
             tool_result = {'error': f'Tool {tool_name} not found', 'success': False}
 
         # Convert result to string for ToolMessage content
+        # IMPORTANT: Strip _frontend_content from what the AI sees
+        # _frontend_content contains detailed project info for frontend rendering
+        # but we don't want the AI to describe projects inline - it should just
+        # mention that content cards are displayed
         if isinstance(tool_result, dict):
             import json
 
-            content = json.dumps(tool_result)
+            # Create a copy without _frontend_content for the AI
+            ai_result = {k: v for k, v in tool_result.items() if not k.startswith('_')}
+            content = json.dumps(ai_result)
         else:
             content = str(tool_result)
 
@@ -417,7 +502,11 @@ def create_agent_node(model_name: str | None = None):
         # Inject member context for personalization
         member_context = state.get('member_context')
         member_context_section = format_member_context(member_context)
-        system_prompt = base_prompt + member_context_section
+
+        # Inject learning intelligence (detected gaps + proactive offers)
+        learning_intelligence_section = format_learning_intelligence(member_context)
+
+        system_prompt = base_prompt + member_context_section + learning_intelligence_section
 
         # Build full message list with system prompt
         full_messages = [SystemMessage(content=system_prompt)] + list(messages)
@@ -804,6 +893,46 @@ async def stream_ember_response(
 
                     member_context = await MemberContextService.get_context_async(user_id)
 
+                    # Detect struggle in current message and set proactive offer
+                    if user_id and member_context:
+                        try:
+                            from services.agents.proactive import (
+                                get_intervention_service,
+                                get_struggle_detector,
+                            )
+
+                            struggle_detector = get_struggle_detector()
+                            intervention_service = get_intervention_service()
+
+                            # Get recent messages from checkpointer for context
+                            # For now, just analyze the current message
+                            messages_for_analysis = [{'role': 'user', 'content': user_message}]
+
+                            struggle_data = await struggle_detector.detect_current_struggle_async(
+                                user_id=user_id,
+                                messages=messages_for_analysis,
+                                member_context=member_context,
+                            )
+
+                            if struggle_data:
+                                proactive_offer = await intervention_service.should_intervene_async(
+                                    user_id=user_id,
+                                    struggle_data=struggle_data,
+                                    member_context=member_context,
+                                )
+
+                                if proactive_offer:
+                                    member_context['current_struggle'] = struggle_data
+                                    member_context['proactive_offer'] = proactive_offer
+                                    logger.info(
+                                        f'Proactive intervention triggered for user {user_id}: '
+                                        f'{proactive_offer.get("intervention_type")}'
+                                    )
+
+                        except Exception as e:
+                            logger.warning(f'Error detecting struggle: {e}')
+                            # Don't fail the request if struggle detection fails
+
                     # Create input state - only the new message
                     # The checkpointer automatically manages conversation history
                     input_state = {
@@ -836,11 +965,18 @@ async def stream_ember_response(
                         if kind == 'on_chat_model_stream':
                             # Track run_id to prevent duplicate streams from multiple nodes
                             if run_id:
-                                if run_id in processed_stream_runs and run_id != current_stream_run_id:
+                                # Only skip if we have an ACTIVE stream and this is a different one
+                                # that was already processed (prevents skipping after on_chain_start reset)
+                                if (
+                                    current_stream_run_id is not None
+                                    and run_id != current_stream_run_id
+                                    and run_id in processed_stream_runs
+                                ):
                                     continue
-                                if current_stream_run_id is None:
+                                if current_stream_run_id is None or run_id == current_stream_run_id:
+                                    if run_id not in processed_stream_runs:
+                                        processed_stream_runs.add(run_id)
                                     current_stream_run_id = run_id
-                                    processed_stream_runs.add(run_id)
                                 elif run_id != current_stream_run_id:
                                     continue
 
@@ -872,12 +1008,32 @@ async def stream_ember_response(
                             # Skip if already processed (use _end suffix to avoid collision with start)
                             end_key = f'{run_id}_end'
                             if end_key in processed_tool_calls:
+                                logger.info(f'[TRACE] Skipping duplicate tool_end: {tool_name} (run_id={run_id})')
                                 continue
                             processed_tool_calls.add(end_key)
 
                             raw_output = event.get('data', {}).get('output', {})
                             # Serialize output to ensure it's JSON-compatible for Redis
                             output = _serialize_tool_output(raw_output)
+
+                            # TRACE logging for debugging duplicate content
+                            logger.info(f'[TRACE] tool_end yielding: {tool_name} (run_id={run_id})')
+                            if isinstance(output, dict):
+                                # Log _frontend_content (what frontend will render as cards)
+                                frontend_content = output.get('_frontend_content', [])
+                                if frontend_content:
+                                    logger.info(f'[TRACE] tool_end _frontend_content count: {len(frontend_content)}')
+                                    for item in frontend_content:
+                                        item_type = item.get('type', 'unknown')
+                                        item_title = item.get('title', item.get('name', 'no-title'))
+                                        logger.info(f'[TRACE] _frontend_content item: {item_type} - {item_title}')
+                                # Log content (minimal info AI sees)
+                                content_items = output.get('content', [])
+                                if content_items:
+                                    logger.info(f'[TRACE] tool_end content (AI sees) count: {len(content_items)}')
+                                    for item in content_items:
+                                        logger.info(f'[TRACE] AI content item: {item}')
+
                             yield {'type': 'tool_end', 'tool': tool_name, 'output': output}
 
                         # Reset stream tracking when entering new nodes

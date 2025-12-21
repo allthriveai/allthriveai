@@ -17,7 +17,9 @@ import {
   getStructuredPath,
   completeLearningSetup,
   resetLearningSetup,
+  getLearningPathBySlug,
 } from '@/services/learningPaths';
+import type { GeneratedLearningPath } from '@/services/learningPaths';
 import type {
   UserLearningPath,
   LearningPathDetail,
@@ -47,6 +49,8 @@ export const learningPathKeys = {
   conceptMastery: (topic?: string) => [...learningPathKeys.all, 'mastery', { topic }] as const,
   // Structured path keys
   structuredPath: () => [...learningPathKeys.all, 'structuredPath'] as const,
+  // Generated learning path by slug
+  bySlug: (slug: string) => [...learningPathKeys.all, 'bySlug', slug] as const,
 };
 
 /**
@@ -236,5 +240,21 @@ export function useResetLearningSetup() {
       // Also invalidate learner profile
       queryClient.invalidateQueries({ queryKey: learningPathKeys.learnerProfile() });
     },
+  });
+}
+
+// =============================================================================
+// GENERATED LEARNING PATH BY SLUG
+// =============================================================================
+
+/**
+ * Get a generated learning path by its slug
+ */
+export function useLearningPathBySlug(slug: string, enabled: boolean = true) {
+  return useQuery<GeneratedLearningPath, Error>({
+    queryKey: learningPathKeys.bySlug(slug),
+    queryFn: () => getLearningPathBySlug(slug),
+    enabled: enabled && !!slug,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

@@ -15,6 +15,7 @@ from langchain.tools import tool
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from core.projects.topic_utils import set_project_topics
 from services.projects import ProjectService
 
 logger = logging.getLogger(__name__)
@@ -349,11 +350,10 @@ def create_project(
         logger.error(f'ProjectService.create_project failed: {error}')
         return {'success': False, 'error': error}
 
-    # Update project with topics if provided
+    # Update project with topics if provided (using M2M helper)
     if topics and project:
         try:
-            project.topics = topics[:10]  # Limit to 10 topics
-            project.save(update_fields=['topics'])
+            set_project_topics(project, topics[:10])  # Limit to 10 topics
             logger.info(f'Added topics to project: {topics[:10]}')
         except Exception as e:
             logger.warning(f'Failed to add topics: {e}')

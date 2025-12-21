@@ -19,6 +19,7 @@ from core.users.models import User
 from .constants import MIN_RESPONSE_TIME_SECONDS
 from .models import Project, ProjectDismissal, ProjectLike
 from .serializers import ProjectCardSerializer, ProjectSerializer
+from .topic_utils import get_project_topic_names, set_project_topics
 
 logger = logging.getLogger(__name__)
 
@@ -427,7 +428,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 )
             # Validate and clean topics
             cleaned_topics = [str(t).strip().lower()[:50] for t in topics if t]
-            project.topics = cleaned_topics[:15]  # Limit to 15 topics
+            set_project_topics(project, cleaned_topics[:15])  # Limit to 15 topics
 
         # Mark as manually edited
         project.tags_manually_edited = True
@@ -584,7 +585,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Build prompt based on project content
             title = project.title or ''
             description = (project.description or '')[:500]
-            topics = project.topics or []
+            topics = get_project_topic_names(project)
 
             prompt = (
                 f"""Create a hero image for this AI/tech article. """
@@ -1218,7 +1219,8 @@ def explore_projects(request):
     if search_query:
         # First try exact/contains match for best performance on exact queries
         # Search title, description, user info, categories, tools, and topics
-        exact_match = queryset.filter(
+        # Note: topics is a ManyToManyField to Taxonomy, so use topics__name__icontains
+        combined_match = queryset.filter(
             Q(title__icontains=search_query)
             | Q(description__icontains=search_query)
             | Q(user__username__icontains=search_query)
@@ -1226,15 +1228,8 @@ def explore_projects(request):
             | Q(user__last_name__icontains=search_query)
             | Q(categories__name__icontains=search_query)
             | Q(tools__name__icontains=search_query)
+            | Q(topics__name__icontains=search_query)
         ).distinct()
-
-        # Also check topics (stored as ArrayField of strings)
-        # Use case-insensitive contains on array elements
-        # Must use .distinct() to match exact_match for union compatibility
-        topics_match = queryset.filter(topics__icontains=search_query.lower()).distinct()
-
-        # Combine both querysets
-        combined_match = (exact_match | topics_match).distinct()
 
         if combined_match.exists():
             # Use exact match if found
@@ -1635,7 +1630,14 @@ def semantic_search(request):
     types_to_search = [t for t in requested_types if t in valid_types]
 
     limit = int(request.data.get('limit', 1000))  # High default to return all relevant results
-    alpha = float(request.data.get('alpha', 0.7))
+    # Default alpha favors keyword matching (title, tools, categories, topics)
+    # over pure semantic similarity since we have a robust tagging system
+    # alpha=0.3 means 30% vector similarity, 70% keyword matching
+    alpha = float(request.data.get('alpha', 0.3))
+
+    # Minimum score threshold for hybrid search results
+    # This filters out weak matches that don't have sufficient relevance
+    MIN_SCORE_THRESHOLD = 0.3
 
     results = {
         'projects': [],
@@ -1681,7 +1683,19 @@ def semantic_search(request):
                         alpha=alpha,
                         limit=limit,
                     )
-                    project_ids = [r.get('project_id') for r in weaviate_results if r.get('project_id')]
+                    # Filter by score threshold to remove weak semantic matches
+                    # Score is in _additional.score from Weaviate hybrid search
+                    filtered_results = []
+                    for r in weaviate_results:
+                        score = r.get('_additional', {}).get('score', 0)
+                        try:
+                            score = float(score) if score else 0
+                        except (ValueError, TypeError):
+                            score = 0
+                        if score >= MIN_SCORE_THRESHOLD:
+                            filtered_results.append(r)
+
+                    project_ids = [r.get('project_id') for r in filtered_results if r.get('project_id')]
                     projects = (
                         Project.objects.filter(id__in=project_ids)
                         .select_related(

@@ -65,6 +65,7 @@ const NeonGlassStyleguide = lazy(() => import('@/pages/NeonGlassStyleguide'));
 const QuizListPage = lazy(() => import('@/pages/quizzes/QuizListPage'));
 const QuizPage = lazy(() => import('@/pages/quizzes/QuizPage'));
 const LearnPage = lazy(() => import('@/pages/LearnPage'));
+const LearningPathDetailPage = lazy(() => import('@/pages/LearningPathDetailPage'));
 const ToolDirectoryPage = lazy(() => import('@/pages/ToolDirectoryPage'));
 const ToolDetailPage = lazy(() => import('@/pages/ToolDetailPage'));
 const ExplorePage = lazy(() => import('@/pages/ExplorePage').then((m) => ({ default: m.ExplorePage })));
@@ -169,6 +170,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <LearnPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Learning path detail - must come before /:username to avoid catch-all */}
+      <Route
+        path="/learn/:slug"
+        element={
+          <ProtectedRoute>
+            <LearningPathDetailPage />
           </ProtectedRoute>
         }
       />

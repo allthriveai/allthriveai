@@ -1,10 +1,18 @@
 """
-Weaviate schema definitions for personalization collections.
+Weaviate schema definitions for personalization and learning intelligence collections.
 
-Collections:
+Content Collections:
 - Project: Content embeddings for semantic search and recommendations
 - UserProfile: User preference vectors for personalization
 - Tool: Tool similarity search
+- Quiz: Quiz semantic search
+- MicroLesson: Micro-lesson semantic search
+- Game: Game discovery
+
+Learning Intelligence Collections:
+- KnowledgeState: User knowledge per concept for semantic gap detection
+- LearningGap: Detected confusion/struggle patterns for proactive help
+- Concept: Semantic graph of learnable concepts for path generation
 """
 
 import logging
@@ -26,6 +34,11 @@ class WeaviateSchema:
     QUIZ_COLLECTION = 'Quiz'
     MICRO_LESSON_COLLECTION = 'MicroLesson'
     GAME_COLLECTION = 'Game'
+
+    # Learning intelligence collections
+    KNOWLEDGE_STATE_COLLECTION = 'KnowledgeState'
+    LEARNING_GAP_COLLECTION = 'LearningGap'
+    CONCEPT_COLLECTION = 'Concept'
 
     # Content metadata taxonomy properties shared across content types
     # These correspond to the ContentMetadataMixin and taxonomy fields
@@ -720,6 +733,309 @@ class WeaviateSchema:
             ],
         }
 
+    # =========================================================================
+    # Learning Intelligence Collections
+    # =========================================================================
+
+    @classmethod
+    def get_knowledge_state_schema(cls) -> dict:
+        """
+        Schema for KnowledgeState collection.
+
+        Stores semantic representation of user's knowledge per concept.
+        Synced from UserConceptMastery for semantic gap detection.
+
+        Enables queries like:
+        - "What concepts similar to X does this user NOT know?"
+        - "Find users with similar knowledge profiles"
+        """
+        return {
+            'class': cls.KNOWLEDGE_STATE_COLLECTION,
+            'description': 'User knowledge state per concept for semantic gap detection',
+            'vectorizer': 'none',
+            'properties': [
+                {
+                    'name': 'user_id',
+                    'dataType': ['int'],
+                    'description': 'Django User model ID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'concept_id',
+                    'dataType': ['int'],
+                    'description': 'Django Concept model ID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'concept_name',
+                    'dataType': ['text'],
+                    'description': 'Name of the concept',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'topic_slug',
+                    'dataType': ['text'],
+                    'description': 'Topic taxonomy slug',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'mastery_level',
+                    'dataType': ['text'],
+                    'description': 'Mastery level (unknown, aware, learning, practicing, proficient, expert)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'mastery_score',
+                    'dataType': ['number'],
+                    'description': 'Mastery score 0.0-1.0',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'understanding_text',
+                    'dataType': ['text'],
+                    'description': 'Text used for embedding generation (concept + mastery context)',
+                    'indexFilterable': False,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'times_practiced',
+                    'dataType': ['int'],
+                    'description': 'Number of times concept was practiced',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'last_practiced',
+                    'dataType': ['date'],
+                    'description': 'Last practice timestamp',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'next_review_at',
+                    'dataType': ['date'],
+                    'description': 'Next spaced repetition review timestamp',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'updated_at',
+                    'dataType': ['date'],
+                    'description': 'Last update timestamp',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+            ],
+        }
+
+    @classmethod
+    def get_learning_gap_schema(cls) -> dict:
+        """
+        Schema for LearningGap collection.
+
+        Stores detected confusion/struggle patterns from conversations.
+        Used to track learning gaps over time and enable proactive help.
+
+        Enables queries like:
+        - "You struggled with X before, want me to explain?"
+        - "What topics are users commonly confused about?"
+        """
+        return {
+            'class': cls.LEARNING_GAP_COLLECTION,
+            'description': 'Detected learning gaps from conversation patterns',
+            'vectorizer': 'none',
+            'properties': [
+                {
+                    'name': 'gap_id',
+                    'dataType': ['text'],
+                    'description': 'Unique gap identifier (UUID)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'user_id',
+                    'dataType': ['int'],
+                    'description': 'Django User model ID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'concept_name',
+                    'dataType': ['text'],
+                    'description': 'Name of the concept with detected gap',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'topic_slug',
+                    'dataType': ['text'],
+                    'description': 'Topic taxonomy slug',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'gap_type',
+                    'dataType': ['text'],
+                    'description': 'Type of gap (confusion, prerequisite, practice, retention)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'confidence',
+                    'dataType': ['number'],
+                    'description': 'Confidence score 0.0-1.0',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'evidence_summary',
+                    'dataType': ['text'],
+                    'description': 'Summary of evidence for this gap (no raw messages)',
+                    'indexFilterable': False,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'detected_at',
+                    'dataType': ['date'],
+                    'description': 'When the gap was detected',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'addressed',
+                    'dataType': ['boolean'],
+                    'description': 'Whether the gap has been addressed',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'addressed_at',
+                    'dataType': ['date'],
+                    'description': 'When the gap was addressed',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+            ],
+        }
+
+    @classmethod
+    def get_concept_schema(cls) -> dict:
+        """
+        Schema for Concept collection.
+
+        Stores semantic embeddings of learnable concepts for path generation.
+        Synced from core.learning_paths.Concept model.
+
+        Enables queries like:
+        - "What concept should they learn next?"
+        - "Find concepts semantically similar to X"
+        - "What are the prerequisites for this concept?"
+        """
+        return {
+            'class': cls.CONCEPT_COLLECTION,
+            'description': 'Semantic graph of learnable concepts',
+            'vectorizer': 'none',
+            'properties': [
+                {
+                    'name': 'concept_id',
+                    'dataType': ['int'],
+                    'description': 'Django Concept model ID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'weaviate_uuid',
+                    'dataType': ['text'],
+                    'description': 'Stable UUID for cross-referencing',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'name',
+                    'dataType': ['text'],
+                    'description': 'Concept name',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'description',
+                    'dataType': ['text'],
+                    'description': 'Concept description',
+                    'indexFilterable': False,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'topic_slug',
+                    'dataType': ['text'],
+                    'description': 'Topic taxonomy slug',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'topic_name',
+                    'dataType': ['text'],
+                    'description': 'Topic taxonomy name',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'difficulty',
+                    'dataType': ['text'],
+                    'description': 'Difficulty level (beginner, intermediate, advanced)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'prerequisite_names',
+                    'dataType': ['text[]'],
+                    'description': 'Names of prerequisite concepts',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'unlocks_names',
+                    'dataType': ['text[]'],
+                    'description': 'Names of concepts this unlocks',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'related_tools',
+                    'dataType': ['text[]'],
+                    'description': 'Names of related tools',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'combined_text',
+                    'dataType': ['text'],
+                    'description': 'Combined text for keyword search',
+                    'indexFilterable': False,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'is_active',
+                    'dataType': ['boolean'],
+                    'description': 'Whether concept is active',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'created_at',
+                    'dataType': ['date'],
+                    'description': 'Concept creation timestamp',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+            ],
+        }
+
     @classmethod
     def get_all_schemas(cls) -> list[dict]:
         """Get all collection schemas."""
@@ -730,6 +1046,10 @@ class WeaviateSchema:
             cls.get_quiz_schema(),
             cls.get_micro_lesson_schema(),
             cls.get_game_schema(),
+            # Learning intelligence collections
+            cls.get_knowledge_state_schema(),
+            cls.get_learning_gap_schema(),
+            cls.get_concept_schema(),
         ]
 
     @classmethod

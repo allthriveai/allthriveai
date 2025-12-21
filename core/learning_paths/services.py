@@ -1158,7 +1158,7 @@ class LearningContentService:
                 count += YouTubeFeedVideo.objects.filter(
                     models.Q(tags__icontains=topic)
                     | models.Q(project__title__icontains=topic)
-                    | models.Q(project__topics__icontains=topic)
+                    | models.Q(project__topics__name__icontains=topic)
                 ).count()
 
             elif modality == 'quiz-challenges':
@@ -1169,7 +1169,7 @@ class LearningContentService:
                     Quiz.objects.filter(
                         is_published=True,
                     )
-                    .filter(models.Q(topic__icontains=topic) | models.Q(topics__icontains=topic))
+                    .filter(models.Q(topic__icontains=topic) | models.Q(topics__name__icontains=topic))
                     .count()
                 )
 
@@ -1196,7 +1196,7 @@ class LearningContentService:
                     .filter(
                         models.Q(key_techniques__icontains=topic)
                         | models.Q(project__title__icontains=topic)
-                        | models.Q(project__topics__icontains=topic)
+                        | models.Q(project__topics__name__icontains=topic)
                     )
                     .count()
                 )
@@ -1210,7 +1210,7 @@ class LearningContentService:
                 count += (
                     ProjectLearningMetadata.objects.filter(
                         is_learning_eligible=True,
-                        project__topics__icontains='games',
+                        project__topics__name__icontains='games',
                     )
                     .filter(models.Q(key_techniques__icontains=topic) | models.Q(project__title__icontains=topic))
                     .count()
@@ -1334,7 +1334,7 @@ class LearningContentService:
 
             videos = list(
                 YouTubeFeedVideo.objects.filter(
-                    models.Q(project__topics__icontains=topic)
+                    models.Q(project__topics__name__icontains=topic)
                     | models.Q(tags__icontains=topic)
                     | models.Q(project__title__icontains=topic)
                 )
@@ -1379,7 +1379,7 @@ class LearningContentService:
                 Quiz.objects.filter(is_published=True)
                 .filter(
                     models.Q(topic__icontains=topic)
-                    | models.Q(topics__icontains=topic)
+                    | models.Q(topics__name__icontains=topic)
                     | models.Q(title__icontains=topic)
                 )
                 .order_by('difficulty', '-created_at')[:5]
@@ -1452,7 +1452,7 @@ class LearningContentService:
             .filter(
                 models.Q(key_techniques__icontains=topic)
                 | models.Q(project__title__icontains=topic)
-                | models.Q(project__topics__icontains=topic)
+                | models.Q(project__topics__name__icontains=topic)
             )
             .select_related('project', 'project__user')
             .order_by('-learning_quality_score')[:5]
@@ -1520,7 +1520,7 @@ class LearningContentService:
             game_projects = list(
                 ProjectLearningMetadata.objects.filter(
                     is_learning_eligible=True,
-                    project__topics__icontains='games',
+                    project__topics__name__icontains='games',
                 )
                 .filter(
                     models.Q(key_techniques__icontains=topic)

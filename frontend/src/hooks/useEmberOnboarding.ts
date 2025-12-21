@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 
 // Legacy IDs for backwards compatibility, new IDs for avatar-focused onboarding
 export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize' | 'play' | 'learn';
@@ -64,8 +65,12 @@ function saveState(userId: number | string, state: EmberOnboardingState): void {
 export function useEmberOnboarding() {
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
+  const pointsNotification = usePointsNotificationOptional();
   const [state, setState] = useState<EmberOnboardingState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
+  // Legacy state kept for backwards compatibility (consumers may still use these)
+  const [showPointsOverlay, setShowPointsOverlay] = useState(false);
+  const [pointsAwarded, setPointsAwarded] = useState(0);
 
   // Check if user is on a battle invite page - skip onboarding for these users
   // so they can accept the battle challenge without interruption
@@ -155,14 +160,41 @@ export function useEmberOnboarding() {
     setState((prev) => ({ ...prev, isDismissed: true, hasSeenModal: true }));
   }, []);
 
-  // Award welcome points (only once)
-  const awardWelcomePoints = useCallback(() => {
-    setState((prev) => {
-      if (prev.welcomePointsAwarded) return prev;
-      // TODO: Call API to actually award points
-      return { ...prev, welcomePointsAwarded: true };
-    });
-  }, []);
+  // Award welcome points (only once) - calls API and shows global notification
+  const awardWelcomePoints = useCallback(async () => {
+    // Skip if already awarded locally
+    if (state.welcomePointsAwarded) return;
+
+    try {
+      const response = await fetch('/api/v1/me/thrive-circle/welcome-points/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.awarded) {
+          // Update legacy state for backwards compatibility
+          setPointsAwarded(data.points);
+          setShowPointsOverlay(true);
+
+          // Show global points notification via context
+          if (pointsNotification) {
+            pointsNotification.showPointsNotification({
+              points: data.points,
+              title: 'Welcome Bonus!',
+              message: "You've earned your first points!",
+              activityType: 'welcome',
+            });
+          }
+        }
+        setState((prev) => ({ ...prev, welcomePointsAwarded: true }));
+      }
+    } catch (error) {
+      console.error('[EmberOnboarding] Failed to award welcome points:', error);
+    }
+  }, [state.welcomePointsAwarded, pointsNotification]);
 
   // Reset onboarding (for testing)
   const resetOnboarding = useCallback(() => {
@@ -192,6 +224,11 @@ export function useEmberOnboarding() {
     shouldShowModal,
     shouldShowBanner,
     allAdventuresComplete,
+
+    // Points overlay state
+    showPointsOverlay,
+    setShowPointsOverlay,
+    pointsAwarded,
 
     // Actions
     markModalSeen,

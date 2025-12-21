@@ -283,15 +283,33 @@ class DirectMessageThreadSerializer(serializers.ModelSerializer):
         return None
 
     def get_unread_count(self, obj):
-        # TODO: Implement unread count based on last_read_at
-        return 0
+        """Count messages created after user's last_read_at."""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+
+        if not obj.room:
+            return 0
+
+        # Get the user's membership in this room
+        try:
+            membership = RoomMembership.objects.get(room=obj.room, user=request.user)
+        except RoomMembership.DoesNotExist:
+            return 0
+
+        if not membership.last_read_at:
+            # User has never read - count all messages (excluding own)
+            return obj.room.messages.exclude(author=request.user).count()
+
+        # Count messages created after last read (excluding own)
+        return obj.room.messages.filter(created_at__gt=membership.last_read_at).exclude(author=request.user).count()
 
 
 class DirectMessageCreateSerializer(serializers.Serializer):
     """Serializer for creating a DM thread."""
 
     participant_ids = serializers.ListField(
-        child=serializers.UUIDField(),
+        child=serializers.IntegerField(),
         min_length=1,
         max_length=10,
     )

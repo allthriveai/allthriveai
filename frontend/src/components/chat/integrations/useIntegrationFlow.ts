@@ -32,6 +32,7 @@ import {
 } from '@/services/figma';
 import { api } from '@/services/api';
 import { logError } from '@/utils/errorHandler';
+import { getErrorMessage } from '@/utils/errors';
 import type { IntegrationState, IntegrationActions, IntegrationId, IntegrationFlowStep } from '../core/types';
 
 interface UseIntegrationFlowOptions {
@@ -167,7 +168,7 @@ export function useIntegrationFlow({
           message: `Found ${repos.length} repositories!`,
           error: null,
         });
-      } catch (repoError: any) {
+      } catch (repoError) {
         if (repoError instanceof GitHubInstallationNeededError) {
           setGithubInstallUrl(repoError.installUrl);
           setGithubState({
@@ -180,7 +181,7 @@ export function useIntegrationFlow({
         setGithubState({
           step: 'idle',
           message: '',
-          error: repoError.message || 'Failed to load repositories.',
+          error: getErrorMessage(repoError) || 'Failed to load repositories.',
         });
         setActiveFlow(null);
       }
@@ -250,11 +251,11 @@ export function useIntegrationFlow({
           message: `Found ${projects.length} projects!`,
           error: null,
         });
-      } catch (projectError: any) {
+      } catch (projectError) {
         setGitlabState({
           step: 'idle',
           message: '',
-          error: projectError.message || 'Failed to load projects.',
+          error: getErrorMessage(projectError) || 'Failed to load projects.',
         });
         setActiveFlow(null);
       }
@@ -351,10 +352,10 @@ export function useIntegrationFlow({
       setFigmaState(initialFlowState);
       setActiveFlow(null);
       onSendMessage(`Import this Figma design as a project: ${url}\n\nFile: ${preview.name}\nPages: ${preview.pageCount}`);
-    } catch (error: any) {
+    } catch (error) {
       setFigmaState({
         step: 'select',
-        message: error.message || 'Failed to fetch Figma file. Please check the URL and try again.',
+        message: getErrorMessage(error) || 'Failed to fetch Figma file. Please check the URL and try again.',
         error: null,
       });
     }

@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
 from core.projects.models import Project
+from core.projects.topic_utils import set_project_topics
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -107,10 +108,9 @@ class ProjectService:
                 external_url=external_url or '',
             )
 
-            # Add tags as topics if provided
+            # Add tags as topics if provided (using M2M helper)
             if tags:
-                project.topics = tags
-                project.save(update_fields=['topics'])
+                set_project_topics(project, tags)
 
             logger.info(f'Created project {project.id} for user {user.id}: {title}')
             return project, None

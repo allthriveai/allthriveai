@@ -63,11 +63,11 @@ This document defines the AI architecture for AllThrive AI, including the unifie
 
 ### Agent Architecture
 
-AllThrive AI uses a **single unified Ember agent** built on LangGraph. The agent has access to 31 tools across 5 categories and handles all chat interactions.
+AllThrive AI uses a **single unified Ember agent** built on LangGraph. The agent has access to ~25 tools across 4 categories and handles all chat interactions.
 
 **Key Characteristics**:
 - **Single agent**: No supervisor routing - one agent handles all requests
-- **Tool-based**: 31 tools organized into discovery, learning, project, orchestration, and profile categories
+- **Tool-based**: Tools organized into discovery/learning (consolidated), project, orchestration, and profile categories
 - **State injection**: Tools receive user context (user_id, username, session_id) automatically
 - **Streaming**: Token-by-token streaming via Redis Pub/Sub → WebSocket
 - **Learner context**: Learning-related context injected at conversation start via `LearnerContextService`
@@ -81,9 +81,14 @@ services/agents/ember/
 └── tools.py           # Unified tool registry (imports from all categories)
 
 services/agents/
-├── discovery/tools.py   # 9 discovery tools
-├── learning/tools.py    # 3 learning tools
-├── project/tools.py     # 9 project tools
+├── discovery/
+│   ├── find_content.py  # Unified discovery tool (replaces 7 overlapping tools)
+│   └── tools.py         # Challenge and community tools
+├── learning/
+│   ├── tools.py         # Learning path and profile tools
+│   └── components/
+│       └── content_finder.py  # Content aggregation component
+├── project/tools.py     # 10+ project tools (create, import, media)
 ├── orchestration/tools.py # 7 orchestration tools
 └── profile/tools.py     # 3 profile tools
 ```
@@ -115,17 +120,26 @@ START
   END
 ```
 
-### Tool Categories (31 total)
+### Tool Categories (~25 total, consolidated)
 
 | Category | Count | Purpose |
 |----------|-------|---------|
-| Discovery | 9 | Search projects, recommendations, challenges, connections |
-| Learning | 3 | Find content, create learning paths, update learner profile |
-| Project | 9 | Create projects, import from URLs, media handling |
-| Orchestration | 7 | Navigation, UI highlighting, toasts, inline games |
+| Discovery + Learning | 5 | Unified `find_content` (replaces 7 overlapping tools), learning paths, profile updates, challenges, connections |
+| Project | 10+ | Create projects, import from URLs/GitHub, media handling, architecture diagrams |
+| Orchestration | 7 | Navigation, UI highlighting, toasts, inline games, fun activities |
 | Profile | 3 | Gather user data, generate/save profile sections |
 
-*See `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` for complete tool reference.*
+**Tool Consolidation** (12 → 5 discovery/learning tools):
+
+| New Unified Tool | Replaces | Description |
+|------------------|----------|-------------|
+| `find_content` | `search_projects`, `get_recommendations`, `find_similar_projects`, `get_trending_projects`, `unified_search`, `get_related_content`, `find_learning_content` | One hyper-personalized tool for all content discovery with Weaviate hybrid search |
+| `create_learning_path` | - | Generate structured curriculum |
+| `update_learner_profile` | - | Save preferences/interests/skills |
+| `get_current_challenge` | - | Weekly challenge info |
+| `find_people_to_connect` | - | Community connections |
+
+*See `services/agents/ember/tools.py` for the unified registry.*
 
 ### State Injection
 
@@ -592,44 +606,38 @@ if not result.is_safe:
 
 ---
 
-## Vector Search (Future)
+## Vector Search (Implemented)
 
-**Technology**: RedisVL (Redis Vector Library)
+**Technology**: Weaviate (self-hosted) with OpenAI embeddings
 
-**Use Cases**:
-- Semantic project search
-- Tool recommendations
-- Similar projects
-- RAG (Retrieval-Augmented Generation) for chat
+**Use Cases** (all implemented):
+- Semantic project search via `find_content` tool
+- Personalized recommendations
+- Similar projects ("more like this")
+- Tool and content discovery
 
-**Schema** (planned):
+**Hybrid Search**:
 ```python
-from redisvl.schema import IndexSchema
+from services.weaviate import get_weaviate_client, get_embedding_service
 
-schema = IndexSchema.from_dict({
-    "index": {
-        "name": "projects",
-        "prefix": "project:",
-    },
-    "fields": [
-        {"name": "title", "type": "text"},
-        {"name": "description", "type": "text"},
-        {"name": "embedding", "type": "vector", "dims": 1536, "algorithm": "HNSW"}
-    ]
-})
-```
+client = get_weaviate_client()
+embedding_service = get_embedding_service()
 
-**Embedding**:
-```python
-from openai import OpenAI
+# Generate query embedding
+query_vector = embedding_service.generate_embedding("RAG systems")
 
-client = OpenAI()
-response = client.embeddings.create(
-    model="text-embedding-3-small",
-    input=project.description
+# Hybrid search: 70% keyword, 30% semantic
+results = client.hybrid_search(
+    collection='Project',
+    query='RAG systems',
+    vector=query_vector,
+    alpha=0.3,  # Favors robust tagging system
+    limit=10,
+    enforce_visibility=True,  # Only public, non-archived
 )
-embedding = response.data[0].embedding
 ```
+
+*See `17-VECTOR-SEARCH.md` for complete Weaviate architecture.*
 
 ---
 
@@ -768,9 +776,11 @@ The following features from the original roadmap are now implemented:
 
 | Feature | Status | Implementation |
 |---------|--------|----------------|
-| Tool calling | ✅ Implemented | 31 LangChain tools across 5 categories |
+| Tool calling | ✅ Implemented | ~25 LangChain tools across 4 categories (consolidated from 31) |
 | Multi-modal AI | ✅ Implemented | Gemini 2.0 Flash image generation (Nano Banana) |
-| RAG | ✅ Partial | Knowledge graph for related content, project search |
+| Vector Search | ✅ Implemented | Weaviate hybrid search (alpha=0.3) with OpenAI embeddings |
+| Personalization | ✅ Implemented | Difficulty matching, learning style preferences, tool interests |
+| RAG | ✅ Implemented | Full project/content embedding with hybrid search in `find_content` |
 
 ## Future Enhancements
 
@@ -779,7 +789,7 @@ The following features from the original roadmap are now implemented:
 1. **Voice interface**: Speech-to-text → AI → text-to-speech
 2. **Custom models**: Fine-tuned models for AllThrive-specific tasks
 3. **Agent marketplace**: User-created AI agents
-4. **Enhanced RAG**: Full document embedding with vector search
+4. **Enhanced collaborative filtering**: Cross-user recommendations based on similar profiles
 
 ### Research Areas
 

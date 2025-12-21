@@ -339,6 +339,9 @@ REST_FRAMEWORK = {
         'authenticated_projects': '500/hour',
         'quiz_start': '10/hour',
         'quiz_answer': '100/minute',
+        # Feedback endpoints
+        'feedback': '30/hour',
+        'feedback_read': '120/hour',
     },
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPageNumberPagination',
     'PAGE_SIZE': 10,

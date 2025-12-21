@@ -15,7 +15,8 @@ import { ProjectActions } from '../shared/ProjectActions';
 import { ShareModal } from '../shared/ShareModal';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
-import { Linkify } from '@/components/common/Linkify';
+import { marked } from 'marked';
+import { sanitizeHtml } from '@/utils/sanitize';
 import { updateProject } from '@/services/projects';
 import { getImpersonationStatus } from '@/services/impersonation';
 import {
@@ -38,6 +39,22 @@ import {
 } from '@heroicons/react/24/outline';
 import { getTools, updateProjectTags } from '@/services/projects';
 import type { Tool } from '@/types/models';
+
+// Convert plain URLs to markdown links before parsing
+// This ensures URLs in YouTube descriptions become clickable
+function linkifyText(text: string): string {
+  // Match URLs - simplified regex for better browser compatibility
+  const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+  // Don't double-link URLs that are already in markdown link format
+  return text.replace(urlRegex, (match, url, offset) => {
+    // Check if this URL is already part of a markdown link
+    const before = text.slice(Math.max(0, offset - 2), offset);
+    if (before.endsWith('](') || before.endsWith('>[')) {
+      return match;
+    }
+    return `[${url}](${url})`;
+  });
+}
 
 export function VideoProjectLayout() {
   const {
@@ -497,12 +514,15 @@ export function VideoProjectLayout() {
         )}
       </div>
 
-      {/* Hero Section - Editable hero display (Image, Video, Slideshow, Quote, SlideUp) */}
-      <ProjectHero
-        project={project}
-        isEditing={isEditing}
-        onEditClick={() => setIsHeroEditorOpen(true)}
-      />
+      {/* Hero Section - Only show for non-video hero modes since video is already rendered above */}
+      {/* Skip hero entirely for video projects - the main video player is the hero */}
+      {project.content?.heroDisplayMode && project.content.heroDisplayMode !== 'video' && project.content.heroDisplayMode !== 'image' && (
+        <ProjectHero
+          project={project}
+          isEditing={isEditing}
+          onEditClick={() => setIsHeroEditorOpen(true)}
+        />
+      )}
 
       {/* Inline Hero Editor Tray */}
       <InlineHeroEditor
@@ -592,9 +612,12 @@ export function VideoProjectLayout() {
                 rows={4}
               />
             ) : (
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                <Linkify>{project.description}</Linkify>
-              </p>
+              <div
+                className="prose prose-lg dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 [&_a]:text-primary-600 [&_a]:dark:text-primary-400 [&_a]:break-all"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(marked.parse(linkifyText(project.description || '')) as string)
+                }}
+              />
             )}
           </div>
         )}
@@ -745,9 +768,10 @@ export function VideoProjectLayout() {
       </div>
 
       {/* Project Sections - Editable content blocks */}
+      {/* Filter out video sections since the main video is already rendered at the top */}
       {(hasTemplateSections || isEditing) && (
         <ProjectSections
-          sections={(project.content?.sections || []) as ProjectSection[]}
+          sections={((project.content?.sections || []) as ProjectSection[]).filter(s => s.type !== 'video')}
           isEditing={isEditing}
           onSectionUpdate={handleSectionUpdate}
           onAddSection={handleAddSection}

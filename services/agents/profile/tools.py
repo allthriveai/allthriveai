@@ -222,7 +222,7 @@ def gather_user_data(
                 'type': p.type,
                 'is_showcased': p.is_showcased,
                 'external_url': p.external_url or '',
-                'topics': p.topics or [],
+                'topics': list(p.topics.values_list('name', flat=True)),
                 'hero_image_url': p.featured_image_url or '',
                 'created_at': p.created_at.isoformat() if p.created_at else None,
                 'tools': [{'name': t.name, 'slug': t.slug} for t in (p.tools.all()[:5] if hasattr(p, 'tools') else [])],
