@@ -1116,16 +1116,33 @@ export function useIntelligentChat({
     };
   }, [messages, conversationId]);
 
-  // Clear messages for this conversation
-  const clearMessages = useCallback(() => {
+  // Clear messages for this conversation (local + backend checkpoint)
+  const clearMessages = useCallback(async () => {
     setMessages([]);
     // Clear any pending save timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
-    // Clear from storage using already-imported function
+    // Clear from local storage
     clearChatMessages(conversationId);
+
+    // Clear backend checkpoint (LangGraph state)
+    try {
+      const response = await fetch('/api/v1/agents/clear-conversation/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ conversation_id: conversationId }),
+      });
+      if (response.ok) {
+        console.log('[Chat] Cleared backend conversation checkpoint');
+      }
+    } catch (error) {
+      console.warn('[Chat] Failed to clear backend checkpoint:', error);
+    }
   }, [conversationId]);
 
   // Cancel ongoing AI processing

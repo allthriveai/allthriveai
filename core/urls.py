@@ -14,7 +14,13 @@ from .agents.profile_views import (
     profile_preview_sections,
 )
 from .agents.project_chat_views import project_chat_stream_v2
-from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
+from .agents.views import (
+    ConversationViewSet,
+    CreateProjectFromImageView,
+    MessageViewSet,
+    clear_conversation,
+    detect_intent,
+)
 from .auth.impersonation import (
     impersonation_status,
     list_impersonatable_users,
@@ -152,6 +158,7 @@ from .users.views import (
     get_profile_sections,
     list_followers,
     list_following,
+    list_team_members,
     onboarding_progress,
     personalization_settings,
     reset_personalization_settings,
@@ -289,6 +296,7 @@ urlpatterns = [
     path('projects/track-clicks/', track_batch_clicks, name='track_batch_clicks'),
     path('search/semantic/', semantic_search, name='semantic_search'),
     path('users/explore/', explore_users, name='explore_users'),
+    path('team/', list_team_members, name='list_team_members'),
     # Invitation request (public, rate-limited)
     path('invitations/request/', request_invitation, name='request_invitation'),
     # Public user endpoints
@@ -354,6 +362,7 @@ urlpatterns = [
     # Agent endpoints
     path('agents/detect-intent/', detect_intent, name='detect_intent'),
     path('agents/create-project-from-image/', CreateProjectFromImageView.as_view(), name='create_project_from_image'),
+    path('agents/clear-conversation/', clear_conversation, name='clear_conversation'),
     # User-scoped /me endpoints
     path('me/profile/', UserProfileView.as_view(), name='me_profile'),
     path('me/activity/', user_activity, name='user_activity'),

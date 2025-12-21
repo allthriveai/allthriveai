@@ -334,6 +334,10 @@ class EmberState(TypedDict):
     # Member context (injected at conversation start)
     # Contains learning preferences, tool preferences, interests, etc.
     member_context: dict | None
+    # Tool execution results with frontend content (for manual event emission)
+    # This is needed because LangGraph doesn't emit on_tool_start/on_tool_end
+    # events for custom async tool nodes - we emit them manually
+    _pending_tool_events: list[dict] | None
 
 
 # =============================================================================
@@ -384,6 +388,8 @@ async def tools_node(state: EmberState) -> dict:
 
     # Execute each tool with state injection
     tool_results = []
+    pending_tool_events = []  # Store full results for frontend event emission
+
     for tool_call in tool_calls_to_execute:
         tool_name = tool_call.get('name', '')
         tool_args = dict(tool_call.get('args', {}))  # Copy to avoid mutation
@@ -424,6 +430,16 @@ async def tools_node(state: EmberState) -> dict:
             logger.warning(f'Tool {tool_name} not found in EMBER_TOOLS')
             tool_result = {'error': f'Tool {tool_name} not found', 'success': False}
 
+        # Store full tool result for frontend event emission
+        # This includes _frontend_content which is needed for card rendering
+        pending_tool_events.append(
+            {
+                'tool_name': tool_name,
+                'tool_id': tool_id,
+                'output': tool_result,  # Full result including _frontend_content
+            }
+        )
+
         # Convert result to string for ToolMessage content
         # IMPORTANT: Strip _frontend_content from what the AI sees
         # _frontend_content contains detailed project info for frontend rendering
@@ -448,7 +464,12 @@ async def tools_node(state: EmberState) -> dict:
         logger.info(f'[TOOLS_NODE] Created ToolMessage for {tool_name} (id={tool_id})')
 
     logger.info(f'[TOOLS_NODE] ========== EXITING tools_node with {len(tool_results)} results ==========')
-    return {'messages': tool_results}
+    logger.info(f'[TOOLS_NODE] Storing {len(pending_tool_events)} pending tool events for frontend')
+
+    return {
+        'messages': tool_results,
+        '_pending_tool_events': pending_tool_events,
+    }
 
 
 # =============================================================================
@@ -468,11 +489,23 @@ def create_agent_node(model_name: str | None = None):
     llm = ChatOpenAI(model=resolved_model, temperature=0.7)
     llm_with_tools = llm.bind_tools(EMBER_TOOLS)
 
+    # Maximum messages to include in context (prevents slow processing)
+    # 10 messages = ~5 exchanges, plenty for conversational context
+    MAX_CONTEXT_MESSAGES = 10
+
     async def agent_node(state: EmberState) -> dict:
         """Process messages and decide next action (async)."""
         logger.info('[AGENT_NODE] ========== ENTERING agent_node ==========')
-        messages = state.get('messages', [])
-        logger.info(f'[AGENT_NODE] Message count: {len(messages)}')
+        all_messages = state.get('messages', [])
+        logger.info(f'[AGENT_NODE] Total message count: {len(all_messages)}')
+
+        # Trim to last N messages to prevent context bloat and slow processing
+        # Keep last MAX_CONTEXT_MESSAGES messages for context
+        if len(all_messages) > MAX_CONTEXT_MESSAGES:
+            messages = all_messages[-MAX_CONTEXT_MESSAGES:]
+            logger.info(f'[AGENT_NODE] Trimmed to last {MAX_CONTEXT_MESSAGES} messages')
+        else:
+            messages = all_messages
 
         # Log message types for debugging
         for i, msg in enumerate(messages[-5:]):  # Last 5 messages
@@ -1061,6 +1094,41 @@ async def stream_ember_response(
                             chain_name = event.get('name', 'unknown')
                             logger.info(f'[STREAM] on_chain_start: {chain_name} - resetting current_stream_run_id')
                             current_stream_run_id = None
+
+                        # Emit manual tool events when tools chain ends
+                        # LangGraph doesn't emit on_tool_start/on_tool_end for custom async nodes
+                        elif kind == 'on_chain_end':
+                            chain_name = event.get('name', 'unknown')
+                            if chain_name == 'tools':
+                                # Get the output from the tools node
+                                chain_output = event.get('data', {}).get('output', {})
+                                pending_events = chain_output.get('_pending_tool_events', [])
+
+                                logger.info(
+                                    f'[STREAM] tools chain ended, emitting {len(pending_events)} manual tool events'
+                                )
+
+                                for tool_event in pending_events:
+                                    tool_name = tool_event.get('tool_name', '')
+                                    tool_output = tool_event.get('output', {})
+
+                                    # Serialize output for Redis/WebSocket
+                                    serialized_output = _serialize_tool_output(tool_output)
+
+                                    # Emit tool_start and tool_end for each tool
+                                    total_tool_calls += 1
+                                    yield {'type': 'tool_start', 'tool': tool_name}
+
+                                    # Log frontend content
+                                    if isinstance(serialized_output, dict):
+                                        frontend_content = serialized_output.get('_frontend_content', [])
+                                        if frontend_content:
+                                            logger.info(
+                                                f'[STREAM] Manual tool_end: {tool_name} with '
+                                                f'{len(frontend_content)} frontend items'
+                                            )
+
+                                    yield {'type': 'tool_end', 'tool': tool_name, 'output': serialized_output}
 
                     logger.info(f'[STREAM] ========== Finished astream_events ({event_count} total events) ==========')
 

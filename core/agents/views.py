@@ -255,6 +255,83 @@ def detect_intent(request):
         )
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def clear_conversation(request):
+    """
+    Clear the conversation history/checkpoint for a user.
+
+    POST /api/v1/agents/clear-conversation/
+
+    Request body:
+    {
+        "conversation_id": "ember-chat-2"  // optional, defaults to ember-chat-{user_id}
+    }
+
+    This clears:
+    - PostgreSQL checkpoints (LangGraph state)
+    - checkpoint_writes table
+    - Redis cache for the conversation
+    """
+    from django.db import connection
+
+    user_id = request.user.id
+    conversation_id = request.data.get('conversation_id', f'ember-chat-{user_id}')
+
+    # Security: ensure conversation_id belongs to this user
+    if not conversation_id.endswith(f'-{user_id}'):
+        return Response(
+            {'error': 'Invalid conversation_id'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        deleted_checkpoints = 0
+        deleted_writes = 0
+
+        with connection.cursor() as cursor:
+            # Clear checkpoints
+            cursor.execute('DELETE FROM checkpoints WHERE thread_id = %s', [conversation_id])
+            deleted_checkpoints = cursor.rowcount
+
+            # Clear checkpoint_writes
+            cursor.execute('DELETE FROM checkpoint_writes WHERE thread_id = %s', [conversation_id])
+            deleted_writes = cursor.rowcount
+
+        # Clear Redis cache
+        try:
+            from django_redis import get_redis_connection
+
+            redis_conn = get_redis_connection('default')
+            # Clear any cached checkpoints
+            keys = redis_conn.keys(f'*{conversation_id}*')
+            if keys:
+                redis_conn.delete(*keys)
+                logger.info(f'Cleared {len(keys)} Redis keys for {conversation_id}')
+        except Exception as e:
+            logger.warning(f'Failed to clear Redis cache: {e}')
+
+        logger.info(
+            f'Cleared conversation {conversation_id}: ' f'{deleted_checkpoints} checkpoints, {deleted_writes} writes'
+        )
+
+        return Response(
+            {
+                'success': True,
+                'conversation_id': conversation_id,
+                'deleted_checkpoints': deleted_checkpoints,
+                'deleted_writes': deleted_writes,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f'Failed to clear conversation: {e}', exc_info=True)
+        return Response(
+            {'error': 'Failed to clear conversation'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 class CreateProjectFromImageView(APIView):
     """
     Create a project from an image generation session.
