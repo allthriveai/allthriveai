@@ -95,31 +95,82 @@ const COMPLETE_FLOW = `flowchart TD
     BATTLE_START --> GAME_PLAY
 
     %% LEARN SOMETHING NEW FLOW
-    P4 --> LEARN_MSG["What brings you here today?"]
-    LEARN_MSG --> LG1["Build AI Projects"]
-    LEARN_MSG --> LG2["Understand AI Concepts"]
-    LEARN_MSG --> LG3["Career Exploration"]
-    LEARN_MSG --> LG4["Just Exploring"]
+    P4 --> LEARN_ASK["Ember: That's awesome! Is there a<br/>specific topic you're interested in?"]
+    LEARN_ASK --> LEARN_TOPIC["User provides topic<br/>(LangChain, RAG, AI Agents, etc.)"]
 
-    LG1 --> LEARN_CONTENT["Here are some resources for you:<br/>Videos | Projects | Quizzes | Lessons"]
-    LG2 --> LEARN_CONTENT
-    LG3 --> LEARN_CONTENT
-    LG4 --> LEARN_CONTENT
+    LEARN_TOPIC --> LEARN_RESULTS["find_learning_content returns:"]
+    LEARN_RESULTS --> LR_GAME["inline_game<br/>(Context Snake, Quiz)"]
+    LEARN_RESULTS --> LR_TOOL["tool_info<br/>(Tool overview)"]
+    LEARN_RESULTS --> LR_PROJECT["project_card<br/>(Videos, Articles, Code)"]
+    LEARN_RESULTS --> LR_QUIZ["quiz_card<br/>(Interactive quizzes)"]
 
-    LEARN_CONTENT --> LEARN_CHOICE{User Choice}
-    LEARN_CHOICE --> LC_VIEW["View Content"]
-    LEARN_CHOICE --> LC_PATH["Turn into Learning Path?"]
+    LR_GAME --> LEARN_VIEW{User Choice}
+    LR_TOOL --> LEARN_VIEW
+    LR_PROJECT --> LEARN_VIEW
+    LR_QUIZ --> LEARN_VIEW
 
-    LC_VIEW --> CONTENT_PAGE([Content Page])
-    LC_PATH --> LP_CREATE["Creating your personalized path..."]
-    LP_CREATE --> LP_DONE([Learning Path Created])
+    LEARN_VIEW --> LV_PLAY["Play Game"]
+    LEARN_VIEW --> LV_WATCH["Watch Video"]
+    LEARN_VIEW --> LV_READ["Read Article"]
+    LEARN_VIEW --> LV_CODE["View Code Repo"]
+    LEARN_VIEW --> LV_QUIZ["Take Quiz"]
+    LEARN_VIEW --> LV_PATH["Create Learning Path"]
+
+    LV_PLAY --> GAME_PAGE([Game Page])
+    LV_WATCH --> VIDEO_PAGE([Video Page])
+    LV_READ --> ARTICLE_PAGE([Article Page])
+    LV_CODE --> CODE_PAGE([Code Repo Page])
+    LV_QUIZ --> QUIZ_PAGE([Quiz Page])
+
+    LV_PATH --> LP_CREATE["create_learning_path:<br/>Structured curriculum"]
+    LP_CREATE --> LP_RESULT["Learning Path with:<br/>Videos → Quiz → Articles → Game → Code"]
+    LP_RESULT --> LP_PAGE([Learning Path Page])
+
+    %% EXPLORE WHAT OTHERS ARE MAKING FLOW
+    P6 --> EXPLORE_MSG["Here's what's trending in the community:"]
+    EXPLORE_MSG --> EXPLORE_CARDS["Project Cards<br/>(Trending Projects)"]
+    EXPLORE_CARDS --> EXPLORE_CHOICE{User Choice}
+
+    EXPLORE_CHOICE --> EX_VIEW["View Project"]
+    EXPLORE_CHOICE --> EX_SIMILAR["Show me more like this"]
+    EXPLORE_CHOICE --> EX_SEARCH["Search for specific topic"]
+    EXPLORE_CHOICE --> EX_RECOMMEND["Recommend for me"]
+
+    EX_VIEW --> PROJECT_PAGE([Project Page])
+    EX_SIMILAR --> SIMILAR_PROJECTS["Similar Projects"]
+    SIMILAR_PROJECTS --> EXPLORE_CARDS
+    EX_SEARCH --> SEARCH_RESULTS["Search Results"]
+    SEARCH_RESULTS --> EXPLORE_CARDS
+    EX_RECOMMEND --> PERSONALIZED["Personalized Recommendations"]
+    PERSONALIZED --> EXPLORE_CARDS
 
     %% OTHER PILLS - Direct responses
     P3 --> CHALLENGE_RESP["Shows weekly challenge details"]
     P5 --> SELL_RESP["Guides through selling setup"]
-    P6 --> EXPLORE_RESP["Shows trending projects"]
     P7 --> CONNECT_RESP["Shows connection options"]
-    P8 --> PERSONALIZE_RESP["Opens personalization flow"]
+    %% PERSONALIZE MY EXPERIENCE FLOW
+    P8 --> PERSONALIZE_PAGE["Personalization Settings Page"]
+    PERSONALIZE_PAGE --> PERS_THEME["Appearance<br/>Light / Dark Theme"]
+    PERSONALIZE_PAGE --> PERS_ABOUT["About You<br/>Role & Industry"]
+    PERSONALIZE_PAGE --> PERS_FEATURES["Feature Interests<br/>Portfolio | Battles | Explore | Learning | Marketplace | Challenges | Investing | Community"]
+    PERSONALIZE_PAGE --> PERS_CONTROLS["Recommendation Controls<br/>Topics | Views | Likes | Skill Level | Social"]
+    PERSONALIZE_PAGE --> PERS_BALANCE["Discovery Balance<br/>Familiar ←→ Surprise me"]
+    PERSONALIZE_PAGE --> PERS_TOPICS["Select Topics"]
+    PERSONALIZE_PAGE --> PERS_DATA["Your Data<br/>Export | Delete"]
+
+    PERS_FEATURES --> PERS_INT{Portfolio Selected?}
+    PERS_INT -->|Yes| PERS_INTEGRATIONS["Integration Preferences<br/>GitHub | LinkedIn | Instagram | Figma | URL"]
+    PERS_INT -->|No| PERS_SAVE["Save Preferences"]
+    PERS_INTEGRATIONS --> PERS_SAVE
+
+    PERS_THEME --> PERS_SAVE
+    PERS_ABOUT --> PERS_SAVE
+    PERS_CONTROLS --> PERS_SAVE
+    PERS_BALANCE --> PERS_SAVE
+    PERS_TOPICS --> PERS_SAVE
+    PERS_DATA --> PERS_SAVE
+
+    PERS_SAVE --> PERSONALIZED_DONE([Settings Saved])
     P9 --> TRENDING_RESP["Shows trending content"]
     P10 --> QUICKWIN_RESP["Suggests quick action"]
     P11 --> AVATAR_FLOW["Start Avatar Creation"]
@@ -130,9 +181,7 @@ const COMPLETE_FLOW = `flowchart TD
 
     CHALLENGE_RESP --> CONTINUE([Continue Chatting])
     SELL_RESP --> CONTINUE
-    EXPLORE_RESP --> CONTINUE
     CONNECT_RESP --> CONTINUE
-    PERSONALIZE_RESP --> CONTINUE
     TRENDING_RESP --> CONTINUE
     QUICKWIN_RESP --> CONTINUE`;
 
@@ -157,7 +206,7 @@ export default function EmberFlowsPage() {
   }, [user, navigate]);
 
   const handleZoomIn = useCallback(() => {
-    setScale((s) => Math.min(s + 0.5, 10));
+    setScale((s) => Math.min(s + 0.5, 20));
   }, []);
 
   const handleZoomOut = useCallback(() => {
@@ -191,8 +240,8 @@ export default function EmberFlowsPage() {
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.2 : 0.2;
-    setScale((s) => Math.max(0.1, Math.min(s + delta, 10)));
+    const delta = e.deltaY > 0 ? -0.3 : 0.3;
+    setScale((s) => Math.max(0.1, Math.min(s + delta, 20)));
   }, []);
 
   const toggleFullscreen = useCallback(() => {
