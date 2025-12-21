@@ -1,7 +1,7 @@
 /**
- * EmberFlowsPage - Admin page showing Ember chat user flows as Mermaid diagrams
+ * EmberFlowsPage - Admin page showing Ember chat user flows as one big zoomable Mermaid diagram
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
@@ -9,451 +9,127 @@ import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { MermaidDiagram } from '@/components/projects/shared/MermaidDiagram';
 import {
   MapIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
+  MagnifyingGlassPlusIcon,
+  MagnifyingGlassMinusIcon,
+  ArrowsPointingOutIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline';
 
-// Main flow diagram - complete overview
-const MAIN_FLOW = `flowchart TB
-    subgraph Entry["User Opens Ember Chat"]
-        START([User Arrives])
-        START --> NEW{New User?}
-        NEW -->|Yes| ONBOARD[Onboarding Sequence]
-        NEW -->|No| RETURNING[Returning User]
-        ONBOARD --> AVATAR_CHOICE{Create Avatar?}
-        AVATAR_CHOICE -->|"Create My Avatar"| AVATAR_FLOW[Avatar Creation Flow]
-        AVATAR_CHOICE -->|"Skip for now"| CHAT_TYPE
-        AVATAR_FLOW --> CHAT_TYPE
-        RETURNING --> CHAT_TYPE
-    end
+// User Journey Flow - What the user sees and clicks at each step
+const COMPLETE_FLOW = `flowchart TD
+    START([User Opens Ember Chat])
+    START --> GREETING["Greeting Message:<br/>Good morning! What are you in the mood for?"]
 
-    subgraph ChatType["Chat Layout"]
-        CHAT_TYPE{Where opened?}
-        CHAT_TYPE -->|Home Page| EMBEDDED[Embedded Chat]
-        CHAT_TYPE -->|Anywhere else| SIDEBAR[Sidebar Chat]
-    end
+    GREETING --> PILLS{Feeling Pills}
 
-    subgraph EmbeddedFlow["Embedded Chat - Home Page"]
-        EMBEDDED --> GREETING["Greeting Message<br/>'Good morning/afternoon/evening, Name!'"]
-        GREETING --> PILLS[Feeling Pills - max 4 shown]
-    end
+    PILLS --> P1["Share something I've been working on"]
+    PILLS --> P2["Play a game"]
+    PILLS --> P3["See this week's challenge"]
+    PILLS --> P4["Learn something new"]
+    PILLS --> P5["Sell a product or service"]
+    PILLS --> P6["Explore what others are making"]
+    PILLS --> P7["Connect with others"]
+    PILLS --> P8["Personalize my experience"]
+    PILLS --> P9["What's trending today?"]
+    PILLS --> P10["Give me a quick win"]
+    PILLS --> P11["Make my avatar"]
 
-    subgraph SidebarFlow["Sidebar Chat"]
-        SIDEBAR --> CONTEXT{Context?}
-        CONTEXT -->|Learn page| LEARN_ACTIONS[Learn Quick Actions]
-        CONTEXT -->|Explore page| EXPLORE_ACTIONS[Explore Quick Actions]
-        CONTEXT -->|Project page| PROJECT_ACTIONS[Project Quick Actions]
-        CONTEXT -->|Other| DEFAULT_ACTIONS[Default Quick Actions]
-    end
+    %% SHARE SOMETHING FLOW
+    P1 --> SHARE_Q["How would you like to share your project?"]
+    SHARE_Q --> S1["Connect to an integration<br/><i>Pull your project from GitHub...</i>"]
+    SHARE_Q --> S2["Paste in a URL<br/><i>Import from any website or...</i>"]
+    SHARE_Q --> S3["Upload a project<br/><i>Upload images, files, or document...</i>"]
+    SHARE_Q --> S4["Chrome extension<br/><i>Install our extension to easil...</i>"]
 
-    subgraph AlwaysAvailable["Always Available"]
-        CHAT_INPUT[Chat Input - Free Text]
-        PLUS_MENU[Plus Menu - +]
-        DRAG_DROP[Drag & Drop Files]
-        SLASH_CMD[/clear Command]
-    end
+    S1 --> PLATFORM_Q["Which platform would you like to import from?"]
+    PLATFORM_Q --> GITHUB["GitHub"]
+    PLATFORM_Q --> GITLAB["GitLab"]
+    PLATFORM_Q --> FIGMA["Figma"]
+    PLATFORM_Q --> YOUTUBE["YouTube"]
 
-    PILLS --> CHAT_INPUT
-    LEARN_ACTIONS --> CHAT_INPUT
-    EXPLORE_ACTIONS --> CHAT_INPUT
-    PROJECT_ACTIONS --> CHAT_INPUT
-    DEFAULT_ACTIONS --> CHAT_INPUT`;
+    GITHUB --> GH_AUTH["Connect GitHub Account"]
+    GH_AUTH --> GH_REPOS["Select Repository"]
+    GH_REPOS --> GH_IMPORT["Import Project"]
+    GH_IMPORT --> PROJECT_CREATED([Project Created])
 
-// Feeling Pills diagram
-const FEELING_PILLS_FLOW = `flowchart TB
-    subgraph Pills["Feeling Pills - Home Page"]
-        direction TB
-        PILLS_INTRO[/"Up to 4 pills shown based on:<br/>• User's signup interests<br/>• Time of day<br/>• Day of week<br/>• Completed actions"/]
-    end
+    GITLAB --> GL_AUTH["Connect GitLab Account"]
+    GL_AUTH --> GL_REPOS["Select Repository"]
+    GL_REPOS --> GL_IMPORT["Import Project"]
+    GL_IMPORT --> PROJECT_CREATED
 
-    subgraph PillOptions["All Pill Options"]
-        P1["Share something I've<br/>been working on"]
-        P2["Play a game"]
-        P3["See this week's challenge"]
-        P4["Learn something new"]
-        P5["Sell a product or service"]
-        P6["Explore what others<br/>are making"]
-        P7["Connect with others"]
-        P8["Personalize my experience"]
-        P9["What's trending today?"]
-        P10["Give me a quick win"]
-        P11["Make my avatar<br/>(only if no avatar)"]
-    end
+    FIGMA --> FIG_AUTH["Connect Figma Account"]
+    FIG_AUTH --> FIG_FILES["Select File"]
+    FIG_FILES --> FIG_IMPORT["Import Project"]
+    FIG_IMPORT --> PROJECT_CREATED
 
-    PILLS_INTRO --> PillOptions
+    YOUTUBE --> YT_AUTH["Connect YouTube Account"]
+    YT_AUTH --> YT_VIDEOS["Select Video"]
+    YT_VIDEOS --> YT_IMPORT["Import Project"]
+    YT_IMPORT --> PROJECT_CREATED
 
-    subgraph Actions["What Happens"]
-        A1[Project Import Options]
-        A2[Game Picker Modal]
-        A3["→ 'Show me this week's challenge'"]
-        A4["→ 'I want to learn something new about AI'"]
-        A5["→ 'I want to sell a product or service'"]
-        A6["→ 'Show me what others are making'"]
-        A7["→ 'Help me find people to connect with'"]
-        A8["→ 'Help me personalize my AllThrive experience'"]
-        A9["→ 'Show me what's trending today'"]
-        A10["→ 'I want a quick win to start my day'"]
-        A11[Avatar Creation Flow]
-    end
+    S2 --> URL_INPUT["Enter URL"]
+    URL_INPUT --> URL_PROCESS["Processing URL..."]
+    URL_PROCESS --> PROJECT_CREATED
 
-    P1 --> A1
-    P2 --> A2
-    P3 --> A3
-    P4 --> A4
-    P5 --> A5
-    P6 --> A6
-    P7 --> A7
-    P8 --> A8
-    P9 --> A9
-    P10 --> A10
-    P11 --> A11`;
+    S3 --> FILE_PICKER["Select File to Upload"]
+    FILE_PICKER --> UPLOAD_PROCESS["Uploading..."]
+    UPLOAD_PROCESS --> PROJECT_CREATED
 
-// Share/Project Import flow
-const PROJECT_IMPORT_FLOW = `flowchart TB
-    subgraph Trigger["User Clicks"]
-        SHARE["'Share something I've been working on'"]
-    end
+    S4 --> COMING_SOON["Coming Soon!"]
 
-    SHARE --> EMBER_RESPONSE["Ember: 'Great! I'd love to see<br/>what you've been creating.'"]
+    %% PLAY A GAME FLOW
+    P2 --> GAME_Q["Which game would you like to play?"]
+    GAME_Q --> G1["Context Snake"]
+    GAME_Q --> G2["AI Trivia Quiz"]
+    GAME_Q --> G3["Ethics Defender"]
+    GAME_Q --> G4["Prompt Battle"]
 
-    subgraph Options["4 Import Options"]
-        OPT1["Connect to an integration<br/>'Pull from GitHub, GitLab,<br/>Figma, or YouTube'"]
-        OPT2["Paste in a URL<br/>'Import from any website<br/>or repository URL'"]
-        OPT3["Upload a project<br/>'Upload images, files,<br/>or documents'"]
-        OPT4["Chrome extension<br/>'Install our extension to<br/>easily import from anywhere'"]
-    end
+    G1 --> SNAKE_START["Start Context Snake Game"]
+    G2 --> TRIVIA_START["Start AI Trivia Quiz"]
+    G3 --> ETHICS_START["Start Ethics Defender Game"]
+    G4 --> BATTLE_START["Start Prompt Battle"]
 
-    EMBER_RESPONSE --> OPT1
-    EMBER_RESPONSE --> OPT2
-    EMBER_RESPONSE --> OPT3
-    EMBER_RESPONSE --> OPT4
+    SNAKE_START --> GAME_PLAY([Playing Game])
+    TRIVIA_START --> GAME_PLAY
+    ETHICS_START --> GAME_PLAY
+    BATTLE_START --> GAME_PLAY
 
-    subgraph IntegrationPicker["Integration Picker"]
-        GITHUB["GitHub"]
-        GITLAB["GitLab"]
-        FIGMA["Figma"]
-        YOUTUBE["YouTube"]
-    end
+    %% OTHER PILLS - Direct responses
+    P3 --> CHALLENGE_RESP["Shows weekly challenge details"]
+    P4 --> LEARN_RESP["Shows learning recommendations"]
+    P5 --> SELL_RESP["Guides through selling setup"]
+    P6 --> EXPLORE_RESP["Shows trending projects"]
+    P7 --> CONNECT_RESP["Shows connection options"]
+    P8 --> PERSONALIZE_RESP["Opens personalization flow"]
+    P9 --> TRENDING_RESP["Shows trending content"]
+    P10 --> QUICKWIN_RESP["Suggests quick action"]
+    P11 --> AVATAR_FLOW["Start Avatar Creation"]
 
-    OPT1 --> IntegrationPicker
+    AVATAR_FLOW --> AVATAR_STYLE["Choose Avatar Style"]
+    AVATAR_STYLE --> AVATAR_GEN["Generating Avatar..."]
+    AVATAR_GEN --> AVATAR_DONE([Avatar Created])
 
-    subgraph GitHubFlow["GitHub Flow"]
-        GH1[OAuth Connect]
-        GH2[Select Repository]
-        GH3[Import Project]
-        GH1 --> GH2 --> GH3
-    end
-
-    subgraph GitLabFlow["GitLab Flow"]
-        GL1[OAuth Connect]
-        GL2[Select Project]
-        GL3[Import Project]
-        GL1 --> GL2 --> GL3
-    end
-
-    subgraph FigmaFlow["Figma Flow"]
-        FG1[OAuth Connect]
-        FG2[Paste Design URL]
-        FG3[Import Design]
-        FG1 --> FG2 --> FG3
-    end
-
-    subgraph YouTubeFlow["YouTube Flow"]
-        YT1[Paste Video URL]
-        YT2[Import Video]
-        YT1 --> YT2
-    end
-
-    GITHUB --> GitHubFlow
-    GITLAB --> GitLabFlow
-    FIGMA --> FigmaFlow
-    YOUTUBE --> YouTubeFlow
-
-    OPT2 --> URL_MSG["→ 'I want to import a project from a URL'"]
-    URL_MSG --> AI_ANALYZE[AI Analyzes URL & Imports]
-
-    OPT3 --> FILE_PICKER[Opens File Picker Dialog]
-    FILE_PICKER --> UPLOAD_FLOW[Upload & Process Files]
-
-    OPT4 --> COMING_SOON[Coming Soon Modal]`;
-
-// Games flow
-const GAMES_FLOW = `flowchart TB
-    subgraph Trigger["User Clicks"]
-        PLAY["'Play a game'"]
-    end
-
-    PLAY --> MODAL["Game Picker Modal"]
-
-    subgraph Games["Available Games"]
-        G1["Context Snake<br/>Classic snake game with AI twist"]
-        G2["AI Trivia Quiz<br/>Test your AI knowledge"]
-        G3["Ethics Defender<br/>Explore AI ethics scenarios"]
-        G4["Prompt Battle<br/>Compete in prompt engineering"]
-    end
-
-    MODAL --> G1
-    MODAL --> G2
-    MODAL --> G3
-    MODAL --> G4
-
-    G1 --> PLAY_G1[Launch Snake Game]
-    G2 --> PLAY_G2[Launch Trivia Quiz]
-    G3 --> PLAY_G3[Launch Ethics Game]
-    G4 --> PLAY_G4[Launch Prompt Battle]`;
-
-// Quick Actions flow
-const QUICK_ACTIONS_FLOW = `flowchart TB
-    subgraph Sidebar["Sidebar Chat Opened"]
-        CONTEXT{Context Detected}
-    end
-
-    subgraph LearnContext["Learn Context"]
-        L1["Learn AI Basics"]
-        L2["Quiz Me"]
-        L3["My Progress"]
-        L4["What Next?"]
-    end
-
-    subgraph ExploreContext["Explore Context"]
-        E1["Trending Projects"]
-        E2["Find Projects"]
-        E3["Recommend For Me"]
-        E4["Similar Projects"]
-    end
-
-    subgraph ProjectContext["Project Context"]
-        P1["Paste a URL"]
-        P2["Make Infographic"]
-        P3["From GitHub"]
-        P4["Upload Media"]
-    end
-
-    subgraph DefaultContext["Default Context"]
-        D1["I need help"]
-        D2["I don't know what to do next"]
-        D3["I want to do something fun"]
-    end
-
-    CONTEXT -->|Learn page| LearnContext
-    CONTEXT -->|Explore page| ExploreContext
-    CONTEXT -->|Project page| ProjectContext
-    CONTEXT -->|Other| DefaultContext
-
-    subgraph LearnMessages["Messages Sent"]
-        LM1["→ 'Teach me the basics of AI'"]
-        LM2["→ 'Give me a quick quiz on what I've learned'"]
-        LM3["→ 'Show me my learning progress'"]
-        LM4["→ 'What should I learn next?'"]
-    end
-
-    L1 --> LM1
-    L2 --> LM2
-    L3 --> LM3
-    L4 --> LM4
-
-    subgraph ExploreMessages["Messages Sent"]
-        EM1["→ 'Show me trending projects'"]
-        EM2["→ 'Help me find interesting projects'"]
-        EM3["→ 'Recommend projects based on my interests'"]
-        EM4["→ 'Find projects similar to what I've liked'"]
-    end
-
-    E1 --> EM1
-    E2 --> EM2
-    E3 --> EM3
-    E4 --> EM4
-
-    subgraph ProjectMessages["Messages Sent"]
-        PM1["→ 'I want to import a project from a URL'"]
-        PM2["→ 'Help me create an image or infographic'"]
-        PM3["→ 'I want to import a project from GitHub'"]
-        PM4["→ 'I want to upload media to create a project'"]
-    end
-
-    P1 --> PM1
-    P2 --> PM2
-    P3 --> PM3
-    P4 --> PM4
-
-    subgraph DefaultMessages["Messages Sent"]
-        DM1["→ 'I need help with something'"]
-        DM2["→ 'What can I do on AllThrive?'"]
-        DM3["→ 'Suggest something fun for me to do'"]
-    end
-
-    D1 --> DM1
-    D2 --> DM2
-    D3 --> DM3`;
-
-// Plus Menu flow
-const PLUS_MENU_FLOW = `flowchart TB
-    subgraph PlusButton["Plus Menu (+)"]
-        PLUS["Click + Button"]
-    end
-
-    subgraph Primary["Primary Options"]
-        PR1["Import from URL"]
-        PR2["Upload Image or Video"]
-        PR3["Ask for Help"]
-        PR4["Clear Conversation"]
-    end
-
-    subgraph MoreIntegrations["More Integrations"]
-        MI1["Create Image/Infographic"]
-        MI2["Add from GitHub"]
-        MI3["Add from GitLab"]
-        MI4["Add from Figma"]
-        MI5["Add from YouTube"]
-        MI6["Describe Anything"]
-        MI7["Create Product<br/>(admins/creators only)"]
-    end
-
-    PLUS --> Primary
-    PLUS --> MoreIntegrations
-
-    subgraph PrimaryActions["Actions"]
-        PA1["→ 'I want to import a project from a URL'"]
-        PA2[Opens File Picker]
-        PA3["→ 'I need help with something'"]
-        PA4[Clears Chat & Resets to Greeting]
-    end
-
-    PR1 --> PA1
-    PR2 --> PA2
-    PR3 --> PA3
-    PR4 --> PA4
-
-    subgraph MoreActions["Actions"]
-        MA1["→ 'Help me create an image or infographic'"]
-        MA2[Starts GitHub OAuth Flow]
-        MA3[Starts GitLab OAuth Flow]
-        MA4[Starts Figma OAuth Flow]
-        MA5["→ 'I want to import a YouTube video as a project'"]
-        MA6["→ 'I want to describe a project to create'"]
-        MA7[Coming Soon]
-    end
-
-    MI1 --> MA1
-    MI2 --> MA2
-    MI3 --> MA3
-    MI4 --> MA4
-    MI5 --> MA5
-    MI6 --> MA6
-    MI7 --> MA7`;
-
-// Learning Goals flow
-const LEARNING_GOALS_FLOW = `flowchart TB
-    subgraph Trigger["Learning Setup"]
-        EMBER["Ember: 'Hey there! I'm Ember,<br/>your AI learning companion.'<br/><br/>'What brings you here today?<br/>This helps me personalize your learning path.'"]
-    end
-
-    subgraph Goals["Learning Goal Options"]
-        G1["Build AI Projects<br/>🚀<br/>'Get hands-on with tools like<br/>LangChain and build real applications.'"]
-        G2["Understand AI Concepts<br/>💡<br/>'Learn the fundamentals of AI<br/>models, prompting, and workflows.'"]
-        G3["Career Exploration<br/>💼<br/>'Discover how AI can boost<br/>your productivity and career.'"]
-        G4["Just Exploring<br/>🧭<br/>'I'm curious about AI and<br/>want to look around.'"]
-    end
-
-    EMBER --> Goals
-    EMBER --> SKIP["'Skip for now - I'll figure it out as I go'"]
-
-    G1 --> PERSONALIZED[Personalized Learning Path]
-    G2 --> PERSONALIZED
-    G3 --> PERSONALIZED
-    G4 --> PERSONALIZED
-    SKIP --> GENERAL[General Experience]`;
-
-// Onboarding flow
-const ONBOARDING_FLOW = `flowchart TB
-    subgraph NewUser["New User First Visit"]
-        ARRIVE[User Opens Ember Chat]
-    end
-
-    subgraph IntroSequence["Onboarding Intro - Typewriter Animation"]
-        LINE1["'Hi, {name}! I'm Ember, your guide<br/>throughout your All Thrive journey.'"]
-        LINE2["'As you explore AI and our community,<br/>I'll be learning about you to give you<br/>a more personalized experience.'"]
-        LINE3["'Let's start by creating<br/>your All Thrive Avatar.'"]
-    end
-
-    ARRIVE --> LINE1
-    LINE1 --> LINE2
-    LINE2 --> LINE3
-
-    subgraph Buttons["Action Buttons"]
-        CREATE["Create My Avatar ✨<br/>(Primary Button)"]
-        SKIP["Skip for now<br/>(Link)"]
-    end
-
-    LINE3 --> CREATE
-    LINE3 --> SKIP
-
-    CREATE --> AVATAR[Avatar Creation Flow]
-    AVATAR --> MAIN_CHAT[Main Chat Experience]
-    SKIP --> MAIN_CHAT`;
-
-interface FlowSection {
-  id: string;
-  title: string;
-  description: string;
-  diagram: string;
-}
-
-const FLOW_SECTIONS: FlowSection[] = [
-  {
-    id: 'main',
-    title: 'Complete Overview',
-    description: 'High-level view of all Ember chat entry points and flows',
-    diagram: MAIN_FLOW,
-  },
-  {
-    id: 'onboarding',
-    title: 'New User Onboarding',
-    description: 'First-time user experience with intro messages and avatar creation',
-    diagram: ONBOARDING_FLOW,
-  },
-  {
-    id: 'pills',
-    title: 'Feeling Pills (Home Page)',
-    description: 'All 11 personalized pill options and what each triggers',
-    diagram: FEELING_PILLS_FLOW,
-  },
-  {
-    id: 'import',
-    title: 'Project Import Flow',
-    description: 'What happens when user clicks "Share something I\'ve been working on"',
-    diagram: PROJECT_IMPORT_FLOW,
-  },
-  {
-    id: 'games',
-    title: 'Games Flow',
-    description: 'Game picker and available games when user clicks "Play a game"',
-    diagram: GAMES_FLOW,
-  },
-  {
-    id: 'quick-actions',
-    title: 'Context-Aware Quick Actions (Sidebar)',
-    description: 'Quick actions shown in sidebar based on current page context',
-    diagram: QUICK_ACTIONS_FLOW,
-  },
-  {
-    id: 'plus-menu',
-    title: 'Plus Menu (+)',
-    description: 'Always-available menu with import and integration options',
-    diagram: PLUS_MENU_FLOW,
-  },
-  {
-    id: 'learning',
-    title: 'Learning Goal Selection',
-    description: 'Goal selection for personalizing the learning experience',
-    diagram: LEARNING_GOALS_FLOW,
-  },
-];
+    CHALLENGE_RESP --> CONTINUE([Continue Chatting])
+    LEARN_RESP --> CONTINUE
+    SELL_RESP --> CONTINUE
+    EXPLORE_RESP --> CONTINUE
+    CONNECT_RESP --> CONTINUE
+    PERSONALIZE_RESP --> CONTINUE
+    TRENDING_RESP --> CONTINUE
+    QUICKWIN_RESP --> CONTINUE`;
 
 export default function EmberFlowsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['main']));
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Zoom and pan state
+  const [scale, setScale] = useState(0.8);
+  const [position, setPosition] = useState({ x: 50, y: 20 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Redirect if not admin
   useEffect(() => {
@@ -462,25 +138,62 @@ export default function EmberFlowsPage() {
     }
   }, [user, navigate]);
 
-  const toggleSection = (id: string) => {
-    setExpandedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const handleZoomIn = useCallback(() => {
+    setScale((s) => Math.min(s + 0.5, 10));
+  }, []);
 
-  const expandAll = () => {
-    setExpandedSections(new Set(FLOW_SECTIONS.map((s) => s.id)));
-  };
+  const handleZoomOut = useCallback(() => {
+    setScale((s) => Math.max(s - 0.2, 0.2));
+  }, []);
 
-  const collapseAll = () => {
-    setExpandedSections(new Set());
-  };
+  const handleReset = useCallback(() => {
+    setScale(0.8);
+    setPosition({ x: 50, y: 20 });
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 0) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  }, [position]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  }, [isDragging, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.2 : 0.2;
+    setScale((s) => Math.max(0.1, Math.min(s + delta, 10)));
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   if (!user || user.role !== 'admin') {
     return null;
@@ -489,9 +202,9 @@ export default function EmberFlowsPage() {
   return (
     <DashboardLayout>
       <AdminLayout>
-        <div className="p-4 md:p-6 lg:p-8 max-w-full">
+        <div className="p-4 md:p-6 lg:p-8 h-[calc(100vh-120px)] flex flex-col">
           {/* Header */}
-          <header className="mb-6">
+          <header className="mb-4 flex-shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center">
@@ -502,106 +215,97 @@ export default function EmberFlowsPage() {
                     Ember <span className="text-orange-600 dark:text-orange-400">User Flows</span>
                   </h1>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Visual documentation of all Ember chat interaction paths
+                    Complete visual map • Drag to pan, scroll to zoom
                   </p>
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* Zoom Controls */}
               <div className="flex items-center gap-2">
+                <div className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <button
+                    onClick={handleZoomOut}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    title="Zoom Out"
+                  >
+                    <MagnifyingGlassMinusIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  </button>
+                  <span className="px-3 text-sm font-medium text-slate-700 dark:text-slate-300 min-w-[60px] text-center">
+                    {Math.round(scale * 100)}%
+                  </span>
+                  <button
+                    onClick={handleZoomIn}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    title="Zoom In"
+                  >
+                    <MagnifyingGlassPlusIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  </button>
+                </div>
                 <button
-                  onClick={expandAll}
-                  className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors"
+                  onClick={handleReset}
+                  className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  title="Reset View"
                 >
-                  Expand All
+                  <HomeIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 </button>
                 <button
-                  onClick={collapseAll}
-                  className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors"
+                  onClick={toggleFullscreen}
+                  className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  title="Fullscreen"
                 >
-                  Collapse All
+                  <ArrowsPointingOutIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 </button>
               </div>
             </div>
           </header>
 
-          {/* Flow Sections */}
-          <div className="space-y-4">
-            {FLOW_SECTIONS.map((section) => {
-              const isExpanded = expandedSections.has(section.id);
-              return (
-                <div
-                  key={section.id}
-                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden"
-                >
-                  {/* Section Header */}
-                  <button
-                    onClick={() => toggleSection(section.id)}
-                    className="w-full px-4 py-4 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                  >
-                    {isExpanded ? (
-                      <ChevronDownIcon className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                    ) : (
-                      <ChevronRightIcon className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                    )}
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                        {section.title}
-                      </h2>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">
-                        {section.description}
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Section Content */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 border-t border-slate-200 dark:border-slate-700">
-                      <div className="mt-4 overflow-x-auto">
-                        <MermaidDiagram
-                          code={section.diagram}
-                          className="min-w-[800px]"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          {/* Canvas Container */}
+          <div
+            ref={containerRef}
+            className={`flex-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden cursor-grab ${isDragging ? 'cursor-grabbing' : ''} ${isFullscreen ? 'rounded-none' : ''}`}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onWheel={handleWheel}
+          >
+            <div
+              ref={contentRef}
+              className="inline-block p-8 select-none"
+              style={{
+                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                transformOrigin: 'top left',
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+              }}
+            >
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-200 dark:border-slate-700">
+                <MermaidDiagram code={COMPLETE_FLOW} />
+              </div>
+            </div>
           </div>
 
-          {/* Footer */}
-          <footer className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">
-              Source Files
-            </h3>
-            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-              <li>
-                <code className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs">
-                  frontend/src/components/chat/layouts/EmbeddedChatLayout.tsx
-                </code>{' '}
-                - Home page chat
-              </li>
-              <li>
-                <code className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs">
-                  frontend/src/components/chat/layouts/SidebarChatLayout.tsx
-                </code>{' '}
-                - Sidebar chat
-              </li>
-              <li>
-                <code className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs">
-                  frontend/src/components/chat/ChatPlusMenu.tsx
-                </code>{' '}
-                - Plus menu
-              </li>
-              <li>
-                <code className="bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs">
-                  frontend/src/components/chat/messages/ProjectImportOptionsMessage.tsx
-                </code>{' '}
-                - Import options
-              </li>
-            </ul>
-          </footer>
+          {/* Legend */}
+          <div className="mt-4 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-3">User Journey Key</h3>
+            <div className="flex flex-wrap gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-xs">( )</div>
+                <span className="text-slate-600 dark:text-slate-400">Start/End Point</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-xs">[ ]</div>
+                <span className="text-slate-600 dark:text-slate-400">User Action / Screen</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rotate-45 bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-xs"></div>
+                <span className="text-slate-600 dark:text-slate-400">Decision Point</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-0.5 bg-slate-400 dark:bg-slate-500"></div>
+                <span className="text-slate-600 dark:text-slate-400">User clicks / selects</span>
+              </div>
+            </div>
+          </div>
         </div>
       </AdminLayout>
     </DashboardLayout>

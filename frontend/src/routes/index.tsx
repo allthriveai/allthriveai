@@ -94,7 +94,6 @@ const MarketplacePage = lazy(() => import('@/pages/MarketplacePage'));
 
 // Admin pages - lazy loaded (admin only)
 const VendorDashboardPage = lazy(() => import('@/pages/VendorDashboardPage'));
-const AdminAnalyticsPage = lazy(() => import('@/pages/AdminAnalyticsPage'));
 const AdminInvitationsPage = lazy(() => import('@/pages/admin/InvitationsPage'));
 const AdminPromptChallengePromptsPage = lazy(() => import('@/pages/admin/PromptChallengePromptsPage'));
 const AdminImpersonatePage = lazy(() => import('@/pages/admin/ImpersonatePage'));
@@ -102,6 +101,17 @@ const AdminCircleManagementPage = lazy(() => import('@/pages/admin/CircleManagem
 const AdminTasksPage = lazy(() => import('@/pages/admin/TasksPage'));
 const AdminUATScenariosPage = lazy(() => import('@/pages/admin/UATScenariosPage'));
 const AdminEmberFlowsPage = lazy(() => import('@/pages/admin/EmberFlowsPage'));
+
+// Analytics pages - lazy loaded (admin only)
+const AnalyticsIndexPage = lazy(() => import('@/pages/admin/analytics/index'));
+const AnalyticsOverviewPage = lazy(() => import('@/pages/admin/analytics/OverviewPage'));
+const AnalyticsUsersPage = lazy(() => import('@/pages/admin/analytics/UsersPage'));
+const AnalyticsBattlesPage = lazy(() => import('@/pages/admin/analytics/BattlesPage'));
+const AnalyticsAIUsagePage = lazy(() => import('@/pages/admin/analytics/AIUsagePage'));
+const AnalyticsContentPage = lazy(() => import('@/pages/admin/analytics/ContentPage'));
+const AnalyticsEngagementPage = lazy(() => import('@/pages/admin/analytics/EngagementPage'));
+const AnalyticsOnboardingPage = lazy(() => import('@/pages/admin/analytics/OnboardingPage'));
+const AnalyticsRevenuePage = lazy(() => import('@/pages/admin/analytics/RevenuePage'));
 
 // Extension pages - lazy loaded
 const ExtensionAuthPage = lazy(() => import('@/pages/ExtensionAuthPage'));
@@ -352,16 +362,86 @@ export function AppRoutes() {
       />
 
       {/* Admin Dashboard - protected, admins only */}
+      {/* Analytics Index - redirects to overview */}
       <Route
         path="/admin/analytics"
         element={
           <ProtectedRoute>
-            <AdminAnalyticsPage />
+            <AnalyticsIndexPage />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/admin/invitations"
+        path="/admin/analytics/overview"
+        element={
+          <ProtectedRoute>
+            <AnalyticsOverviewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/users"
+        element={
+          <ProtectedRoute>
+            <AnalyticsUsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/battles"
+        element={
+          <ProtectedRoute>
+            <AnalyticsBattlesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/ai"
+        element={
+          <ProtectedRoute>
+            <AnalyticsAIUsagePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/content"
+        element={
+          <ProtectedRoute>
+            <AnalyticsContentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/engagement"
+        element={
+          <ProtectedRoute>
+            <AnalyticsEngagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/onboarding"
+        element={
+          <ProtectedRoute>
+            <AnalyticsOnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/revenue"
+        element={
+          <ProtectedRoute>
+            <AnalyticsRevenuePage />
+          </ProtectedRoute>
+        }
+      />
+      {/* User Management - nested routes */}
+      <Route
+        path="/admin/users"
+        element={<Navigate to="/admin/users/invitations" replace />}
+      />
+      <Route
+        path="/admin/users/invitations"
         element={
           <ProtectedRoute>
             <AdminInvitationsPage />
@@ -369,15 +449,7 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/admin/prompt-challenge-prompts"
-        element={
-          <ProtectedRoute>
-            <AdminPromptChallengePromptsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/impersonate"
+        path="/admin/users/impersonate"
         element={
           <ProtectedRoute>
             <AdminImpersonatePage />
@@ -385,10 +457,31 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/admin/circles"
+        path="/admin/users/circles"
         element={
           <ProtectedRoute>
             <AdminCircleManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Legacy redirects for old user management paths */}
+      <Route
+        path="/admin/invitations"
+        element={<Navigate to="/admin/users/invitations" replace />}
+      />
+      <Route
+        path="/admin/impersonate"
+        element={<Navigate to="/admin/users/impersonate" replace />}
+      />
+      <Route
+        path="/admin/circles"
+        element={<Navigate to="/admin/users/circles" replace />}
+      />
+      <Route
+        path="/admin/prompt-challenge-prompts"
+        element={
+          <ProtectedRoute>
+            <AdminPromptChallengePromptsPage />
           </ProtectedRoute>
         }
       />
