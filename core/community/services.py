@@ -34,7 +34,7 @@ class RoomService:
         name: str,
         creator,
         description: str = '',
-        emoji: str = '',
+        icon: str = 'comments',
         visibility: str = 'public',
         room_type: str = 'forum',
     ) -> Room:
@@ -45,7 +45,7 @@ class RoomService:
             name: Room display name
             creator: User creating the room
             description: Room description
-            emoji: Room emoji icon
+            icon: FontAwesome icon name (e.g., 'comments', 'robot', 'book')
             visibility: 'public', 'private', or 'unlisted'
             room_type: 'forum', 'circle', or 'dm'
 
@@ -65,7 +65,7 @@ class RoomService:
                 name=name,
                 slug=slug,
                 description=description,
-                emoji=emoji,
+                icon=icon,
                 visibility=visibility,
                 room_type=room_type,
                 creator=creator,
@@ -98,7 +98,7 @@ class RoomService:
             defaults={
                 'name': 'General',
                 'description': 'Welcome to the community! Introduce yourself and chat about anything.',
-                'emoji': '👋',
+                'icon': 'comments',
                 'visibility': 'public',
                 'room_type': 'forum',
                 'is_default': True,

@@ -282,7 +282,7 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                         'id': str(room.id),
                         'name': room.name,
                         'description': room.description,
-                        'emoji': room.emoji,
+                        'icon': room.icon,
                         'room_type': room.room_type,
                         'member_count': room.member_count,
                     },

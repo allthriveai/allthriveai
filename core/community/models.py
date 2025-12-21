@@ -51,7 +51,11 @@ class Room(models.Model):
     name = models.CharField(max_length=100, help_text='Room display name')
     slug = models.SlugField(max_length=100, unique=True, help_text='URL-friendly identifier')
     description = models.TextField(blank=True, help_text='Room description')
-    emoji = models.CharField(max_length=10, blank=True, default='', help_text='Room emoji icon')
+    icon = models.CharField(
+        max_length=50,
+        default='comments',
+        help_text='FontAwesome icon name (e.g., "comments", "robot", "book")',
+    )
 
     # Room type and visibility
     room_type = models.CharField(max_length=20, choices=ROOM_TYPE_CHOICES, default='forum')
@@ -137,7 +141,7 @@ class Room(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.emoji} {self.name}'.strip() if self.emoji else self.name
+        return self.name
 
 
 class Thread(models.Model):

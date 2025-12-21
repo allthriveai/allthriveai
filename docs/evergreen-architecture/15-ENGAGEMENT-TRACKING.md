@@ -8,7 +8,7 @@ The tracking system collects two types of engagement data:
 1. **Views** - When a user visits a project page
 2. **Clicks** - When a user clicks on a project card in a feed (Explore, Search, Profile)
 
-This data feeds into the [Trending Engine](./PERSONALIZATION_ENGINE.md) to calculate engagement velocity.
+This data feeds into the [Personalization Engine](./16-PERSONALIZATION-ENGINE.md) to calculate engagement velocity.
 
 ## Data Models
 

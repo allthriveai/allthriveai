@@ -76,6 +76,8 @@ class RoomViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated]
+    # Disable pagination for room list - rooms are few enough to not need it
+    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -118,7 +120,7 @@ class RoomViewSet(viewsets.ModelViewSet):
             name=serializer.validated_data['name'],
             creator=self.request.user,
             description=serializer.validated_data.get('description', ''),
-            emoji=serializer.validated_data.get('emoji', ''),
+            icon=serializer.validated_data.get('icon', 'comments'),
             visibility=serializer.validated_data.get('visibility', 'public'),
         )
         serializer.instance = room

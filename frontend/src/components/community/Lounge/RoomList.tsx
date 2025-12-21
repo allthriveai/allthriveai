@@ -5,8 +5,25 @@
  * Shows online count and last activity.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faComments, faRobot, faBook, faPalette, faHand, faUsers } from '@fortawesome/free-solid-svg-icons';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import type { RoomListItem, RoomListProps } from '@/types/community';
 import { formatDistanceToNow } from 'date-fns';
+
+// Map icon names to FontAwesome icon definitions
+const iconMap: Record<string, IconDefinition> = {
+  'comments': faComments,
+  'robot': faRobot,
+  'book': faBook,
+  'palette': faPalette,
+  'hand': faHand,
+  'users': faUsers,
+};
+
+function getIcon(iconName: string): IconDefinition {
+  return iconMap[iconName] || faComments;
+}
 
 export function RoomList({ rooms, selectedRoomId, onRoomSelect }: RoomListProps) {
   if (rooms.length === 0) {
@@ -52,8 +69,10 @@ function RoomListItem({ room, isSelected, onSelect }: RoomListItemProps) {
       }`}
     >
       <div className="flex items-start gap-3">
-        {/* Room Emoji */}
-        <span className="text-2xl">{room.emoji || '💬'}</span>
+        {/* Room Icon */}
+        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20">
+          <FontAwesomeIcon icon={getIcon(room.icon)} className="text-cyan-400" />
+        </div>
 
         <div className="flex-1 min-w-0">
           {/* Room Name */}

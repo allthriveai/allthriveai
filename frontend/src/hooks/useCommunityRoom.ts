@@ -58,7 +58,7 @@ export interface UseCommunityRoomReturn {
     id: string;
     name: string;
     description: string;
-    emoji: string;
+    icon: string;
     memberCount: number;
   } | null;
 }
@@ -149,7 +149,7 @@ export function useCommunityRoom(roomId: string | null): UseCommunityRoomReturn 
                 id: stateEvent.room.id,
                 name: stateEvent.room.name,
                 description: stateEvent.room.description,
-                emoji: stateEvent.room.emoji,
+                icon: stateEvent.room.icon,
                 memberCount: stateEvent.room.memberCount,
               });
               break;

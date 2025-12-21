@@ -6,11 +6,28 @@
  */
 
 import { useRef, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faComments, faRobot, faBook, faPalette, faHand, faUsers, faGift } from '@fortawesome/free-solid-svg-icons';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { useCommunityRoom } from '@/hooks/useCommunityRoom';
 import { useAuth } from '@/hooks/useAuth';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import type { RoomViewProps } from '@/types/community';
+
+// Map icon names to FontAwesome icon definitions
+const iconMap: Record<string, IconDefinition> = {
+  'comments': faComments,
+  'robot': faRobot,
+  'book': faBook,
+  'palette': faPalette,
+  'hand': faHand,
+  'users': faUsers,
+};
+
+function getIcon(iconName: string | undefined): IconDefinition {
+  return iconName ? (iconMap[iconName] || faComments) : faComments;
+}
 
 export function RoomView({ roomId }: RoomViewProps) {
   const { user } = useAuth();
@@ -30,10 +47,10 @@ export function RoomView({ roomId }: RoomViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new messages
+  // Auto-scroll to bottom on new messages (within container only)
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current && messages.length > 0) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -61,7 +78,9 @@ export function RoomView({ roomId }: RoomViewProps) {
       <header className="flex-shrink-0 p-4 border-b border-white/10 glass-subtle">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{roomInfo?.emoji || '💬'}</span>
+            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20">
+              <FontAwesomeIcon icon={getIcon(roomInfo?.icon)} className="text-cyan-400 text-lg" />
+            </div>
             <div>
               <h2 className="font-semibold text-white">{roomInfo?.name || 'Loading...'}</h2>
               <p className="text-sm text-slate-400">{roomInfo?.description}</p>
@@ -121,7 +140,7 @@ export function RoomView({ roomId }: RoomViewProps) {
         {/* Message List */}
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-slate-400">
-            <span className="text-4xl mb-4">🎉</span>
+            <FontAwesomeIcon icon={faGift} className="text-4xl mb-4 text-cyan-400" />
             <p>No messages yet. Be the first to say hello!</p>
           </div>
         ) : (

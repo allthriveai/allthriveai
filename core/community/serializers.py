@@ -35,7 +35,7 @@ class RoomSerializer(serializers.ModelSerializer):
             'name',
             'slug',
             'description',
-            'emoji',
+            'icon',
             'room_type',
             'visibility',
             'creator',
@@ -99,7 +99,7 @@ class RoomListSerializer(serializers.ModelSerializer):
             'name',
             'slug',
             'description',
-            'emoji',
+            'icon',
             'room_type',
             'visibility',
             'member_count',
@@ -117,7 +117,7 @@ class RoomCreateSerializer(serializers.ModelSerializer):
         fields = [
             'name',
             'description',
-            'emoji',
+            'icon',
             'visibility',
         ]
 

@@ -318,7 +318,8 @@ export async function unblockUser(userId: string): Promise<void> {
 export async function getConnectionToken(): Promise<string> {
   try {
     const response = await api.post('/auth/ws-connection-token/');
-    return response.data.token;
+    // Backend returns connection_token, axios interceptor converts to camelCase
+    return response.data.connectionToken;
   } catch (error) {
     handleError('CommunityService.getConnectionToken', error, { showAlert: false });
     throw error;

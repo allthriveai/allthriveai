@@ -39,16 +39,25 @@ Unlike time-bound implementation docs (which go in `/docs/archived/`), these doc
 | [10-CICD-PIPELINE.md](./10-CICD-PIPELINE.md) | ✅ Complete | CI/CD pipeline, GitHub Actions, deployment |
 | [11-E2E-USER-JOURNEY-TESTS.md](./11-E2E-USER-JOURNEY-TESTS.md) | ✅ Complete | E2E TDD tests for user journey workflows |
 | [12-BILLING-ARCHITECTURE.md](./12-BILLING-ARCHITECTURE.md) | ✅ Complete | Billing, pricing, tokens, credit packs, AI guardrails |
-| 13-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
-| 14-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
-| 15-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
+| [13-TAXONOMY-SYSTEM.md](./13-TAXONOMY-SYSTEM.md) | ✅ Complete | Tag taxonomy, 16 tag types, learning context |
+| [14-UNIFIED-CHAT-ARCHITECTURE.md](./14-UNIFIED-CHAT-ARCHITECTURE.md) | ✅ Complete | Unified chat system, Ember agent, WebSocket protocol |
+| [15-ENGAGEMENT-TRACKING.md](./15-ENGAGEMENT-TRACKING.md) | ✅ Complete | Project views, clicks, engagement velocity tracking |
+| [16-PERSONALIZATION-ENGINE.md](./16-PERSONALIZATION-ENGINE.md) | ✅ Complete | For You feed, recommendation algorithm, scoring weights |
+| [17-VECTOR-SEARCH.md](./17-VECTOR-SEARCH.md) | ✅ Complete | Weaviate integration, embeddings, semantic search |
+| [18-AI-SAFETY.md](./18-AI-SAFETY.md) | ✅ Complete | Hallucination detection, content moderation, input validation |
+| [19-COMMUNITY-SYSTEM.md](./19-COMMUNITY-SYSTEM.md) | ✅ Complete | The Lounge, WebSocket messaging, forums, DMs |
+| [20-SEARCH-DISCOVERY.md](./20-SEARCH-DISCOVERY.md) | ✅ Complete | Unified search, intent routing, hybrid search |
+| [21-AI-USAGE-ANALYTICS.md](./21-AI-USAGE-ANALYTICS.md) | ✅ Complete | Cost tracking, spend limits, CAU metrics, admin dashboard |
 
-### Design & UX
+### Planned Documentation
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| 13-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
-| 14-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
+| 22-INFRASTRUCTURE.md | 📝 Planned | Docker setup, Redis, Celery, PostgreSQL, MinIO |
+| 23-FRONTEND-ARCHITECTURE.md | 📝 Planned | React/TypeScript patterns, state management, routing |
+| 24-TESTING-STRATEGY.md | 📝 Planned | Test pyramid, coverage requirements, E2E approach |
+| 25-DESIGN-SYSTEM.md | 📝 Planned | Color palette, typography, components, patterns |
+| 26-UX-PRINCIPLES.md | 📝 Planned | Interaction patterns, accessibility, mobile-first |
 
 ---
 

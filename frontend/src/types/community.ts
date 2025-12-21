@@ -22,7 +22,7 @@ export interface Room {
   name: string;
   slug: string;
   description: string;
-  emoji: string;
+  icon: string;
   roomType: RoomType;
   visibility: RoomVisibility;
   creator: UserMinimal | null;
@@ -46,7 +46,7 @@ export interface RoomListItem {
   name: string;
   slug: string;
   description: string;
-  emoji: string;
+  icon: string;
   roomType: RoomType;
   visibility: RoomVisibility;
   memberCount: number;
@@ -147,7 +147,7 @@ export interface RoomStateEvent extends CommunityWebSocketEvent {
     id: string;
     name: string;
     description: string;
-    emoji: string;
+    icon: string;
     roomType: RoomType;
     memberCount: number;
   };
