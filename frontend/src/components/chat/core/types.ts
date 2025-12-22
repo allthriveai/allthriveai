@@ -158,6 +158,8 @@ export interface ChatMessageListProps {
   isLoading: boolean;
   currentTool: string | null;
   onCancelProcessing?: () => void;
+  // User avatar for displaying next to user messages
+  userAvatarUrl?: string | null;
   // Custom empty state
   customEmptyState?: ReactNode;
   // Greeting configuration (for EmberHomePage)
@@ -184,6 +186,10 @@ export interface ChatMessageListProps {
     youtube: boolean;
     loading: boolean;
   };
+  // Profile question answer handler
+  onProfileQuestionAnswer?: (questionId: string, selectedOptions: string[]) => void;
+  // Inline action click handler (for "I don't know where to start" flow)
+  onInlineActionClick?: (message: string) => void;
 }
 
 // Input area props
@@ -217,6 +223,38 @@ export interface LoadingMessageProps {
 export interface UserMessageProps {
   content: string;
   variant?: 'default' | 'neon';
+  avatarUrl?: string | null;
+}
+
+// Learning content for attached cards
+export interface LearningContentData {
+  topic: string;
+  topicDisplay: string;
+  contentType: string;
+  sourceType: string;
+  items: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    url?: string;
+    thumbnail?: string;
+    featured_image_url?: string;
+    featuredImageUrl?: string;
+    author_username?: string;
+    author_avatar_url?: string;
+    key_techniques?: string[];
+    difficulty?: string;
+    question_count?: number;
+    slug?: string;
+  }>;
+  hasContent: boolean;
+  message?: string;
+  // Optional inline game (from find_content) to render inside the message
+  inlineGame?: {
+    gameType: 'snake' | 'quiz' | 'ethics' | 'prompt_battle' | 'random';
+    gameConfig?: Record<string, unknown>;
+    explanation?: string;
+  };
 }
 
 // Assistant message props
@@ -227,6 +265,8 @@ export interface AssistantMessageProps {
   // For showing GitHub connect button when AI asks user to connect
   showGitHubConnectButton?: boolean;
   onConnectGitHub?: () => void;
+  // Learning content cards to render below the message
+  learningContent?: LearningContentData;
 }
 
 // Orchestration prompt props

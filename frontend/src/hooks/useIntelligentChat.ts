@@ -201,12 +201,40 @@ export interface LearningContentItem {
 // Project import option types
 export type ProjectImportOption = 'integration' | 'url' | 'upload' | 'chrome-extension';
 
+// Profile question option type
+export interface ProfileQuestionOption {
+  id: string;
+  label: string;
+  emoji?: string;
+  description?: string;
+}
+
+// Profile question config type
+export interface ProfileQuestionConfig {
+  questionId: string;
+  questionType: 'single' | 'multi' | 'this_or_that';
+  prompt: string;
+  options: ProfileQuestionOption[];
+  targetField: string;
+  allowMultiple?: boolean;
+  followUpPrompt?: string;
+}
+
+// Inline action type (for clickable pills in messages)
+export interface InlineAction {
+  id: string;
+  label: string;
+  message: string;
+  emoji?: string;
+}
+
 // Extended metadata for intelligent chat messages
 export interface IntelligentChatMetadata {
   type?: 'text' | 'generating' | 'generated_image'
        | 'onboarding_intro' | 'onboarding_avatar_prompt'
        | 'onboarding_avatar_preview' | 'inline_game'
-       | 'learning_content' | 'project_import_options' | 'integration_picker';
+       | 'learning_content' | 'project_import_options' | 'integration_picker'
+       | 'profile_question' | 'inline_actions';
   imageUrl?: string;
   filename?: string;
   sessionId?: number;
@@ -232,6 +260,10 @@ export interface IntelligentChatMetadata {
     hasContent: boolean;
     message?: string;
   };
+  // Profile question fields
+  profileQuestion?: ProfileQuestionConfig;
+  // Inline action pills (clickable options in message)
+  actions?: InlineAction[];
 }
 
 // Use the shared ChatMessage type with extended metadata
@@ -303,6 +335,19 @@ export function useIntelligentChat({
   const lastConversationIdRef = useRef<string>(conversationId); // Track conversation changes for cleanup
   const isCancelledRef = useRef(false); // Track if processing was cancelled
   const pendingContentMessagesRef = useRef<ChatMessage[]>([]); // Content messages to add after streaming completes
+  const pendingLearningContentRef = useRef<{
+    topicDisplay: string;
+    contentType: string;
+    sourceType: string;
+    items: LearningContentItem[];
+    hasContent: boolean;
+    // Optional inline game from find_content (consolidated into same message)
+    inlineGame?: {
+      gameType: 'snake' | 'quiz' | 'ethics' | 'prompt_battle' | 'random';
+      gameConfig?: Record<string, unknown>;
+      explanation?: string;
+    };
+  } | null>(null); // Learning content to attach to current message on complete
 
   // Helper to add a message with deduplication
   const addMessageWithDedup = useCallback((newMessage: ChatMessage) => {
@@ -597,6 +642,52 @@ export function useIntelligentChat({
                 });
                 seenMessageIdsRef.current.add(gameMessageId);
               }
+              // Check for profile question (ask_profile_question tool)
+              if (data.tool === 'ask_profile_question' && data.output?.success) {
+                const outputData = data.output as Record<string, unknown>;
+                const frontendContent = outputData?._frontend_content as Array<Record<string, unknown>> | undefined;
+                if (frontendContent && frontendContent.length > 0) {
+                  const questionData = frontendContent[0];
+                  if (questionData?.type === 'profile_question') {
+                    const questionMessageId = `profile-question-${Date.now()}`;
+                    if (!seenMessageIdsRef.current.has(questionMessageId)) {
+                      setMessages((prev) => {
+                        if (prev.some(m => m.id === questionMessageId)) {
+                          return prev;
+                        }
+                        const newMessages = [
+                          ...prev,
+                          {
+                            id: questionMessageId,
+                            content: '', // Question is rendered via metadata
+                            sender: 'assistant' as const,
+                            timestamp: new Date(),
+                            metadata: {
+                              type: 'profile_question' as const,
+                              profileQuestion: {
+                                questionId: questionData.questionId as string,
+                                questionType: questionData.questionType as 'single' | 'multi' | 'this_or_that',
+                                prompt: questionData.prompt as string,
+                                options: questionData.options as Array<{
+                                  id: string;
+                                  label: string;
+                                  emoji?: string;
+                                  description?: string;
+                                }>,
+                                targetField: questionData.targetField as string,
+                                allowMultiple: questionData.allowMultiple as boolean | undefined,
+                                followUpPrompt: questionData.followUpPrompt as string | undefined,
+                              },
+                            },
+                          },
+                        ];
+                        return newMessages.slice(-MAX_MESSAGES);
+                      });
+                      seenMessageIdsRef.current.add(questionMessageId);
+                    }
+                  }
+                }
+              }
               // Handle find_content and find_learning_content tools with content array
               // NOTE: Backend returns content array with camelCase keys (from find_content)
               // or _frontend_content for legacy find_learning_content
@@ -644,10 +735,15 @@ export function useIntelligentChat({
                 }
                 seenMessageIdsRef.current.add(eventKey);
 
-                const newContentMessages: ChatMessage[] = [];
-                // Group items by type to create single messages with multiple items
+                // Group items by type for consolidated rendering
                 const projectItems: LearningContentItem[] = [];
                 const quizItems: LearningContentItem[] = [];
+                // Store game info to attach to learning content (consolidated into same message)
+                let pendingGameInfo: {
+                  gameType: 'snake' | 'quiz' | 'ethics' | 'prompt_battle' | 'random';
+                  gameConfig?: Record<string, unknown>;
+                  explanation?: string;
+                } | undefined;
 
                 contentArray.forEach((item, index) => {
                   const itemId = `${eventKey}-${index}`;
@@ -658,20 +754,15 @@ export function useIntelligentChat({
                   const explanation = item.topicExplanation || item.explanation;
 
                   // Handle both inlineGame (new) and inline_game (legacy)
+                  // Games from find_content are consolidated into the AssistantMessage (not separate)
                   if (item.type === 'inlineGame' || item.type === 'inline_game') {
-                    const gameMessage: ChatMessage = {
-                      id: itemId,
-                      content: explanation || '',
-                      sender: 'assistant',
-                      timestamp: new Date(),
-                      metadata: {
-                        type: 'inline_game',
-                        gameType: gameType as 'snake' | 'quiz' | 'random',
-                        gameConfig: {},
-                        explanation: explanation,
-                      },
+                    // Store game info to attach to pendingLearningContentRef later
+                    // This keeps the game in the same message as text + cards
+                    pendingGameInfo = {
+                      gameType: gameType as 'snake' | 'quiz' | 'ethics' | 'prompt_battle' | 'random',
+                      gameConfig: {},
+                      explanation: explanation,
                     };
-                    newContentMessages.push(gameMessage);
                   } else if (item.type === 'projectCard' || item.type === 'project_card') {
                     // Render projects as cards in a grid (AI gives brief intro, cards show details)
                     projectItems.push({
@@ -738,52 +829,23 @@ export function useIntelligentChat({
                   });
                 }
 
-                // Create single message for all projects (rendered as grid of cards)
-                if (projectItems.length > 0) {
-                  newContentMessages.push({
-                    id: `${eventKey}-projects`,
-                    content: '',
-                    sender: 'assistant',
-                    timestamp: new Date(),
-                    metadata: {
-                      type: 'learning_content',
-                      learningContent: {
-                        topic: data.output?.query || '',
-                        topicDisplay: data.output?.query || '',
-                        contentType: 'projects',
-                        sourceType: 'curated',
-                        items: projectItems,
-                        hasContent: true,
-                      },
-                    },
-                  });
+                // Store learning content to attach to current assistant message on complete
+                // Combine projects and quizzes into a single learning content payload
+                // Consolidate learning content: items + game into one message
+                const allItems = [...projectItems, ...quizItems];
+                if (allItems.length > 0 || pendingGameInfo) {
+                  pendingLearningContentRef.current = {
+                    topicDisplay: data.output?.query || '',
+                    contentType: projectItems.length > 0 ? 'projects' : 'quizzes',
+                    sourceType: 'curated',
+                    items: allItems,
+                    hasContent: allItems.length > 0 || !!pendingGameInfo,
+                    // Include game if present (consolidated into same AssistantMessage)
+                    inlineGame: pendingGameInfo,
+                  };
                 }
 
-                // Create single message for all quizzes (grouped together)
-                if (quizItems.length > 0) {
-                  newContentMessages.push({
-                    id: `${eventKey}-quizzes`,
-                    content: '',
-                    sender: 'assistant',
-                    timestamp: new Date(),
-                    metadata: {
-                      type: 'learning_content',
-                      learningContent: {
-                        topic: data.output?.query || '',
-                        topicDisplay: data.output?.query || '',
-                        contentType: 'quizzes',
-                        sourceType: 'curated',
-                        items: quizItems,
-                        hasContent: true,
-                      },
-                    },
-                  });
-                }
-
-                // Store messages to add after streaming completes (for correct ordering)
-                if (newContentMessages.length > 0) {
-                  pendingContentMessagesRef.current.push(...newContentMessages);
-                }
+                // Note: game messages no longer pushed separately - they're consolidated above
               }
               }
 
@@ -850,7 +912,33 @@ export function useIntelligentChat({
               currentMessageRef.current = '';
               currentMessageIdRef.current = '';
 
-              // Add any pending content messages (games, cards, etc.) AFTER streaming text
+              // Attach learning content to the current assistant message (consolidates text + cards in one message)
+              if (pendingLearningContentRef.current) {
+                const learningContent = pendingLearningContentRef.current;
+                pendingLearningContentRef.current = null; // Clear the ref
+                setMessages((prev) => {
+                  // Find the last assistant message and attach learning content metadata
+                  const lastIndex = prev.length - 1;
+                  if (lastIndex >= 0 && prev[lastIndex].sender === 'assistant') {
+                    const updated = [...prev];
+                    updated[lastIndex] = {
+                      ...updated[lastIndex],
+                      metadata: {
+                        ...updated[lastIndex].metadata,
+                        learningContent: {
+                          topic: learningContent.topicDisplay,
+                          ...learningContent,
+                        },
+                      },
+                    };
+                    return updated;
+                  }
+                  return prev;
+                });
+              }
+
+              // Add any other pending content messages (learning content + games now attached to main message)
+              // This is kept for backwards compatibility but shouldn't be used by find_content anymore
               if (pendingContentMessagesRef.current.length > 0) {
                 const pendingMessages = [...pendingContentMessagesRef.current];
                 pendingContentMessagesRef.current = []; // Clear the ref
@@ -1129,16 +1217,21 @@ export function useIntelligentChat({
 
     // Clear backend checkpoint (LangGraph state)
     try {
+      const csrfToken = getCookie('csrftoken');
       const response = await fetch('/api/v1/agents/clear-conversation/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
         },
         credentials: 'include',
         body: JSON.stringify({ conversation_id: conversationId }),
       });
       if (response.ok) {
-        console.log('[Chat] Cleared backend conversation checkpoint');
+        const data = await response.json();
+        console.log('[Chat] Cleared backend conversation checkpoint:', data);
+      } else {
+        console.warn('[Chat] Failed to clear backend checkpoint:', response.status);
       }
     } catch (error) {
       console.warn('[Chat] Failed to clear backend checkpoint:', error);
