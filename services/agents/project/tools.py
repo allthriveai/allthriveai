@@ -40,7 +40,7 @@ def _detect_url_domain_type(url: str) -> str:
             return 'gitlab'
         elif domain in ('youtube.com', 'youtu.be'):
             return 'youtube'
-        elif domain in ('figma.com',):
+        elif domain in ('figma.com',) or domain.endswith('.figma.site'):
             return 'figma'
         else:
             return 'generic'
@@ -876,8 +876,8 @@ def scrape_webpage_for_project(
     logger.info(f'Scraping webpage for project: {url} (user: {user.username})')
 
     try:
-        # Scrape the webpage using AI extraction
-        extracted = scrape_url_for_project(url)
+        # Scrape the webpage using AI extraction (pass user_id for Figma screenshot S3 upload)
+        extracted = scrape_url_for_project(url, user_id=user.id)
 
         # Get raw text content for deeper analysis
         try:
@@ -1823,6 +1823,158 @@ def _handle_youtube_import(
     return result
 
 
+def _full_gitlab_import(
+    url: str,
+    namespace: str,
+    project_name: str,
+    user,
+    gitlab_service,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """
+    Perform full GitLab import with AI analysis for projects user owns.
+
+    This fetches the README, file tree, dependencies, and tech stack from the
+    GitLab API and runs AI analysis to create a rich project page.
+    """
+    from core.integrations.github.ai_analyzer import analyze_github_repo_for_template
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.integrations.gitlab.helpers import match_or_create_technology, normalize_gitlab_project_data
+    from core.projects.models import Project
+
+    logger.info(f'[GitLab Full Import] Starting full import for {namespace}/{project_name}')
+    logger.info(f'[GitLab Full Import] User: {user.id} ({user.username})')
+
+    try:
+        # Fetch repository info via GitLab API
+        logger.info(f'[GitLab Full Import] Fetching repository info for {namespace}/{project_name}')
+        repo_info = gitlab_service.get_repository_info_sync(namespace, project_name)
+        logger.info(f'[GitLab Full Import] Successfully fetched repo info, keys: {list(repo_info.keys())}')
+    except Exception as e:
+        logger.error(f'[GitLab Full Import] Failed to fetch GitLab repo {namespace}/{project_name}: {e}', exc_info=True)
+        # Fall back to generic import on GitLab API failure
+        logger.info('[GitLab Full Import] Falling back to generic import')
+        return _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=True,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+
+    # Extract components from repo_info
+    project_data = repo_info.get('project_data', {})
+    readme = repo_info.get('readme', '')
+    tech_stack = repo_info.get('tech_stack', {})
+
+    # Normalize GitLab output into the schema the AI analyzer expects
+    logger.info(f'[GitLab Full Import] Normalizing GitLab data for {namespace}/{project_name}')
+    base_url = 'https://gitlab.com'  # Default, could be extracted from URL for self-hosted
+    repo_summary = normalize_gitlab_project_data(
+        base_url=base_url,
+        namespace=namespace,
+        project=project_name,
+        url=url,
+        project_data=project_data,
+        repo_files=repo_info,
+    )
+    logger.info(
+        f'[GitLab Full Import] Normalized data: name={repo_summary.get("name")}, '
+        f'description length={len(repo_summary.get("description", ""))}'
+    )
+
+    # Run AI analysis with error handling
+    try:
+        logger.info(f'[GitLab Full Import] Running template-based AI analysis for {namespace}/{project_name}')
+        analysis = analyze_github_repo_for_template(
+            repo_data=repo_summary,
+            readme_content=readme,
+        )
+        logger.info(f'[GitLab Full Import] AI analysis completed, sections count: {len(analysis.get("sections", []))}')
+    except Exception as e:
+        logger.warning(
+            f'[GitLab Full Import] AI analysis failed for {namespace}/{project_name}, using basic metadata: {e}'
+        )
+        # Use basic metadata without AI analysis
+        analysis = {
+            'templateVersion': 2,
+            'sections': [],
+            'description': repo_summary.get('description', ''),
+        }
+
+    # Get hero image - use GitLab's project avatar or generate one
+    hero_image = analysis.get('hero_image', '')
+    if not hero_image:
+        # GitLab doesn't have opengraph images like GitHub, use project avatar if available
+        avatar_url = project_data.get('avatar_url', '')
+        if avatar_url:
+            hero_image = avatar_url
+        else:
+            # Generate a placeholder or use a generic GitLab image
+            hero_image = f'https://gitlab.com/uploads/-/system/project/avatar/{project_data.get("id", "")}/avatar.png'
+
+    # Build content
+    content = {
+        'templateVersion': analysis.get('templateVersion', 2),
+        'sections': analysis.get('sections', []),
+        'gitlab': repo_summary,
+        'tech_stack': tech_stack,
+    }
+
+    try:
+        # Create project
+        logger.info(f'[GitLab Full Import] Creating project for {namespace}/{project_name}')
+        project = Project.objects.create(
+            user=user,
+            title=repo_summary.get('name', project_name),
+            description=analysis.get('description') or repo_summary.get('description', ''),
+            type=Project.ProjectType.GITLAB_PROJECT,
+            external_url=url,
+            featured_image_url=hero_image,
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+            tools_order=[],
+        )
+
+        # Apply AI metadata (tags, tools, etc.)
+        logger.info(f'[GitLab Full Import] Applying AI metadata to project {project.id}')
+        apply_ai_metadata(project, analysis, content=content)
+
+        # Also tag technologies from tech_stack
+        if tech_stack:
+            logger.info('[GitLab Full Import] Tagging technologies from tech_stack')
+            for lang_name in tech_stack.get('languages', {}).keys():
+                tool = match_or_create_technology(lang_name)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+            for framework in tech_stack.get('frameworks', []):
+                tool = match_or_create_technology(framework)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+            for tool_name in tech_stack.get('tools', []):
+                tool = match_or_create_technology(tool_name)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+
+        logger.info(f'[GitLab Full Import] Successfully imported {namespace}/{project_name} as project {project.id}')
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'url': f'/{user.username}/{project.slug}',
+            'project_type': 'gitlab_repo',
+        }
+    except Exception as e:
+        logger.exception(f'[GitLab Full Import] Failed to create project for {namespace}/{project_name}: {e}')
+        return {'success': False, 'error': f'Failed to create project: {str(e)}'}
+
+
 def _handle_gitlab_import(
     url: str,
     user,
@@ -1932,20 +2084,18 @@ def _handle_gitlab_import(
         logger.info(f'[GitLab Import] Non-owner import result: {result}')
         return result
 
-    # User owns the project - import as owned
-    logger.info(f'[GitLab Import] User {user.id} owns {namespace}/{project_name}, importing as owned project')
-    result = _handle_generic_import(
+    # User owns the project - do full import with GitLab API
+    logger.info(f'[GitLab Import] User {user.id} owns {namespace}/{project_name}, performing full GitLab import')
+    return _full_gitlab_import(
         url=url,
+        namespace=namespace,
+        project_name=project_name,
         user=user,
-        is_owned=True,
+        gitlab_service=gitlab_service,
         is_showcase=is_showcase,
         is_private=is_private,
         state=state,
     )
-    if result.get('success'):
-        result['message'] = 'Successfully imported your GitLab project!'
-    logger.info(f'[GitLab Import] Owner import result: {result}')
-    return result
 
 
 def _handle_figma_import(
@@ -2041,8 +2191,9 @@ def _handle_generic_import(
 
     try:
         # Scrape the webpage (already fetches HTML and extracts text internally)
+        # Pass user_id for Figma screenshot S3 upload
         logger.info(f'[Generic Import] Scraping webpage: {url}')
-        extracted = scrape_url_for_project(url)
+        extracted = scrape_url_for_project(url, user_id=user.id)
         desc_len = len(extracted.description or '')
         logger.info(f'[Generic Import] Scraped: title="{extracted.title}", desc_len={desc_len}')
 

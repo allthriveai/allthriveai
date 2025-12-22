@@ -363,8 +363,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def _invalidate_user_cache(self, user):
         """Invalidate cached project lists for a user."""
         username_lower = user.username.lower()
-        cache.delete(f'projects:v2:{username_lower}:own')
-        cache.delete(f'projects:v2:{username_lower}:public')
+        # Must match the cache key version in public_user_projects (v4)
+        cache.delete(f'projects:v4:{username_lower}:own')
+        cache.delete(f'projects:v4:{username_lower}:public')
         logger.debug(f'Invalidated project cache for user {user.username}')
 
     @action(detail=True, methods=['patch'], url_path='update-tags')

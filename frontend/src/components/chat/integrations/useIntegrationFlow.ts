@@ -222,7 +222,7 @@ export function useIntegrationFlow({
     setGithubRepos([]);
     setGithubSearchQuery('');
     setActiveFlow(null);
-    onSendMessage(`Import this GitHub repository to my showcase: ${repo.htmlUrl}`);
+    onSendMessage(`Import this GitHub repository to my playground: ${repo.htmlUrl}`);
   }, [onSendMessage]);
 
   // GitLab handlers
@@ -287,7 +287,7 @@ export function useIntegrationFlow({
     setGitlabProjects([]);
     setGitlabSearchQuery('');
     setActiveFlow(null);
-    onSendMessage(`Import this GitLab project to my showcase: ${project.htmlUrl}`);
+    onSendMessage(`Import this GitLab project to my playground: ${project.htmlUrl}`);
   }, [onSendMessage]);
 
   // Figma handlers

@@ -6,3 +6,6 @@ export { LearningDashboard } from './LearningDashboard';
 export { ColdStartOnboarding } from './ColdStartOnboarding';
 export { StructuredLearningPath } from './StructuredLearningPath';
 export { PathLibraryGrid } from './PathLibraryGrid';
+export { MobileSageBottomSheet } from './MobileSageBottomSheet';
+export { LearningChatPanel } from './LearningChatPanel';
+export type { LessonContext } from './LearningChatPanel';

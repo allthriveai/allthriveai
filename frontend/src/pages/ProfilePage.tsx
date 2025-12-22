@@ -79,6 +79,130 @@ function isCurationTier(tier?: string): boolean {
   return tier === 'curation';
 }
 
+// Social Links Editor Tray Component
+interface SocialLinksEditorTrayProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialValues: SocialLinksUpdate;
+  onSave: (links: SocialLinksUpdate) => Promise<void>;
+}
+
+function SocialLinksEditorModal({ isOpen, onClose, initialValues, onSave }: SocialLinksEditorTrayProps) {
+  const [values, setValues] = useState<SocialLinksUpdate>(initialValues);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleChange = (field: keyof SocialLinksUpdate, value: string) => {
+    setValues(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(values);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fields = [
+    { key: 'websiteUrl' as const, label: 'Website', placeholder: 'https://yourwebsite.com', icon: faGlobe },
+    { key: 'githubUrl' as const, label: 'GitHub', placeholder: 'https://github.com/username', icon: faGithub },
+    { key: 'linkedinUrl' as const, label: 'LinkedIn', placeholder: 'https://linkedin.com/in/username', icon: faLinkedin },
+    { key: 'twitterUrl' as const, label: 'Twitter', placeholder: 'https://twitter.com/username', icon: faTwitter },
+    { key: 'youtubeUrl' as const, label: 'YouTube', placeholder: 'https://youtube.com/@username', icon: faGlobe },
+    { key: 'instagramUrl' as const, label: 'Instagram', placeholder: 'https://instagram.com/username', icon: faGlobe },
+  ];
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Slide-in Tray */}
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit Social Links"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Edit Social Links
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            Add your social media links to help others connect with you.
+          </p>
+
+          <div className="space-y-4">
+            {fields.map(({ key, label, placeholder, icon }) => (
+              <div key={key}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  {label}
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <FontAwesomeIcon icon={icon} className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="url"
+                    value={values[key] || ''}
+                    onChange={(e) => handleChange(key, e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              disabled={isSaving}
+              className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+            >
+              {isSaving && <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />}
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // Shared tab button class names
 const TAB_BUTTON_ACTIVE = 'bg-teal-500 text-white shadow-md';
 const TAB_BUTTON_INACTIVE = 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10';
@@ -121,6 +245,7 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showSocialLinksEditor, setShowSocialLinksEditor] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toolTrayOpen, setToolTrayOpen] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
@@ -1202,11 +1327,12 @@ export default function ProfilePage() {
               isAvatarUploading={isAvatarUploading}
               onNameChange={handleNameChange}
               onTaglineChange={handleTaglineChange}
+              onEditSocialLinks={() => setShowSocialLinksEditor(true)}
             />
 
             {/* Tab Navigation - Always visible */}
             <div className="border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="w-full px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center py-2">
                   <ProfileTabMenu
                     activeTab={activeTab as ProfileTabId}
@@ -1341,7 +1467,7 @@ export default function ProfilePage() {
               if (!currentTab) return null;
               return (
                 <div className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/30 dark:border-gray-700/30">
-                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                  <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
                     <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
                       {activeTab === 'playground' ? (
                         <>
@@ -1363,9 +1489,9 @@ export default function ProfilePage() {
               );
             })()}
 
-            {/* Showcase Tab Content - Constrained width */}
+            {/* Showcase Tab Content - Full width */}
             {activeTab === 'showcase' && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
+              <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-8">
                 {/* Edit Controls - Only show when editing */}
                 {isOwnProfile && isEditingShowcase && (
                   <div className="flex items-center justify-center gap-3 mb-6">
@@ -1497,7 +1623,7 @@ export default function ProfilePage() {
 
             {/* Learning Tab */}
             {activeTab === 'learning' && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-learning" aria-labelledby="tab-learning">
+              <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-learning" aria-labelledby="tab-learning">
                 <LearningPathsTab
                   username={username || user?.username || ''}
                   isOwnProfile={isOwnProfile}
@@ -1507,7 +1633,7 @@ export default function ProfilePage() {
 
             {/* Activity Tab */}
             {activeTab === 'activity' && isOwnProfile && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8" role="tabpanel" id="tabpanel-activity" aria-labelledby="tab-activity">
+              <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-8" role="tabpanel" id="tabpanel-activity" aria-labelledby="tab-activity">
                 <ActivityInsightsTab
                   username={username || ''}
                   isOwnProfile={isOwnProfile}
@@ -1519,7 +1645,7 @@ export default function ProfilePage() {
 
             {/* Marketplace Tab */}
             {activeTab === 'marketplace' && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-marketplace" aria-labelledby="tab-marketplace">
+              <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-marketplace" aria-labelledby="tab-marketplace">
                 <MarketplaceTab
                   username={username || user?.username || ''}
                   isOwnProfile={isOwnProfile}
@@ -1564,8 +1690,8 @@ export default function ProfilePage() {
               </div>
 
               {/* Connect Icons */}
-              {socialLinks.length > 0 && (
-                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+              {(socialLinks.length > 0 || isOwnProfile) && (
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2 group/header-links">
                   {socialLinks.slice(0, 3).map((link, i) => (
                     <a
                       key={i}
@@ -1578,6 +1704,15 @@ export default function ProfilePage() {
                       <FontAwesomeIcon icon={link.icon} className="w-3.5 h-3.5" aria-hidden="true" />
                     </a>
                   ))}
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => setShowSocialLinksEditor(true)}
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                      title="Edit social links"
+                    >
+                      <FontAwesomeIcon icon={faPenToSquare} className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1755,16 +1890,7 @@ export default function ProfilePage() {
                           <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500">Connect</h4>
                           {isOwnProfile && (
                             <button
-                              onClick={() => {
-                                // Scroll to Links section in showcase tab
-                                setActiveTab('showcase');
-                                setTimeout(() => {
-                                  const linksSection = document.querySelector('[data-section-type="links"]');
-                                  if (linksSection) {
-                                    linksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  }
-                                }, 100);
-                              }}
+                              onClick={() => setShowSocialLinksEditor(true)}
                               className="p-1 rounded text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 opacity-0 group-hover/connect:opacity-100 transition-all"
                               title="Edit social links"
                             >
@@ -1928,8 +2054,8 @@ export default function ProfilePage() {
                     )}
 
                     {/* Social Links */}
-                    {socialLinks.length > 0 && (
-                      <div className="flex flex-col gap-3">
+                    {(socialLinks.length > 0 || isOwnProfile) && (
+                      <div className="flex flex-col gap-3 group/sidebar-links">
                         {socialLinks.slice(0, 4).map((link, i) => (
                           <a
                             key={i}
@@ -1942,6 +2068,15 @@ export default function ProfilePage() {
                             <FontAwesomeIcon icon={link.icon} className="w-3 h-3" />
                           </a>
                         ))}
+                        {isOwnProfile && (
+                          <button
+                            onClick={() => setShowSocialLinksEditor(true)}
+                            className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors opacity-0 group-hover/sidebar-links:opacity-100"
+                            title="Edit social links"
+                          >
+                            <FontAwesomeIcon icon={faPenToSquare} className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -2018,7 +2153,7 @@ export default function ProfilePage() {
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col pb-10 min-w-0 max-w-7xl">
+            <div className="flex-1 flex flex-col pb-10 min-w-0 w-full">
 
               {/* Top Header: Tabs & Actions */}
               <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 dark:border-gray-800 mb-6 md:mb-8 pt-2 gap-4">
@@ -2436,6 +2571,26 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Social Links Editor Modal */}
+        {showSocialLinksEditor && (
+          <SocialLinksEditorModal
+            isOpen={showSocialLinksEditor}
+            onClose={() => setShowSocialLinksEditor(false)}
+            initialValues={{
+              websiteUrl: displayUser?.websiteUrl || '',
+              githubUrl: displayUser?.githubUrl || '',
+              linkedinUrl: displayUser?.linkedinUrl || '',
+              twitterUrl: displayUser?.twitterUrl || '',
+              youtubeUrl: displayUser?.youtubeUrl || '',
+              instagramUrl: displayUser?.instagramUrl || '',
+            }}
+            onSave={async (links) => {
+              await handleSocialLinksUpdate(links);
+              setShowSocialLinksEditor(false);
+            }}
+          />
         )}
 
         {/* Follow List Modal */}

@@ -27,6 +27,7 @@ import {
   faUserPlus,
   faSpinner,
   faEnvelope,
+  faPenToSquare,
 } from '@fortawesome/free-solid-svg-icons';
 import type { User } from '@/types/models';
 import type { ProfileTemplate } from '@/types/profileSections';
@@ -56,6 +57,7 @@ interface ProfileHeaderProps {
   // Inline editing handlers
   onNameChange?: (name: string) => Promise<void>;
   onTaglineChange?: (tagline: string) => Promise<void>;
+  onEditSocialLinks?: () => void;
 }
 
 // Helper to convert tier code to display name
@@ -94,6 +96,7 @@ export function ProfileHeader({
   isAvatarUploading,
   onNameChange,
   onTaglineChange,
+  onEditSocialLinks,
 }: ProfileHeaderProps) {
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +159,7 @@ export function ProfileHeader({
       <div className="absolute top-1/2 left-0 w-[300px] h-[200px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[80px] pointer-events-none" />
 
       {/* Profile Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
         <div className="relative pb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6">
             {/* Avatar */}
@@ -389,7 +392,7 @@ export function ProfileHeader({
             </div>
 
             {/* Social Links */}
-            {socialLinks.length > 0 && (
+            {(socialLinks.length > 0 || (isOwnProfile && onEditSocialLinks)) && (
               <div className="flex items-center gap-2">
                 {socialLinks.map((link, i) => (
                   <a
@@ -403,6 +406,15 @@ export function ProfileHeader({
                     <FontAwesomeIcon icon={link.icon} className="w-4 h-4" />
                   </a>
                 ))}
+                {isOwnProfile && onEditSocialLinks && (
+                  <button
+                    onClick={onEditSocialLinks}
+                    className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-primary-500 hover:text-white transition-colors"
+                    title="Edit social links"
+                  >
+                    <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>

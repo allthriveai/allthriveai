@@ -35,6 +35,8 @@ import { MermaidDiagram } from '@/components/projects/shared/MermaidDiagram';
 import { ChatGameCard } from '@/components/chat/games/ChatGameCard';
 import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/gameRegistry';
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
+import { MobileSageBottomSheet } from '@/components/learning';
+import { useAuth } from '@/hooks/useAuth';
 import type { CurriculumItem } from '@/services/learningPaths';
 
 /**
@@ -550,9 +552,13 @@ function LoadingState() {
 export default function LearningPathDetailPage() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
   const { data: path, isLoading, error } = useLearningPathBySlug(username || '', slug || '');
+  const { user } = useAuth();
 
-  // Chat panel is always visible on the right side
+  // Chat panel state - visible on right side (desktop), bottom sheet (mobile)
   const [currentLessonContext, setCurrentLessonContext] = useState<LessonContext | null>(null);
+
+  // Generate conversation ID for this learning path
+  const conversationId = `learn-${slug}-${user?.id || 'anon'}`;
 
   // Handle updating lesson context when user clicks "Try It Yourself"
   const handleOpenChat = (context: LessonContext) => {
@@ -665,8 +671,8 @@ export default function LearningPathDetailPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: Sage Chat Panel (always visible, fixed to viewport height) */}
-                <div className="w-[480px] border-l border-slate-200 dark:border-white/10 flex-shrink-0 h-full min-h-0 flex flex-col">
+                {/* RIGHT: Sage Chat Panel (desktop only - hidden on mobile) */}
+                <div className="hidden lg:flex w-[480px] border-l border-slate-200 dark:border-white/10 flex-shrink-0 h-full min-h-0 flex-col">
                   <LearningChatPanel
                     context={currentLessonContext}
                     pathTitle={path.title}
@@ -674,6 +680,15 @@ export default function LearningPathDetailPage() {
                   />
                 </div>
               </div>
+
+              {/* Mobile: Sage bottom sheet */}
+              <MobileSageBottomSheet
+                conversationId={conversationId}
+                context="lesson"
+                lessonContext={currentLessonContext}
+                pathTitle={path.title}
+                pathSlug={slug || ''}
+              />
             </>
           )}
         </div>

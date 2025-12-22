@@ -51,6 +51,15 @@ export const getMenuSections = (
     ],
   },
   {
+    title: 'LEARN',
+    icon: faGraduationCap,
+    path: '/learn',
+    items: [
+      { label: 'Learning Paths', path: '/learn', icon: faGraduationCap },
+      { label: 'Quizzes', path: '/quizzes', icon: faBrain },
+    ],
+  },
+  {
     title: 'PLAY',
     icon: faGamepad,
     path: '/play/games',
@@ -58,8 +67,6 @@ export const getMenuSections = (
       { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
       { label: 'Games', path: '/play/games', icon: faGamepad },
       { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy, className: 'text-pink-500 dark:text-pink-400' },
-      { label: 'Quizzes', path: '/quizzes', icon: faBrain },
-      { label: 'Learning Paths', path: '/learn', icon: faGraduationCap },
     ],
   },
   {
@@ -93,7 +100,8 @@ export const getMenuSections = (
 // Route patterns for active state detection
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
   'DISCOVER': (path) => path === '/explore',
-  'Quizzes': (path) => path === '/quizzes',
+  'LEARN': (path) => path === '/learn' || path.startsWith('/learn/') || path === '/quizzes' || path.startsWith('/quizzes/'),
+  'Quizzes': (path) => path === '/quizzes' || path.startsWith('/quizzes/'),
   "This Week's Challenge": (path) => path === '/challenges' || path.startsWith('/challenges/') || path === '/this-weeks-challenge',
   'Games': (path) => path === '/play/games',
   'Prompt Battle': (path) => path === '/play/prompt-battle',

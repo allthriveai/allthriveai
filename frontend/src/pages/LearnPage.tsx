@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { PathLibraryGrid } from '@/components/learning';
+import { PathLibraryGrid, MobileSageBottomSheet } from '@/components/learning';
 import { InlineChatLayout } from '@/components/chat/layouts';
 import {
   useStructuredPath,
@@ -259,7 +259,7 @@ function AuthenticatedLearnPage() {
           {renderMainContent()}
         </div>
 
-        {/* Ember inline chat panel - fixed width on right */}
+        {/* Ember inline chat panel - fixed width on right (desktop only) */}
         <div className="w-96 flex-shrink-0 hidden lg:block">
           <InlineChatLayout
             conversationId={conversationId}
@@ -270,6 +270,17 @@ function AuthenticatedLearnPage() {
           />
         </div>
       </div>
+
+      {/* Mobile: Sage bottom sheet */}
+      <MobileSageBottomSheet
+        conversationId={conversationId}
+        context="learn"
+        learningSetupContext={
+          learningSetupContext
+            ? { topic: 'AI Learning', level: 'beginner' }
+            : null
+        }
+      />
     </div>
   );
 }

@@ -35,11 +35,12 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
   const menuSections = getMenuSections(onMenuClick, user?.username);
 
   // Main navigation items (sections that should appear in top nav)
-  // menuSections: [0]=Discover, [1]=Play, [2]=Connect, [3]=Account
+  // menuSections: [0]=Discover, [1]=Learn, [2]=Play, [3]=Connect, [4]=Account
   const mainNavItems = [
     { label: 'Discover', path: '/explore', section: menuSections[0] },
-    { label: 'Play', section: menuSections[1] },
-    { label: 'Connect', section: menuSections[2] },
+    { label: 'Learn', path: '/learn', section: menuSections[1] },
+    { label: 'Play', section: menuSections[2] },
+    { label: 'Connect', section: menuSections[3] },
   ];
 
   const isActivePath = (path?: string) => {

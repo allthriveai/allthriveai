@@ -86,6 +86,7 @@ export function LinksSection({ content, user, isEditing, isOwnProfile, onUpdate,
   const [newUrl, setNewUrl] = useState('');
   const [isSavingSocial, setIsSavingSocial] = useState(false);
   const [isAddingLink, setIsAddingLink] = useState(false);
+  const [isEditingSocialLinks, setIsEditingSocialLinks] = useState(false);
 
   // Determine if editable: inline editing for owners, or legacy isEditing mode
   const canEdit = isOwnProfile || isEditing;
@@ -176,41 +177,54 @@ export function LinksSection({ content, user, isEditing, isOwnProfile, onUpdate,
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
           Links
         </h2>
-        {canEdit && !isAddingLink && (
+        {canEdit && !isEditing && !isEditingSocialLinks && !isAddingLink && (
           <button
-            onClick={() => setIsAddingLink(true)}
+            onClick={() => setIsEditingSocialLinks(true)}
             className="p-1.5 rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 opacity-0 group-hover/section:opacity-100 transition-all"
-            title="Add link"
+            title="Edit links"
           >
             <PencilIcon className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Social Links Editor (editing mode) */}
-      {isEditing && onSocialLinksUpdate && (
+      {/* Social Links Editor (editing mode or inline editing) */}
+      {(isEditing || isEditingSocialLinks) && onSocialLinksUpdate && (
         <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Social Links
             </h3>
-            <button
-              onClick={handleSaveSocialLinks}
-              disabled={isSavingSocial}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-            >
-              {isSavingSocial ? (
-                <>
-                  <span className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckIcon className="w-3.5 h-3.5" />
-                  Save Links
-                </>
+            <div className="flex items-center gap-2">
+              {isEditingSocialLinks && (
+                <button
+                  onClick={() => setIsEditingSocialLinks(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                >
+                  Cancel
+                </button>
               )}
-            </button>
+              <button
+                onClick={async () => {
+                  await handleSaveSocialLinks();
+                  if (isEditingSocialLinks) setIsEditingSocialLinks(false);
+                }}
+                disabled={isSavingSocial}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                {isSavingSocial ? (
+                  <>
+                    <span className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon className="w-3.5 h-3.5" />
+                    Save Links
+                  </>
+                )}
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {SOCIAL_LINK_FIELDS.map((field) => {
