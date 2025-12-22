@@ -181,6 +181,13 @@ class FeedbackContext(TypedDict):
     recent_struggles: list[str]  # Topics with recent negative feedback
 
 
+class ProfileCompletion(TypedDict):
+    """Profile completion status for triggering profile questions."""
+
+    score: float  # 0.0 - 1.0
+    missing_fields: list[str]  # Fields that can be filled by profile questions
+
+
 # =============================================================================
 # Full Member Context
 # =============================================================================
@@ -193,6 +200,10 @@ class MemberContext(TypedDict):
     This combines learning data with personalization signals to give
     Ember a complete picture of the member.
     """
+
+    # Top-level skill level (for easy access - same as learning.difficulty_level)
+    # Values: 'beginner', 'intermediate', 'advanced'
+    skill_level: str
 
     # Learning context
     learning: LearningPreferences
@@ -222,6 +233,9 @@ class MemberContext(TypedDict):
 
     # Human feedback loop context
     feedback: FeedbackContext | None  # Aggregated feedback for personalization
+
+    # Profile completion (for triggering profile questions)
+    profile_completion: ProfileCompletion
 
 
 class MemberContextService:
@@ -286,6 +300,7 @@ class MemberContextService:
         Get member context asynchronously.
 
         Uses Redis cache with 5-minute TTL.
+        Uses cache.add() to prevent cache stampede (only one request computes value).
 
         Args:
             user_id: The user ID to get context for.
@@ -300,27 +315,58 @@ class MemberContextService:
         cache_key = cls.get_cache_key(user_id)
         cached = cache.get(cache_key)
         if cached is not None:
-            logger.debug('Member context cache hit', extra={'user_id': user_id})
+            logger.debug('Member context cache hit')
             return cached
 
-        logger.debug('Member context cache miss', extra={'user_id': user_id})
+        # Use a lock key to prevent cache stampede
+        # Only one request will compute the value, others will wait and retry
+        lock_key = f'{cache_key}:lock'
 
-        try:
-            context = await cls._aggregate_context_async(user_id)
-            cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
-            return context
-        except Exception as e:
-            logger.error(
-                'Failed to aggregate member context',
-                extra={'user_id': user_id, 'error': str(e)},
-                exc_info=True,
-            )
-            return cls._get_default_context()
+        # Try to acquire lock (only one request wins)
+        if cache.add(lock_key, '1', timeout=30):  # 30s lock timeout
+            logger.debug('Member context cache miss - computing')
+            try:
+                context = await cls._aggregate_context_async(user_id)
+                cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+                return context
+            except Exception as e:
+                logger.error(
+                    'Failed to aggregate member context',
+                    extra={'user_id': user_id, 'error': str(e)},
+                    exc_info=True,
+                )
+                return cls._get_default_context()
+            finally:
+                cache.delete(lock_key)
+        else:
+            # Another request is computing - wait briefly and retry cache
+            import asyncio
+            for _ in range(5):  # Retry up to 5 times
+                await asyncio.sleep(0.1)
+                cached = cache.get(cache_key)
+                if cached is not None:
+                    logger.debug('Member context cache hit after wait')
+                    return cached
+
+            # Still no cache - compute anyway (lock may have expired)
+            logger.debug('Member context cache miss after wait - computing')
+            try:
+                context = await cls._aggregate_context_async(user_id)
+                cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+                return context
+            except Exception as e:
+                logger.error(
+                    'Failed to aggregate member context',
+                    extra={'user_id': user_id, 'error': str(e)},
+                    exc_info=True,
+                )
+                return cls._get_default_context()
 
     @classmethod
     def _get_default_context(cls) -> MemberContext:
         """Return default context for new members or on error."""
         return {
+            'skill_level': 'beginner',  # Top-level for easy access
             'learning': {
                 'learning_style': 'mixed',
                 'difficulty_level': 'beginner',
@@ -373,6 +419,17 @@ class MemberContextService:
             'semantic_suggestions': [],
             # Human feedback loop
             'feedback': None,
+            # Profile completion (for profile questions)
+            'profile_completion': {
+                'score': 0.0,
+                'missing_fields': [
+                    'learning.learning_style',
+                    'learning.difficulty_level',
+                    'learning.learning_goal',
+                    'tool_preferences',
+                    'interests',
+                ],
+            },
         }
 
     @classmethod
@@ -412,6 +469,8 @@ class MemberContextService:
             is_new = True
 
         return {
+            # Top-level skill level for easy access
+            'skill_level': learning_data['learning']['difficulty_level'],
             'learning': learning_data['learning'],
             'stats': learning_data['stats'],
             'progress': learning_data['progress'],
@@ -431,14 +490,27 @@ class MemberContextService:
             'semantic_suggestions': semantic_data['semantic_suggestions'],
             # Human feedback loop
             'feedback': feedback_data,
+            # Profile completion (for profile questions)
+            'profile_completion': cls._get_profile_completion(
+                learning=learning_data['learning'],
+                tool_preferences=personalization_data['tool_preferences'],
+                interests=personalization_data['interests'],
+                taxonomy_preferences=user_preferences['taxonomy_preferences'],
+            ),
         }
 
     @classmethod
     async def _aggregate_context_async(cls, user_id: int) -> MemberContext:
-        """Aggregate member context from database (async)."""
+        """Aggregate member context from database (async).
+
+        Uses thread_sensitive=False to allow parallel execution of DB queries
+        across multiple threads, avoiding event loop blocking.
+        """
         from asgiref.sync import sync_to_async
 
-        return await sync_to_async(cls._aggregate_context)(user_id)
+        # thread_sensitive=False allows this to run in a thread pool
+        # rather than blocking the main thread
+        return await sync_to_async(cls._aggregate_context, thread_sensitive=False)(user_id)
 
     @classmethod
     def _get_learning_context(cls, user_id: int) -> dict:
@@ -889,3 +961,84 @@ class MemberContextService:
                 extra={'user_id': user_id},
             )
             return None
+
+    @classmethod
+    def _get_profile_completion(
+        cls,
+        learning: LearningPreferences,
+        tool_preferences: list[ToolPreference],
+        interests: list[Interest],
+        taxonomy_preferences: TaxonomyPreferences,
+    ) -> ProfileCompletion:
+        """
+        Calculate profile completion score and identify missing fields.
+
+        Used to trigger profile-building questions when gaps exist.
+
+        Args:
+            learning: Learning preferences from LearnerProfile
+            tool_preferences: Auto-detected tool preferences
+            interests: Auto-detected interests
+            taxonomy_preferences: User-configured preferences
+
+        Returns:
+            ProfileCompletion with score (0.0-1.0) and missing_fields
+        """
+        missing_fields: list[str] = []
+        total_fields = 0
+        filled_fields = 0
+
+        # Check learning preferences (priority 1-2 fields)
+        learning_checks = [
+            ('learning.learning_style', learning.get('learning_style'), ['mixed', '', None]),
+            ('learning.difficulty_level', learning.get('difficulty_level'), ['beginner', '', None]),
+            ('learning.learning_goal', learning.get('learning_goal'), ['exploring', '', None]),
+            ('learning.session_length', learning.get('session_length'), [15, 0, None]),
+        ]
+
+        for field, value, defaults in learning_checks:
+            total_fields += 1
+            if value not in defaults:
+                filled_fields += 1
+            else:
+                missing_fields.append(field)
+
+        # Check tool preferences (priority 3)
+        total_fields += 1
+        if tool_preferences and len(tool_preferences) >= 1:
+            filled_fields += 1
+        else:
+            missing_fields.append('tool_preferences')
+
+        # Check interests (priority 3)
+        total_fields += 1
+        if interests and len(interests) >= 1:
+            filled_fields += 1
+        else:
+            missing_fields.append('interests')
+
+        # Check taxonomy personality (priority 4 - personality questions)
+        total_fields += 1
+        if taxonomy_preferences.get('personality'):
+            filled_fields += 1
+        else:
+            missing_fields.append('personality.builder_vs_explorer')
+
+        # Check user-configured goals (priority 2)
+        total_fields += 1
+        if taxonomy_preferences.get('goals') and len(taxonomy_preferences.get('goals', [])) >= 1:
+            filled_fields += 1
+        else:
+            # Only add if learning_goal is also missing
+            if 'learning.learning_goal' in missing_fields:
+                pass  # Don't double-count
+            else:
+                missing_fields.append('personality.motivation_style')
+
+        # Calculate score
+        score = filled_fields / total_fields if total_fields > 0 else 0.0
+
+        return {
+            'score': round(score, 2),
+            'missing_fields': missing_fields,
+        }

@@ -78,6 +78,7 @@ export function ChatCore({
     sendMessage: rawSendMessage,
     clearMessages,
     cancelProcessing,
+    addLocalMessage,
   } = useIntelligentChat({
     conversationId,
     onOrchestrationAction: handleOrchestrationAction,
@@ -184,6 +185,7 @@ export function ChatCore({
   const integrationFlow = useIntegrationFlow({
     onSendMessage: sendMessage,
     onHasInteracted: () => setHasInteracted(true),
+    onAddLocalMessage: addLocalMessage,
   });
 
   // Onboarding hook (only if enabled)

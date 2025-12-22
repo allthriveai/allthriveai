@@ -197,8 +197,7 @@ def user_personalization_overview(request):
         'total_interactions': total_interactions,
     }
 
-    serializer = UserPersonalizationSerializer(data)
-    return Response(serializer.data)
+    return Response(data)
 
 
 @api_view(['POST'])

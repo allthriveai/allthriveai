@@ -265,6 +265,11 @@ export async function deletePersonalizationData(): Promise<PersonalizationDelete
 }
 
 /**
+ * Skill level for learning content personalization
+ */
+export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
+
+/**
  * Taxonomy preferences for user profile
  */
 export interface TaxonomyPreferences {
@@ -275,6 +280,8 @@ export interface TaxonomyPreferences {
   goals: Taxonomy[];
   interests: Taxonomy[];
   industries: Taxonomy[];
+  // Skill level (from LearnerProfile)
+  skillLevel: SkillLevel | null;
 }
 
 /**
@@ -287,6 +294,7 @@ export interface TaxonomyPreferencesUpdate {
   goalIds?: number[];
   interestIds?: number[];
   industryIds?: number[];
+  skillLevel?: SkillLevel | null;
 }
 
 /**

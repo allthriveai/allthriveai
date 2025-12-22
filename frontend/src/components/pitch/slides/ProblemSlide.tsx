@@ -16,7 +16,7 @@ const problems = [
   {
     icon: UserGroupIcon,
     title: 'Walled Garden Communities',
-    description: 'Every AI tool builds its own locked-in community. Creators are siloed by platform instead of united by craft.',
+    description: 'Every AI tool builds its own locked-in community. Members are siloed by platform instead of united by craft.',
   },
 ];
 

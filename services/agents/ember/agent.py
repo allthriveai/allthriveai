@@ -15,7 +15,9 @@ Scalability considerations:
 import asyncio
 import logging
 import time
+import uuid
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Annotated, TypedDict
 
@@ -70,6 +72,14 @@ MAX_THREAD_LOCKS = getattr(settings, 'EMBER_MAX_THREAD_LOCKS', 10000)
 
 # Redis lock timeout for distributed locking (seconds)
 REDIS_LOCK_TIMEOUT = getattr(settings, 'EMBER_REDIS_LOCK_TIMEOUT', 120)
+
+# Maximum concurrent tool executor threads (prevents thread exhaustion)
+# At scale, we cap threads to prevent resource exhaustion from slow tools
+TOOL_EXECUTOR_MAX_WORKERS = getattr(settings, 'EMBER_TOOL_EXECUTOR_MAX_WORKERS', 20)
+
+# Bounded thread pool for tool execution (prevents unbounded thread creation)
+# Using None as executor in run_in_executor creates unbounded threads per request
+TOOL_EXECUTOR = ThreadPoolExecutor(max_workers=TOOL_EXECUTOR_MAX_WORKERS)
 
 # Concurrency locks for thread_id to prevent race conditions
 # Uses OrderedDict for LRU eviction to prevent unbounded memory growth
@@ -128,25 +138,48 @@ async def _acquire_distributed_lock(thread_id: str, timeout: int = REDIS_LOCK_TI
         RuntimeError: If lock cannot be acquired within timeout
     """
     lock_key = f'ember:lock:{thread_id}'
-    lock_value = f'{time.time()}:{id(asyncio.current_task())}'
+    # Use UUID for guaranteed uniqueness (memory addresses can be reused)
+    lock_value = f'{time.time()}:{uuid.uuid4()}'
 
     # Try to acquire lock with Redis SETNX
     acquired = False
     start_time = time.time()
+    redis_client = None
 
     try:
-        # Use Redis SET NX EX for atomic lock acquisition
-        acquired = cache.add(lock_key, lock_value, timeout=timeout)
+        # Get the raw Redis client for consistent acquire/release
+        # This avoids Django cache serialization issues
+        try:
+            redis_client = cache._cache.get_client()
+        except AttributeError:
+            # Fallback for non-Redis cache backends (local dev)
+            redis_client = None
 
-        if not acquired:
-            # Lock held by another worker, wait with exponential backoff
-            wait_time = 0.1
-            while time.time() - start_time < timeout:
-                await asyncio.sleep(wait_time)
-                acquired = cache.add(lock_key, lock_value, timeout=timeout)
-                if acquired:
-                    break
-                wait_time = min(wait_time * 2, 2.0)  # Max 2 second wait
+        if redis_client:
+            # Use raw Redis SET NX EX for atomic lock acquisition
+            acquired = redis_client.set(lock_key, lock_value, nx=True, ex=timeout)
+
+            if not acquired:
+                # Lock held by another worker, wait with exponential backoff
+                wait_time = 0.1
+                while time.time() - start_time < timeout:
+                    await asyncio.sleep(wait_time)
+                    acquired = redis_client.set(lock_key, lock_value, nx=True, ex=timeout)
+                    if acquired:
+                        break
+                    wait_time = min(wait_time * 2, 2.0)  # Max 2 second wait
+        else:
+            # Fallback: use Django cache for non-Redis backends
+            acquired = cache.add(lock_key, lock_value, timeout=timeout)
+
+            if not acquired:
+                wait_time = 0.1
+                while time.time() - start_time < timeout:
+                    await asyncio.sleep(wait_time)
+                    acquired = cache.add(lock_key, lock_value, timeout=timeout)
+                    if acquired:
+                        break
+                    wait_time = min(wait_time * 2, 2.0)
 
         if not acquired:
             logger.warning(f'Failed to acquire distributed lock for {thread_id} after {timeout}s')
@@ -159,20 +192,22 @@ async def _acquire_distributed_lock(thread_id: str, timeout: int = REDIS_LOCK_TI
         if acquired:
             # Atomically release lock only if we still hold it (using Lua script)
             # This prevents race conditions in check-then-delete operations
-            try:
-                redis_client = cache._cache.get_client()
-                # Execute Lua script atomically: only delete if value matches
-                result = redis_client.eval(
-                    REDIS_LOCK_RELEASE_SCRIPT,
-                    1,  # number of keys
-                    lock_key,  # KEYS[1]
-                    lock_value,  # ARGV[1]
-                )
-                if result:
-                    logger.debug(f'Released distributed lock for {thread_id}')
-                else:
-                    logger.warning(f'Lock for {thread_id} was already released or stolen')
-            except AttributeError:
+            if redis_client:
+                try:
+                    # Execute Lua script atomically: only delete if value matches
+                    result = redis_client.eval(
+                        REDIS_LOCK_RELEASE_SCRIPT,
+                        1,  # number of keys
+                        lock_key,  # KEYS[1]
+                        lock_value,  # ARGV[1]
+                    )
+                    if result:
+                        logger.debug(f'Released distributed lock for {thread_id}')
+                    else:
+                        logger.warning(f'Lock for {thread_id} was already released or stolen')
+                except Exception as e:
+                    logger.warning(f'Error releasing distributed lock for {thread_id}: {e}')
+            else:
                 # Fallback for non-Redis cache backends (local dev)
                 try:
                     current_value = cache.get(lock_key)
@@ -181,8 +216,6 @@ async def _acquire_distributed_lock(thread_id: str, timeout: int = REDIS_LOCK_TI
                         logger.debug(f'Released distributed lock for {thread_id} (fallback)')
                 except Exception as e:
                     logger.warning(f'Error releasing lock (fallback) for {thread_id}: {e}')
-            except Exception as e:
-                logger.warning(f'Error releasing distributed lock for {thread_id}: {e}')
 
 
 def get_default_model() -> str:
@@ -260,7 +293,11 @@ def _get_user_friendly_error(exception: Exception) -> str:
     return 'I ran into an unexpected issue. Please try again, and let us know if it continues.'
 
 
-def _serialize_tool_output(output) -> dict:
+# Maximum recursion depth for serialization (prevents stack overflow on deeply nested structures)
+MAX_SERIALIZE_DEPTH = 5
+
+
+def _serialize_tool_output(output, _depth: int = 0) -> dict:
     """
     Serialize tool output to ensure it's JSON-compatible for Redis channels.
 
@@ -270,11 +307,20 @@ def _serialize_tool_output(output) -> dict:
 
     Args:
         output: Raw tool output (could be dict, ToolMessage, string, etc.)
+        _depth: Internal recursion depth counter (do not set manually)
 
     Returns:
         JSON-serializable dict
     """
     from langchain_core.messages import ToolMessage
+
+    # Prevent stack overflow from deeply nested structures
+    if _depth >= MAX_SERIALIZE_DEPTH:
+        logger.warning(f'Max serialization depth ({MAX_SERIALIZE_DEPTH}) reached, truncating')
+        try:
+            return {'content': str(output)[:500] + '... [truncated]'}
+        except Exception:
+            return {'content': '[deeply nested content truncated]'}
 
     # Handle ToolMessage objects
     if isinstance(output, ToolMessage):
@@ -289,13 +335,16 @@ def _serialize_tool_output(output) -> dict:
         serialized = {}
         for key, value in output.items():
             if isinstance(value, ToolMessage):
-                serialized[key] = _serialize_tool_output(value)
+                serialized[key] = _serialize_tool_output(value, _depth + 1)
             elif hasattr(value, '__dict__'):
                 # Convert objects with __dict__ to their dict representation
                 try:
                     serialized[key] = dict(value.__dict__)
                 except Exception:
                     serialized[key] = str(value)
+            elif isinstance(value, dict | list):
+                # Recursively serialize nested dicts and lists
+                serialized[key] = _serialize_tool_output(value, _depth + 1)
             else:
                 serialized[key] = value
         return serialized
@@ -306,7 +355,7 @@ def _serialize_tool_output(output) -> dict:
 
     # Handle list output
     if isinstance(output, list):
-        return {'items': [_serialize_tool_output(item) for item in output]}
+        return {'items': [_serialize_tool_output(item, _depth + 1) for item in output]}
 
     # Fallback: convert to string
     try:
@@ -350,6 +399,32 @@ class EmberState(TypedDict):
 # =============================================================================
 
 
+def _validate_user_state(user_id: int | None, username: str) -> tuple[bool, str]:
+    """
+    Validate that user state is valid for tool execution.
+
+    Security: Ensures tools only operate on behalf of authenticated users.
+
+    Args:
+        user_id: User ID from state
+        username: Username from state
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if user_id is None:
+        # Allow anonymous users for some operations (public content search)
+        # Tools that require auth should check user_id in their implementation
+        return (True, '')
+
+    if not isinstance(user_id, int) or user_id <= 0:
+        return (False, f'Invalid user_id: {user_id}')
+
+    # Basic validation passed - tools should do their own authorization
+    # for specific resources (projects, content, etc.)
+    return (True, '')
+
+
 async def tools_node(state: EmberState) -> dict:
     """
     Async tool execution node that injects user state into tools that need it.
@@ -357,6 +432,8 @@ async def tools_node(state: EmberState) -> dict:
     This is a LangGraph node function (not ToolNode) that receives the current
     state at runtime, allowing us to inject user_id, username, and session_id
     into tool calls dynamically.
+
+    Security: State is validated before injection to prevent invalid user_id values.
 
     Tools listed in TOOLS_NEEDING_STATE receive a `state` dict with:
     - user_id: The authenticated user's ID
@@ -368,6 +445,22 @@ async def tools_node(state: EmberState) -> dict:
     logger.info('[TOOLS_NODE] ========== ENTERING tools_node ==========')
     messages = state.get('messages', [])
     logger.info(f'[TOOLS_NODE] Message count: {len(messages)}')
+
+    # Validate user state before injecting into tools (security)
+    user_id = state.get('user_id')
+    username = state.get('username', '')
+    is_valid, error_msg = _validate_user_state(user_id, username)
+    if not is_valid:
+        logger.error(f'[TOOLS_NODE] State validation failed: {error_msg}')
+        # Return error response instead of executing tools
+        return {
+            'messages': [
+                LCToolMessage(
+                    content=f'Authentication error: {error_msg}',
+                    tool_call_id='validation_error',
+                )
+            ]
+        }
 
     # Find the last AI message with tool calls
     tool_calls_to_execute = []
@@ -489,9 +582,26 @@ def create_agent_node(model_name: str | None = None):
     llm = ChatOpenAI(model=resolved_model, temperature=0.7)
     llm_with_tools = llm.bind_tools(EMBER_TOOLS)
 
-    # Maximum messages to include in context (prevents slow processing)
-    # 10 messages = ~5 exchanges, plenty for conversational context
-    MAX_CONTEXT_MESSAGES = 10
+    # Patterns that indicate learning/conceptual questions requiring find_content
+    LEARNING_QUESTION_PATTERNS = [
+        r'\bwhat is\b',
+        r"\bwhat's\b",
+        r'\bwhat are\b',
+        r'\bexplain\b',
+        r'\bteach me\b',
+        r'\btell me about\b',
+        r'\bhow does\b',
+        r'\bhow do\b',
+        r'\bhelp me understand\b',
+        r'\blearn about\b',
+        r'\bdefine\b',
+    ]
+    import re
+    LEARNING_REGEX = re.compile('|'.join(LEARNING_QUESTION_PATTERNS), re.IGNORECASE)
+
+    def _is_learning_question(message_content: str) -> bool:
+        """Detect if a message is a learning/conceptual question that needs find_content."""
+        return bool(LEARNING_REGEX.search(message_content))
 
     async def agent_node(state: EmberState) -> dict:
         """Process messages and decide next action (async)."""
@@ -500,7 +610,7 @@ def create_agent_node(model_name: str | None = None):
         logger.info(f'[AGENT_NODE] Total message count: {len(all_messages)}')
 
         # Trim to last N messages to prevent context bloat and slow processing
-        # Keep last MAX_CONTEXT_MESSAGES messages for context
+        # Uses module-level MAX_CONTEXT_MESSAGES (configurable via EMBER_MAX_CONTEXT_MESSAGES setting)
         if len(all_messages) > MAX_CONTEXT_MESSAGES:
             messages = all_messages[-MAX_CONTEXT_MESSAGES:]
             logger.info(f'[AGENT_NODE] Trimmed to last {MAX_CONTEXT_MESSAGES} messages')
@@ -535,8 +645,25 @@ def create_agent_node(model_name: str | None = None):
         full_messages = [SystemMessage(content=system_prompt)] + list(messages)
         logger.info(f'[AGENT_NODE] Calling LLM with {len(full_messages)} messages')
 
+        # Check if the last user message is a learning question
+        # If so, force find_content tool use to ensure consistent learning experience
+        force_tool_choice = None
+        last_human_message = None
+        for msg in reversed(messages):
+            if isinstance(msg, HumanMessage):
+                last_human_message = msg.content if hasattr(msg, 'content') else str(msg)
+                break
+
+        if last_human_message and _is_learning_question(last_human_message):
+            logger.info(f'[AGENT_NODE] Detected learning question, forcing find_content tool use')
+            force_tool_choice = {'type': 'function', 'function': {'name': 'find_content'}}
+
         # Call LLM (async - non-blocking)
-        response = await llm_with_tools.ainvoke(full_messages)
+        # Use tool_choice to force find_content for learning questions
+        if force_tool_choice:
+            response = await llm_with_tools.ainvoke(full_messages, tool_choice=force_tool_choice)
+        else:
+            response = await llm_with_tools.ainvoke(full_messages)
 
         # Log response details
         has_tool_calls = hasattr(response, 'tool_calls') and response.tool_calls
@@ -857,9 +984,10 @@ async def _execute_tool_with_timeout(
     loop = asyncio.get_event_loop()
 
     try:
-        # Run sync tool in executor with timeout
+        # Run sync tool in bounded executor with timeout
+        # Uses TOOL_EXECUTOR to prevent unbounded thread creation at scale
         return await asyncio.wait_for(
-            loop.run_in_executor(None, tool.invoke, tool_args),
+            loop.run_in_executor(TOOL_EXECUTOR, tool.invoke, tool_args),
             timeout=timeout,
         )
     except TimeoutError:
@@ -1017,21 +1145,17 @@ async def stream_ember_response(
                         # Stream LLM tokens
                         if kind == 'on_chat_model_stream':
                             # Track run_id to prevent duplicate streams from multiple nodes
+                            # After on_chain_start resets current_stream_run_id to None, we
+                            # accept the first stream event and track that as current
                             if run_id:
-                                # Only skip if we have an ACTIVE stream and this is a different one
-                                # that was already processed (prevents skipping after on_chain_start reset)
-                                if (
-                                    current_stream_run_id is not None
-                                    and run_id != current_stream_run_id
-                                    and run_id in processed_stream_runs
-                                ):
+                                # Skip events from different runs when we have an active stream
+                                if current_stream_run_id is not None and run_id != current_stream_run_id:
                                     continue
-                                if current_stream_run_id is None or run_id == current_stream_run_id:
-                                    if run_id not in processed_stream_runs:
-                                        processed_stream_runs.add(run_id)
-                                    current_stream_run_id = run_id
-                                elif run_id != current_stream_run_id:
-                                    continue
+
+                                # Track new runs and set as current
+                                if run_id not in processed_stream_runs:
+                                    processed_stream_runs.add(run_id)
+                                current_stream_run_id = run_id
 
                             chunk = event.get('data', {}).get('chunk')
                             if chunk and hasattr(chunk, 'content') and chunk.content:

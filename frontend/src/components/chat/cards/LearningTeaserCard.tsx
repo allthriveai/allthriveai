@@ -19,6 +19,8 @@ export interface LearningTeaserCardProps {
   onNavigate?: (path: string) => void;
   /** Compact mode for smaller grid display */
   compact?: boolean;
+  /** Open project preview tray instead of navigating (for projects only) */
+  onOpenProjectPreview?: (item: LearningContentItem) => void;
 }
 
 // Get icon for content type
@@ -48,13 +50,22 @@ export function LearningTeaserCard({
   contentType,
   onNavigate,
   compact = false,
+  onOpenProjectPreview,
 }: LearningTeaserCardProps) {
   const imageUrl = item.featuredImageUrl || item.thumbnail;
   const hasImage = !!imageUrl;
 
   const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    // For projects with preview handler, open tray instead of navigating
+    if (contentType === 'projects' && onOpenProjectPreview) {
+      onOpenProjectPreview(item);
+      return;
+    }
+
+    // Otherwise navigate as usual
     if (item.url && onNavigate) {
-      e.preventDefault();
       onNavigate(item.url);
     }
   };
@@ -106,6 +117,15 @@ export function LearningTeaserCard({
         </div>
       </div>
     );
+
+    // For projects with preview handler, use a clickable div instead of link
+    if (contentType === 'projects' && onOpenProjectPreview) {
+      return (
+        <div onClick={handleClick} className="block cursor-pointer">
+          {CompactCardContent}
+        </div>
+      );
+    }
 
     if (item.url) {
       const isExternal = item.url.startsWith('http');
@@ -219,6 +239,15 @@ export function LearningTeaserCard({
       </div>
     </div>
   );
+
+  // For projects with preview handler, use a clickable div instead of link
+  if (contentType === 'projects' && onOpenProjectPreview) {
+    return (
+      <div onClick={handleClick} className="block cursor-pointer">
+        {CardContent}
+      </div>
+    );
+  }
 
   // Wrap in link if URL exists
   if (item.url) {

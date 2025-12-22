@@ -118,7 +118,8 @@ class User(AbstractUser):
         ('blossom', 'Blossom'),
         ('bloom', 'Bloom'),
         ('evergreen', 'Evergreen'),
-        ('curation', 'Curation'),  # Special tier for AI agents - no points
+        ('curation', 'Curation'),  # Special tier for RSS/YouTube AI agents - no points
+        ('team', 'All Thrive Team'),  # Core Team agents (Ember, Pip, Sage, Haven) - no points
     ]
 
     TIER_THRESHOLDS = {
@@ -521,10 +522,10 @@ class User(AbstractUser):
         Example:
             user.add_points(25, 'project_create', 'Created: My First Project')
         """
-        # Skip point awards for curation tier users (AI agents)
-        if self.tier == 'curation':
+        # Skip point awards for AI agent tiers (curation = RSS/YouTube, team = Core Team)
+        if self.tier in ('curation', 'team'):
             logger.debug(
-                f'Skipping points for curation tier user {self.username}',
+                f'Skipping points for {self.tier} tier user {self.username}',
                 extra={'user_id': self.id, 'activity_type': activity_type},
             )
             return self.total_points

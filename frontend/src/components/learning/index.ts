@@ -5,3 +5,4 @@ export { SkillLevelBadge } from './SkillLevelBadge';
 export { LearningDashboard } from './LearningDashboard';
 export { ColdStartOnboarding } from './ColdStartOnboarding';
 export { StructuredLearningPath } from './StructuredLearningPath';
+export { PathLibraryGrid } from './PathLibraryGrid';

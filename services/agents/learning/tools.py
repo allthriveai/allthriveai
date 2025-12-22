@@ -67,7 +67,9 @@ def create_learning_path(
     - A personalized learning journey
     - Step-by-step guidance on mastering a topic
 
-    Creates a curriculum mixing videos, articles, quizzes, games, and code repos.
+    Creates a curriculum mixing videos, articles, quizzes, games, code repos,
+    and AI-generated lessons when curated content is unavailable.
+    The path is personalized based on user's learning style and difficulty level.
     The path is saved to the user's profile and can be accessed at the returned URL.
 
     Examples:
@@ -81,9 +83,10 @@ def create_learning_path(
     )
 
     user_id = state.get('user_id') if state else None
+    username = state.get('username') if state else None
     member_context = state.get('member_context') if state else None
 
-    if not user_id:
+    if not user_id or not username:
         return {'success': False, 'error': 'You need to be logged in to create a learning path.'}
 
     try:
@@ -91,7 +94,10 @@ def create_learning_path(
 
         from django.utils.text import slugify
 
-        from core.learning_paths.models import LearnerProfile
+        from core.learning_paths.models import LearnerProfile, SavedLearningPath
+        from core.learning_paths.tasks import generate_learning_path_cover
+
+        from .lesson_generator import AILessonGenerator
 
         # Get user's difficulty preference from profile or member context
         actual_difficulty = difficulty
@@ -100,7 +106,7 @@ def create_learning_path(
         if not actual_difficulty:
             actual_difficulty = 'beginner'
 
-        # Find content for the path
+        # Find existing content for the path
         content_result = ContentFinder.find(
             query=query,
             content_type='',  # Get all types
@@ -109,153 +115,97 @@ def create_learning_path(
             member_context=member_context,
         )
 
-        # Build curriculum from found content
-        curriculum = []
-        order = 1
+        # Generate curriculum with AI lessons to fill gaps
+        # This uses the AILessonGenerator which:
+        # 1. Adds existing curated content (videos, articles, quizzes, etc.)
+        # 2. Supplements with AI-generated lessons when content is sparse
+        # 3. Logs content gaps to ContentGap model for strategic development
+        # 4. Personalizes AI lessons based on member_context (learning style, difficulty)
+        curriculum = AILessonGenerator.generate_curriculum(
+            topic=query,
+            member_context=member_context,
+            existing_content=content_result,
+            user_id=user_id,
+        )
 
-        # Add tool overview if found
-        if content_result['tool']:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': 'tool',
-                    'title': f"Understanding {content_result['tool']['name']}",
-                    'tool_slug': content_result['tool']['slug'],
-                }
-            )
-            order += 1
-
-        # Add projects by content type priority
-        video_projects = [p for p in content_result['projects'] if p.get('content_type') == 'video']
-        article_projects = [p for p in content_result['projects'] if p.get('content_type') == 'article']
-        code_projects = [p for p in content_result['projects'] if p.get('content_type') == 'code-repo']
-        other_projects = [
-            p for p in content_result['projects'] if p.get('content_type') not in ('video', 'article', 'code-repo')
-        ]
-
-        # Add videos first (introduction)
-        for project in video_projects[:2]:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': 'video',
-                    'title': project['title'],
-                    'project_id': project['id'],
-                    'url': project['url'],
-                }
-            )
-            order += 1
-
-        # Add a quiz for knowledge check
-        for quiz in content_result['quizzes'][:1]:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': 'quiz',
-                    'title': quiz['title'],
-                    'quiz_id': quiz['id'],
-                    'url': quiz['url'],
-                }
-            )
-            order += 1
-
-        # Add articles for deeper understanding
-        for project in article_projects[:2]:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': 'article',
-                    'title': project['title'],
-                    'project_id': project['id'],
-                    'url': project['url'],
-                }
-            )
-            order += 1
-
-        # Add games for practice
-        for game in content_result['games'][:1]:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': 'game',
-                    'title': game['title'],
-                    'game_slug': game['slug'],
-                }
-            )
-            order += 1
-
-        # Add code repos for hands-on learning
-        for project in code_projects[:2]:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': 'code-repo',
-                    'title': project['title'],
-                    'project_id': project['id'],
-                    'url': project['url'],
-                }
-            )
-            order += 1
-
-        # Add remaining quizzes
-        for quiz in content_result['quizzes'][1:2]:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': 'quiz',
-                    'title': quiz['title'],
-                    'quiz_id': quiz['id'],
-                    'url': quiz['url'],
-                }
-            )
-            order += 1
-
-        # Add other projects
-        for project in other_projects[:2]:
-            curriculum.append(
-                {
-                    'order': order,
-                    'type': project.get('content_type') or 'other',
-                    'title': project['title'],
-                    'project_id': project['id'],
-                    'url': project['url'],
-                }
-            )
-            order += 1
-
-        # Estimate total time
-        estimated_minutes = len(curriculum) * 15  # Rough estimate
+        # Apply time commitment limits
         if time_commitment == 'quick':
             curriculum = curriculum[:3]
-            estimated_minutes = 45
         elif time_commitment == 'short':
             curriculum = curriculum[:5]
-            estimated_minutes = 90
         elif time_commitment == 'medium':
             curriculum = curriculum[:8]
-            estimated_minutes = 180
 
+        # Renumber curriculum after any truncation
+        for i, item in enumerate(curriculum):
+            item['order'] = i + 1
+
+        # Calculate estimated time from curriculum items
+        estimated_minutes = sum(item.get('estimated_minutes', 15) for item in curriculum)
         estimated_hours = round(estimated_minutes / 60, 1)
 
-        # Generate path ID and slug
-        path_id = str(uuid4())[:8]
-        path_slug = f'{slugify(query)}-{path_id}'
+        # Generate path title and slug
+        path_title = f"{query.replace('-', ' ').title()} Learning Path"
+        base_slug = slugify(query)
+
+        # Create unique slug for this user
+        existing_slugs = set(
+            SavedLearningPath.objects.filter(user_id=user_id, slug__startswith=base_slug)
+            .values_list('slug', flat=True)
+        )
+        path_slug = base_slug
+        counter = 1
+        while path_slug in existing_slugs:
+            path_slug = f'{base_slug}-{counter}'
+            counter += 1
 
         # Get tools and topics covered
-        tools_covered = [content_result['tool']['slug']] if content_result['tool'] else []
+        tools_covered = [content_result['tool']['slug']] if content_result.get('tool') else []
         topics_covered = [query]
 
-        # Save to user's learner profile
+        # Count AI-generated vs curated content
+        ai_lesson_count = sum(1 for item in curriculum if item.get('generated'))
+        curated_count = len(curriculum) - ai_lesson_count
+
+        # Build path_data for SavedLearningPath
+        path_data = {
+            'curriculum': curriculum,
+            'tools_covered': tools_covered,
+            'topics_covered': topics_covered,
+            'ai_lesson_count': ai_lesson_count,
+            'curated_count': curated_count,
+        }
+
+        # Create SavedLearningPath (this is the new multi-path model)
+        saved_path = SavedLearningPath.objects.create(
+            user_id=user_id,
+            slug=path_slug,
+            title=path_title,
+            path_data=path_data,
+            difficulty=actual_difficulty,
+            estimated_hours=estimated_hours,
+            is_active=False,  # Don't auto-activate, let user choose
+        )
+
+        # Activate this path (deactivates others)
+        saved_path.activate()
+
+        # Trigger async cover image generation
+        generate_learning_path_cover.delay(saved_path.id, user_id)
+
+        # Also update LearnerProfile for backwards compatibility
         profile, _ = LearnerProfile.objects.get_or_create(user_id=user_id)
         profile.generated_path = {
-            'id': path_id,
+            'id': str(saved_path.id),
             'slug': path_slug,
-            'title': f"{query.replace('-', ' ').title()} Learning Path",
+            'title': path_title,
             'curriculum': curriculum,
             'tools_covered': tools_covered,
             'topics_covered': topics_covered,
             'difficulty': actual_difficulty,
             'estimated_hours': estimated_hours,
+            'ai_lesson_count': ai_lesson_count,
+            'curated_count': curated_count,
         }
         profile.current_focus_topic = query
         profile.save(update_fields=['generated_path', 'current_focus_topic', 'updated_at'])
@@ -265,11 +215,25 @@ def create_learning_path(
 
         MemberContextService.invalidate_cache(user_id)
 
+        logger.info(
+            f'Learning path created: {len(curriculum)} items ({curated_count} curated, {ai_lesson_count} AI-generated)',
+            extra={
+                'query': query,
+                'user_id': user_id,
+                'saved_path_id': saved_path.id,
+                'curriculum_count': len(curriculum),
+                'ai_lesson_count': ai_lesson_count,
+                'curated_count': curated_count,
+                'difficulty': actual_difficulty,
+            },
+        )
+
         return {
             'success': True,
             'path': {
-                'id': path_id,
-                'title': f"{query.replace('-', ' ').title()} Learning Path",
+                'id': str(saved_path.id),
+                'slug': path_slug,
+                'title': path_title,
                 'description': f"A structured path to learn {query.replace('-', ' ')}",
                 'url': f'/learn/{path_slug}',
                 'estimated_time': f'{estimated_hours} hours',
@@ -277,10 +241,13 @@ def create_learning_path(
             },
             'curriculum': curriculum,
             'curriculum_count': len(curriculum),
+            'ai_lesson_count': ai_lesson_count,
+            'curated_count': curated_count,
             'tools_covered': tools_covered,
             'topics_covered': topics_covered,
             'message': (
-                f'Created a {actual_difficulty} learning path with {len(curriculum)} items. '
+                f'Created a {actual_difficulty} learning path with {len(curriculum)} items '
+                f'({curated_count} curated, {ai_lesson_count} personalized lessons). '
                 f'Access it at /learn/{path_slug}'
             ),
         }

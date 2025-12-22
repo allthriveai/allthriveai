@@ -126,7 +126,30 @@ function MediaPreview({ media, isNeon }: { media: MediaMatch; isNeon: boolean })
   return null;
 }
 
-export function UserMessage({ content, variant = 'default' }: UserMessageProps) {
+function UserAvatar({ avatarUrl, size = 'default' }: { avatarUrl?: string | null; size?: 'default' | 'neon' }) {
+  const sizeClasses = size === 'neon' ? 'w-10 h-10' : 'w-8 h-8';
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt="Your avatar"
+        className={`${sizeClasses} rounded-full object-cover flex-shrink-0`}
+      />
+    );
+  }
+
+  // Default avatar placeholder
+  return (
+    <div className={`${sizeClasses} rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center flex-shrink-0`}>
+      <svg className={size === 'neon' ? 'w-5 h-5' : 'w-4 h-4'} fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+      </svg>
+    </div>
+  );
+}
+
+export function UserMessage({ content, variant = 'default', avatarUrl }: UserMessageProps) {
   const isNeon = variant === 'neon';
   const { textParts, media } = parseMediaFromContent(content);
 
@@ -136,7 +159,7 @@ export function UserMessage({ content, variant = 'default' }: UserMessageProps) 
   if (isNeon) {
     // Neon Glass variant (EmberHomePage)
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end items-end gap-3">
         <div className="max-w-[85%] px-5 py-4 rounded-2xl rounded-br-sm bg-gradient-to-r from-cyan-500 to-cyan-600 text-white">
           {textContent && (
             <span className="text-lg whitespace-pre-wrap break-words">{textContent}</span>
@@ -145,13 +168,14 @@ export function UserMessage({ content, variant = 'default' }: UserMessageProps) 
             <MediaPreview key={i} media={m} isNeon={isNeon} />
           ))}
         </div>
+        <UserAvatar avatarUrl={avatarUrl} size="neon" />
       </div>
     );
   }
 
   // Default variant (sidebar)
   return (
-    <div className="flex justify-end">
+    <div className="flex justify-end items-end gap-2">
       <div className="max-w-[85%] sm:max-w-sm md:max-w-md px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-white">
         {textContent && (
           <span className="whitespace-pre-wrap break-words">{textContent}</span>
@@ -160,6 +184,7 @@ export function UserMessage({ content, variant = 'default' }: UserMessageProps) 
           <MediaPreview key={i} media={m} isNeon={isNeon} />
         ))}
       </div>
+      <UserAvatar avatarUrl={avatarUrl} size="default" />
     </div>
   );
 }

@@ -389,9 +389,25 @@ def check_and_reserve_ai_request(
             except UserTokenBalance.DoesNotExist:
                 return False, 'AI request limit exceeded and no tokens available'
 
-            if token_balance.balance > 0:
-                # Has tokens - we'll deduct actual amount after processing
-                return True, 'Will use token balance'
+            # Reserve a minimum token amount upfront to prevent race conditions
+            # where multiple concurrent requests could all pass the balance check
+            # before any of them deduct. The actual amount will be reconciled later.
+            MIN_RESERVE_TOKENS = 500  # Estimated minimum tokens per AI request
+            if token_balance.balance >= MIN_RESERVE_TOKENS:
+                # Reserve tokens now (will reconcile to actual usage later)
+                # Using F() for atomic update even though we have select_for_update
+                UserTokenBalance.objects.filter(pk=token_balance.pk).update(
+                    balance=F('balance') - MIN_RESERVE_TOKENS
+                )
+                return True, f'Reserved {MIN_RESERVE_TOKENS} from token balance (will reconcile)'
+            elif token_balance.balance > 0:
+                # Balance is positive but low - reserve what's available
+                # User might see a slightly negative balance temporarily
+                available = token_balance.balance
+                UserTokenBalance.objects.filter(pk=token_balance.pk).update(
+                    balance=F('balance') - available
+                )
+                return True, f'Reserved {available} from token balance (will reconcile)'
 
             return False, 'AI request limit exceeded and no tokens available'
 
@@ -524,6 +540,86 @@ def deduct_tokens(user, amount: int, description: str = '', ai_provider: str = '
             error=e,
             user=user,
             extra={'amount': amount},
+            logger_instance=logger,
+        )
+        return False
+
+
+def reconcile_token_reservation(
+    user, reserved_amount: int, actual_amount: int, description: str = '', ai_provider: str = '', ai_model: str = ''
+) -> bool:
+    """
+    Reconcile the difference between reserved tokens and actual usage.
+
+    After a token reservation is made via check_and_reserve_ai_request,
+    this function adjusts the balance based on actual token usage.
+
+    If actual > reserved: deducts the difference (user used more than expected)
+    If actual < reserved: refunds the difference (user used less than expected)
+    If actual == reserved: no-op
+
+    Args:
+        user: Django User instance
+        reserved_amount: Tokens that were reserved upfront
+        actual_amount: Actual tokens used
+        description: Description for transaction log
+        ai_provider: AI provider name
+        ai_model: AI model name
+
+    Returns:
+        True if reconciliation successful, False otherwise
+    """
+    difference = actual_amount - reserved_amount
+
+    if difference == 0:
+        # Reservation was exactly right
+        logger.debug(f'Token reservation for user {user.id} was exact ({reserved_amount} tokens)')
+        return True
+
+    try:
+        with transaction.atomic():
+            try:
+                token_balance = UserTokenBalance.objects.select_for_update().get(user=user)
+            except UserTokenBalance.DoesNotExist:
+                logger.warning(f'No token balance found for user {user.id} during reconciliation')
+                return False
+
+            if difference > 0:
+                # Need to deduct more tokens
+                UserTokenBalance.objects.filter(pk=token_balance.pk).update(
+                    balance=F('balance') - difference,
+                    total_used=F('total_used') + difference,
+                )
+                logger.debug(f'Reconciled: deducted additional {difference} tokens from user {user.id}')
+            else:
+                # Need to refund tokens (difference is negative)
+                refund = -difference
+                UserTokenBalance.objects.filter(pk=token_balance.pk).update(
+                    balance=F('balance') + refund,
+                    total_used=F('total_used') - refund,  # Reduce total_used since we over-reserved
+                )
+                logger.debug(f'Reconciled: refunded {refund} tokens to user {user.id}')
+
+            # Log transaction for audit
+            token_balance.refresh_from_db()
+            TokenTransaction.objects.create(
+                user=user,
+                transaction_type='reconciliation',
+                amount=-difference,  # Negative = deduction, positive = refund
+                balance_after=token_balance.balance,
+                description=description or f'Reconciled token usage (reserved: {reserved_amount}, actual: {actual_amount})',
+                ai_provider=ai_provider,
+                ai_model=ai_model,
+            )
+
+            return True
+
+    except Exception as e:
+        StructuredLogger.log_error(
+            message='Failed to reconcile token reservation',
+            error=e,
+            user=user,
+            extra={'reserved': reserved_amount, 'actual': actual_amount},
             logger_instance=logger,
         )
         return False

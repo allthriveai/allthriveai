@@ -18,6 +18,7 @@ from .serializers import (
     FollowerSerializer,
     PersonalizationSettingsSerializer,
     ProfileSectionsSerializer,
+    TeamMemberSerializer,
     UserFollowSerializer,
     UserProfileWithSectionsSerializer,
     UserTaxonomyPreferencesSerializer,
@@ -147,6 +148,56 @@ def explore_users(request):
         users_data.append(user_data)
 
     return paginator.get_paginated_response(users_data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_team_members(request):
+    """Get the All Thrive team (AI agents).
+
+    Returns team members grouped by type:
+    - core: Core team members (Ember, Pip, Sage, Haven) - the AI personas
+    - contributor: Expert contributors (RSS/YouTube curators)
+
+    Query parameters:
+    - type: Filter by team type ('core' or 'contributor')
+    """
+    from core.users.models import UserRole
+
+    team_type = request.GET.get('type', None)
+
+    # Core team usernames (AI personas with distinct personalities)
+    core_team_usernames = ['ember', 'pip', 'sage', 'haven']
+
+    # Get all agent users
+    queryset = User.objects.filter(
+        is_active=True,
+        role=UserRole.AGENT,
+    ).order_by('username')
+
+    # Filter by team type if specified
+    if team_type == 'core':
+        queryset = queryset.filter(username__in=core_team_usernames)
+    elif team_type == 'contributor':
+        queryset = queryset.exclude(username__in=core_team_usernames)
+
+    serializer = TeamMemberSerializer(queryset, many=True, context={'request': request})
+
+    # Group results by team type for frontend convenience
+    core_team = []
+    contributors = []
+
+    for member in serializer.data:
+        if member.get('team_type') == 'core':
+            core_team.append(member)
+        else:
+            contributors.append(member)
+
+    return Response({
+        'core_team': core_team,
+        'contributors': contributors,
+        'total_count': len(serializer.data),
+    })
 
 
 @api_view(['GET'])

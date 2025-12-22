@@ -15,7 +15,6 @@ import {
   faCog,
   faStore,
   faCouch,
-  faEnvelope,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -60,7 +59,7 @@ export const getMenuSections = (
       { label: 'Games', path: '/play/games', icon: faGamepad },
       { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy, className: 'text-pink-500 dark:text-pink-400' },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
-      { label: 'Learning Paths', path: '#', icon: faGraduationCap },
+      { label: 'Learning Paths', path: '/learn', icon: faGraduationCap },
     ],
   },
   {
@@ -70,8 +69,7 @@ export const getMenuSections = (
     items: [
       { label: 'Your Thrive Circle', path: '/thrive-circle', icon: faUserGroup },
       { label: 'The Lounge', path: '/lounge', icon: faCouch },
-      { label: 'My Messages', onClick: () => onMenuClick('My Messages'), icon: faEnvelope },
-      { label: 'Membership Perks', path: '/perks', icon: faGift },
+      { label: 'Browse Members', path: '/explore?tab=profiles', icon: faUsers },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar'), icon: faCalendar },
     ],
   },
@@ -85,6 +83,7 @@ export const getMenuSections = (
         path: username ? `/${username}?tab=playground` : '#',
         icon: faIdCard,
       },
+      { label: 'Membership Perks', path: '/perks', icon: faGift },
       { label: 'Account Settings', path: '/account/settings', icon: faCog },
       { label: 'Onboarding', path: '/onboarding', icon: faWandSparkles },
     ],
@@ -104,10 +103,12 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
     username ? path === `/${username}` && (search.includes('tab=playground') || !search.includes('tab=')) : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',
   'The Lounge': (path) => path === '/lounge' || path.startsWith('/lounge/'),
+  'Browse Members': (path, search) => path === '/explore' && search.includes('tab=profiles'),
   'My Messages': (path) => path === '/messages' || path.startsWith('/messages/'),
   'Membership Perks': (path) => path === '/perks',
   'Marketplace': (path) => path === '/marketplace',
   'Tool Directory': (path) => path === '/tools',
+  'Learning Paths': (path) => path === '/learn' || path.startsWith('/learn/'),
 };
 
 // Timing constants

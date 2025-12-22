@@ -17,9 +17,10 @@ import {
   GameMessage,
   OnboardingMessage,
   GeneratingImageMessage,
-  LearningContentMessage,
   ProjectImportOptionsMessage,
   IntegrationCardsMessage,
+  ProfileQuestionMessage,
+  InlineActionsMessage,
 } from '../messages';
 import { GeneratedImageMessage } from '../GeneratedImageMessage';
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
@@ -31,6 +32,7 @@ export function ChatMessageList({
   isLoading,
   currentTool,
   onCancelProcessing,
+  userAvatarUrl,
   customEmptyState,
   greetingConfig,
   onboarding,
@@ -40,6 +42,11 @@ export function ChatMessageList({
   onProjectImportOptionSelect,
   onIntegrationSelect,
   connectionStatus,
+  onConnectFigma,
+  onFigmaUrlSubmit,
+  onProfileQuestionAnswer,
+  onInlineActionClick,
+  onOpenProjectPreview,
 }: ChatMessageListProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,7 +111,7 @@ export function ChatMessageList({
 
     // User message
     if (message.sender === 'user') {
-      return <UserMessage content={message.content} variant="neon" />;
+      return <UserMessage content={message.content} variant="neon" avatarUrl={userAvatarUrl} />;
     }
 
     // Check metadata type for special message types
@@ -136,22 +143,6 @@ export function ChatMessageList({
       );
     }
 
-    if (metadata?.type === 'learning_content' && metadata.learningContent) {
-      return (
-        <ChatErrorBoundary resetKey={`learning-content-${message.id}`}>
-          <LearningContentMessage
-            topicDisplay={metadata.learningContent.topicDisplay}
-            contentType={metadata.learningContent.contentType}
-            items={metadata.learningContent.items}
-            hasContent={metadata.learningContent.hasContent}
-            message={metadata.learningContent.message}
-            onNavigate={handleNavigate}
-            sourceType={metadata.learningContent.sourceType}
-          />
-        </ChatErrorBoundary>
-      );
-    }
-
     if (metadata?.type === 'project_import_options' && onProjectImportOptionSelect) {
       return (
         <ProjectImportOptionsMessage
@@ -169,13 +160,62 @@ export function ChatMessageList({
       );
     }
 
-    // Regular assistant message
+    if (metadata?.type === 'profile_question' && metadata.profileQuestion && onProfileQuestionAnswer) {
+      return (
+        <ChatErrorBoundary resetKey={`profile-question-${message.id}`}>
+          <ProfileQuestionMessage
+            config={metadata.profileQuestion}
+            onAnswer={onProfileQuestionAnswer}
+          />
+        </ChatErrorBoundary>
+      );
+    }
+
+    if (metadata?.type === 'inline_actions' && metadata.actions && onInlineActionClick) {
+      return (
+        <InlineActionsMessage
+          content={message.content}
+          actions={metadata.actions}
+          onActionClick={onInlineActionClick}
+        />
+      );
+    }
+
+    // Figma connect message - shows connect button inline
+    if (metadata?.type === 'figma_connect' && onConnectFigma) {
+      return (
+        <AssistantMessage
+          content={message.content}
+          variant="neon"
+          onNavigate={handleNavigate}
+          showFigmaConnectButton={true}
+          onConnectFigma={onConnectFigma}
+        />
+      );
+    }
+
+    // Figma URL input message - shows URL form inline
+    if (metadata?.type === 'figma_url_input' && onFigmaUrlSubmit) {
+      return (
+        <AssistantMessage
+          content={message.content}
+          variant="neon"
+          onNavigate={handleNavigate}
+          showFigmaUrlInput={true}
+          onFigmaUrlSubmit={onFigmaUrlSubmit}
+        />
+      );
+    }
+
+    // Regular assistant message (may have attached learning content cards)
     if (message.content) {
       return (
         <AssistantMessage
           content={message.content || ''}
           variant="neon"
           onNavigate={handleNavigate}
+          learningContent={metadata?.learningContent}
+          onOpenProjectPreview={onOpenProjectPreview}
         />
       );
     }

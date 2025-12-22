@@ -14,9 +14,11 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon } from '@fortawesome/free-solid-svg-icons';
+import { faDragon, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { createProjectFromImageSession } from '@/services/projects';
 import {
   ChatCore,
   ChatMessageList,
@@ -73,6 +75,8 @@ interface SidebarChatLayoutProps {
   // Special contexts for DashboardLayout compatibility
   architectureRegenerateContext?: ArchitectureRegenerateContext | null;
   learningSetupContext?: LearningSetupContext | null;
+  // Expand mode for learning sessions
+  defaultExpanded?: boolean;
 }
 
 // Helper component to handle effects that need to run inside ChatCore
@@ -122,10 +126,13 @@ export function SidebarChatLayout({
   context = 'default',
   architectureRegenerateContext = null,
   learningSetupContext = null,
+  defaultExpanded = false,
 }: SidebarChatLayoutProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const triggerFileSelectRef = useRef<(() => void) | null>(null);
   const dropFilesRef = useRef<((files: File[]) => void) | null>(null);
 
@@ -208,6 +215,15 @@ export function SidebarChatLayout({
         const handleQuickAction = (message: string) => {
           setShowQuickActions(false);
           state.sendMessage(message);
+        };
+
+        // Handle creating a project from a generated image
+        const handleCreateProjectFromImage = async (sessionId: number) => {
+          const result = await createProjectFromImageSession(sessionId);
+          return {
+            projectUrl: result.url,
+            projectTitle: result.title,
+          };
         };
 
         // Wrap sendMessage to intercept slash commands
@@ -345,7 +361,12 @@ export function SidebarChatLayout({
 
             {/* Sidebar Panel */}
             <div
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-white/95 dark:bg-background/95 backdrop-blur-xl border-l border-slate-200 dark:border-white/10 z-50 flex flex-col shadow-2xl animate-slide-in-right"
+              className={`
+                fixed right-0 top-0 h-full bg-white/95 dark:bg-background/95 backdrop-blur-xl
+                border-l border-slate-200 dark:border-white/10 z-50 flex flex-col shadow-2xl
+                animate-slide-in-right transition-all duration-300 ease-in-out
+                ${isExpanded ? 'w-full max-w-4xl' : 'w-full max-w-md'}
+              `}
               onDragEnter={handlePanelDragEnter}
               onDragLeave={handlePanelDragLeave}
               onDragOver={handlePanelDragOver}
@@ -372,8 +393,8 @@ export function SidebarChatLayout({
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center">
-                    <FontAwesomeIcon icon={faDragon} className="w-5 h-5 text-orange-500 dark:text-orange-400" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center">
+                    <FontAwesomeIcon icon={faDragon} className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />
                   </div>
                   <div>
                     <h2 className="font-semibold text-slate-900 dark:text-white">Ember</h2>
@@ -385,12 +406,26 @@ export function SidebarChatLayout({
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
-                >
-                  <XMarkIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {/* Expand/Collapse button */}
+                  <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+                    title={isExpanded ? 'Collapse panel' : 'Expand panel'}
+                  >
+                    <FontAwesomeIcon
+                      icon={isExpanded ? faCompress : faExpand}
+                      className="w-4 h-4 text-slate-500 dark:text-slate-400"
+                    />
+                  </button>
+                  {/* Close button */}
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                  </button>
+                </div>
               </div>
 
               {/* Content Area */}
@@ -442,8 +477,12 @@ export function SidebarChatLayout({
                         isLoading={state.isLoading}
                         currentTool={state.currentTool}
                         onCancelProcessing={state.cancelProcessing}
+                        userAvatarUrl={user?.avatarUrl}
                         onboarding={state.onboarding}
                         onNavigate={handleNavigate}
+                        onCreateProjectFromImage={handleCreateProjectFromImage}
+                        onConnectFigma={integrationFlow?.handleConnectFigma}
+                        onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
                       />
                     </div>
 

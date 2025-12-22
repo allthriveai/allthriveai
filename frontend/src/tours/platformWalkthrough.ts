@@ -72,12 +72,12 @@ export const platformWalkthroughTour: TourDefinition = {
       targetPath: '/play/prompt-battles', // After explore, go to battles
       dialogue: [
         "The Explore page is where the magic happens!",
-        "Discover amazing projects, AI tools, and talented creators.",
+        "Discover amazing projects, AI tools, and talented members.",
       ],
       features: [
         'Browse trending projects',
         'Find AI tools and resources',
-        'Connect with other creators',
+        'Connect with other members',
       ],
       icon: 'faCompass',
       gradient: 'from-amber-500 to-orange-500',

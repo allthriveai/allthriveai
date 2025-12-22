@@ -18,8 +18,16 @@ import {
   completeLearningSetup,
   resetLearningSetup,
   getLearningPathBySlug,
+  getSavedPaths,
+  getSavedPathBySlug,
+  activateSavedPath,
+  deleteSavedPath,
 } from '@/services/learningPaths';
-import type { GeneratedLearningPath } from '@/services/learningPaths';
+import type {
+  GeneratedLearningPath,
+  SavedLearningPathListItem,
+  SavedLearningPath,
+} from '@/services/learningPaths';
 import type {
   UserLearningPath,
   LearningPathDetail,
@@ -49,8 +57,11 @@ export const learningPathKeys = {
   conceptMastery: (topic?: string) => [...learningPathKeys.all, 'mastery', { topic }] as const,
   // Structured path keys
   structuredPath: () => [...learningPathKeys.all, 'structuredPath'] as const,
-  // Generated learning path by slug
-  bySlug: (slug: string) => [...learningPathKeys.all, 'bySlug', slug] as const,
+  // Generated learning path by username and slug
+  bySlug: (username: string, slug: string) => [...learningPathKeys.all, 'bySlug', username, slug] as const,
+  // Saved learning paths (path library)
+  savedPaths: () => [...learningPathKeys.all, 'savedPaths'] as const,
+  savedPath: (slug: string) => [...learningPathKeys.all, 'savedPath', slug] as const,
 };
 
 /**
@@ -248,13 +259,73 @@ export function useResetLearningSetup() {
 // =============================================================================
 
 /**
- * Get a generated learning path by its slug
+ * Get a generated learning path by username and slug
  */
-export function useLearningPathBySlug(slug: string, enabled: boolean = true) {
+export function useLearningPathBySlug(username: string, slug: string, enabled: boolean = true) {
   return useQuery<GeneratedLearningPath, Error>({
-    queryKey: learningPathKeys.bySlug(slug),
-    queryFn: () => getLearningPathBySlug(slug),
-    enabled: enabled && !!slug,
+    queryKey: learningPathKeys.bySlug(username, slug),
+    queryFn: () => getLearningPathBySlug(username, slug),
+    enabled: enabled && !!username && !!slug,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+// =============================================================================
+// SAVED LEARNING PATHS - Path Library Hooks
+// =============================================================================
+
+/**
+ * Get all saved learning paths for the current user (path library)
+ */
+export function useSavedPaths(enabled: boolean = true) {
+  return useQuery<SavedLearningPathListItem[], Error>({
+    queryKey: learningPathKeys.savedPaths(),
+    queryFn: getSavedPaths,
+    enabled,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+/**
+ * Get a specific saved learning path by slug
+ */
+export function useSavedPath(slug: string, enabled: boolean = true) {
+  return useQuery<SavedLearningPath, Error>({
+    queryKey: learningPathKeys.savedPath(slug),
+    queryFn: () => getSavedPathBySlug(slug),
+    enabled: enabled && !!slug,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+/**
+ * Activate a saved learning path
+ */
+export function useActivateSavedPath() {
+  const queryClient = useQueryClient();
+
+  return useMutation<SavedLearningPath, Error, string>({
+    mutationFn: activateSavedPath,
+    onSuccess: () => {
+      // Invalidate saved paths to reflect the new active state
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.savedPaths() });
+      // Also invalidate structured path as it may depend on active path
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.structuredPath() });
+    },
+  });
+}
+
+/**
+ * Delete (archive) a saved learning path
+ */
+export function useDeleteSavedPath() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: deleteSavedPath,
+    onSuccess: () => {
+      // Invalidate saved paths list
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.savedPaths() });
+    },
   });
 }

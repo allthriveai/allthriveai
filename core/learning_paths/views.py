@@ -20,6 +20,7 @@ from .models import (
     LearningEvent,
     ProactiveOfferResponse,
     ProjectLearningMetadata,
+    SavedLearningPath,
     UserConceptMastery,
 )
 from .serializers import (
@@ -38,6 +39,8 @@ from .serializers import (
     LearningStatsSerializer,
     ProactiveOfferResponseSerializer,
     ProjectLearningMetadataSerializer,
+    SavedLearningPathListSerializer,
+    SavedLearningPathSerializer,
     TopicRecommendationSerializer,
     UserConceptMasterySerializer,
     UserLearningPathSerializer,
@@ -141,6 +144,37 @@ class UserLearningPathsView(APIView):
         paths = service.get_user_paths(user, include_empty=False)
         serializer = UserLearningPathSerializer(paths, many=True)
         return Response(serializer.data)
+
+
+class UserLearningPathBySlugView(APIView):
+    """View for fetching a user's generated learning path by username and slug."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, username, slug):
+        """
+        GET /api/v1/users/{username}/learning-paths/{slug}/
+
+        Returns a user's generated learning path by slug.
+        Requires authentication.
+        """
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        profile = LearnerProfile.objects.filter(
+            user=user,
+            generated_path__slug=slug,
+        ).first()
+
+        if not profile or not profile.generated_path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(profile.generated_path)
 
 
 class AllTopicsView(APIView):
@@ -917,3 +951,108 @@ class FeedbackSummaryView(APIView):
                 'recent_feedback': ConversationFeedbackSerializer(recent_feedback, many=True).data,
             }
         )
+
+
+# ============================================================================
+# SAVED LEARNING PATH VIEWS - Multiple paths per user
+# ============================================================================
+
+
+class SavedLearningPathsView(APIView):
+    """View for managing user's saved learning paths (path library)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        GET /api/v1/me/saved-paths/
+
+        Returns all saved learning paths for the current user.
+        """
+        paths = (
+            SavedLearningPath.objects.filter(user=request.user, is_archived=False)
+            .order_by('-is_active', '-updated_at')
+        )
+        serializer = SavedLearningPathListSerializer(paths, many=True)
+        return Response(serializer.data)
+
+
+class SavedLearningPathDetailView(APIView):
+    """View for a specific saved learning path."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slug):
+        """
+        GET /api/v1/me/saved-paths/{slug}/
+
+        Returns a specific saved learning path with full curriculum.
+        """
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = SavedLearningPathSerializer(path)
+        return Response(serializer.data)
+
+    def delete(self, request, slug):
+        """
+        DELETE /api/v1/me/saved-paths/{slug}/
+
+        Archive a saved learning path (soft delete).
+        """
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        path.is_archived = True
+        path.is_active = False
+        path.save(update_fields=['is_archived', 'is_active', 'updated_at'])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ActivateSavedPathView(APIView):
+    """View for activating a saved learning path."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug):
+        """
+        POST /api/v1/me/saved-paths/{slug}/activate/
+
+        Set a path as the active learning path (deactivates others).
+        """
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Activate this path (deactivates all others)
+        path.activate()
+
+        serializer = SavedLearningPathSerializer(path)
+        return Response(serializer.data)

@@ -8,6 +8,7 @@ import {
   RocketLaunchIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  GiftIcon,
   EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import { useMessagesTrayOptional } from '@/context/MessagesTrayContext';
@@ -83,6 +84,14 @@ export function UserMenu({ user }: UserMenuProps) {
       highlight: true,
       onClick: () => {
         navigate('/onboarding');
+        setIsOpen(false);
+      },
+    },
+    {
+      label: 'Membership Perks',
+      icon: GiftIcon,
+      onClick: () => {
+        navigate('/perks');
         setIsOpen(false);
       },
     },
@@ -208,7 +217,7 @@ export function UserMenu({ user }: UserMenuProps) {
               <>
                 <button
                   onClick={() => setDashboardExpanded(!dashboardExpanded)}
-                  className="w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 dark:hover:bg-cyan-500/20"
+                  className="w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 dark:hover:bg-violet-500/20"
                 >
                   <ChartBarIcon className="w-4 h-4" />
                   <span className="flex-1">Dashboard</span>

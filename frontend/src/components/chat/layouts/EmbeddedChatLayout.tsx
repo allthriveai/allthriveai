@@ -29,7 +29,11 @@ import { checkGitHubConnection } from '@/services/github';
 import { checkGitLabConnection } from '@/services/gitlab';
 import { checkFigmaConnection } from '@/services/figma';
 import { api } from '@/services/api';
+import { createProjectFromImageSession } from '@/services/projects';
 import { getSectionFromFeeling, getSectionColor } from '@/utils/sectionColors';
+import { useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
+import type { LearningContentItem } from '@/hooks/useIntelligentChat';
+import type { Project } from '@/types/models';
 
 // Feeling options that show based on user's signup interests
 interface FeelingOption {
@@ -44,9 +48,18 @@ interface FeelingOption {
   priority?: number; // Higher = more likely to show
   // Conditional display flags
   requiresNoAvatar?: boolean; // Only show if user has no avatar
+  isDefault?: boolean; // Always show for new users
 }
 
 const FEELING_OPTIONS: FeelingOption[] = [
+  {
+    id: 'get-started',
+    label: "I don't know where to start",
+    signupFeatures: [], // Show for everyone
+    message: "I don't know where to start",
+    priority: 10, // Highest priority - always show first for new users
+    isDefault: true,
+  },
   {
     id: 'share',
     label: 'Share something I\'ve been working on',
@@ -213,6 +226,7 @@ function ChatStateEffects({
 export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const projectPreviewTray = useProjectPreviewTraySafe();
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [excitedFeatures, setExcitedFeatures] = useState<string[]>([]);
   const [showGamePicker, setShowGamePicker] = useState(false);
@@ -226,6 +240,9 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
   // Local messages for canned responses (share flow)
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+
+  // Track if we're in "quick win" flow (user said "I don't know where to start")
+  const [isQuickWinFlow, setIsQuickWinFlow] = useState(false);
 
   // Connection status for integrations
   const [connectionStatus, setConnectionStatus] = useState({
@@ -381,6 +398,9 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
   // Check if user has an avatar
   const hasAvatar = Boolean(user?.avatarUrl);
 
+  // Check if user is "new" (no projects yet) - show get-started pill first
+  const isNewUser = !user?.projectsCount || user.projectsCount === 0;
+
   // Filter and rotate feeling options based on user's signup interests and context
   const feelingOptions = useMemo((): FeelingOption[] => {
     const getOption = (id: string) => FEELING_OPTIONS.find((o) => o.id === id)!;
@@ -393,6 +413,14 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
     // Fallback if no features match
     if (matchingOptions.length === 0) {
       matchingOptions = [getOption('play'), getOption('explore'), getOption('learn'), getOption('share')];
+    }
+
+    // For new users, always include the 'get-started' pill first
+    if (isNewUser) {
+      const getStartedPill = getOption('get-started');
+      if (getStartedPill && !matchingOptions.some(o => o.id === 'get-started')) {
+        matchingOptions.unshift(getStartedPill);
+      }
     }
 
     // Remove personalize if already completed
@@ -431,7 +459,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
     // Shuffle the final selection for visual variety
     return shuffleArray(topOptions);
-  }, [excitedFeatures, hasPersonalized, hasAvatar]);
+  }, [excitedFeatures, hasPersonalized, hasAvatar, isNewUser]);
 
   // Show feeling pills with animation
   const [showPills, setShowPills] = useState(false);
@@ -454,6 +482,31 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
           if (option.id === 'play') {
             // Show game picker instead of sending a message
             setShowGamePicker(true);
+            return;
+          }
+          if (option.id === 'get-started') {
+            // Show encouraging response - inline action pills will appear after infographic is created
+            const timestamp = Date.now();
+
+            // Add user message
+            const userMessage: ChatMessage = {
+              id: `user-get-started-${timestamp}`,
+              content: "I don't know where to start",
+              sender: 'user',
+              timestamp: new Date(),
+            };
+
+            // Add assistant message prompting for a concept (simple, reduces overwhelm)
+            const assistantMessage: ChatMessage = {
+              id: `ember-get-started-${timestamp}`,
+              content: "What's ONE thing you're curious about?",
+              sender: 'assistant',
+              timestamp: new Date(),
+            };
+
+            setLocalMessages((prev) => [...prev, userMessage, assistantMessage]);
+            // Enter quick win flow - next user message will be prefixed
+            setIsQuickWinFlow(true);
             return;
           }
           if (option.id === 'share') {
@@ -637,15 +690,63 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
           navigate(path);
         };
 
-        // Wrap sendMessage to intercept slash commands
+        // Handle opening project preview tray from learning content cards
+        const handleOpenProjectPreview = (item: LearningContentItem) => {
+          if (!projectPreviewTray) {
+            // Fallback to navigation if tray context not available
+            if (item.url) {
+              navigate(item.url);
+            }
+            return;
+          }
+
+          // Convert LearningContentItem to minimal Project for the tray
+          // The tray will fetch full project data when opened
+          const project: Project = {
+            id: parseInt(item.id, 10) || 0,
+            title: item.title,
+            slug: item.slug || '',
+            username: item.author_username || '',
+            description: item.description || '',
+            featuredImageUrl: item.featured_image_url || item.thumbnail || '',
+            content: {},
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          projectPreviewTray.openProjectPreview(project);
+        };
+
+        // Handle creating a project from a generated image
+        const handleCreateProjectFromImage = async (sessionId: number) => {
+          const result = await createProjectFromImageSession(sessionId);
+          return {
+            projectUrl: result.url,
+            projectTitle: result.title,
+          };
+        };
+
+        // Wrap sendMessage to intercept slash commands and handle special flows
         const handleSendMessage = (message: string, attachments?: File[]) => {
           // Handle /clear command
           if (message.trim().toLowerCase() === '/clear') {
             state.clearMessages();
             setTypedGreeting('');
             setIsTypingComplete(false);
+            setIsQuickWinFlow(false);
             return;
           }
+
+          // If we're in the quick win flow, prefix the message for the LLM
+          // The prefix is stripped from display in ChatMessageList
+          if (isQuickWinFlow) {
+            const cleanMessage = message.trim();
+            const prefixedMessage = `[QUICK_WIN_TOPIC: ${cleanMessage}] Create an infographic about this topic for me.`;
+            setIsQuickWinFlow(false); // Reset after first message
+            state.sendMessage(prefixedMessage, attachments);
+            return;
+          }
+
           // Pass through to normal send
           state.sendMessage(message, attachments);
         };
@@ -756,17 +857,32 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                     </div>
                   )}
 
-                  {/* Chat messages */}
+                  {/* Chat messages - filter out QUICK_WIN prefix from display */}
                   <ChatMessageList
-                    messages={[...localMessages, ...state.messages]}
+                    messages={[...localMessages, ...state.messages].map((msg) => {
+                      // Strip QUICK_WIN prefix from user messages for display
+                      if (msg.sender === 'user' && msg.content.startsWith('[QUICK_WIN_TOPIC:')) {
+                        const match = msg.content.match(/\[QUICK_WIN_TOPIC:\s*(.+?)\]/);
+                        if (match) {
+                          return { ...msg, content: match[1] };
+                        }
+                      }
+                      return msg;
+                    })}
                     isLoading={state.isLoading}
                     currentTool={state.currentTool}
                     onCancelProcessing={state.cancelProcessing}
+                    userAvatarUrl={user?.avatarUrl}
                     onboarding={state.onboarding}
                     onNavigate={handleNavigate}
+                    onCreateProjectFromImage={handleCreateProjectFromImage}
                     onProjectImportOptionSelect={handleProjectImportOptionSelect}
                     onIntegrationSelect={handleIntegrationCardSelect}
                     connectionStatus={connectionStatus}
+                    onConnectFigma={integrationFlow?.handleConnectFigma}
+                    onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
+                    onInlineActionClick={(message) => state.sendMessage(message)}
+                    onOpenProjectPreview={handleOpenProjectPreview}
                   />
 
                   {/* Inline integration flow (GitHub/GitLab/Figma) */}

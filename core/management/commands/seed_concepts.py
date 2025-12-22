@@ -279,8 +279,9 @@ class Command(BaseCommand):
         self.stdout.write('Concepts by topic:')
         from core.taxonomy.models import Taxonomy
 
-        topic_taxonomies = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('order', 'name')
+        topic_taxonomies = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('name')
         for topic in topic_taxonomies:
-            count = Concept.objects.filter(topic=topic, is_active=True).count()
+            # Filter by topic slug since Concept.topic is a CharField, not FK
+            count = Concept.objects.filter(topic=slugify(topic.name), is_active=True).count()
             if count > 0:
                 self.stdout.write(f'  {topic.name}: {count} concepts')

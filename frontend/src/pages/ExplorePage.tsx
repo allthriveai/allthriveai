@@ -478,7 +478,7 @@ export function ExplorePage() {
                 Explore
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Discover amazing projects and creators
+                Discover amazing projects and members
               </p>
             </div>
 

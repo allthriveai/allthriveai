@@ -4,6 +4,7 @@ import {
   updateTaxonomyPreferences,
   getTaxonomiesByType,
   type TaxonomyPreferences as TaxonomyPreferencesType,
+  type SkillLevel,
 } from '@/services/personalization';
 import type { Taxonomy } from '@/types/models';
 import {
@@ -15,6 +16,7 @@ import {
   BuildingOfficeIcon,
   CheckIcon,
   ChevronDownIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 
 interface TaxonomyOption {
@@ -24,6 +26,30 @@ interface TaxonomyOption {
   icon: React.ComponentType<{ className?: string }>;
   isMultiSelect: boolean;
 }
+
+interface SkillLevelOption {
+  value: SkillLevel;
+  label: string;
+  description: string;
+}
+
+const SKILL_LEVEL_OPTIONS: SkillLevelOption[] = [
+  {
+    value: 'beginner',
+    label: 'Beginner',
+    description: 'New to AI - want clear explanations and step-by-step guidance',
+  },
+  {
+    value: 'intermediate',
+    label: 'Intermediate',
+    description: 'Comfortable with basics - ready for more depth',
+  },
+  {
+    value: 'advanced',
+    label: 'Advanced',
+    description: 'Experienced - prefer concise, technical content',
+  },
+];
 
 const TAXONOMY_OPTIONS: TaxonomyOption[] = [
   {
@@ -196,6 +222,22 @@ export function TaxonomyPreferences() {
     return `${selected.length} selected`;
   }
 
+  async function handleSkillLevelChange(level: SkillLevel) {
+    if (!preferences) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+      const updated = await updateTaxonomyPreferences({ skillLevel: level });
+      setPreferences(updated);
+    } catch (err) {
+      console.error('Failed to update skill level:', err);
+      setError('Failed to save skill level');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="glass-subtle rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
@@ -225,6 +267,59 @@ export function TaxonomyPreferences() {
       )}
 
       <div className="space-y-3">
+        {/* Skill Level Section - Always visible at top */}
+        <div className="border border-primary-200 dark:border-primary-700 rounded-lg overflow-hidden bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20">
+          <div className="p-3 sm:p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
+                <AcademicCapIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-300" />
+              </div>
+              <div>
+                <h4 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">
+                  Skill Level
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {preferences?.skillLevel
+                    ? SKILL_LEVEL_OPTIONS.find((o) => o.value === preferences.skillLevel)?.label
+                    : 'Not set'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Your skill level helps Ember personalize explanations and learning content for you.
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {SKILL_LEVEL_OPTIONS.map((option) => {
+                const isSelected = preferences?.skillLevel === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleSkillLevelChange(option.value)}
+                    disabled={saving}
+                    className={`flex-1 min-w-[100px] p-3 rounded-lg text-left transition-all border-2 ${
+                      isSelected
+                        ? 'border-primary-500 bg-primary-100 dark:bg-primary-800/50'
+                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                    } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm text-gray-900 dark:text-white">
+                        {option.label}
+                      </span>
+                      {isSelected && <CheckIcon className="w-4 h-4 text-primary-600 dark:text-primary-400" />}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {option.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         {TAXONOMY_OPTIONS.map((option) => {
           const Icon = option.icon;
           const isExpanded = expandedSection === option.type;

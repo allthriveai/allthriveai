@@ -173,7 +173,7 @@ export function Testimonials() {
                 <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
                   {formatStat(stats.activeCreators)}
                 </div>
-                <div className="text-gray-500 text-sm mt-1">Active Creators</div>
+                <div className="text-gray-500 text-sm mt-1">Active Members</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
@@ -197,7 +197,7 @@ export function Testimonials() {
                     ...
                   </div>
                   <div className="text-gray-500 text-sm mt-1">
-                    {i === 1 ? 'Active Creators' : i === 2 ? 'Projects Shared' : 'Total Points Won'}
+                    {i === 1 ? 'Active Members' : i === 2 ? 'Projects Shared' : 'Total Points Won'}
                   </div>
                 </div>
               ))}

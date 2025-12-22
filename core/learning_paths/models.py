@@ -197,7 +197,7 @@ class LearnerProfile(models.Model):
     LEARNING_GOAL_CHOICES = [
         ('build_projects', 'Build AI Projects'),
         ('understand_concepts', 'Understand AI Concepts'),
-        ('career', 'Career Exploration'),
+        ('career', 'Get Unstuck'),
         ('exploring', 'Just Exploring'),
     ]
 
@@ -1658,3 +1658,101 @@ class GoalCheckIn(models.Model):
 
         days_since = (timezone.now() - last.created_at).days
         return days_since >= days_between
+
+
+# ============================================================================
+# SAVED LEARNING PATH - Multiple paths per user
+# ============================================================================
+
+
+class SavedLearningPath(models.Model):
+    """
+    Stores generated learning paths that users can save and return to.
+
+    Unlike LearnerProfile.generated_path which stores only one active path,
+    this model allows users to have multiple saved paths they can switch between.
+    """
+
+    DIFFICULTY_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='saved_learning_paths',
+    )
+    slug = models.SlugField(
+        max_length=200,
+        help_text='URL-friendly identifier for this path',
+    )
+    title = models.CharField(
+        max_length=255,
+        help_text='Display title for the learning path',
+    )
+
+    # Full curriculum structure (same format as LearnerProfile.generated_path)
+    path_data = models.JSONField(
+        default=dict,
+        help_text='Curriculum structure with items, tools, topics',
+    )
+
+    # Metadata
+    difficulty = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_CHOICES,
+        default='beginner',
+    )
+    estimated_hours = models.FloatField(
+        default=0.0,
+        help_text='Total estimated hours to complete',
+    )
+
+    # Gemini-generated cover image
+    cover_image = models.URLField(
+        blank=True,
+        help_text='URL to AI-generated cover image',
+    )
+
+    # Status
+    is_active = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Whether this is the currently active path',
+    )
+    is_archived = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Soft delete - archived paths are hidden but not deleted',
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'slug']
+        ordering = ['-is_active', '-updated_at']
+        verbose_name = 'Saved Learning Path'
+        verbose_name_plural = 'Saved Learning Paths'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['user', '-updated_at']),
+        ]
+
+    def __str__(self):
+        status = ' (active)' if self.is_active else ''
+        return f"{self.user.username}'s path: {self.title}{status}"
+
+    def activate(self):
+        """Set this path as active and deactivate others."""
+        # Deactivate all other paths for this user
+        SavedLearningPath.objects.filter(
+            user=self.user,
+            is_active=True,
+        ).exclude(pk=self.pk).update(is_active=False)
+        # Activate this one
+        self.is_active = True
+        self.save(update_fields=['is_active', 'updated_at'])

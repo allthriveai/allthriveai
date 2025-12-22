@@ -404,7 +404,7 @@ export default function AuthPage() {
               className="text-slate-400 text-sm"
               variants={motionVariants}
             >
-              Join thousands of creators exploring AI.
+              Join thousands of members exploring AI.
             </motion.p>
           </motion.div>
 

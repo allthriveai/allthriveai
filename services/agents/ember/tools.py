@@ -36,6 +36,10 @@ from services.agents.learning.tools import (
 from services.agents.orchestration.tools import ORCHESTRATION_TOOLS
 from services.agents.profile.agent import TOOLS_NEEDING_STATE as PROFILE_TOOLS_NEEDING_STATE
 from services.agents.profile.tools import PROFILE_TOOLS
+from services.agents.profile_questions.tools import (
+    PROFILE_QUESTION_TOOLS,
+    TOOLS_NEEDING_STATE as PROFILE_QUESTION_TOOLS_NEEDING_STATE,
+)
 from services.agents.project.tools import PROJECT_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -66,6 +70,8 @@ EMBER_TOOLS = [
     *ORCHESTRATION_TOOLS,
     # Profile (3 tools) - Gather data, generate sections, save sections
     *PROFILE_TOOLS,
+    # Profile Questions (1 tool) - Interactive profile-building questions
+    *PROFILE_QUESTION_TOOLS,
 ]
 
 # Lookup by tool name
@@ -99,6 +105,8 @@ TOOLS_NEEDING_STATE = (
         'create_project_from_screenshot',
     }
     # Orchestration tools (none need state currently, but ready for future)
+    # Profile question tools needing state
+    | PROFILE_QUESTION_TOOLS_NEEDING_STATE
 )
 
 # Tool count summary for logging/debugging

@@ -305,6 +305,14 @@ body:not(.impersonating) {
     box-shadow: 0 4px 20px rgba(14, 165, 233, 0.1);
   }
 
+  /* Glass style for chat messages - no hover effects (reserve for links) */
+  .glass-message {
+    @apply backdrop-blur-md;
+    border-radius: var(--radius);
+    background-color: var(--glass-fill-subtle);
+    border: 1px solid var(--glass-border-subtle);
+  }
+
   .glass-strong {
     @apply backdrop-blur-2xl transition-all duration-300;
     border-radius: var(--radius);

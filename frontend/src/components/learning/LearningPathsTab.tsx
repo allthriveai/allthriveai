@@ -16,7 +16,6 @@ import {
   faWandMagicSparkles,
   faCheckCircle,
   faArrowRight,
-  faLightbulb,
 } from '@fortawesome/free-solid-svg-icons';
 import { LearningPathCard } from './LearningPathCard';
 import {
@@ -109,21 +108,6 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
 
   return (
     <div className="space-y-8 pb-20">
-      {/* Private Learning Notice - Only visible to the profile owner */}
-      {isOwnProfile && (
-        <div className="flex items-start gap-3 p-4 bg-teal-50/50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg">
-          <FontAwesomeIcon
-            icon={faLightbulb}
-            className="w-5 h-5 text-teal-600 dark:text-teal-400 mt-0.5 flex-shrink-0"
-          />
-          <div>
-            <p className="text-sm text-teal-800 dark:text-teal-200">
-              <span className="font-semibold">Your learning progress is private.</span> Only you can see this tab and track your journey. Complete quizzes and side quests to level up your skills!
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Personalization Quiz - Always show first for own profile */}
       {isOwnProfile && personalizationQuiz && (
         <section>
@@ -213,7 +197,7 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
               <LearningPathCard
                 key={path.id}
                 path={path}
-                onClick={() => navigate(`/learn/${path.topic}`)}
+                onClick={() => navigate(`/${username}/learn/${path.topic}`)}
               />
             ))}
           </div>

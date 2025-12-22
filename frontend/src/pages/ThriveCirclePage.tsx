@@ -222,36 +222,16 @@ export default function ThriveCirclePage() {
                 </h1>
                 <div className="max-w-6xl space-y-2">
                   <p className="text-base sm:text-lg text-gray-700 dark:text-gray-300">
-                    Thrive Circles are small groups of creators matched weekly based on where you are in your journey.
+                    Thrive Circles are small groups of members matched weekly based on where you are in your journey.
                   </p>
                   {myCircle && (
                     <p className="text-base sm:text-lg text-gray-700 dark:text-gray-300">
-                      {myCircle.matchReason || `You and ${myCircle.memberCount - 1} other creators are all at the ${myCircle.tierDisplay || myCircle.tier} level. We put you together so you can learn from each other, share wins, and grow at a similar pace.`}
+                      {myCircle.matchReason || `You and ${myCircle.memberCount - 1} other members are all at the ${myCircle.tierDisplay || myCircle.tier} level. We put you together so you can learn from each other, share wins, and grow at a similar pace.`}
                     </p>
                   )}
                 </div>
               </div>
             </header>
-
-            {/* Hero Section with Circle Challenge */}
-            <div className="relative">
-              <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-                {/* Circle Challenge - Hero Style */}
-                {myCircle?.activeChallenge ? (
-                  <CircleChallengeCard challenge={myCircle.activeChallenge} variant="hero" />
-                ) : (
-                  <div className="glass-card neon-border p-8 text-center">
-                    <FontAwesomeIcon icon={faCalendarWeek} className="text-4xl text-cyan-600 dark:text-cyan-bright/50 mb-4" />
-                    <p className="text-lg text-gray-600 dark:text-slate-400">
-                      {myCircle
-                        ? 'No challenge this week. Check back on Monday!'
-                        : 'Circles are formed every Monday. Check back soon!'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16 space-y-6">
@@ -272,14 +252,39 @@ export default function ThriveCirclePage() {
                 />
               </div>
 
-              {/* Row 2: Kudos Wall (100% - only shows if kudos exist) */}
+              {/* Row 2: This Week's Challenge */}
+              <section aria-labelledby="weekly-challenge-heading">
+                <div className="mb-4">
+                  <h2 id="weekly-challenge-heading" className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    This Week's Challenge
+                  </h2>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed">
+                    Each week, your circle shares a challenge to complete together. When you hit the goal,
+                    you earn bonus points and help your circle climb the leaderboard. Challenges reset every Monday.
+                  </p>
+                </div>
+                {myCircle?.activeChallenge ? (
+                  <CircleChallengeCard challenge={myCircle.activeChallenge} variant="hero" />
+                ) : (
+                  <div className="glass-card neon-border p-8 text-center">
+                    <FontAwesomeIcon icon={faCalendarWeek} className="text-4xl text-cyan-600 dark:text-cyan-bright/50 mb-4" />
+                    <p className="text-lg text-gray-600 dark:text-slate-400">
+                      {myCircle
+                        ? 'No challenge this week. Check back on Monday!'
+                        : 'Circles are formed every Monday. Check back soon!'}
+                    </p>
+                  </div>
+                )}
+              </section>
+
+              {/* Row 4: Kudos Wall (100% - only shows if kudos exist) */}
               <KudosWall
                 kudos={kudosReceived || []}
                 currentUserId={user?.id?.toString()}
                 isLoading={isLoadingKudos}
               />
 
-              {/* Row 3: Circle Projects Feed (100%) */}
+              {/* Row 5: Circle Projects Feed (100%) */}
               <CircleProjectsFeed
                 projects={circleProjects}
                 isLoading={isLoadingCircleProjects}

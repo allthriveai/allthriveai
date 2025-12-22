@@ -402,21 +402,33 @@ EMBER_FULL_ONBOARDING_PROMPT = EMBER_SYSTEM_PROMPT + EMBER_ONBOARDING_PROMPT
 # =============================================================================
 
 
-def format_member_context(context: dict | None) -> str:
+# Maximum tokens for member context injection (prevents unbounded context growth)
+# At ~4 chars per token, this is about 2000 characters
+MAX_MEMBER_CONTEXT_TOKENS = 500
+
+
+def format_member_context(context: dict | None, max_tokens: int = MAX_MEMBER_CONTEXT_TOKENS) -> str:
     """
     Format member context for injection into the system prompt.
 
     Converts the MemberContext dict into a readable format that helps
     Ember personalize responses.
 
+    Token budgeting: The output is limited to max_tokens to prevent unbounded
+    context growth that could exhaust the context window at scale.
+
     Args:
         context: MemberContext dict or None
+        max_tokens: Maximum tokens for output (default: 500, ~2000 chars)
 
     Returns:
         Formatted string for system prompt, or empty string if no context
     """
     if not context:
         return ''
+
+    # Estimate max chars from token budget (rough: 4 chars per token)
+    max_chars = max_tokens * 4
 
     sections = []
 
@@ -546,7 +558,13 @@ def format_member_context(context: dict | None) -> str:
     if not sections:
         return ''
 
-    return '\n\n## About This Member\n' + '\n'.join(f'- {s}' for s in sections)
+    result = '\n\n## About This Member\n' + '\n'.join(f'- {s}' for s in sections)
+
+    # Truncate if exceeds token budget
+    if len(result) > max_chars:
+        result = result[: max_chars - 20] + '\n... [truncated]'
+
+    return result
 
 
 # =============================================================================

@@ -86,8 +86,8 @@ export function ChallengeTeaserMessage({
   if (!hasChallenge || !challenge) {
     return (
       <div className="flex justify-start">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0 mr-4">
+          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-400" />
         </div>
         <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
           <p className="text-slate-200">{message || 'No active challenges right now. Check back soon!'}</p>
@@ -120,8 +120,8 @@ export function ChallengeTeaserMessage({
 
   return (
     <div className="flex justify-start w-full">
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-        <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0 mr-4">
+        <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-400" />
       </div>
       <div className="flex-1 min-w-0 max-w-lg">
         {/* Header */}

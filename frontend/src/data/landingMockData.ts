@@ -171,7 +171,7 @@ export const mockSideQuests = [
   {
     id: 'modality-3',
     title: 'Prompt Battles',
-    description: 'Compete against other creators in timed prompt challenges and earn rankings',
+    description: 'Compete against other members in timed prompt challenges and earn rankings',
     pointsReward: 250,
     difficulty: 'advanced' as const,
     icon: 'battle',

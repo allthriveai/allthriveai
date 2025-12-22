@@ -38,9 +38,12 @@ help:
 	@echo "  make createsuperuser - Create Django superuser"
 	@echo ""
 	@echo "Data Management:"
-	@echo "  make create-pip      - Create Pip bot user (if doesn't exist)"
+	@echo "  make seed-core-team  - Seed All Thrive Core Team (Ember, Pip, Sage, Haven)"
+	@echo "  make recreate-core-team - Recreate Core Team with latest data"
+	@echo "  make create-pip      - Create Pip bot user only (if doesn't exist)"
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
 	@echo "  make seed-quizzes    - Seed initial quiz data"
+	@echo "  make seed-concepts   - Seed learning concepts for AI education"
 	@echo "  make seed-ai-pricing - Seed AI provider pricing for cost tracking"
 	@echo "  make seed-battle-prompts - Seed battle prompts for prompt battles"
 	@echo "  make seed-test-users - Create test users for admin impersonation"
@@ -215,6 +218,14 @@ recreate-pip:
 	@echo "Recreating Pip with latest data..."
 	docker-compose exec web python manage.py create_pip --recreate
 
+seed-core-team:
+	@echo "Seeding All Thrive Core Team (Ember, Pip, Sage, Haven)..."
+	docker-compose exec web python manage.py seed_core_team
+
+recreate-core-team:
+	@echo "Recreating All Thrive Core Team..."
+	docker-compose exec web python manage.py seed_core_team --recreate
+
 # Create a YouTube feed agent
 # Usage: make create-youtube-agent CHANNEL_URL="https://www.youtube.com/@ChannelName" SOURCE_NAME="Channel Name"
 # Optional: AVATAR="https://..." WEBSITE="https://..." TWITTER="https://..." INSTAGRAM="https://..." LINKEDIN="https://..." GITHUB="https://..."
@@ -240,6 +251,10 @@ endif
 seed-quizzes:
 	@echo "Seeding quizzes..."
 	docker-compose exec web python manage.py seed_quizzes
+
+seed-concepts:
+	@echo "Seeding learning concepts..."
+	docker-compose exec web python manage.py seed_concepts
 
 seed-ai-pricing:
 	@echo "Seeding AI provider pricing..."
@@ -267,12 +282,13 @@ seed-all:
 	docker-compose exec web python manage.py seed_categories
 	docker-compose exec web python manage.py seed_tools
 	docker-compose exec web python manage.py seed_quizzes
+	docker-compose exec web python manage.py seed_concepts
 	docker-compose exec web python manage.py seed_battle_prompts
 	docker-compose exec web python manage.py seed_billing
 	docker-compose exec web python manage.py seed_credit_packs
 	docker-compose exec web python manage.py seed_ai_pricing
 	docker-compose exec web python manage.py seed_achievements
-	docker-compose exec web python manage.py create_pip
+	docker-compose exec web python manage.py seed_core_team
 	docker-compose exec web python manage.py create_test_users --count=10
 	@echo "✓ All data seeded successfully!"
 
@@ -951,6 +967,7 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_categories"
 	@make aws-run-command CMD="seed_tools"
 	@make aws-run-command CMD="seed_quizzes"
+	@make aws-run-command CMD="seed_concepts"
 	@make aws-run-command CMD="seed_battle_prompts"
 	@make aws-run-command CMD="seed_billing"
 	@make aws-run-command CMD="seed_credit_packs"

@@ -38,6 +38,10 @@ MAX_LIMIT = 12
 CACHE_TTL_SECONDS = 60  # 1 minute
 ALLOWED_CONTENT_TYPES = {'video', 'article', 'code-repo', 'quiz', 'game', 'project'}
 
+# Rate limiting: max searches per user per minute
+RATE_LIMIT_SEARCHES_PER_MINUTE = 10
+RATE_LIMIT_WINDOW_SECONDS = 60
+
 # Minimum relevance score for hybrid search results (0.0 to 1.0)
 # This filters out low-quality matches that would confuse users
 # With alpha=0.3 (70% keyword, 30% semantic), a score of 0.15 means
@@ -218,13 +222,18 @@ class SearchContext:
         return LEARNING_STYLE_CONTENT_MAP.get(self.learning_style, [])
 
     def get_context_hash(self) -> str:
-        """Hash of context for cache key."""
+        """
+        Hash of context for cache key.
+
+        Uses 16 hex chars (64 bits) instead of 8 to prevent birthday-paradox
+        collisions at scale (with 100k users, 8 chars has ~50% collision probability).
+        """
         key_parts = [
             self.difficulty_level,
             self.learning_style,
             ','.join(sorted(self.tool_interests[:5])),
         ]
-        return hashlib.sha256('|'.join(key_parts).encode()).hexdigest()[:8]  # noqa: S324
+        return hashlib.sha256('|'.join(key_parts).encode()).hexdigest()[:16]  # noqa: S324
 
 
 # =============================================================================
@@ -895,6 +904,44 @@ class FindContentInput(BaseModel):
     )
 
 
+def _check_rate_limit(user_id: int | None) -> tuple[bool, int]:
+    """
+    Check if user has exceeded the search rate limit.
+
+    Uses a sliding window counter in Redis/cache.
+
+    Args:
+        user_id: User ID to check (None = anonymous, skip rate limit)
+
+    Returns:
+        Tuple of (is_allowed, current_count)
+    """
+    if user_id is None:
+        # Anonymous users skip rate limiting (they have limited functionality anyway)
+        return (True, 0)
+
+    rate_limit_key = f'find_content:rate_limit:{user_id}'
+    current_count = cache.get(rate_limit_key, 0)
+
+    if current_count >= RATE_LIMIT_SEARCHES_PER_MINUTE:
+        logger.warning(f'Rate limit exceeded for user {user_id}: {current_count}/{RATE_LIMIT_SEARCHES_PER_MINUTE}')
+        return (False, current_count)
+
+    # Increment counter
+    try:
+        # Use cache.incr if available (atomic increment)
+        new_count = cache.incr(rate_limit_key)
+        if new_count == 1:
+            # First request in window, set TTL
+            cache.expire(rate_limit_key, RATE_LIMIT_WINDOW_SECONDS)
+    except (ValueError, TypeError):
+        # Key doesn't exist or incr not supported, set with default TTL
+        cache.set(rate_limit_key, 1, timeout=RATE_LIMIT_WINDOW_SECONDS)
+        new_count = 1
+
+    return (True, new_count)
+
+
 @tool(args_schema=FindContentInput)
 def find_content(
     query: str = '',
@@ -937,6 +984,18 @@ def find_content(
         f'user_id={context.user_id}, difficulty={context.difficulty_level}, '
         f'learning_style={context.learning_style}'
     )
+
+    # Check rate limit before processing
+    is_allowed, current_count = _check_rate_limit(context.user_id)
+    if not is_allowed:
+        return {
+            'success': False,
+            'content': [],
+            'projects': [],
+            'message': 'Please wait a moment before searching again.',
+            'error': 'rate_limit_exceeded',
+            'personalizationApplied': {},
+        }
 
     # Initialize response
     response: FindContentResult = {

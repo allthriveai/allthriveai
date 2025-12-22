@@ -234,7 +234,8 @@ export interface IntelligentChatMetadata {
        | 'onboarding_intro' | 'onboarding_avatar_prompt'
        | 'onboarding_avatar_preview' | 'inline_game'
        | 'learning_content' | 'project_import_options' | 'integration_picker'
-       | 'profile_question' | 'inline_actions';
+       | 'profile_question' | 'inline_actions'
+       | 'figma_connect' | 'figma_url_input';
   imageUrl?: string;
   filename?: string;
   sessionId?: number;
@@ -589,6 +590,15 @@ export function useIntelligentChat({
             case 'tool_end':
               // Tool execution completed - clear current tool
               setCurrentTool(null);
+              // DEBUG: Log tool_end event data
+              console.log('[DEBUG tool_end] tool:', data.tool, 'output keys:', data.output ? Object.keys(data.output) : 'none');
+              if (data.output?.content) {
+                console.log('[DEBUG tool_end] content array length:', (data.output.content as unknown[])?.length);
+                console.log('[DEBUG tool_end] content[0]:', (data.output.content as unknown[])?.[0]);
+              }
+              if (data.output?.projects) {
+                console.log('[DEBUG tool_end] projects array length:', (data.output.projects as unknown[])?.length);
+              }
               // Check for project creation
               // Handle create_project, import_github_project, and import_from_url
               if ((data.tool === 'create_project' || data.tool === 'import_github_project' || data.tool === 'import_from_url') &&
@@ -698,8 +708,18 @@ export function useIntelligentChat({
                 // find_content returns projects in a separate 'projects' array (not in content)
                 const projectsArray = outputData?.projects as Array<Record<string, unknown>> | undefined;
 
+              // DEBUG: Log find_content condition check
+              console.log('[DEBUG find_content check] tool:', data.tool);
+              console.log('[DEBUG find_content check] frontendContent length:', frontendContent?.length);
+              console.log('[DEBUG find_content check] projectsArray length:', projectsArray?.length);
+              console.log('[DEBUG find_content check] will enter block:',
+                (data.tool === 'find_content' || data.tool === 'find_learning_content') &&
+                ((frontendContent && frontendContent.length > 0) || (projectsArray && projectsArray.length > 0))
+              );
+
               if ((data.tool === 'find_content' || data.tool === 'find_learning_content') &&
                   ((frontendContent && frontendContent.length > 0) || (projectsArray && projectsArray.length > 0))) {
+                console.log('[DEBUG find_content] ENTERED processing block');
                 // Support both camelCase (find_content) and snake_case (legacy find_learning_content)
                 const contentArray = (frontendContent || []) as Array<{
                   type: string;
@@ -1273,6 +1293,19 @@ export function useIntelligentChat({
     ]);
   }, [isLoading]);
 
+  // Add a local assistant message (not sent to server)
+  // Useful for integration flows that show prompts in the chat
+  const addLocalMessage = useCallback((content: string, metadata?: IntelligentChatMetadata) => {
+    const localMessage: ChatMessage = {
+      id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      content,
+      sender: 'assistant' as const,
+      timestamp: new Date(),
+      metadata,
+    };
+    addMessageWithDedup(localMessage);
+  }, [addMessageWithDedup]);
+
   return {
     messages,
     isConnected,
@@ -1285,5 +1318,6 @@ export function useIntelligentChat({
     disconnect,
     clearMessages,
     cancelProcessing,
+    addLocalMessage,
   };
 }

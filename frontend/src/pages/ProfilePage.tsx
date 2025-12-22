@@ -20,9 +20,7 @@ import { LearningPathsTab } from '@/components/learning';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
 import { BattlesTab } from '@/components/battles';
 import { MyBattlesTab } from '@/components/battles/MyBattlesTab';
-import { ProfileTabMenu, type ProfileTabId, ALL_TABS, ALWAYS_PINNED, MAX_PINNED, loadPinnedTabs, savePinnedTabs } from '@/components/profile/ProfileTabMenu';
-import { faStar as faStarSolid } from '@fortawesome/free-solid-svg-icons';
-import { faStar as faStarOutline } from '@fortawesome/free-regular-svg-icons';
+import { ProfileTabMenu, type ProfileTabId, ALL_TABS } from '@/components/profile/ProfileTabMenu';
 import { getUserBattles } from '@/services/battles';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ProfileGeneratorTray } from '@/components/profile/ProfileGeneratorTray';
@@ -130,14 +128,6 @@ export default function ProfilePage() {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
-  // Tab pinning state for "More" menu
-  const [pinnedTabs, setPinnedTabs] = useState<ProfileTabId[]>(() => {
-    const stored = loadPinnedTabs();
-    if (stored) {
-      return stored;
-    }
-    return ['showcase', 'playground', 'clipped'];
-  });
 
   // Follow state
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -881,7 +871,7 @@ export default function ProfilePage() {
     setIsMessageLoading(true);
     try {
       const thread = await createDMThread({
-        participantIds: [profileUser.id.toString()],
+        participantIds: [profileUser.id],
       });
       // Open the messages tray with this thread selected
       openMessagesTray(thread.id);
@@ -1068,10 +1058,8 @@ export default function ProfilePage() {
     );
   }
 
-  // Determine if we're on the Showcase tab (full-width layout)
-  // Curation tier users (AI agents like Reddit, YouTube, RSS agents) should NOT use
-  // the new ProfileSections layout - they use the classic sidebar + masonry grid
-  const isShowcaseTab = activeTab === 'showcase' && !isCuration;
+  // Curation tier users (AI agents like Reddit, YouTube, RSS agents) use
+  // the classic sidebar + masonry grid layout. Regular users get the unified layout.
 
   return (
     <DashboardLayout>
@@ -1102,10 +1090,10 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Showcase Tab - Full-width layout with ProfileHeader */}
-        {isShowcaseTab && (
+        {/* Unified Layout - ProfileHeader for all tabs */}
+        {!isCuration && (
           <>
-            {/* Profile Header for Showcase */}
+            {/* Profile Header - Always visible */}
             <ProfileHeader
               user={displayUser}
               isOwnProfile={isOwnProfile}
@@ -1134,7 +1122,7 @@ export default function ProfilePage() {
               isAvatarUploading={isAvatarUploading}
             />
 
-            {/* Tab Navigation for Showcase */}
+            {/* Tab Navigation - Always visible */}
             <div className="border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center py-2">
@@ -1144,256 +1132,309 @@ export default function ProfilePage() {
                     availableTabs={tabs.map((t) => t.id as ProfileTabId)}
                     isOwnProfile={isOwnProfile}
                     isCreator={isCreator}
-                    pinnedTabs={pinnedTabs}
                   />
 
-                  {/* More Menu for Showcase tab */}
-                  {isOwnProfile && (() => {
-                    const availableTabIds = tabs.map((t) => t.id as ProfileTabId);
-                    const unpinnedTabs = availableTabIds.filter((id) => !pinnedTabs.includes(id));
-                    const customPinnedTabs = pinnedTabs.filter((id) => !ALWAYS_PINNED.includes(id));
-                    const getTab = (id: ProfileTabId) => ALL_TABS.find((t) => t.id === id);
+                  {/* Delete button - shown during selection mode */}
+                  {selectionMode && selectedProjectIds.size > 0 && (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors text-sm font-medium bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-500/20 ml-auto"
+                    >
+                      Delete ({selectedProjectIds.size})
+                    </button>
+                  )}
 
-                    const togglePin = (tabId: ProfileTabId) => {
-                      if (ALWAYS_PINNED.includes(tabId)) return;
+                  {/* Actions Menu */}
+                  {isOwnProfile && !selectionMode && (
+                    <div className="relative ml-auto flex-shrink-0" ref={moreMenuRef}>
+                      <button
+                        onClick={() => setShowMoreMenu(!showMoreMenu)}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full transition-all duration-200
+                          backdrop-blur-md border
+                          shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
+                          hover:scale-[1.02] active:scale-[0.98]
+                          ${showMoreMenu
+                            ? 'bg-primary-50/80 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 border-primary-200/60 dark:border-primary-500/30'
+                            : 'bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-400 border-white/50 dark:border-white/20 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50/70 dark:hover:bg-primary-500/15'
+                          }`}
+                        aria-expanded={showMoreMenu}
+                        aria-haspopup="menu"
+                        aria-label="Actions"
+                      >
+                        <FontAwesomeIcon icon={faEllipsisVertical} className="w-4 h-4" />
+                        <span>Actions</span>
+                      </button>
 
-                      setPinnedTabs((current) => {
-                        let newPinned: ProfileTabId[];
-                        if (current.includes(tabId)) {
-                          newPinned = current.filter((t) => t !== tabId);
-                        } else {
-                          if (current.length >= MAX_PINNED) {
-                            const indexToReplace = current.findIndex((t) => !ALWAYS_PINNED.includes(t));
-                            if (indexToReplace === -1) return current;
-                            newPinned = current.filter((_, i) => i !== indexToReplace);
-                            newPinned.push(tabId);
-                          } else {
-                            newPinned = [...current, tabId];
-                          }
-                        }
-                        savePinnedTabs(newPinned);
-                        return newPinned;
-                      });
-                    };
-
-                    const hasTabManagement = unpinnedTabs.length > 0 || customPinnedTabs.length > 0;
-
-                    return (
-                      <div className="relative ml-auto flex-shrink-0" ref={moreMenuRef}>
-                        <button
-                          onClick={() => setShowMoreMenu(!showMoreMenu)}
-                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full transition-all duration-200
-                            backdrop-blur-md border
-                            shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
-                            hover:scale-[1.02] active:scale-[0.98]
-                            ${showMoreMenu
-                              ? 'bg-primary-50/80 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 border-primary-200/60 dark:border-primary-500/30'
-                              : 'bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-400 border-white/50 dark:border-white/20 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50/70 dark:hover:bg-primary-500/15'
-                            }`}
-                          aria-expanded={showMoreMenu}
-                          aria-haspopup="menu"
-                          aria-label="More options"
+                      {/* Dropdown Menu */}
+                      {showMoreMenu && (
+                        <div
+                          className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                          role="menu"
                         >
-                          <FontAwesomeIcon icon={faEllipsisVertical} className="w-4 h-4" />
-                          <span>More</span>
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        {showMoreMenu && (
-                          <div
-                            className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
-                            role="menu"
+                          {/* Generate with AI */}
+                          <button
+                            data-testid="profile-generator-button"
+                            onClick={() => {
+                              handleGenerateProfile();
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                            role="menuitem"
                           >
-                            {/* Edit Profile */}
+                            <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
+                            <span>Generate with AI</span>
+                          </button>
+
+                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
+
+                          {/* Edit Profile */}
+                          <button
+                            onClick={() => {
+                              setIsEditingShowcase(true);
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            role="menuitem"
+                          >
+                            <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
+                            <span>Edit Profile</span>
+                          </button>
+
+                          {/* Add Project */}
+                          <button
+                            onClick={() => {
+                              window.dispatchEvent(new Event('openAddProject'));
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            role="menuitem"
+                          >
+                            <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
+                            <span>Add Project</span>
+                          </button>
+
+                          {/* See Public Profile */}
+                          <button
+                            onClick={() => {
+                              navigate(`/${username}?preview=public`);
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            role="menuitem"
+                          >
+                            <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
+                            <span>See Public Profile</span>
+                          </button>
+
+                          {/* Bulk Delete - Only show on Playground/Clipped tabs with projects */}
+                          {canManagePosts &&
+                           ((activeTab === 'playground' && projects.playground.length > 0) ||
+                            (activeTab === 'clipped' && clippedProjects.length > 0)) && (
                             <button
                               onClick={() => {
-                                setIsEditingShowcase(true);
+                                setSelectionMode(true);
                                 setShowMoreMenu(false);
                               }}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                               role="menuitem"
                             >
-                              <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
-                              <span>Edit Profile</span>
+                              <FontAwesomeIcon icon={faList} className="w-4 h-4" />
+                              <span>Bulk Delete</span>
                             </button>
-
-                            {/* Add Project */}
-                            <button
-                              onClick={() => {
-                                window.dispatchEvent(new Event('openAddProject'));
-                                setShowMoreMenu(false);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                              role="menuitem"
-                            >
-                              <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
-                              <span>Add Project</span>
-                            </button>
-
-                            {/* See Public Profile */}
-                            <button
-                              onClick={() => {
-                                navigate(`/${username}?preview=public`);
-                                setShowMoreMenu(false);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                              role="menuitem"
-                            >
-                              <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
-                              <span>See Public Profile</span>
-                            </button>
-
-                            {/* Tab Management Section */}
-                            {hasTabManagement && (
-                              <>
-                                <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
-
-                                {/* Unpinned tabs */}
-                                {unpinnedTabs.length > 0 && (
-                                  <>
-                                    <div className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Pin to Toolbar
-                                    </div>
-                                    {unpinnedTabs.map((tabId) => {
-                                      const tab = getTab(tabId);
-                                      if (!tab) return null;
-                                      return (
-                                        <div key={tabId} className="flex items-center px-2">
-                                          <button
-                                            onClick={() => {
-                                              handleTabChange(tabId);
-                                              setShowMoreMenu(false);
-                                            }}
-                                            className="flex-1 flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
-                                            role="menuitem"
-                                          >
-                                            <FontAwesomeIcon icon={tab.icon} className="w-4 h-4" />
-                                            <span>{tab.label}</span>
-                                          </button>
-                                          <button
-                                            onClick={() => togglePin(tabId)}
-                                            className="p-2 text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
-                                            title="Pin to toolbar"
-                                          >
-                                            <FontAwesomeIcon icon={faStarOutline} className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </>
-                                )}
-
-                                {/* Custom pinned tabs (for unpinning) */}
-                                {customPinnedTabs.length > 0 && (
-                                  <>
-                                    {unpinnedTabs.length > 0 && (
-                                      <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
-                                    )}
-                                    <div className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Your Pinned Tabs
-                                    </div>
-                                    {customPinnedTabs.map((tabId) => {
-                                      const tab = getTab(tabId);
-                                      if (!tab) return null;
-                                      return (
-                                        <div key={`pinned-${tabId}`} className="flex items-center px-2">
-                                          <button
-                                            onClick={() => {
-                                              handleTabChange(tabId);
-                                              setShowMoreMenu(false);
-                                            }}
-                                            className="flex-1 flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
-                                            role="menuitem"
-                                          >
-                                            <FontAwesomeIcon icon={tab.icon} className="w-4 h-4" />
-                                            <span>{tab.label}</span>
-                                          </button>
-                                          <button
-                                            onClick={() => togglePin(tabId)}
-                                            className="p-2 text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors"
-                                            title="Unpin from toolbar"
-                                          >
-                                            <FontAwesomeIcon icon={faStarSolid} className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Full-width Showcase Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
-              {/* Profile Completeness Indicator - hidden for now, needs rethinking */}
-              {/* {isOwnProfile && !isEditingShowcase && displayUser && (
-                <div className="mb-6">
-                  <ProfileCompleteness
-                    user={displayUser}
-                    onNavigateToSettings={() => navigate('/settings')}
-                    onNavigateToField={(fieldId) => navigate(`/settings#${fieldId}`)}
-                  />
+            {/* Tab Description - Help text explaining the current tab (only shown to profile owner) */}
+            {isOwnProfile && (() => {
+              const currentTab = ALL_TABS.find((t) => t.id === activeTab);
+              if (!currentTab) return null;
+              return (
+                <div className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/30 dark:border-gray-700/30">
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                      {currentTab.description}
+                    </p>
+                  </div>
                 </div>
-              )} */}
+              );
+            })()}
 
-              {/* Edit Controls */}
-              {isOwnProfile && (
-                <div className="flex items-center justify-center gap-3 mb-6">
-                  {isEditingShowcase && (
+            {/* Showcase Tab Content - Constrained width */}
+            {activeTab === 'showcase' && (
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
+                {/* Edit Controls - Only show when editing */}
+                {isOwnProfile && isEditingShowcase && (
+                  <div className="flex items-center justify-center gap-3 mb-6">
                     <button
                       onClick={() => setShowTemplatePicker(true)}
                       className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     >
                       Change Template
                     </button>
-                  )}
-                  <button
-                    data-testid="profile-generator-button"
-                    onClick={handleGenerateProfile}
-                    className="px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 border border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
-                    Generate with AI
-                  </button>
-                </div>
-              )}
+                  </div>
+                )}
 
-              {/* Profile Sections */}
-              {sectionsLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
-                </div>
-              ) : profileUserData ? (
-                <ProfileSections
-                  sections={profileSections}
-                  user={profileUserData}
-                  isEditing={isEditingShowcase}
-                  onSectionUpdate={handleSectionUpdate}
-                  onAddSection={handleAddSection}
-                  onDeleteSection={handleDeleteSection}
-                  onToggleVisibility={handleToggleSectionVisibility}
-                  onReorderSections={handleReorderSections}
-                  onSocialLinksUpdate={handleSocialLinksUpdate}
+                {sectionsLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
+                  </div>
+                ) : profileUserData ? (
+                  <ProfileSections
+                    sections={profileSections}
+                    user={profileUserData}
+                    isEditing={isEditingShowcase}
+                    onSectionUpdate={handleSectionUpdate}
+                    onAddSection={handleAddSection}
+                    onDeleteSection={handleDeleteSection}
+                    onToggleVisibility={handleToggleSectionVisibility}
+                    onReorderSections={handleReorderSections}
+                    onSocialLinksUpdate={handleSocialLinksUpdate}
+                  />
+                ) : (
+                  <div className="py-20 text-center">
+                    <p className="text-gray-500 dark:text-gray-400">Unable to load profile sections.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Playground Tab - Full width with padding */}
+            {activeTab === 'playground' && (
+              <div role="tabpanel" id="tabpanel-playground" aria-labelledby="tab-playground" className="px-4 sm:px-6 lg:px-8 pt-4 pb-20">
+                {projects.playground.length > 0 ? (
+                  <MasonryGrid>
+                    {projects.playground.map((project) => (
+                      <div key={project.id} className="break-inside-avoid mb-6">
+                        <ProjectCard
+                          project={project}
+                          onDelete={async () => {}}
+                          isOwner={canManagePosts}
+                          variant="masonry"
+                          selectionMode={selectionMode}
+                          isSelected={selectedProjectIds.has(project.id)}
+                          onSelect={toggleSelection}
+                          showShowcaseButton={isOwnProfile}
+                          isInShowcase={showcaseProjectIds.has(project.id)}
+                          onShowcaseToggle={handleShowcaseToggle}
+                        />
+                      </div>
+                    ))}
+                  </MasonryGrid>
+                ) : (
+                  <div className="text-center py-20">
+                    <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FontAwesomeIcon icon={faFlask} className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                      No projects yet
+                    </h3>
+                    {isOwnProfile ? (
+                      <div className="max-w-3xl mx-auto">
+                        <p className="text-gray-500 dark:text-gray-400 mb-8">
+                          Start building your portfolio by adding projects
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                          <button
+                            onClick={() => setShowProfileGeneratorTray(true)}
+                            className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
+                          >
+                            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                              <FontAwesomeIcon icon={faWandMagicSparkles} className="w-6 h-6 text-purple-500" />
+                            </div>
+                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Generate Profile</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Tell us about yourself and let AI create your profile
+                            </p>
+                          </button>
+                          <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('openAddProject'))}
+                            className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
+                          >
+                            <div
+                              className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+                              style={{ background: 'linear-gradient(135deg, #22d3ee, #4ade80)', boxShadow: '0 2px 8px rgba(34, 211, 238, 0.25)' }}
+                            >
+                              <FontAwesomeIcon icon={faPlus} className="w-6 h-6 text-slate-900" />
+                            </div>
+                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Add Projects with AI</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Share a link or describe your project
+                            </p>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                        {displayUser?.firstName || username} hasn't added any projects yet.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Clipped Tab - Full width with padding */}
+            {activeTab === 'clipped' && (
+              <div className="px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-clipped" aria-labelledby="tab-clipped">
+                <ClippedTab
+                  username={username || user?.username || ''}
+                  isOwnProfile={isOwnProfile}
+                  projects={clippedProjects}
+                  isLoading={isClippedLoading}
+                  selectionMode={selectionMode}
+                  selectedProjectIds={selectedProjectIds}
+                  onSelect={toggleSelection}
                 />
-              ) : (
-                <div className="py-20 text-center">
-                  <p className="text-gray-500 dark:text-gray-400">Unable to load profile sections.</p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Learning Tab */}
+            {activeTab === 'learning' && (
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-learning" aria-labelledby="tab-learning">
+                <LearningPathsTab
+                  username={username || user?.username || ''}
+                  isOwnProfile={isOwnProfile}
+                />
+              </div>
+            )}
+
+            {/* Activity Tab */}
+            {activeTab === 'activity' && isOwnProfile && (
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8" role="tabpanel" id="tabpanel-activity" aria-labelledby="tab-activity">
+                <ActivityInsightsTab
+                  username={username || ''}
+                  isOwnProfile={isOwnProfile}
+                />
+              </div>
+            )}
+
+            {/* Marketplace Tab */}
+            {activeTab === 'marketplace' && (
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-marketplace" aria-labelledby="tab-marketplace">
+                <MarketplaceTab
+                  username={username || user?.username || ''}
+                  isOwnProfile={isOwnProfile}
+                />
+              </div>
+            )}
+
+            {/* My Battles Tab */}
+            {activeTab === 'my-battles' && isOwnProfile && (
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-my-battles" aria-labelledby="tab-my-battles">
+                <MyBattlesTab />
+              </div>
+            )}
           </>
         )}
 
-        {/* Non-Showcase Tabs - Original layout with sidebar */}
-        {!isShowcaseTab && (
+        {/* Curation tier layout (AI agents) - Keep legacy sidebar for now */}
+        {isCuration && (
         <div className="w-full relative">
           {/* Mobile Sticky Header - Shows when scrolled past banner */}
           <div
@@ -1861,14 +1902,13 @@ export default function ProfilePage() {
                   role="tablist"
                   aria-label="Profile sections"
                 >
-                  {/* Profile Tab Menu - tab management is now in the More menu */}
+                  {/* Profile Tab Menu */}
                   <ProfileTabMenu
                     activeTab={activeTab as ProfileTabId}
                     onTabChange={(tabId) => handleTabChange(tabId as typeof activeTab)}
                     availableTabs={tabs.map((t) => t.id as ProfileTabId)}
                     isOwnProfile={isOwnProfile}
                     isCreator={isCreator}
-                    pinnedTabs={pinnedTabs}
                   />
 
                   {/* Delete button - shown during selection mode */}
@@ -1881,204 +1921,109 @@ export default function ProfilePage() {
                     </button>
                   )}
 
-                  {/* More Menu - Consolidates Add Project, Bulk Edit, Edit Profile, and Tab Management */}
-                  {isOwnProfile && !selectionMode && (() => {
-                    const availableTabIds = tabs.map((t) => t.id as ProfileTabId);
-                    const unpinnedTabs = availableTabIds.filter((id) => !pinnedTabs.includes(id));
-                    const customPinnedTabs = pinnedTabs.filter((id) => !ALWAYS_PINNED.includes(id));
-                    const getTab = (id: ProfileTabId) => ALL_TABS.find((t) => t.id === id);
+                  {/* Actions Menu */}
+                  {isOwnProfile && !selectionMode && (
+                    <div className="relative ml-auto flex-shrink-0" ref={moreMenuRef}>
+                      <button
+                        onClick={() => setShowMoreMenu(!showMoreMenu)}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full transition-all duration-200
+                          backdrop-blur-md border
+                          shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
+                          hover:scale-[1.02] active:scale-[0.98]
+                          ${showMoreMenu
+                            ? 'bg-primary-50/80 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 border-primary-200/60 dark:border-primary-500/30'
+                            : 'bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-400 border-white/50 dark:border-white/20 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50/70 dark:hover:bg-primary-500/15'
+                          }`}
+                        aria-expanded={showMoreMenu}
+                        aria-haspopup="menu"
+                        aria-label="Actions"
+                      >
+                        <FontAwesomeIcon icon={faEllipsisVertical} className="w-4 h-4" />
+                        <span>Actions</span>
+                      </button>
 
-                    const togglePin = (tabId: ProfileTabId) => {
-                      if (ALWAYS_PINNED.includes(tabId)) return;
-
-                      setPinnedTabs((current) => {
-                        let newPinned: ProfileTabId[];
-                        if (current.includes(tabId)) {
-                          newPinned = current.filter((t) => t !== tabId);
-                        } else {
-                          if (current.length >= MAX_PINNED) {
-                            const indexToReplace = current.findIndex((t) => !ALWAYS_PINNED.includes(t));
-                            if (indexToReplace === -1) return current;
-                            newPinned = current.filter((_, i) => i !== indexToReplace);
-                            newPinned.push(tabId);
-                          } else {
-                            newPinned = [...current, tabId];
-                          }
-                        }
-                        savePinnedTabs(newPinned);
-                        return newPinned;
-                      });
-                    };
-
-                    const hasTabManagement = unpinnedTabs.length > 0 || customPinnedTabs.length > 0;
-
-                    return (
-                      <div className="relative ml-auto flex-shrink-0" ref={moreMenuRef}>
-                        <button
-                          onClick={() => setShowMoreMenu(!showMoreMenu)}
-                          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full transition-all duration-200
-                            backdrop-blur-md border
-                            shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)]
-                            hover:scale-[1.02] active:scale-[0.98]
-                            ${showMoreMenu
-                              ? 'bg-primary-50/80 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 border-primary-200/60 dark:border-primary-500/30'
-                              : 'bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-400 border-white/50 dark:border-white/20 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50/70 dark:hover:bg-primary-500/15'
-                            }`}
-                          aria-expanded={showMoreMenu}
-                          aria-haspopup="menu"
-                          aria-label="More options"
+                      {/* Dropdown Menu */}
+                      {showMoreMenu && (
+                        <div
+                          className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                          role="menu"
                         >
-                          <FontAwesomeIcon icon={faEllipsisVertical} className="w-4 h-4" />
-                          <span>More</span>
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        {showMoreMenu && (
-                          <div
-                            className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
-                            role="menu"
+                          {/* Generate with AI */}
+                          <button
+                            data-testid="profile-generator-button"
+                            onClick={() => {
+                              handleGenerateProfile();
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                            role="menuitem"
                           >
-                            {/* Edit Profile */}
+                            <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
+                            <span>Generate with AI</span>
+                          </button>
+
+                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
+
+                          {/* Edit Profile */}
+                          <button
+                            onClick={() => {
+                              handleTabChange('showcase');
+                              setTimeout(() => setIsEditingShowcase(true), 100);
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            role="menuitem"
+                          >
+                            <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
+                            <span>Edit Profile</span>
+                          </button>
+
+                          {/* Add Project */}
+                          <button
+                            onClick={() => {
+                              window.dispatchEvent(new Event('openAddProject'));
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            role="menuitem"
+                          >
+                            <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
+                            <span>Add Project</span>
+                          </button>
+
+                          {/* See Public Profile */}
+                          <button
+                            onClick={() => {
+                              navigate(`/${username}?preview=public`);
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            role="menuitem"
+                          >
+                            <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
+                            <span>See Public Profile</span>
+                          </button>
+
+                          {/* Bulk Delete - Only show on Playground/Clipped tabs with projects */}
+                          {canManagePosts &&
+                           ((activeTab === 'playground' && projects.playground.length > 0) ||
+                            (activeTab === 'clipped' && clippedProjects.length > 0)) && (
                             <button
                               onClick={() => {
-                                handleTabChange('showcase');
-                                setTimeout(() => setIsEditingShowcase(true), 100);
+                                setSelectionMode(true);
                                 setShowMoreMenu(false);
                               }}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                               role="menuitem"
                             >
-                              <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
-                              <span>Edit Profile</span>
+                              <FontAwesomeIcon icon={faList} className="w-4 h-4" />
+                              <span>Bulk Delete</span>
                             </button>
-
-                            {/* Add Project */}
-                            <button
-                              onClick={() => {
-                                window.dispatchEvent(new Event('openAddProject'));
-                                setShowMoreMenu(false);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                              role="menuitem"
-                            >
-                              <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
-                              <span>Add Project</span>
-                            </button>
-
-                            {/* See Public Profile */}
-                            <button
-                              onClick={() => {
-                                navigate(`/${username}?preview=public`);
-                                setShowMoreMenu(false);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                              role="menuitem"
-                            >
-                              <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
-                              <span>See Public Profile</span>
-                            </button>
-
-                            {/* Bulk Delete - Only show on Playground/Clipped tabs with projects */}
-                            {canManagePosts &&
-                             ((activeTab === 'playground' && projects.playground.length > 0) ||
-                              (activeTab === 'clipped' && clippedProjects.length > 0)) && (
-                              <button
-                                onClick={() => {
-                                  setSelectionMode(true);
-                                  setShowMoreMenu(false);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                                role="menuitem"
-                              >
-                                <FontAwesomeIcon icon={faList} className="w-4 h-4" />
-                                <span>Bulk Delete</span>
-                              </button>
-                            )}
-
-                            {/* Tab Management Section */}
-                            {hasTabManagement && (
-                              <>
-                                <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
-
-                                {/* Unpinned tabs */}
-                                {unpinnedTabs.length > 0 && (
-                                  <>
-                                    <div className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Pin to Toolbar
-                                    </div>
-                                    {unpinnedTabs.map((tabId) => {
-                                      const tab = getTab(tabId);
-                                      if (!tab) return null;
-                                      return (
-                                        <div key={tabId} className="flex items-center px-2">
-                                          <button
-                                            onClick={() => {
-                                              handleTabChange(tabId);
-                                              setShowMoreMenu(false);
-                                            }}
-                                            className="flex-1 flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
-                                            role="menuitem"
-                                          >
-                                            <FontAwesomeIcon icon={tab.icon} className="w-4 h-4" />
-                                            <span>{tab.label}</span>
-                                          </button>
-                                          <button
-                                            onClick={() => togglePin(tabId)}
-                                            className="p-2 text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
-                                            title="Pin to tab bar"
-                                          >
-                                            <FontAwesomeIcon icon={faStarOutline} className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </>
-                                )}
-
-                                {/* Custom pinned tabs (for unpinning) */}
-                                {customPinnedTabs.length > 0 && (
-                                  <>
-                                    {unpinnedTabs.length > 0 && (
-                                      <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
-                                    )}
-                                    <div className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                      Your Pinned Tabs
-                                    </div>
-                                    {customPinnedTabs.map((tabId) => {
-                                      const tab = getTab(tabId);
-                                      if (!tab) return null;
-                                      return (
-                                        <div key={`pinned-${tabId}`} className="flex items-center px-2">
-                                          <button
-                                            onClick={() => {
-                                              handleTabChange(tabId);
-                                              setShowMoreMenu(false);
-                                            }}
-                                            className="flex-1 flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
-                                            role="menuitem"
-                                          >
-                                            <FontAwesomeIcon icon={tab.icon} className="w-4 h-4" />
-                                            <span>{tab.label}</span>
-                                          </button>
-                                          <button
-                                            onClick={() => togglePin(tabId)}
-                                            className="p-2 text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors"
-                                            title="Unpin from tab bar"
-                                          >
-                                            <FontAwesomeIcon icon={faStarSolid} className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Cancel Selection Mode button */}
                   {selectionMode && (

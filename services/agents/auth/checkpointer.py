@@ -76,21 +76,35 @@ def get_postgres_connection_string() -> str:
         return f'postgresql://{host}:{port}/{database}'
 
 
-def get_checkpointer(use_postgres: bool = True):
+def get_checkpointer(use_postgres: bool = True, allow_fallback: bool | None = None):
     """
     Get checkpointer for auth/project chat sessions.
     Uses PostgreSQL for persistent storage across server restarts.
 
+    IMPORTANT: This function does NOT silently fall back to MemorySaver by default.
+    At 100k users, silent fallback would cause widespread data loss without alerting
+    operators. Set allow_fallback=True only for non-critical paths or testing.
+
     Args:
         use_postgres: Use PostgreSQL checkpointer (default: True)
+        allow_fallback: If True, falls back to MemorySaver on error.
+                       If None (default), reads from EMBER_ALLOW_MEMORY_FALLBACK setting
+                       (defaults to False in production).
 
     Returns:
         PostgresSaver instance or MemorySaver
+
+    Raises:
+        CheckpointerError: If PostgreSQL connection fails and allow_fallback=False
     """
     global _checkpointer
 
     if _checkpointer is not None:
         return _checkpointer
+
+    # Determine fallback behavior from settings if not explicitly provided
+    if allow_fallback is None:
+        allow_fallback = getattr(settings, 'EMBER_ALLOW_MEMORY_FALLBACK', False)
 
     if use_postgres:
         try:
@@ -124,24 +138,41 @@ def get_checkpointer(use_postgres: bool = True):
             logger.info('Tables: checkpoints, checkpoint_writes, checkpoint_blobs')
 
         except ImportError as e:
-            logger.error(f'psycopg or psycopg_pool not installed: {e}')
-            logger.warning('Falling back to MemorySaver - Install: pip install psycopg psycopg-pool')
-            from langgraph.checkpoint.memory import MemorySaver
+            error_msg = f'psycopg or psycopg_pool not installed: {e}'
+            logger.critical(error_msg)
 
-            _checkpointer = MemorySaver()
+            if allow_fallback:
+                logger.warning('FALLBACK ENABLED: Using MemorySaver - Install: pip install psycopg psycopg-pool')
+                from langgraph.checkpoint.memory import MemorySaver
+
+                _checkpointer = MemorySaver()
+            else:
+                raise CheckpointerError(error_msg) from e
+
         except ValueError as e:
             # Configuration error - this is critical in production
-            logger.error(f'Database configuration error: {e}')
-            logger.warning('Falling back to MemorySaver - conversation state will not persist!')
-            from langgraph.checkpoint.memory import MemorySaver
+            error_msg = f'Database configuration error: {e}'
+            logger.critical(error_msg)
 
-            _checkpointer = MemorySaver()
+            if allow_fallback:
+                logger.warning('FALLBACK ENABLED: Using MemorySaver - conversation state will not persist!')
+                from langgraph.checkpoint.memory import MemorySaver
+
+                _checkpointer = MemorySaver()
+            else:
+                raise CheckpointerError(error_msg) from e
+
         except Exception as e:
-            logger.error(f'Failed to initialize PostgreSQL checkpointer: {e}')
-            logger.warning('Falling back to MemorySaver')
-            from langgraph.checkpoint.memory import MemorySaver
+            error_msg = f'Failed to initialize PostgreSQL checkpointer: {e}'
+            logger.critical(error_msg, exc_info=True)
 
-            _checkpointer = MemorySaver()
+            if allow_fallback:
+                logger.warning('FALLBACK ENABLED: Using MemorySaver')
+                from langgraph.checkpoint.memory import MemorySaver
+
+                _checkpointer = MemorySaver()
+            else:
+                raise CheckpointerError(error_msg) from e
     else:
         logger.info('Using MemorySaver for LangGraph state persistence (testing mode)')
         from langgraph.checkpoint.memory import MemorySaver
@@ -218,10 +249,29 @@ async def get_async_checkpointer(allow_fallback: bool = False):
 
         # Setup tables only once per worker process (not every request)
         # This significantly reduces DB load at scale
+        # Uses distributed lock to prevent concurrent setup() across workers
         if not _tables_initialized:
-            await checkpointer.setup()
+            setup_lock_key = 'langgraph:checkpointer:setup_lock'
+            try:
+                # Acquire distributed lock for cross-worker safety
+                # cache.add is atomic and returns True only if key didn't exist
+                if cache.add(setup_lock_key, '1', timeout=60):
+                    try:
+                        await checkpointer.setup()
+                        logger.info('LangGraph checkpoint tables initialized (with distributed lock)')
+                    finally:
+                        cache.delete(setup_lock_key)
+                else:
+                    # Another worker is running setup, wait briefly and continue
+                    # Tables should exist by the time we need them
+                    logger.debug('Another worker is initializing tables, waiting...')
+                    import asyncio
+
+                    await asyncio.sleep(1)
+            except Exception as e:
+                logger.warning(f'Error during table setup (may be concurrent setup): {e}')
+                # Continue anyway - tables may already exist from another worker
             _tables_initialized = True
-            logger.info('LangGraph checkpoint tables initialized')
         else:
             logger.debug('AsyncPostgresSaver ready (tables already initialized)')
 

@@ -34,7 +34,7 @@ import {
   faChevronRight,
   type IconDefinition,
 } from '@fortawesome/free-solid-svg-icons';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import type { SideQuest, UserSideQuest } from '@/types/models';
 import { DEFAULT_QUEST_COLORS } from '@/utils/colors';
 
@@ -164,6 +164,10 @@ export default function GamesPage() {
     setExpandedCategory(prev => prev === categorySlug ? null : categorySlug);
   };
 
+  // Refs for sections
+  const sideQuestsRef = useRef<HTMLElement>(null);
+  const location = useLocation();
+
   // Slider for Continue Playing
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -249,6 +253,33 @@ export default function GamesPage() {
     updateScrollButtons();
   }, [inProgressQuests]);
 
+  // Update URL hash when scrolling to side-quests section
+  useEffect(() => {
+    if (!sideQuestsRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Add #side-quests to URL when section is visible
+            if (location.hash !== '#side-quests') {
+              window.history.replaceState(null, '', `${location.pathname}#side-quests`);
+            }
+          } else {
+            // Remove hash when scrolling back up past the section
+            if (location.hash === '#side-quests') {
+              window.history.replaceState(null, '', location.pathname);
+            }
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '-100px 0px 0px 0px' }
+    );
+
+    observer.observe(sideQuestsRef.current);
+    return () => observer.disconnect();
+  }, [location.pathname, location.hash]);
+
   // Show login prompt for unauthenticated users (AFTER all hooks)
   if (!isAuthenticated) {
     return (
@@ -316,7 +347,7 @@ export default function GamesPage() {
               <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-green-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-green-400 bg-clip-text text-transparent">Games</span>
             </h1>
             <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
-              Play games, complete side quests, and earn legendary rewards
+              Learn AI concepts through play and earn points along the way
             </p>
           </div>
         </header>
@@ -338,9 +369,14 @@ export default function GamesPage() {
 
           {/* Featured Games Section */}
           <section>
-            <div className="flex items-center gap-3 mb-4">
-              <FontAwesomeIcon icon={faGamepad} className="text-violet-400" />
-              <h2 className="text-lg font-bold text-default">Featured Games</h2>
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <FontAwesomeIcon icon={faGamepad} className="text-violet-400 text-xl" />
+                <h2 className="text-2xl font-bold text-default">Featured Games</h2>
+              </div>
+              <p className="text-secondary ml-8">
+                Jump into fun, interactive games that teach AI concepts through play. Challenge friends, compete for high scores, and earn points while learning.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -494,140 +530,16 @@ export default function GamesPage() {
             </div>
           </section>
 
-          {/* Continue Playing - Active Quests */}
-          {inProgressQuests.length > 0 && (
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <FontAwesomeIcon icon={faPlay} className="text-cyan-400" />
-                  <h2 className="text-lg font-bold text-default">Continue Playing</h2>
-                </div>
-                {/* Navigation arrows - only show on desktop when there are more than 3 quests */}
-                {inProgressQuests.length > 3 && (
-                  <div className="hidden sm:flex items-center gap-2">
-                    <button
-                      onClick={() => scrollSlider('left')}
-                      disabled={!canScrollLeft}
-                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                      style={{ background: 'var(--glass-fill)', border: GLASS_BORDER_SUBTLE }}
-                    >
-                      <FontAwesomeIcon icon={faChevronLeft} className="text-muted text-sm" />
-                    </button>
-                    <button
-                      onClick={() => scrollSlider('right')}
-                      disabled={!canScrollRight}
-                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                      style={{ background: 'var(--glass-fill)', border: GLASS_BORDER_SUBTLE }}
-                    >
-                      <FontAwesomeIcon icon={faChevronRight} className="text-muted text-sm" />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Horizontal slider container */}
-              <div
-                ref={sliderRef}
-                onScroll={updateScrollButtons}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                className={`flex gap-4 overflow-x-auto scrollbar-hide pb-2 ${isDragging ? '' : 'snap-x snap-mandatory'} select-none`}
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab' }}
-              >
-                {inProgressQuests.map((userQuest) => {
-                  // Get category colors for this quest
-                  const { colors: questColors } = getQuestCategoryInfo(null, userQuest);
-                  const colorFrom = questColors?.colorFrom || DEFAULT_QUEST_COLORS.colorFrom;
-                  const colorTo = questColors?.colorTo || DEFAULT_QUEST_COLORS.colorTo;
-
-                  return (
-                    <div
-                      key={userQuest.id}
-                      className="group relative overflow-hidden rounded-xl text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer flex-shrink-0 snap-start w-[85vw] sm:w-[calc((100%-2rem)/2)] lg:w-[calc((100%-2rem)/3)]"
-                      style={{
-                        background: `linear-gradient(135deg, ${hexToRgba(colorFrom, 0.15)}, ${hexToRgba(colorTo, 0.05)})`,
-                        border: `1px solid ${hexToRgba(colorFrom, 0.3)}`,
-                      }}
-                      onClick={() => handleCardClick(userQuest)}
-                    >
-                      {/* Delete Button - appears on hover */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          abandonQuest(userQuest.sideQuest.id);
-                        }}
-                        disabled={isAbandoningQuest}
-                        className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 bg-red-500/80 hover:bg-red-500 text-white shadow-lg"
-                        title="Cancel quest"
-                      >
-                        <FontAwesomeIcon icon={faTimes} className="text-xs" />
-                      </button>
-
-                      {/* Glow Effect */}
-                      <div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                        style={{
-                          background: `radial-gradient(circle at center, ${hexToRgba(colorFrom, 0.2)}, transparent 70%)`,
-                        }}
-                      />
-
-                      <div className="relative p-4 sm:p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div
-                            className="w-10 h-10 rounded-lg flex items-center justify-center"
-                            style={{
-                              background: `linear-gradient(135deg, ${hexToRgba(colorFrom, 0.4)}, ${hexToRgba(colorTo, 0.2)})`,
-                            }}
-                          >
-                            <FontAwesomeIcon icon={faPlay} style={{ color: colorFrom }} />
-                          </div>
-                          <span
-                            className="text-[10px] px-2 py-1 rounded-full font-bold animate-pulse"
-                            style={{
-                              backgroundColor: hexToRgba(colorFrom, 0.3),
-                              color: colorFrom,
-                            }}
-                          >
-                            IN PROGRESS
-                          </span>
-                        </div>
-
-                        <h4 className="font-bold text-default mb-1 truncate">{userQuest.sideQuest.title}</h4>
-                        <p className="text-xs text-muted truncate mb-3">
-                          {userQuest.sideQuest.categorySlug?.replace(/-/g, ' ')}
-                        </p>
-
-                        {/* Progress */}
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--glass-fill)' }}>
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${userQuest.progressPercentage}%`,
-                                background: `linear-gradient(135deg, ${colorFrom}, ${colorTo})`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm font-bold" style={{ color: colorFrom }}>{userQuest.progressPercentage}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
           {/* Side Quests - Game Library */}
-          <section>
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-1">
-                <FontAwesomeIcon icon={faCompass} className="text-cyan-400" />
-                <h2 className="text-lg font-bold text-default">Side Quests</h2>
+          <section ref={sideQuestsRef} id="side-quests" className="mt-20">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <FontAwesomeIcon icon={faCompass} className="text-cyan-400 text-xl" />
+                <h2 className="text-2xl font-bold text-default">Side Quests</h2>
               </div>
-              <p className="text-sm text-muted ml-8">Get points as you meet other people and interact with All Thrive</p>
+              <p className="text-secondary ml-8">
+                Side quests are bonus challenges that reward you for exploring All Thrive. They unlock naturally as you use the platform, or you can start one yourself and dive right in.
+              </p>
             </div>
 
             {isLoadingCategories || isLoading ? (
@@ -911,6 +823,132 @@ export default function GamesPage() {
               </div>
             )}
           </section>
+
+          {/* Continue Playing - Active Quests */}
+          {inProgressQuests.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <FontAwesomeIcon icon={faPlay} className="text-cyan-400" />
+                  <h2 className="text-lg font-bold text-default">Continue Playing</h2>
+                </div>
+                {/* Navigation arrows - only show on desktop when there are more than 3 quests */}
+                {inProgressQuests.length > 3 && (
+                  <div className="hidden sm:flex items-center gap-2">
+                    <button
+                      onClick={() => scrollSlider('left')}
+                      disabled={!canScrollLeft}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      style={{ background: 'var(--glass-fill)', border: GLASS_BORDER_SUBTLE }}
+                    >
+                      <FontAwesomeIcon icon={faChevronLeft} className="text-muted text-sm" />
+                    </button>
+                    <button
+                      onClick={() => scrollSlider('right')}
+                      disabled={!canScrollRight}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      style={{ background: 'var(--glass-fill)', border: GLASS_BORDER_SUBTLE }}
+                    >
+                      <FontAwesomeIcon icon={faChevronRight} className="text-muted text-sm" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Horizontal slider container */}
+              <div
+                ref={sliderRef}
+                onScroll={updateScrollButtons}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
+                className={`flex gap-4 overflow-x-auto scrollbar-hide pb-2 ${isDragging ? '' : 'snap-x snap-mandatory'} select-none`}
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab' }}
+              >
+                {inProgressQuests.map((userQuest) => {
+                  // Get category colors for this quest
+                  const { colors: questColors } = getQuestCategoryInfo(null, userQuest);
+                  const colorFrom = questColors?.colorFrom || DEFAULT_QUEST_COLORS.colorFrom;
+                  const colorTo = questColors?.colorTo || DEFAULT_QUEST_COLORS.colorTo;
+
+                  return (
+                    <div
+                      key={userQuest.id}
+                      className="group relative overflow-hidden rounded-xl text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer flex-shrink-0 snap-start w-[85vw] sm:w-[calc((100%-2rem)/2)] lg:w-[calc((100%-2rem)/3)]"
+                      style={{
+                        background: `linear-gradient(135deg, ${hexToRgba(colorFrom, 0.15)}, ${hexToRgba(colorTo, 0.05)})`,
+                        border: `1px solid ${hexToRgba(colorFrom, 0.3)}`,
+                      }}
+                      onClick={() => handleCardClick(userQuest)}
+                    >
+                      {/* Delete Button - appears on hover */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abandonQuest(userQuest.sideQuest.id);
+                        }}
+                        disabled={isAbandoningQuest}
+                        className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 bg-red-500/80 hover:bg-red-500 text-white shadow-lg"
+                        title="Cancel quest"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                      </button>
+
+                      {/* Glow Effect */}
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                        style={{
+                          background: `radial-gradient(circle at center, ${hexToRgba(colorFrom, 0.2)}, transparent 70%)`,
+                        }}
+                      />
+
+                      <div className="relative p-4 sm:p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{
+                              background: `linear-gradient(135deg, ${hexToRgba(colorFrom, 0.4)}, ${hexToRgba(colorTo, 0.2)})`,
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faPlay} style={{ color: colorFrom }} />
+                          </div>
+                          <span
+                            className="text-[10px] px-2 py-1 rounded-full font-bold animate-pulse"
+                            style={{
+                              backgroundColor: hexToRgba(colorFrom, 0.3),
+                              color: colorFrom,
+                            }}
+                          >
+                            IN PROGRESS
+                          </span>
+                        </div>
+
+                        <h4 className="font-bold text-default mb-1 truncate">{userQuest.sideQuest.title}</h4>
+                        <p className="text-xs text-muted truncate mb-3">
+                          {userQuest.sideQuest.categorySlug?.replace(/-/g, ' ')}
+                        </p>
+
+                        {/* Progress */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--glass-fill)' }}>
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${userQuest.progressPercentage}%`,
+                                background: `linear-gradient(135deg, ${colorFrom}, ${colorTo})`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-bold" style={{ color: colorFrom }}>{userQuest.progressPercentage}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
 
       </div>

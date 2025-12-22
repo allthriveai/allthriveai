@@ -9,3 +9,7 @@ class CommunityConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'core.community'
     verbose_name = 'Community Messaging'
+
+    def ready(self):
+        """Import signal handlers when the app is ready."""
+        import core.community.signals  # noqa: F401

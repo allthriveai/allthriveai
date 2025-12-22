@@ -119,7 +119,7 @@ export function EmberAdventureBanner({
             <div className="flex items-center justify-between gap-2 sm:gap-4">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0">
-                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-orange-500 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]" />
+                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-cyan-500 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]" />
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 dark:text-orange-400 flex-shrink-0" />
@@ -174,7 +174,7 @@ export function EmberAdventureBanner({
               {/* Ember avatar and message */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0">
-                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-orange-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
+                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-cyan-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
                 </div>
                 <span className="text-orange-300 text-xs sm:text-sm">
                   <span className="text-orange-300 font-semibold">Ember:</span>{' '}

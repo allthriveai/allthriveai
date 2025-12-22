@@ -190,17 +190,48 @@ export async function resetLearningSetup(): Promise<void> {
 // =============================================================================
 
 /**
+ * AI-generated lesson content structure
+ * Contains personalized learning material adapted to user's style and level
+ */
+export interface AILessonContent {
+  /** 1-2 sentence hook explaining what the learner will understand */
+  summary: string;
+  /** List of 3-5 key terms/concepts covered */
+  keyConcepts: string[];
+  /** Full markdown explanation with formatting, code blocks, diagrams */
+  explanation: string;
+  /** Practical examples with optional code */
+  examples?: Array<{
+    title: string;
+    description: string;
+    code?: string;
+  }>;
+  /** A question or exercise for the learner to try */
+  practicePrompt?: string;
+  /** Optional mermaid diagram code for visual learners */
+  mermaidDiagram?: string;
+}
+
+/**
  * Curriculum item in a generated learning path
+ * Can be either curated content (video, article, etc.) or AI-generated lesson
  */
 export interface CurriculumItem {
   order: number;
-  type: 'tool' | 'video' | 'article' | 'quiz' | 'game' | 'code-repo' | 'other';
+  type: 'tool' | 'video' | 'article' | 'quiz' | 'game' | 'code-repo' | 'ai_lesson' | 'other';
   title: string;
-  project_id?: number;
-  tool_slug?: string;
-  quiz_id?: number;
-  game_slug?: string;
+  // For existing curated content
+  projectId?: number;
+  toolSlug?: string;
+  quizId?: number;
+  gameSlug?: string;
   url?: string;
+  // For AI-generated lessons
+  content?: AILessonContent;
+  estimatedMinutes?: number;
+  difficulty?: string;
+  /** True if this item was AI-generated, false/undefined for curated content */
+  generated?: boolean;
 }
 
 /**
@@ -211,16 +242,82 @@ export interface GeneratedLearningPath {
   slug: string;
   title: string;
   curriculum: CurriculumItem[];
-  tools_covered: string[];
-  topics_covered: string[];
+  toolsCovered: string[];
+  topicsCovered: string[];
   difficulty: string;
-  estimated_hours: number;
+  estimatedHours: number;
+  /** Number of AI-generated lessons in the curriculum */
+  aiLessonCount?: number;
+  /** Number of curated content items in the curriculum */
+  curatedCount?: number;
 }
 
 /**
- * Get a generated learning path by its slug
+ * Get a generated learning path by username and slug
  */
-export async function getLearningPathBySlug(slug: string): Promise<GeneratedLearningPath> {
-  const response = await api.get<GeneratedLearningPath>(`/learning-paths/${slug}/`);
+export async function getLearningPathBySlug(username: string, slug: string): Promise<GeneratedLearningPath> {
+  const response = await api.get<GeneratedLearningPath>(`/users/${username}/learning-paths/${slug}/`);
   return response.data;
+}
+
+// =============================================================================
+// SAVED LEARNING PATHS - Path Library APIs
+// =============================================================================
+
+/**
+ * Saved learning path from the path library
+ * Used for list views - lightweight version without full curriculum
+ */
+export interface SavedLearningPathListItem {
+  id: number;
+  slug: string;
+  title: string;
+  difficulty: string;
+  estimatedHours: number;
+  coverImage: string | null;
+  isActive: boolean;
+  curriculumCount: number;
+  createdAt: string;
+}
+
+/**
+ * Full saved learning path with curriculum
+ */
+export interface SavedLearningPath extends SavedLearningPathListItem {
+  isArchived: boolean;
+  curriculum: CurriculumItem[];
+  aiLessonCount: number;
+  curatedCount: number;
+  updatedAt: string;
+}
+
+/**
+ * Get all saved learning paths for the current user
+ */
+export async function getSavedPaths(): Promise<SavedLearningPathListItem[]> {
+  const response = await api.get<SavedLearningPathListItem[]>('/me/saved-paths/');
+  return response.data;
+}
+
+/**
+ * Get a specific saved learning path by slug
+ */
+export async function getSavedPathBySlug(slug: string): Promise<SavedLearningPath> {
+  const response = await api.get<SavedLearningPath>(`/me/saved-paths/${slug}/`);
+  return response.data;
+}
+
+/**
+ * Activate a saved learning path (makes it the current active path)
+ */
+export async function activateSavedPath(slug: string): Promise<SavedLearningPath> {
+  const response = await api.post<SavedLearningPath>(`/me/saved-paths/${slug}/activate/`);
+  return response.data;
+}
+
+/**
+ * Delete (archive) a saved learning path
+ */
+export async function deleteSavedPath(slug: string): Promise<void> {
+  await api.delete(`/me/saved-paths/${slug}/`);
 }

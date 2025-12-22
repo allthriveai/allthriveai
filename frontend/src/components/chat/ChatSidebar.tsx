@@ -21,6 +21,8 @@ export interface ChatSidebarProps {
   learningSetupContext?: LearningSetupContext | null;
   // Legacy prop for CreatorSettingsPage - translates to project context
   productCreationMode?: boolean;
+  // Expand mode for learning sessions
+  defaultExpanded?: boolean;
 }
 
 export function ChatSidebar({
@@ -31,6 +33,7 @@ export function ChatSidebar({
   architectureRegenerateContext = null,
   learningSetupContext = null,
   productCreationMode = false,
+  defaultExpanded = false,
 }: ChatSidebarProps) {
   // If productCreationMode is true, use 'project' context (for product creation flows)
   const effectiveContext = productCreationMode ? 'project' : context;
@@ -52,6 +55,7 @@ export function ChatSidebar({
       context={effectiveContext}
       architectureRegenerateContext={architectureRegenerateContext}
       learningSetupContext={learningSetupContext}
+      defaultExpanded={defaultExpanded}
     />
   );
 }

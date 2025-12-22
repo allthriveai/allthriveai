@@ -48,8 +48,8 @@ export function PeopleToConnectMessage({
 
     return (
       <div className="flex justify-start">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0 mr-4">
+          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-400" />
         </div>
         <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
           {isNoPreferences ? (
@@ -88,14 +88,14 @@ export function PeopleToConnectMessage({
 
   return (
     <div className="flex justify-start w-full">
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-        <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-orange-400" />
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0 mr-4">
+        <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-400" />
       </div>
       <div className="flex-1 min-w-0">
         {/* Header */}
         <div className="glass-subtle px-5 py-3 rounded-2xl rounded-bl-sm mb-3">
           <p className="text-slate-200">
-            Here are some <span className="text-violet-400 font-medium">creators</span> you might like to connect with:
+            Here are some <span className="text-violet-400 font-medium">members</span> you might like to connect with:
           </p>
         </div>
 

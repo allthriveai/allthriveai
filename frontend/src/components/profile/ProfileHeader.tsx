@@ -63,6 +63,7 @@ function getTierDisplay(tier?: string): string {
     bloom: 'Bloom',
     evergreen: 'Evergreen',
     curation: 'Curation',
+    team: 'All Thrive Team',
   };
   return tierMap[tier || ''] || 'Seedling';
 }
@@ -380,7 +381,16 @@ export function ProfileHeader({
                 <span className="font-bold text-gray-900 dark:text-white">{followingCount}</span>
                 <span className="text-gray-500 dark:text-gray-400 ml-1">Following</span>
               </button>
-              {user?.totalPoints !== undefined && user.tier !== 'curation' && (
+              {user?.tier === 'team' ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="px-3 py-1 text-xs font-bold bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-500 dark:text-orange-400 rounded-full border border-orange-500/40 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    All Thrive Team
+                  </span>
+                </div>
+              ) : user?.totalPoints !== undefined && user.tier !== 'curation' && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-bold text-gray-900 dark:text-white">{user.totalPoints.toLocaleString()}</span>
                   <span className="text-gray-500 dark:text-gray-400">Points</span>

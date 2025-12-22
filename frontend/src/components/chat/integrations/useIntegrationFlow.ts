@@ -38,6 +38,7 @@ import type { IntegrationState, IntegrationActions, IntegrationId, IntegrationFl
 interface UseIntegrationFlowOptions {
   onSendMessage: (message: string) => void;
   onHasInteracted?: () => void;
+  onAddLocalMessage?: (content: string, metadata?: { type?: string }) => void;
 }
 
 interface IntegrationFlowReturn {
@@ -74,6 +75,7 @@ const initialFlowState = {
 export function useIntegrationFlow({
   onSendMessage,
   onHasInteracted,
+  onAddLocalMessage,
 }: UseIntegrationFlowOptions): IntegrationFlowReturn {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -290,37 +292,40 @@ export function useIntegrationFlow({
 
   // Figma handlers
   const startFigmaFlow = useCallback(async () => {
-    setActiveFlow('figma');
-    setFigmaState({ step: 'loading', message: 'Checking your Figma connection...', error: null });
     onHasInteracted?.();
 
     try {
       const isConnected = await checkFigmaConnection();
 
       if (!isConnected) {
-        setFigmaState({
-          step: 'connect',
-          message: 'You need to connect your Figma account first.',
-          error: null,
-        });
+        // Add message to chat with connect button instead of showing panel
+        if (onAddLocalMessage) {
+          onAddLocalMessage(
+            "I'd love to help you import a design from Figma! First, you'll need to connect your Figma account so I can access your files.",
+            { type: 'figma_connect' }
+          );
+        }
         return;
       }
 
-      setFigmaState({
-        step: 'select',
-        message: 'Paste a Figma file URL below to import your design.',
-        error: null,
-      });
+      // User is connected - add message to chat with URL input
+      if (onAddLocalMessage) {
+        onAddLocalMessage(
+          "Great, your Figma account is connected! Paste a Figma file URL below to import your design.",
+          { type: 'figma_url_input' }
+        );
+      }
     } catch (error) {
       logError('useIntegrationFlow.startFigmaFlow', error);
-      setFigmaState({
-        step: 'idle',
-        message: '',
-        error: 'Something went wrong. Please try again.',
-      });
-      setActiveFlow(null);
+      // Add error message to chat
+      if (onAddLocalMessage) {
+        onAddLocalMessage(
+          "I had trouble checking your Figma connection. Please try again in a moment.",
+          { type: 'text' }
+        );
+      }
     }
-  }, [onHasInteracted]);
+  }, [onHasInteracted, onAddLocalMessage]);
 
   const handleConnectFigma = useCallback(() => {
     const backendUrl = import.meta.env.VITE_API_URL;

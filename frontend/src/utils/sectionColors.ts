@@ -62,7 +62,7 @@ export const SECTION_COLORS: Record<SectionId, SectionColorConfig> = {
   explore: {
     id: 'explore',
     name: 'Explore',
-    description: 'Discover projects and creators',
+    description: 'Discover projects and members',
     gradientFrom: '#0EA5E9', // cyan-500 (brand)
     gradientTo: '#0891B2',   // cyan-600
     textLight: '#0891B2',
@@ -155,6 +155,7 @@ export function getSectionPillClasses(sectionId: SectionId): {
  * Map feeling option IDs to section IDs
  */
 export const FEELING_TO_SECTION: Record<string, SectionId> = {
+  'get-started': 'explore', // Onboarding/getting started is about discovery
   'share': 'share',
   'play': 'play',
   'challenge': 'challenge',

@@ -1,6 +1,6 @@
 # Technical Debt Tracking
 
-Last Updated: 2024-12-21
+Last Updated: 2025-12-21
 
 This document tracks technical debt items identified during code review of the `new-onboarding-and-feelings-not-features` branch.
 
@@ -144,8 +144,134 @@ Files that may have incomplete dependency arrays:
 
 ---
 
+---
+
+## Ember Agent Critical Issues (Added 2024-12-21)
+
+These issues were discovered during investigation of chat getting "stuck" with multiple messages.
+
+### FIXED: Distributed Lock Mismatch
+**Location:** `services/agents/ember/agent.py:112-185`
+**Severity:** Critical
+**Status:** ✅ Fixed
+
+**Problem:** Lock acquire used Django cache (`cache.add()`) which serializes values, but release used raw Redis (`redis_client.eval()`) expecting plain strings. Values never matched, so locks expired after 120s instead of being released.
+
+**Fix Applied:** Changed acquire to use raw Redis client (`redis_client.set(nx=True, ex=timeout)`) for consistency with release.
+
+---
+
+### REVIEWED: Database Connection Pool Leak in Checkpointer
+**Location:** `services/agents/auth/checkpointer.py`
+**Severity:** Critical
+**Status:** ✅ Reviewed - Already Handled
+
+**Problem:** The checkpointer creates an `AsyncPostgresSaver` for LangGraph checkpointing.
+
+**Resolution:** Code review confirmed the `_get_checkpointer()` context manager in `services/agents/auth/checkpointer.py` already properly closes the connection pool in the `finally` block. No fix needed.
+
+---
+
+### FIXED: Blocking Synchronous Database Calls in Async Context
+**Location:** `services/agents/context/member_context.py`
+**Severity:** Critical
+**Status:** ✅ Fixed
+
+**Problem:** Synchronous ORM calls inside async functions block the event loop.
+
+**Fix Applied:** Changed `_aggregate_context_async()` to use `sync_to_async(thread_sensitive=False)`:
+```python
+async def _aggregate_context_async(cls, user_id: int) -> MemberContext:
+    from asgiref.sync import sync_to_async
+    # thread_sensitive=False allows parallel execution in thread pool
+    return await sync_to_async(cls._aggregate_context, thread_sensitive=False)(user_id)
+```
+
+---
+
+### REVIEWED: Redis Connection Not Returned to Pool
+**Location:** `services/agents/ember/agent.py:140-145`
+**Severity:** High
+**Status:** ✅ Reviewed - Not an Issue
+
+**Problem:** Concern that `cache._cache.get_client()` may not return connection to pool.
+
+**Resolution:** Code review confirmed this is not a leak. The redis-py library uses connection pooling where connections are automatically borrowed for each command and returned after completion. The `redis_client` object is a client wrapper, not a raw connection.
+
+---
+
+### REVIEWED: Tool Timeout Doesn't Propagate
+**Location:** `services/agents/ember/agent.py:858-891`
+**Severity:** High
+**Status:** ✅ Reviewed - Acceptable Risk
+
+**Problem:** When a tool times out via `asyncio.wait_for()`, the underlying thread from `run_in_executor()` continues running.
+
+**Resolution:** This is a Python limitation - threads cannot be forcefully cancelled. The current implementation is acceptable because:
+1. Tools have their own internal timeouts for network calls
+2. Thread pool size is limited (Python default: `5 * cpu_count`)
+3. The timeout protects the event loop from waiting forever
+4. Tools eventually complete even if the await timed out
+
+---
+
+### FIXED: Lock Value Collision Risk
+**Location:** `services/agents/ember/agent.py:131`
+**Severity:** High
+**Status:** ✅ Fixed
+
+**Problem:** Lock value uses `id(asyncio.current_task())` which is a memory address that can be reused after task completion.
+
+**Fix Applied:** Now uses `uuid.uuid4()` for guaranteed uniqueness.
+
+---
+
+### FIXED: Member Context Cache Race Condition
+**Location:** `services/agents/context/member_context.py:321-363`
+**Severity:** Medium
+**Status:** ✅ Fixed
+
+**Problem:** Multiple concurrent requests for the same user can all miss the cache and perform expensive aggregation simultaneously (cache stampede).
+
+**Fix Applied:** Added lock-based stampede prevention using `cache.add()`:
+```python
+lock_key = f'{cache_key}:lock'
+if cache.add(lock_key, '1', timeout=30):  # Only one request wins
+    try:
+        context = await cls._aggregate_context_async(user_id)
+        cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+    finally:
+        cache.delete(lock_key)
+else:
+    # Other requests wait briefly and retry cache
+    for _ in range(5):
+        await asyncio.sleep(0.1)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+```
+
+---
+
+### REVIEWED: Unbounded Thread Lock Cache
+**Location:** `services/agents/ember/agent.py:80-108`
+**Severity:** Medium
+**Status:** ✅ Reviewed - Sufficient
+
+**Problem:** Concern that the in-memory thread lock cache could grow unbounded.
+
+**Resolution:** Code review confirmed the existing LRU eviction is sufficient:
+- `MAX_THREAD_LOCKS = 10000` caps memory at ~1MB
+- Uses `OrderedDict` with `move_to_end()` for LRU behavior
+- Eviction happens on every new lock creation (`while len > MAX`)
+- For distributed locking, Redis is used instead (with TTL)
+- Additional periodic cleanup would add complexity without significant benefit
+
+---
+
 ## Notes
 
 - This branch introduces significant architectural changes (unified Ember agent, learning paths)
 - Overall code quality is good - these are refinements, not critical issues
-- Priority should be: Tests > Type Safety > TODOs > Hook Fixes
+- **All Ember Agent critical/high/medium issues have been fixed or reviewed**
+- Remaining priority: Tests > Type Safety > TODOs > Hook Fixes

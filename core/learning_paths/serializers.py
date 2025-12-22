@@ -14,6 +14,7 @@ from .models import (
     MicroLesson,
     ProactiveOfferResponse,
     ProjectLearningMetadata,
+    SavedLearningPath,
     UserConceptMastery,
     UserLearningPath,
 )
@@ -174,6 +175,78 @@ class LearnerProfileSerializer(serializers.ModelSerializer):
             'total_quizzes_completed',
             'last_learning_activity',
         ]
+
+
+class SavedLearningPathSerializer(serializers.ModelSerializer):
+    """Serializer for SavedLearningPath model (user's saved learning paths)."""
+
+    curriculum = serializers.SerializerMethodField()
+    curriculum_count = serializers.SerializerMethodField()
+    ai_lesson_count = serializers.SerializerMethodField()
+    curated_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SavedLearningPath
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'difficulty',
+            'estimated_hours',
+            'cover_image',
+            'is_active',
+            'is_archived',
+            'curriculum',
+            'curriculum_count',
+            'ai_lesson_count',
+            'curated_count',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_curriculum(self, obj):
+        """Get curriculum from path_data."""
+        return obj.path_data.get('curriculum', []) if obj.path_data else []
+
+    def get_curriculum_count(self, obj):
+        """Get total curriculum item count."""
+        curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
+        return len(curriculum)
+
+    def get_ai_lesson_count(self, obj):
+        """Get AI-generated lesson count."""
+        return obj.path_data.get('ai_lesson_count', 0) if obj.path_data else 0
+
+    def get_curated_count(self, obj):
+        """Get curated content count."""
+        return obj.path_data.get('curated_count', 0) if obj.path_data else 0
+
+
+class SavedLearningPathListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for SavedLearningPath list views."""
+
+    curriculum_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SavedLearningPath
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'difficulty',
+            'estimated_hours',
+            'cover_image',
+            'is_active',
+            'curriculum_count',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_curriculum_count(self, obj):
+        """Get total curriculum item count."""
+        curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
+        return len(curriculum)
 
 
 class ConceptSerializer(serializers.ModelSerializer):

@@ -15,11 +15,11 @@ function EmberAvatar() {
   return (
     <div className="relative flex-shrink-0 self-end">
       <div className="absolute inset-[-4px] bg-black/60 rounded-full blur-md" />
-      <div className="absolute inset-[-2px] bg-gradient-to-br from-orange-500/20 to-amber-500/10 rounded-full" />
-      <div className="relative w-12 h-12 flex items-center justify-center bg-slate-900/80 rounded-full border border-orange-500/30">
+      <div className="absolute inset-[-2px] bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 rounded-full" />
+      <div className="relative w-12 h-12 flex items-center justify-center bg-slate-900/80 rounded-full border border-cyan-500/30">
         <FontAwesomeIcon
           icon={faDragon}
-          className="text-2xl text-orange-500 drop-shadow-[0_0_12px_rgba(249,115,22,0.6)]"
+          className="text-2xl text-cyan-500 drop-shadow-[0_0_12px_rgba(6,182,212,0.6)]"
         />
       </div>
     </div>

@@ -15,7 +15,7 @@ const memberTypes = [
   },
   {
     icon: SparklesIcon,
-    title: 'Early Creators',
+    title: 'Early Members',
     description: 'Be among the first to build your portfolio and establish your reputation',
   },
 ];

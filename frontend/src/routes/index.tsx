@@ -44,6 +44,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
 // Core pages - lazy loaded
 const EmberHomePage = lazy(() => import('@/pages/EmberHomePage'));
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
+const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const ProjectDetailPage = lazy(() => import('@/pages/ProjectDetailPage'));
 
@@ -147,6 +148,9 @@ export function AppRoutes() {
       {/* About page - public route */}
       <Route path="/about" element={<AboutPage />} />
       <Route path="/about-us" element={<AboutPage />} />
+
+      {/* Team page - public route */}
+      <Route path="/team" element={<TeamPage />} />
       <Route
         path="/styleguide"
         element={
@@ -174,9 +178,9 @@ export function AppRoutes() {
         }
       />
 
-      {/* Learning path detail - must come before /:username to avoid catch-all */}
+      {/* Learning path detail with username - must come before /:username/:projectSlug */}
       <Route
-        path="/learn/:slug"
+        path="/:username/learn/:slug"
         element={
           <ProtectedRoute>
             <LearningPathDetailPage />

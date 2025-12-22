@@ -3,7 +3,7 @@
  */
 
 import type { ReactNode } from 'react';
-import type { ChatMessage, QuotaExceededInfo, OrchestrationAction, InlineGameType, ProjectImportOption } from '@/hooks/useIntelligentChat';
+import type { ChatMessage, QuotaExceededInfo, OrchestrationAction, InlineGameType, ProjectImportOption, LearningContentItem } from '@/hooks/useIntelligentChat';
 import type { PendingAction } from '@/hooks/useOrchestrationActions';
 import type { LearningGoal } from '@/types/models';
 
@@ -186,10 +186,15 @@ export interface ChatMessageListProps {
     youtube: boolean;
     loading: boolean;
   };
+  // Figma integration handlers (for inline connect/import in chat)
+  onConnectFigma?: () => void;
+  onFigmaUrlSubmit?: (url: string) => Promise<void>;
   // Profile question answer handler
   onProfileQuestionAnswer?: (questionId: string, selectedOptions: string[]) => void;
   // Inline action click handler (for "I don't know where to start" flow)
   onInlineActionClick?: (message: string) => void;
+  // Open project preview tray instead of navigating (for projects in chat)
+  onOpenProjectPreview?: (item: LearningContentItem) => void;
 }
 
 // Input area props
@@ -265,8 +270,16 @@ export interface AssistantMessageProps {
   // For showing GitHub connect button when AI asks user to connect
   showGitHubConnectButton?: boolean;
   onConnectGitHub?: () => void;
+  // For showing Figma connect button when user needs to connect
+  showFigmaConnectButton?: boolean;
+  onConnectFigma?: () => void;
+  // For showing Figma URL input after connection
+  showFigmaUrlInput?: boolean;
+  onFigmaUrlSubmit?: (url: string) => Promise<void>;
   // Learning content cards to render below the message
   learningContent?: LearningContentData;
+  // Open project preview tray instead of navigating (for projects)
+  onOpenProjectPreview?: (item: LearningContentItem) => void;
 }
 
 // Orchestration prompt props

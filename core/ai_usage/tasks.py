@@ -58,9 +58,10 @@ def aggregate_platform_daily_stats(self, date_str=None):
         # =================================================================
 
         # Base queryset excluding internal users:
-        # - Curation tier (AI agents, curated content creators)
+        # - Curation tier (RSS/YouTube AI agents)
+        # - Team tier (Core Team AI agents: Ember, Pip, Sage, Haven)
         # - Internal emails (@allthrive.ai) and test emails (@test.allthrive.ai)
-        real_users = User.objects.exclude(tier='curation').exclude(email__icontains='allthrive.ai')
+        real_users = User.objects.exclude(tier__in=['curation', 'team']).exclude(email__icontains='allthrive.ai')
 
         # Total users (cumulative up to this date)
         total_users = real_users.filter(date_joined__date__lte=target_date).count()
@@ -299,7 +300,7 @@ def aggregate_engagement_daily_stats(self, date_str=None):
         # =================================================================
 
         real_users = (
-            User.objects.exclude(tier='curation')
+            User.objects.exclude(tier__in=['curation', 'team'])
             .exclude(email__icontains='allthrive.ai')
             .exclude(is_guest=True)
             .exclude(role='admin')

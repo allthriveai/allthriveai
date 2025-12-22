@@ -117,4 +117,6 @@ class UserPersonalizationSerializer(serializers.Serializer):
     manual_tags = UserTagSerializer(many=True, read_only=True)
     auto_generated_tags = UserTagSerializer(many=True, read_only=True)
     available_taxonomies = TaxonomySerializer(many=True, read_only=True)
+    available_topics = TaxonomySerializer(many=True, read_only=True)
+    selected_topics = TaxonomySerializer(many=True, read_only=True)
     total_interactions = serializers.IntegerField(read_only=True)

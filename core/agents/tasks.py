@@ -26,6 +26,7 @@ from core.billing.utils import (
     check_and_reserve_ai_request,
     deduct_tokens,
     get_subscription_status,
+    reconcile_token_reservation,
 )
 from services.agents.auth.checkpointer import cache_checkpoint
 from services.ai import AIProvider
@@ -297,20 +298,33 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
         model_used = result.get('model', 'gpt-4')
 
         if 'token balance' in quota_reason.lower():
-            # User's subscription quota was exhausted, deduct from tokens
-            token_amount = tokens_used if tokens_used > 0 else 500  # Default estimate
-            deduct_success = deduct_tokens(
+            # User's subscription quota was exhausted, tokens were reserved upfront
+            # Now reconcile the reservation with actual usage
+            actual_tokens = tokens_used if tokens_used > 0 else 500  # Default estimate
+
+            # Extract reserved amount from quota_reason (e.g., "Reserved 500 from token balance")
+            # Default to 500 if we can't parse it
+            import re
+
+            reserved_match = re.search(r'Reserved (\d+)', quota_reason)
+            reserved_amount = int(reserved_match.group(1)) if reserved_match else 500
+
+            reconcile_success = reconcile_token_reservation(
                 user=user,
-                amount=token_amount,
+                reserved_amount=reserved_amount,
+                actual_amount=actual_tokens,
                 description=f'AI request via {provider_used} {model_used}',
                 ai_provider=provider_used,
                 ai_model=model_used,
             )
-            if deduct_success:
-                logger.info(f'Deducted {token_amount} tokens for user {user_id}')
+            if reconcile_success:
+                logger.info(
+                    f'Reconciled token usage for user {user_id}: '
+                    f'reserved={reserved_amount}, actual={actual_tokens}'
+                )
             else:
                 # Log but don't fail - the request already succeeded
-                logger.warning(f'Failed to deduct tokens for user {user_id}')
+                logger.warning(f'Failed to reconcile token reservation for user {user_id}')
 
         # Track detailed AI usage for analytics
         if tokens_used > 0:
@@ -558,17 +572,30 @@ def _process_with_ember(
                 elif event_type == 'tool_end':
                     # Notify frontend that tool completed
                     tool_output = event.get('output', {})
+                    tool_name = event.get('tool', '')
+
+                    # DEBUG: Log what we're sending to frontend
+                    if tool_name == 'find_content':
+                        content_count = len(tool_output.get('content', [])) if isinstance(tool_output, dict) else 0
+                        projects_count = len(tool_output.get('projects', [])) if isinstance(tool_output, dict) else 0
+                        logger.info(
+                            f'[DEBUG tool_end] Sending to frontend: tool={tool_name}, '
+                            f'content_count={content_count}, projects_count={projects_count}'
+                        )
+                        if content_count > 0:
+                            logger.info(f'[DEBUG tool_end] content[0]: {tool_output.get("content", [])[0]}')
+
                     await async_channel_layer.group_send(
                         channel_name,
                         {
                             'type': 'chat.message',
                             'event': 'tool_end',
-                            'tool': event.get('tool', ''),
+                            'tool': tool_name,
                             'output': tool_output,
                             'conversation_id': conversation_id,
                         },
                     )
-                    logger.info(f'Ember tool ended: {event.get("tool")}')
+                    logger.info(f'Ember tool ended: {tool_name}')
 
                 elif event_type == 'complete':
                     # Just log - the task function will send the final 'completed' event

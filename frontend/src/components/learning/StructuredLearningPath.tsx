@@ -20,10 +20,18 @@ import {
   faClock,
   faGraduationCap,
   faRotate,
+  faComments,
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import type { StructuredPath, TopicSection, ConceptNode, ConceptStatus } from '@/types/models';
+
+// Concept click context passed to parent
+export interface ConceptClickContext {
+  conceptSlug: string;
+  conceptName: string;
+  topicSlug: string;
+  topicName: string;
+}
 
 // Status icon mapping
 const statusIcons: Record<ConceptStatus, typeof faCheckCircle> = {
@@ -53,9 +61,11 @@ const statusBgColors: Record<ConceptStatus, string> = {
 interface CurrentFocusCardProps {
   concept: ConceptNode | null;
   topicName: string;
+  topicSlug: string;
+  onConceptClick?: (context: ConceptClickContext) => void;
 }
 
-function CurrentFocusCard({ concept, topicName }: CurrentFocusCardProps) {
+function CurrentFocusCard({ concept, topicName, topicSlug, onConceptClick }: CurrentFocusCardProps) {
   if (!concept) {
     return (
       <div className="glass-strong p-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
@@ -69,6 +79,17 @@ function CurrentFocusCard({ concept, topicName }: CurrentFocusCardProps) {
       </div>
     );
   }
+
+  const handleClick = () => {
+    if (onConceptClick) {
+      onConceptClick({
+        conceptSlug: concept.slug,
+        conceptName: concept.name,
+        topicSlug,
+        topicName,
+      });
+    }
+  };
 
   return (
     <motion.div
@@ -93,13 +114,13 @@ function CurrentFocusCard({ concept, topicName }: CurrentFocusCardProps) {
             )}
           </div>
         </div>
-        <Link
-          to={`/learn/${concept.slug}`}
+        <button
+          onClick={handleClick}
           className="flex-shrink-0 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg font-medium text-white hover:opacity-90 transition-opacity flex items-center gap-2"
         >
-          Continue
-          <FontAwesomeIcon icon={faArrowRight} />
-        </Link>
+          <FontAwesomeIcon icon={faComments} />
+          Learn with Ember
+        </button>
       </div>
     </motion.div>
   );
@@ -146,17 +167,32 @@ function ProgressHeader({ overallProgress, completedConcepts, totalConcepts }: P
 interface ConceptNodeItemProps {
   concept: ConceptNode;
   isLast: boolean;
+  topicSlug: string;
+  topicName: string;
+  onConceptClick?: (context: ConceptClickContext) => void;
 }
 
-function ConceptNodeItem({ concept, isLast }: ConceptNodeItemProps) {
+function ConceptNodeItem({ concept, isLast, topicSlug, topicName, onConceptClick }: ConceptNodeItemProps) {
   const isClickable = concept.status === 'available' || concept.status === 'in_progress';
 
-  const content = (
+  const handleClick = () => {
+    if (isClickable && onConceptClick) {
+      onConceptClick({
+        conceptSlug: concept.slug,
+        conceptName: concept.name,
+        topicSlug,
+        topicName,
+      });
+    }
+  };
+
+  return (
     <div
+      onClick={handleClick}
       className={`
         relative flex items-center gap-4 p-4 rounded-lg border transition-all
         ${statusBgColors[concept.status]}
-        ${isClickable ? 'cursor-pointer' : 'cursor-default'}
+        ${isClickable ? 'cursor-pointer hover:border-cyan-500/40' : 'cursor-default'}
       `}
     >
       {/* Status indicator */}
@@ -188,7 +224,7 @@ function ConceptNodeItem({ concept, isLast }: ConceptNodeItemProps) {
           </span>
         )}
         {isClickable && (
-          <FontAwesomeIcon icon={faArrowRight} className="text-gray-400" />
+          <FontAwesomeIcon icon={faComments} className="text-cyan-400" />
         )}
       </div>
 
@@ -198,16 +234,6 @@ function ConceptNodeItem({ concept, isLast }: ConceptNodeItemProps) {
       )}
     </div>
   );
-
-  if (isClickable) {
-    return (
-      <Link to={`/learn/${concept.slug}`} className="block">
-        {content}
-      </Link>
-    );
-  }
-
-  return content;
 }
 
 /**
@@ -216,9 +242,10 @@ function ConceptNodeItem({ concept, isLast }: ConceptNodeItemProps) {
 interface TopicSectionCardProps {
   topic: TopicSection;
   defaultExpanded?: boolean;
+  onConceptClick?: (context: ConceptClickContext) => void;
 }
 
-function TopicSectionCard({ topic, defaultExpanded = false }: TopicSectionCardProps) {
+function TopicSectionCard({ topic, defaultExpanded = false, onConceptClick }: TopicSectionCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const progressPercentage = Math.round(topic.progress * 100);
 
@@ -269,6 +296,9 @@ function TopicSectionCard({ topic, defaultExpanded = false }: TopicSectionCardPr
               key={concept.id}
               concept={concept}
               isLast={index === topic.concepts.length - 1}
+              topicSlug={topic.slug}
+              topicName={topic.name}
+              onConceptClick={onConceptClick}
             />
           ))}
         </motion.div>
@@ -285,9 +315,10 @@ export interface StructuredLearningPathProps {
   pathData: StructuredPath;
   onResetPath?: () => void;
   isResetting?: boolean;
+  onConceptClick?: (context: ConceptClickContext) => void;
 }
 
-export function StructuredLearningPath({ pathData, onResetPath, isResetting }: StructuredLearningPathProps) {
+export function StructuredLearningPath({ pathData, onResetPath, isResetting, onConceptClick }: StructuredLearningPathProps) {
   // Find the topic that contains the current focus
   const currentTopicSlug = pathData.currentFocus?.topicSlug || '';
   const currentTopicName = pathData.currentFocus?.topicName || '';
@@ -306,6 +337,8 @@ export function StructuredLearningPath({ pathData, onResetPath, isResetting }: S
         <CurrentFocusCard
           concept={pathData.currentFocus?.concept || null}
           topicName={currentTopicName}
+          topicSlug={currentTopicSlug}
+          onConceptClick={onConceptClick}
         />
       </div>
 
@@ -316,6 +349,7 @@ export function StructuredLearningPath({ pathData, onResetPath, isResetting }: S
             key={topic.slug}
             topic={topic}
             defaultExpanded={topic.slug === currentTopicSlug}
+            onConceptClick={onConceptClick}
           />
         ))}
       </div>

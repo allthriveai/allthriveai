@@ -8,7 +8,7 @@ const narrative = [
   { text: 'Every week, another breakthrough.', delay: 2.0 },
 ];
 
-const tension = 'But creators are overwhelmed by choice.';
+const tension = 'But members are overwhelmed by choice.';
 const resolution = 'They need a vendor-neutral home to bring their creations together, learn through micro-challenges, and thrive together.';
 
 export function WhyNowSlide() {

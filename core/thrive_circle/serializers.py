@@ -455,7 +455,7 @@ class CircleDetailSerializer(CircleSerializer):
         other_count = member_count - 1
 
         return (
-            f'You and {other_count} other creators are all at the {tier_display} level. '
+            f'You and {other_count} other members are all at the {tier_display} level. '
             f'We put you together so you can learn from each other, share wins, and grow at a similar pace.'
         )
 

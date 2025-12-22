@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSpinner, faPaperclip, faHeart, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { faChrome } from '@fortawesome/free-brands-svg-icons';
 import { ProjectCard } from '@/components/projects/ProjectCard';
+import { MasonryGrid } from '@/components/common/MasonryGrid';
 import { getClippedProjects } from '@/services/projects';
 import type { Project } from '@/types/models';
 
@@ -188,23 +189,20 @@ export function ClippedTab({
   }
 
   return (
-    <div className="pb-20">
-      {/* Projects Grid */}
-      <div className="columns-1 md:columns-2 xl:columns-3 gap-6 space-y-6">
-        {projects.map((project) => (
-          <div key={project.id} className="break-inside-avoid mb-6">
-            <ProjectCard
-              project={project}
-              onDelete={async () => {}}
-              isOwner={isOwnProfile}
-              variant="masonry"
-              selectionMode={selectionMode}
-              isSelected={selectedProjectIds.has(project.id)}
-              onSelect={onSelect}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
+    <MasonryGrid>
+      {projects.map((project) => (
+        <div key={project.id} className="break-inside-avoid mb-6">
+          <ProjectCard
+            project={project}
+            onDelete={async () => {}}
+            isOwner={isOwnProfile}
+            variant="masonry"
+            selectionMode={selectionMode}
+            isSelected={selectedProjectIds.has(project.id)}
+            onSelect={onSelect}
+          />
+        </div>
+      ))}
+    </MasonryGrid>
   );
 }

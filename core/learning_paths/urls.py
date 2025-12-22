@@ -13,6 +13,7 @@ router.register(r'me/concept-mastery', views.UserConceptMasteryViewSet, basename
 urlpatterns = [
     path('', include(router.urls)),
     path('users/<str:username>/learning-paths/', views.UserLearningPathsView.as_view(), name='user-learning-paths'),
+    path('users/<str:username>/learning-paths/<str:slug>/', views.UserLearningPathBySlugView.as_view(), name='user-learning-path-by-slug'),
     path('learning-paths/topics/', views.AllTopicsView.as_view(), name='all-topics'),
     path('learning-paths/<str:slug>/', views.LearningPathBySlugView.as_view(), name='learning-path-by-slug'),
     # New learning endpoints
@@ -59,5 +60,21 @@ urlpatterns = [
         'me/feedback/summary/',
         views.FeedbackSummaryView.as_view(),
         name='feedback-summary',
+    ),
+    # Saved learning paths - Path library
+    path(
+        'me/saved-paths/',
+        views.SavedLearningPathsView.as_view(),
+        name='saved-paths',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/',
+        views.SavedLearningPathDetailView.as_view(),
+        name='saved-path-detail',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/activate/',
+        views.ActivateSavedPathView.as_view(),
+        name='activate-saved-path',
     ),
 ]

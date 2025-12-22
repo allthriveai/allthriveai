@@ -66,6 +66,7 @@ type ChatContext = 'learn' | 'explore' | 'project' | 'default';
 interface OpenChatOptions {
   welcomeMode?: boolean;
   context?: ChatContext;
+  expanded?: boolean;
 }
 
 interface DashboardLayoutProps {
@@ -100,6 +101,9 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
 
   // Chat context state - determines which quick actions to show in Ember chat
   const [chatContext, setChatContext] = useState<ChatContext>('default');
+
+  // Chat expanded state - for learning sessions in expanded mode
+  const [chatExpanded, setChatExpanded] = useState(false);
 
   // Track if component has mounted to avoid closing panels on initial render
   const hasMounted = useRef(false);
@@ -161,6 +165,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     // Open Ember chat panel with context-aware quick actions
     setAddProjectOpen(true);
     setChatContext(opts.context ?? 'default');
+    setChatExpanded(opts.expanded ?? false);
     setAboutOpen(false);
     setEventsOpen(false);
   }, []);
@@ -359,6 +364,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             context={chatContext}
             architectureRegenerateContext={architectureRegenerateContext}
             learningSetupContext={learningSetupContext}
+            defaultExpanded={chatExpanded}
           />
         )}
 

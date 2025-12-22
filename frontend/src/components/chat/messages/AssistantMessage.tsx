@@ -12,14 +12,17 @@
  * - Two variants: default (sidebar) and neon (EmberHomePage)
  */
 
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faGithub, faFigma } from '@fortawesome/free-brands-svg-icons';
 import { faDragon } from '@fortawesome/free-solid-svg-icons';
+import { LinkIcon } from '@heroicons/react/24/outline';
 import type { AssistantMessageProps } from '../core/types';
 import { LearningTeaserCard } from '../cards';
 import { ChatGameCard } from '../games';
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
+import { isFigmaUrl } from '@/services/figma';
 
 export function AssistantMessage({
   content,
@@ -27,9 +30,37 @@ export function AssistantMessage({
   onNavigate,
   showGitHubConnectButton = false,
   onConnectGitHub,
+  showFigmaConnectButton = false,
+  onConnectFigma,
+  showFigmaUrlInput = false,
+  onFigmaUrlSubmit,
   learningContent,
+  onOpenProjectPreview,
 }: AssistantMessageProps) {
   const isNeon = variant === 'neon';
+  const [figmaUrl, setFigmaUrl] = useState('');
+  const [figmaUrlError, setFigmaUrlError] = useState<string | null>(null);
+  const [isSubmittingFigma, setIsSubmittingFigma] = useState(false);
+
+  const handleFigmaUrlChange = (value: string) => {
+    setFigmaUrl(value);
+    if (value.trim() && !isFigmaUrl(value)) {
+      setFigmaUrlError('Please enter a valid Figma URL (e.g., figma.com/design/... or figma.com/file/...)');
+    } else {
+      setFigmaUrlError(null);
+    }
+  };
+
+  const handleFigmaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!figmaUrl.trim() || !isFigmaUrl(figmaUrl) || !onFigmaUrlSubmit) return;
+    setIsSubmittingFigma(true);
+    try {
+      await onFigmaUrlSubmit(figmaUrl);
+    } finally {
+      setIsSubmittingFigma(false);
+    }
+  };
 
   // Split content: extract learning path offer to render after cards/game
   const learningPathPattern = /\n\n(Would you like me to (?:create|save) (?:a |this as a )?(?:personalized )?learning path[^?]*\?)/i;
@@ -80,6 +111,7 @@ export function AssistantMessage({
               }}
               contentType={learningContent.contentType}
               onNavigate={onNavigate}
+              onOpenProjectPreview={onOpenProjectPreview}
               compact
             />
           ))}
@@ -107,6 +139,72 @@ export function AssistantMessage({
         </ChatErrorBoundary>
       </div>
     );
+  };
+
+  // Render Figma connect button or URL input
+  const renderFigmaAction = () => {
+    if (showFigmaConnectButton && onConnectFigma) {
+      return (
+        <div className={`mt-3 pt-3 border-t ${isNeon ? 'border-white/10' : 'border-slate-200 dark:border-slate-700'}`}>
+          <button
+            onClick={onConnectFigma}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <FontAwesomeIcon icon={faFigma} />
+            Connect Figma
+          </button>
+        </div>
+      );
+    }
+
+    if (showFigmaUrlInput && onFigmaUrlSubmit) {
+      return (
+        <div className={`mt-3 pt-3 border-t ${isNeon ? 'border-white/10' : 'border-slate-200 dark:border-slate-700'}`}>
+          <form onSubmit={handleFigmaSubmit} className="space-y-2">
+            <div className="relative">
+              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="url"
+                value={figmaUrl}
+                onChange={(e) => handleFigmaUrlChange(e.target.value)}
+                placeholder="https://www.figma.com/design/..."
+                disabled={isSubmittingFigma}
+                className={`w-full pl-9 pr-4 py-2 bg-slate-800/50 border rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none ${
+                  figmaUrlError
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-slate-700 focus:border-purple-500'
+                } disabled:opacity-50`}
+              />
+            </div>
+            {figmaUrlError && (
+              <p className="text-xs text-red-400">{figmaUrlError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={!figmaUrl.trim() || !!figmaUrlError || isSubmittingFigma}
+              className="w-full py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {isSubmittingFigma ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faFigma} />
+                  Import Design
+                </>
+              )}
+            </button>
+          </form>
+          <p className="text-xs text-slate-500 text-center mt-2">
+            Supported: Figma design files, prototypes, and FigJam boards
+          </p>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   if (isNeon) {
@@ -170,6 +268,7 @@ export function AssistantMessage({
                 </button>
               </div>
             )}
+            {renderFigmaAction()}
           </div>
           {renderLearningCards()}
           {renderInlineGame()}
@@ -239,6 +338,7 @@ export function AssistantMessage({
               </button>
             </div>
           )}
+          {renderFigmaAction()}
         </div>
         {renderLearningCards()}
         {renderInlineGame()}

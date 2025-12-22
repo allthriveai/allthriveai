@@ -297,6 +297,14 @@ class UserTaxonomyPreferencesSerializer(serializers.ModelSerializer):
     interests = TaxonomyMinimalSerializer(many=True, read_only=True)
     industries = TaxonomyMinimalSerializer(many=True, read_only=True)
 
+    # Skill level from LearnerProfile (for learning plan personalization)
+    skill_level = serializers.ChoiceField(
+        choices=['beginner', 'intermediate', 'advanced'],
+        required=False,
+        allow_null=True,
+        help_text='Overall skill level for learning content personalization',
+    )
+
     class Meta:
         model = User
         fields = [
@@ -314,10 +322,36 @@ class UserTaxonomyPreferencesSerializer(serializers.ModelSerializer):
             'goals',
             'interests',
             'industries',
+            # Skill level (from LearnerProfile)
+            'skill_level',
         ]
+
+    def to_representation(self, instance):
+        """Add skill_level from LearnerProfile to the response."""
+        data = super().to_representation(instance)
+
+        # Get skill level from LearnerProfile if it exists
+        try:
+            learner_profile = instance.learner_profile
+            data['skill_level'] = learner_profile.current_difficulty_level
+        except Exception:
+            data['skill_level'] = None
+
+        return data
 
     def update(self, instance, validated_data):
         """Update user taxonomy preferences."""
+        # Handle skill level separately (stored in LearnerProfile)
+        skill_level = validated_data.pop('skill_level', None)
+        if skill_level is not None:
+            from core.learning_paths.models import LearnerProfile
+            learner_profile, _ = LearnerProfile.objects.get_or_create(user=instance)
+            learner_profile.current_difficulty_level = skill_level
+            learner_profile.save(update_fields=['current_difficulty_level'])
+            # Invalidate member context cache so Ember sees the update
+            from services.agents.context.member_context import MemberContextService
+            MemberContextService.invalidate_cache(instance.id)
+
         # Handle M2M fields separately
         learning_styles = validated_data.pop('learning_styles', None)
         roles = validated_data.pop('roles', None)
@@ -343,3 +377,56 @@ class UserTaxonomyPreferencesSerializer(serializers.ModelSerializer):
             instance.industries.set(industries)
 
         return instance
+
+
+class TeamMemberSerializer(serializers.ModelSerializer):
+    """Serializer for team member profiles (AI agents).
+
+    Used for the public Team page to display All Thrive AI team members
+    with their personalities and roles.
+    """
+
+    full_name = serializers.SerializerMethodField()
+    team_type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'full_name',
+            'avatar_url',
+            'bio',
+            'tagline',
+            'location',
+            'pronouns',
+            'current_status',
+            'website_url',
+            'linkedin_url',
+            'twitter_url',
+            'youtube_url',
+            'instagram_url',
+            # Agent personality fields
+            'signature_phrases',
+            'agent_interests',
+            # Computed fields
+            'team_type',
+        ]
+        read_only_fields = fields
+
+    def get_full_name(self, obj):
+        """Return agent's full name."""
+        return f'{obj.first_name} {obj.last_name}'.strip() or obj.username
+
+    def get_team_type(self, obj):
+        """Determine if this is a core team member or expert contributor.
+
+        Core team: ember, pip, sage, haven (AI personas)
+        Expert contributors: RSS feed curators, YouTube curators, etc.
+        """
+        core_team_usernames = {'ember', 'pip', 'sage', 'haven'}
+        if obj.username.lower() in core_team_usernames:
+            return 'core'
+        return 'contributor'
