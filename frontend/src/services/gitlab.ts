@@ -52,17 +52,25 @@ export async function fetchGitLabProjects(): Promise<GitLabProject[]> {
   } catch (error: any) {
     logError('gitlab.fetchGitLabProjects', error);
 
-    // Handle specific error cases
-    if (error.response?.status === 401) {
+    // Handle ApiError objects (transformed by axios interceptor)
+    if (error.statusCode === 401) {
       throw new Error('Please connect your GitLab account first.');
     }
 
-    if (error.response?.status === 429) {
-      const errorMessage = error.response?.data?.error || 'Rate limit exceeded. Please try again later.';
+    if (error.statusCode === 403) {
+      throw new Error(
+        error.error ||
+          'Your GitLab token does not have permission to list projects. Please reconnect GitLab.'
+      );
+    }
+
+    if (error.statusCode === 429) {
+      const errorMessage = error.error || 'Rate limit exceeded. Please try again later.';
       throw new Error(errorMessage);
     }
 
-    throw new Error(error.response?.data?.error || 'Failed to fetch GitLab projects');
+    // Handle the error message from ApiError or fall back
+    throw new Error(error.error || error.message || 'Failed to fetch GitLab projects');
   }
 }
 

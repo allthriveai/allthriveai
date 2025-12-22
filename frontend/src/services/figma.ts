@@ -79,11 +79,19 @@ export async function getFigmaUserInfo(): Promise<FigmaUser | null> {
 
 /**
  * Get preview info for a specific Figma file
+ * @param fileKey - The file key from the Figma URL
+ * @param fileType - The type of file (design, slides, site) to help with error handling
  */
-export async function getFigmaFilePreview(fileKey: string): Promise<FigmaFilePreview> {
+export async function getFigmaFilePreview(
+  fileKey: string,
+  fileType: 'design' | 'slides' | 'site' = 'design'
+): Promise<FigmaFilePreview> {
   try {
     const response = await api.get<ApiResponse<FigmaFilePreview>>(
-      `/figma/files/${fileKey}/preview/`
+      `/figma/files/${fileKey}/preview/`,
+      {
+        params: { is_slides: fileType === 'slides' ? 'true' : 'false' },
+      }
     );
 
     if (!response.data.success) {
@@ -107,9 +115,25 @@ export async function getFigmaFilePreview(fileKey: string): Promise<FigmaFilePre
     }
 
     if (error.response?.status === 403) {
-      throw new FigmaImportError('You do not have access to this file.', {
-        errorCode: 'access_denied',
-      });
+      // Check if this is a Slides file - Figma doesn't support REST API for Slides
+      const responseData = error.response?.data;
+      if (responseData?.unsupportedFileType === 'slides' || fileType === 'slides') {
+        throw new FigmaImportError(
+          'Figma Slides files are not yet supported. Please try importing a regular Figma Design file instead.',
+          {
+            errorCode: 'slides_not_supported',
+            suggestion: 'Use a /file/ or /design/ URL instead of /make/',
+          }
+        );
+      }
+      throw new FigmaImportError(
+        error.response?.data?.error ||
+          'Access denied. You may need to reconnect your Figma account.',
+        {
+          errorCode: 'access_denied',
+          suggestion: 'Try disconnecting and reconnecting Figma in Settings.',
+        }
+      );
     }
 
     if (error.response?.status === 429) {
@@ -123,19 +147,54 @@ export async function getFigmaFilePreview(fileKey: string): Promise<FigmaFilePre
 }
 
 /**
- * Parse a Figma URL to extract the file key
+ * Parsed Figma URL result
  */
-export function parseFigmaUrl(url: string): { fileKey: string; name?: string } | null {
+export interface ParsedFigmaUrl {
+  fileKey: string;
+  name?: string;
+  fileType: 'design' | 'slides' | 'site';
+}
+
+/**
+ * Parse a Figma URL to extract the file key and determine file type
+ */
+export function parseFigmaUrl(url: string): ParsedFigmaUrl | null {
   if (!url) return null;
 
-  // Match file/design URLs: https://www.figma.com/file/KEY/name or https://www.figma.com/design/KEY/name
-  const filePattern = /figma\.com\/(?:file|design)\/([a-zA-Z0-9]+)(?:\/([^/?]+))?/;
-  const match = url.match(filePattern);
+  // Match file/design URLs: https://www.figma.com/file/KEY/name or /design/KEY/name
+  const designPattern = /figma\.com\/(?:file|design)\/([a-zA-Z0-9]+)(?:\/([^/?]+))?/;
+  const designMatch = url.match(designPattern);
 
-  if (match) {
+  if (designMatch) {
     return {
-      fileKey: match[1],
-      name: match[2] ? decodeURIComponent(match[2].replace(/-/g, ' ')) : undefined,
+      fileKey: designMatch[1],
+      name: designMatch[2] ? decodeURIComponent(designMatch[2].replace(/-/g, ' ')) : undefined,
+      fileType: 'design',
+    };
+  }
+
+  // Match Slides URLs: https://www.figma.com/make/KEY/name
+  const slidesPattern = /figma\.com\/make\/([a-zA-Z0-9]+)(?:\/([^/?]+))?/;
+  const slidesMatch = url.match(slidesPattern);
+
+  if (slidesMatch) {
+    return {
+      fileKey: slidesMatch[1],
+      name: slidesMatch[2] ? decodeURIComponent(slidesMatch[2].replace(/-/g, ' ')) : undefined,
+      fileType: 'slides',
+    };
+  }
+
+  // Match .figma.site URLs: https://name.figma.site or https://subdomain.figma.site/path
+  // The file key is typically the subdomain for published sites
+  const sitePattern = /([a-zA-Z0-9-]+)\.figma\.site/;
+  const siteMatch = url.match(sitePattern);
+
+  if (siteMatch) {
+    return {
+      fileKey: siteMatch[1],
+      name: siteMatch[1].replace(/-/g, ' '),
+      fileType: 'site',
     };
   }
 

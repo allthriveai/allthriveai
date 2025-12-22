@@ -343,26 +343,43 @@ export function useIntegrationFlow({
     try {
       const parsed = parseFigmaUrl(url);
       if (!parsed) {
+        const errorMsg = 'Invalid Figma URL. Please paste a valid file URL.';
         setFigmaState({
           step: 'select',
-          message: 'Invalid Figma URL. Please paste a valid file URL.',
+          message: errorMsg,
           error: null,
         });
+        throw new Error(errorMsg);
+      }
+
+      // For Figma Slides (/make/ URLs) or .figma.site URLs, skip the API preview
+      // and let the agent use web scraping to get the info
+      if (parsed.fileType === 'slides' || parsed.fileType === 'site') {
+        // Reset and send directly to chat - agent will scrape the page
+        setFigmaState(initialFlowState);
+        setActiveFlow(null);
+        const fileType = parsed.fileType === 'slides' ? 'Figma Slides' : 'Figma';
+        // Send user's import request - keep it simple, agent will handle the rest
+        onSendMessage(`Import this ${fileType} design as a project: ${url}${parsed.name ? `\n\nFile: ${parsed.name}` : ''}`);
         return;
       }
 
-      const preview = await getFigmaFilePreview(parsed.fileKey);
+      // For regular design files, use the API to get preview info
+      const preview = await getFigmaFilePreview(parsed.fileKey, parsed.fileType);
 
       // Reset and send to chat
       setFigmaState(initialFlowState);
       setActiveFlow(null);
       onSendMessage(`Import this Figma design as a project: ${url}\n\nFile: ${preview.name}\nPages: ${preview.pageCount}`);
     } catch (error) {
+      const errorMsg = getErrorMessage(error) || 'Failed to fetch Figma file. Please check the URL and try again.';
       setFigmaState({
         step: 'select',
-        message: getErrorMessage(error) || 'Failed to fetch Figma file. Please check the URL and try again.',
+        message: errorMsg,
         error: null,
       });
+      // Re-throw so the caller (AssistantMessage) can display the error to the user
+      throw error;
     }
   }, [onSendMessage]);
 

@@ -35,6 +35,36 @@ class GitLabAPIError(Exception):
 class GitLabService:
     """Service for interacting with GitLab REST API."""
 
+    @classmethod
+    def for_user(cls, user) -> 'GitLabService | None':
+        """
+        Create a GitLabService for a specific user using their OAuth token.
+
+        Args:
+            user: Django User instance
+
+        Returns:
+            GitLabService instance or None if user doesn't have GitLab connected
+        """
+        from core.integrations.gitlab.helpers import get_user_gitlab_token
+
+        logger.info(f'[GitLab] Creating service for user {user.id} ({user.username})')
+
+        token = get_user_gitlab_token(user)
+        if not token:
+            logger.warning(f'[GitLab] No token found for user {user.id} ({user.username})')
+            return None
+
+        logger.info(f'[GitLab] Token found for user {user.id}, token length: {len(token)}')
+
+        try:
+            service = cls(user_token=token)
+            logger.info(f'[GitLab] Service created successfully for user {user.id}')
+            return service
+        except ValueError as e:
+            logger.error(f'[GitLab] Failed to create service for user {user.id}: {e}')
+            return None
+
     def __init__(self, user_token: str, base_url: str = 'https://gitlab.com'):
         """
         Initialize GitLab Service.
@@ -74,16 +104,32 @@ class GitLabService:
         Returns:
             JSON response as dict/list or None if 404
         """
+        logger.info(f'[GitLab API] GET {url} params={params}')
+
         async with httpx.AsyncClient(timeout=GITLAB_API_TIMEOUT) as client:
             response = await client.get(url, headers=self.headers, params=params or {})
 
+            # Log response status
+            logger.info(f'[GitLab API] Response: {response.status_code} for {url}')
+
             # Check rate limit
             remaining = response.headers.get('RateLimit-Remaining')
-            if remaining and int(remaining) < 100:
-                logger.warning(f'GitLab API rate limit low: {remaining} requests remaining')
+            if remaining:
+                logger.debug(f'[GitLab API] Rate limit remaining: {remaining}')
+                if int(remaining) < 100:
+                    logger.warning(f'[GitLab API] Rate limit low: {remaining} requests remaining')
 
             if response.status_code == 404:
+                logger.info(f'[GitLab API] 404 Not Found: {url}')
                 return None  # File/resource not found
+
+            if response.status_code == 401:
+                logger.error('[GitLab API] 401 Unauthorized - token may be invalid or expired')
+                response.raise_for_status()
+
+            if response.status_code == 403:
+                logger.error('[GitLab API] 403 Forbidden - insufficient permissions or scopes')
+                response.raise_for_status()
 
             response.raise_for_status()
             return response.json()

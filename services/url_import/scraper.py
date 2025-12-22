@@ -966,6 +966,94 @@ def extract_metadata(soup: BeautifulSoup, url: str) -> dict:
     return metadata
 
 
+def _is_figma_url(url: str) -> bool:
+    """Check if URL is a Figma page."""
+    parsed = urlparse(url)
+    return 'figma.com' in parsed.netloc or parsed.netloc.endswith('.figma.site')
+
+
+def _extract_figma_thumbnail(soup: BeautifulSoup, url: str) -> str | None:
+    """Extract high-quality thumbnail from Figma pages.
+
+    Figma pages have thumbnails hosted on s3-alpha.figma.com/thumbnails/
+    which are much better quality than the standard og:image.
+
+    Also checks for image sources in img tags and srcsets for higher resolution.
+
+    Args:
+        soup: BeautifulSoup parsed HTML
+        url: Original Figma URL
+
+    Returns:
+        High-quality thumbnail URL if found, None otherwise
+    """
+    # Figma thumbnail patterns - prioritize high-quality sources
+    figma_thumbnail_patterns = [
+        's3-alpha.figma.com/thumbnails/',
+        's3-alpha-sig.figma.com/thumbnails/',
+        'figma-alpha-api.s3',
+        's3.amazonaws.com/figma',
+    ]
+
+    # First, look for high-res thumbnails in img tags and their srcsets
+    for img in soup.find_all('img'):
+        # Check srcset for higher resolution versions
+        srcset = img.get('srcset', '')
+        if srcset:
+            # Parse srcset to find highest resolution
+            for part in srcset.split(','):
+                part = part.strip()
+                if any(pattern in part for pattern in figma_thumbnail_patterns):
+                    # Extract URL (before the size descriptor like "2x" or "1024w")
+                    img_url = part.split()[0] if part.split() else part
+                    if img_url.startswith('http'):
+                        logger.info(f'Found Figma thumbnail in srcset: {img_url[:100]}...')
+                        return img_url
+
+        # Check regular src
+        src = img.get('src') or img.get('data-src') or ''
+        if any(pattern in src for pattern in figma_thumbnail_patterns):
+            if src.startswith('http'):
+                logger.info(f'Found Figma thumbnail in img src: {src[:100]}...')
+                return src
+
+    # Check for thumbnail in background-image styles (sometimes used in Figma)
+    for elem in soup.find_all(style=True):
+        style = elem.get('style', '')
+        if 'background-image' in style:
+            # Extract URL from background-image: url(...)
+            match = re.search(r'url\(["\']?(https?://[^"\')\s]+)["\']?\)', style)
+            if match:
+                bg_url = match.group(1)
+                if any(pattern in bg_url for pattern in figma_thumbnail_patterns):
+                    logger.info(f'Found Figma thumbnail in background-image: {bg_url[:100]}...')
+                    return bg_url
+
+    # Check all links and scripts for thumbnail URLs
+    # Sometimes Figma embeds thumbnail URLs in JSON data
+    for script in soup.find_all('script'):
+        script_text = script.string or ''
+        for pattern in figma_thumbnail_patterns:
+            if pattern in script_text:
+                # Try to extract the full URL
+                match = re.search(rf'(https?://[^"\'\\s]*{re.escape(pattern)}[^"\'\\s]*)', script_text)
+                if match:
+                    thumb_url = match.group(1)
+                    # Clean up any escaped characters
+                    thumb_url = thumb_url.replace('\\/', '/')
+                    logger.info(f'Found Figma thumbnail in script: {thumb_url[:100]}...')
+                    return thumb_url
+
+    # Check meta tags for Figma-specific thumbnails
+    for meta in soup.find_all('meta'):
+        content = meta.get('content', '')
+        if any(pattern in content for pattern in figma_thumbnail_patterns):
+            logger.info(f'Found Figma thumbnail in meta: {content[:100]}...')
+            return content
+
+    return None
+
+
 def _check_youtube_embeddable(video_id: str) -> bool:
     """Check if a YouTube video allows embedding elsewhere.
 
@@ -1582,6 +1670,13 @@ def scrape_url_for_project(url: str, force_javascript: bool = False) -> Extracte
 
     # Extract metadata from tags
     metadata = extract_metadata(soup, url)
+
+    # For Figma URLs, try to extract a better quality thumbnail
+    if _is_figma_url(url):
+        figma_thumbnail = _extract_figma_thumbnail(soup, url)
+        if figma_thumbnail:
+            logger.info(f'Using Figma-specific thumbnail: {figma_thumbnail[:100]}...')
+            metadata['image_url'] = figma_thumbnail
 
     # Extract images from page (for gallery)
     images = extract_images(soup, url)

@@ -1,5 +1,5 @@
 /**
- * ProfileSectionTypePicker - Modal for selecting section type to add
+ * ProfileSectionTypePicker - Right sidebar tray for selecting section type to add
  */
 
 import { Fragment } from 'react';
@@ -26,22 +26,29 @@ export function ProfileSectionTypePicker({
   // Get existing section types to disable singletons that already exist
   const existingTypes = new Set(existingSections.map(s => s.type));
 
-  // Filter section types based on user role and tier
-  const sectionTypes = Object.values(PROFILE_SECTION_METADATA).filter(metadata => {
-    // Storefront only for creators
-    if (metadata.type === 'storefront' && userRole !== 'creator') {
-      return false;
-    }
-    // Battle sections only for curation tier (battle bots)
-    if ((metadata.type === 'battle_stats' || metadata.type === 'recent_battles') && userTier !== 'curation') {
-      return false;
-    }
-    // Featured content only for curation tier
-    if (metadata.type === 'featured_content' && userTier !== 'curation') {
-      return false;
-    }
-    return true;
-  });
+  // Filter section types based on user role and tier, with custom at the top
+  const sectionTypes = Object.values(PROFILE_SECTION_METADATA)
+    .filter(metadata => {
+      // Storefront only for creators
+      if (metadata.type === 'storefront' && userRole !== 'creator') {
+        return false;
+      }
+      // Battle sections only for curation tier (battle bots)
+      if ((metadata.type === 'battle_stats' || metadata.type === 'recent_battles') && userTier !== 'curation') {
+        return false;
+      }
+      // Featured content only for curation tier
+      if (metadata.type === 'featured_content' && userTier !== 'curation') {
+        return false;
+      }
+      return true;
+    })
+    // Sort to put 'custom' at the top of the list
+    .sort((a, b) => {
+      if (a.type === 'custom') return -1;
+      if (b.type === 'custom') return 1;
+      return 0;
+    });
 
   const isDisabled = (type: ProfileSectionType) => {
     const metadata = PROFILE_SECTION_METADATA[type];
@@ -52,6 +59,7 @@ export function ProfileSectionTypePicker({
   return (
     <Transition appear show={true} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
+        {/* Backdrop */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -61,86 +69,95 @@ export function ProfileSectionTypePicker({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/50" />
+          <div className="fixed inset-0 bg-black/30" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-xl transition-all">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                  <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Add Section
-                  </Dialog.Title>
-                  <button
-                    onClick={onClose}
-                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <XMarkIcon className="w-5 h-5" />
-                  </button>
-                </div>
+        {/* Slide-out panel from right */}
+        <div className="fixed inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+              <Transition.Child
+                as={Fragment}
+                enter="transform transition ease-in-out duration-300"
+                enterFrom="translate-x-full"
+                enterTo="translate-x-0"
+                leave="transform transition ease-in-out duration-300"
+                leaveFrom="translate-x-0"
+                leaveTo="translate-x-full"
+              >
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
+                  <div className="flex h-full flex-col bg-white dark:bg-gray-900 shadow-xl">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                      <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Add Section
+                      </Dialog.Title>
+                      <button
+                        onClick={onClose}
+                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
 
-                {/* Section Types Grid */}
-                <div className="p-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    {sectionTypes.map(metadata => {
-                      const disabled = isDisabled(metadata.type);
+                    {/* Section Types List - Scrollable */}
+                    <div className="flex-1 overflow-y-auto p-4">
+                      <div className="space-y-3">
+                        {sectionTypes.map(metadata => {
+                          const disabled = isDisabled(metadata.type);
 
-                      return (
-                        <button
-                          key={metadata.type}
-                          onClick={() => !disabled && onSelect(metadata.type)}
-                          disabled={disabled}
-                          className={`relative p-4 text-left rounded-xl border-2 transition-all ${
-                            disabled
-                              ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-50'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-900/10'
-                          }`}
-                        >
-                          {/* Icon */}
-                          <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-3">
-                            <SectionIcon type={metadata.type} />
-                          </div>
+                          return (
+                            <button
+                              key={metadata.type}
+                              onClick={() => !disabled && onSelect(metadata.type)}
+                              disabled={disabled}
+                              className={`relative w-full p-4 text-left rounded-xl border-2 transition-all ${
+                                disabled
+                                  ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-50'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 hover:shadow-md'
+                              }`}
+                            >
+                              <div className="flex items-start gap-4">
+                                {/* Icon */}
+                                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                                  <SectionIcon type={metadata.type} />
+                                </div>
 
-                          {/* Title */}
-                          <h3 className="font-medium text-gray-900 dark:text-white mb-1">
-                            {metadata.title}
-                          </h3>
+                                <div className="flex-1 min-w-0">
+                                  {/* Title */}
+                                  <h3 className="font-medium text-gray-900 dark:text-white mb-1">
+                                    {metadata.title}
+                                  </h3>
 
-                          {/* Description */}
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {metadata.description}
-                          </p>
+                                  {/* Description */}
+                                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                                    {metadata.description}
+                                  </p>
+                                </div>
 
-                          {/* Already Added Badge */}
-                          {disabled && (
-                            <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">
-                              Added
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                                {/* Already Added Badge */}
+                                {disabled && (
+                                  <span className="flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">
+                                    Added
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                        Select a section type to add to your profile
+                      </p>
+                    </div>
                   </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                    Select a section type to add to your profile
-                  </p>
-                </div>
-              </Dialog.Panel>
-            </Transition.Child>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
           </div>
         </div>
       </Dialog>
@@ -153,7 +170,7 @@ export function ProfileSectionTypePicker({
 // ============================================================================
 
 function SectionIcon({ type }: { type: ProfileSectionType }) {
-  const iconClass = "w-5 h-5 text-primary-600 dark:text-primary-400";
+  const iconClass = "w-5 h-5 text-primary-700 dark:text-primary-600";
 
   switch (type) {
     case 'about':

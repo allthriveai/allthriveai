@@ -938,15 +938,25 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': [
             'profile',
             'email',
+            'https://www.googleapis.com/auth/youtube.readonly',  # Read access to YouTube data
         ],
         'AUTH_PARAMS': {
-            'access_type': 'online',
+            'access_type': 'offline',  # Get refresh token for long-term access
+            'prompt': 'consent',  # Force consent screen to get refresh token
         },
     },
     'github': {
         'SCOPE': [
             'user',
             'user:email',
+            'read:user',  # Read user profile data
+            'repo',  # Read access to repositories (public and private)
+        ],
+    },
+    'figma': {
+        'SCOPE': [
+            'file_content:read',  # Read file contents (nodes, editor type)
+            'file_metadata:read',  # Read file metadata (name, last modified, etc.)
         ],
     },
     # LinkedIn uses OpenID Connect (the old linkedin_oauth2 provider is deprecated)

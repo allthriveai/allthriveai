@@ -132,6 +132,9 @@ def get_file_preview(request, file_key: str):
     Returns:
         File metadata including name, thumbnail, and page count
     """
+    # Check if the request came from a Slides URL (passed via query param)
+    is_slides_url = request.query_params.get('is_slides', 'false').lower() == 'true'
+
     try:
         # Get user's Figma token
         user_token = get_user_figma_token(request.user)
@@ -190,10 +193,30 @@ def get_file_preview(request, file_key: str):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         elif e.response.status_code == 403:
+            # Check if this was a Slides file - Figma REST API doesn't support Slides
+            if is_slides_url:
+                return Response(
+                    {
+                        'success': False,
+                        'error': (
+                            'Figma Slides files are not yet supported by the Figma REST API. '
+                            'Please try importing a regular Figma Design file instead.'
+                        ),
+                        'unsupportedFileType': 'slides',
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            # 403 can mean: 1) No file access, 2) Invalid/expired scopes
+            # Suggest re-connecting to handle scope changes
             return Response(
                 {
                     'success': False,
-                    'error': 'You do not have access to this file.',
+                    'error': (
+                        "Access denied. Either you don't have access to this file, "
+                        'or your Figma permissions need to be updated. '
+                        'Try disconnecting and reconnecting your Figma account in Settings.'
+                    ),
+                    'needsReconnect': True,
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )

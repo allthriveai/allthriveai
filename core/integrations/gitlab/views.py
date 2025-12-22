@@ -84,6 +84,16 @@ def list_user_projects(request):
                     },
                     status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )
+            # Token doesn't have required scopes (read_api)
+            return Response(
+                {
+                    'success': False,
+                    'error': 'Your GitLab token does not have permission to list projects. '
+                    'Please reconnect GitLab with the "read_api" scope enabled.',
+                    'connected': False,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         response.raise_for_status()
         projects_data = response.json()

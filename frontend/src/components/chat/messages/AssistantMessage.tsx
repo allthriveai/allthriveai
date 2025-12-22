@@ -55,8 +55,16 @@ export function AssistantMessage({
     e.preventDefault();
     if (!figmaUrl.trim() || !isFigmaUrl(figmaUrl) || !onFigmaUrlSubmit) return;
     setIsSubmittingFigma(true);
+    setFigmaUrlError(null); // Clear previous errors
     try {
       await onFigmaUrlSubmit(figmaUrl);
+    } catch (error: unknown) {
+      // Show error to user
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to import Figma file. Please check your access and try again.';
+      setFigmaUrlError(errorMessage);
     } finally {
       setIsSubmittingFigma(false);
     }

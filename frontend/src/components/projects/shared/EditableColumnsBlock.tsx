@@ -16,6 +16,7 @@ import {
   PhotoIcon,
   FilmIcon,
   ChartBarIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import { updateProject } from '@/services/projects';
 import { EditableContentBlock } from './EditableContentBlock';
@@ -41,6 +42,7 @@ const COLUMN_BLOCK_TYPES = [
   { type: 'image', label: 'Image', icon: PhotoIcon },
   { type: 'video', label: 'Video', icon: FilmIcon },
   { type: 'mermaid', label: 'Diagram', icon: ChartBarIcon },
+  { type: 'icon_card', label: 'Icon Card', icon: StarIcon },
 ] as const;
 
 // ============================================================================
@@ -150,6 +152,10 @@ function Column({
           code: 'graph TD\n    A[Start] --> B[End]',
           caption: '',
         }),
+        ...(type === 'icon_card' && {
+          icon: 'fas:star',
+          text: '',
+        }),
       } as ProjectBlock;
 
       // Update the column's blocks
@@ -178,18 +184,25 @@ function Column({
       };
       onProjectUpdate(optimisticProject as Project);
 
-      try {
-        const updated = await updateProject(project.id, {
-          content: { ...project.content, blocks: updatedBlocks },
-        });
-        onProjectUpdate(updated);
-      } catch (error) {
-        console.error('Failed to add block to column:', error);
-        // Rollback on error
-        onProjectUpdate(originalProject);
-      } finally {
-        setIsAdding(false);
+      // Check if we're in "blocks mode" (profile sections) vs "project mode"
+      // In blocks mode, project.id is 0 (mock project), so skip the API call
+      // The parent (EditableBlocksContainer/CustomSection) handles persistence
+      const isBlocksMode = !project.id || project.id === 0;
+
+      if (!isBlocksMode) {
+        try {
+          const updated = await updateProject(project.id, {
+            content: { ...project.content, blocks: updatedBlocks },
+          });
+          onProjectUpdate(updated);
+        } catch (error) {
+          console.error('Failed to add block to column:', error);
+          // Rollback on error
+          onProjectUpdate(originalProject);
+        }
       }
+
+      setIsAdding(false);
     },
     [columnsBlock, columnIndex, blockIndex, project, onProjectUpdate]
   );
@@ -223,18 +236,24 @@ function Column({
       };
       onProjectUpdate(optimisticProject as Project);
 
-      try {
-        const updated = await updateProject(project.id, {
-          content: { ...project.content, blocks: updatedBlocks },
-        });
-        onProjectUpdate(updated);
-      } catch (error) {
-        console.error('Failed to delete block from column:', error);
-        // Rollback on error
-        onProjectUpdate(originalProject);
-      } finally {
-        setDeletingBlockId(null);
+      // Check if we're in "blocks mode" (profile sections) vs "project mode"
+      // In blocks mode, project.id is 0 (mock project), so skip the API call
+      const isBlocksMode = !project.id || project.id === 0;
+
+      if (!isBlocksMode) {
+        try {
+          const updated = await updateProject(project.id, {
+            content: { ...project.content, blocks: updatedBlocks },
+          });
+          onProjectUpdate(updated);
+        } catch (error) {
+          console.error('Failed to delete block from column:', error);
+          // Rollback on error
+          onProjectUpdate(originalProject);
+        }
       }
+
+      setDeletingBlockId(null);
     },
     [columnsBlock, columnIndex, blockIndex, project, onProjectUpdate]
   );

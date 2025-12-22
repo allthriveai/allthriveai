@@ -31,6 +31,7 @@ import {
 import type { User } from '@/types/models';
 import type { ProfileTemplate } from '@/types/profileSections';
 import { PROFILE_TEMPLATES } from '@/types/profileSections';
+import { InlineEditableTitle, InlineEditableText } from '@/components/projects/shared/InlineEditable';
 
 interface ProfileHeaderProps {
   user: User | null;
@@ -52,6 +53,9 @@ interface ProfileHeaderProps {
   onTemplateChange?: (template: ProfileTemplate) => void;
   onAvatarChange?: (fileOrUrl: string | File) => void;
   isAvatarUploading?: boolean;
+  // Inline editing handlers
+  onNameChange?: (name: string) => Promise<void>;
+  onTaglineChange?: (tagline: string) => Promise<void>;
 }
 
 // Helper to convert tier code to display name
@@ -88,13 +92,15 @@ export function ProfileHeader({
   onTemplateChange,
   onAvatarChange,
   isAvatarUploading,
+  onNameChange,
+  onTaglineChange,
 }: ProfileHeaderProps) {
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle avatar file selection
+  // Handle avatar file selection - works anytime for owners (not just edit mode)
   const handleAvatarClick = () => {
-    if (isEditing && onAvatarChange && fileInputRef.current) {
+    if (isOwnProfile && onAvatarChange && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
@@ -164,105 +170,86 @@ export function ProfileHeader({
                 className="hidden"
                 aria-label="Upload profile picture"
               />
-              {/* Avatar display - different styles for editing vs viewing */}
-              {isEditing && onAvatarChange ? (
-                // Edit mode: Match ImageUpload component style (dashed border circle)
-                <div
-                  onClick={handleAvatarClick}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Upload image - click or drag and drop"
-                  aria-disabled={isAvatarUploading}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      handleAvatarClick();
-                    }
+              {/* Avatar display - always clickable for owners with hover effect */}
+              <div
+                onClick={isOwnProfile && onAvatarChange ? handleAvatarClick : undefined}
+                role={isOwnProfile && onAvatarChange ? 'button' : undefined}
+                tabIndex={isOwnProfile && onAvatarChange ? 0 : undefined}
+                aria-label={isOwnProfile && onAvatarChange ? 'Upload image - click to change' : undefined}
+                aria-disabled={isAvatarUploading}
+                onKeyDown={isOwnProfile && onAvatarChange ? (e) => {
+                  if ((e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleAvatarClick();
+                  }
+                } : undefined}
+                className={`
+                  relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800
+                  ${isOwnProfile && onAvatarChange ? 'cursor-pointer group' : ''}
+                  ${isAvatarUploading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              >
+                <img
+                  src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
+                  alt={user?.fullName || user?.username || 'Profile'}
+                  className="w-full h-full object-cover"
+                  style={{
+                    objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
                   }}
-                  className={`
-                    relative w-32 h-32 rounded-full border-4 border-dashed
-                    flex flex-col items-center justify-center cursor-pointer
-                    transition-all duration-200
-                    focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-                    ${user?.avatarUrl
-                      ? 'border-transparent overflow-hidden group'
-                      : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500 bg-slate-50 dark:bg-slate-800/50'
-                    }
-                    ${isAvatarUploading ? 'opacity-50 cursor-not-allowed' : ''}
-                  `}
-                >
-                  {user?.avatarUrl ? (
-                    // Has avatar - show image with hover overlay
-                    <>
-                      <img
-                        src={user.avatarUrl}
-                        alt={user?.fullName || user?.username || 'Profile'}
-                        className="w-full h-full object-cover"
-                        style={{
-                          objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                        {isAvatarUploading ? (
-                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
-                        ) : (
-                          <>
-                            <PhotoIcon className="w-10 h-10 text-white mb-1" />
-                            <span className="text-xs text-white text-center px-2">Click to change</span>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    // No avatar - show upload prompt (matches ImageUpload style)
-                    isAvatarUploading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500" />
-                        <span className="sr-only">Uploading...</span>
-                      </>
+                />
+                {/* Hover overlay for owners */}
+                {isOwnProfile && onAvatarChange && (
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isAvatarUploading ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
                     ) : (
                       <>
-                        <PhotoIcon className="w-10 h-10 text-slate-400 dark:text-slate-500 mb-1" />
-                        <span className="text-xs text-slate-500 dark:text-slate-400 text-center px-2">
-                          Click or drag
-                        </span>
+                        <PhotoIcon className="w-10 h-10 text-white mb-1" />
+                        <span className="text-xs text-white text-center px-2">Click to change</span>
                       </>
-                    )
-                  )}
-                </div>
-              ) : (
-                // View mode: Standard avatar display
-                <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                  <img
-                    src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
-                    alt={user?.fullName || user?.username || 'Profile'}
-                    className="w-full h-full object-cover"
-                    style={{
-                      objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
-                    }}
-                  />
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0 pt-2 sm:pt-0 sm:pb-2">
-              {/* Name & Username */}
+              {/* Name - Inline Editable for owners */}
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
-                  {user?.fullName || user?.username || 'User'}
-                </h1>
+                {onNameChange ? (
+                  <InlineEditableTitle
+                    value={user?.fullName || ''}
+                    isEditable={isOwnProfile}
+                    onChange={onNameChange}
+                    placeholder="Add your name"
+                    className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white"
+                    as="h1"
+                  />
+                ) : (
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
+                    {user?.fullName || user?.username || 'User'}
+                  </h1>
+                )}
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
                 @{user?.username}
               </p>
 
-              {/* Tagline */}
-              {user?.tagline && (
+              {/* Tagline - Inline Editable for owners */}
+              {onTaglineChange ? (
+                <InlineEditableText
+                  value={user?.tagline || ''}
+                  isEditable={isOwnProfile}
+                  onChange={onTaglineChange}
+                  placeholder="Add a tagline about yourself"
+                  className="text-gray-700 dark:text-gray-300 text-sm mb-3"
+                />
+              ) : user?.tagline ? (
                 <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-2">
                   {user.tagline}
                 </p>
-              )}
+              ) : null}
 
               {/* Meta Info */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">

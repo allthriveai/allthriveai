@@ -1585,19 +1585,29 @@ def _handle_github_import(
     from core.integrations.github.helpers import get_user_github_token, parse_github_url
     from core.integrations.github.service import GitHubService
 
+    logger.info(f'[GitHub Import] Starting import for URL: {url}')
+    logger.info(
+        f'[GitHub Import] User: {user.id} ({user.username}), '
+        f'showcase={is_showcase}, private={is_private}, force_clip={force_clip}'
+    )
+
     # Parse the GitHub URL
     try:
         owner, repo = parse_github_url(url)
+        logger.info(f'[GitHub Import] Parsed URL: owner={owner}, repo={repo}')
     except ValueError as e:
+        logger.error(f'[GitHub Import] Failed to parse URL {url}: {e}')
         return {'success': False, 'error': str(e)}
 
     # Check if user has GitHub connected
+    logger.info(f'[GitHub Import] Checking GitHub connection for user {user.id}')
     token = get_user_github_token(user)
     if not token:
+        logger.warning(f'[GitHub Import] No GitHub token found for user {user.id}')
         # No GitHub connected - ask user what they want to do
         if force_clip:
             # User chose to clip without connecting GitHub
-            logger.info(f'User chose to clip {owner}/{repo} without GitHub connection')
+            logger.info(f'[GitHub Import] User chose to clip {owner}/{repo} without GitHub connection')
             result = _handle_generic_import(
                 url=url,
                 user=user,
@@ -1612,10 +1622,11 @@ def _handle_github_import(
                     "I've added this repository to your clippings! "
                     'You can connect GitHub anytime in Settings to import your own repos with full AI analysis.'
                 )
+            logger.info(f'[GitHub Import] Force clip result: {result}')
             return result
 
         # Return a prompt for the user to connect GitHub or clip
-        logger.info(f'No GitHub token for {owner}/{repo}, asking user to connect or clip')
+        logger.info(f'[GitHub Import] No token for {owner}/{repo}, asking user to connect or clip')
         return {
             'success': False,
             'needs_github_connection': True,
@@ -1631,16 +1642,19 @@ def _handle_github_import(
         }
 
     # Check if user owns the repo
+    logger.info(f'[GitHub Import] Token found for user {user.id}, length: {len(token)}')
+    logger.info(f'[GitHub Import] Verifying repo access for {owner}/{repo}')
     github_service = GitHubService(token)
     try:
         is_owner = github_service.verify_repo_access_sync(owner, repo)
+        logger.info(f'[GitHub Import] Access verification result: is_owner={is_owner}')
     except Exception as e:
-        logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
+        logger.error(f'[GitHub Import] Failed to verify repo access for {owner}/{repo}: {e}', exc_info=True)
         is_owner = False
 
     if not is_owner:
         # User doesn't own this repo - auto-clip
-        logger.info(f'User does not own {owner}/{repo}, auto-clipping')
+        logger.info(f'[GitHub Import] User {user.id} does not own {owner}/{repo}, auto-clipping')
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1655,10 +1669,11 @@ def _handle_github_import(
                 "Looks like you don't own this repository, so I've added it to your clippings! "
                 'You can find it in your Clipped tab.'
             )
+        logger.info(f'[GitHub Import] Auto-clip result: {result}')
         return result
 
     # User owns the repo - do full import
-    logger.info(f'User owns {owner}/{repo}, performing full GitHub import')
+    logger.info(f'[GitHub Import] User {user.id} owns {owner}/{repo}, performing full GitHub import')
     return _full_github_import(
         url=url,
         owner=owner,
@@ -1687,11 +1702,16 @@ def _full_github_import(
     from core.integrations.github.service import GitHubService
     from core.projects.models import Project
 
+    logger.info(f'[GitHub Full Import] Starting full import for {owner}/{repo}')
+    logger.info(f'[GitHub Full Import] User: {user.id} ({user.username})')
+
     try:
+        logger.info(f'[GitHub Full Import] Fetching repository info for {owner}/{repo}')
         github_service = GitHubService(token)
         repo_files = github_service.get_repository_info_sync(owner, repo)
+        logger.info(f'[GitHub Full Import] Successfully fetched repo info, keys: {list(repo_files.keys())}')
     except Exception as e:
-        logger.error(f'Failed to fetch GitHub repo {owner}/{repo}: {e}')
+        logger.error(f'[GitHub Full Import] Failed to fetch GitHub repo {owner}/{repo}: {e}', exc_info=True)
         # Fall back to generic import on GitHub API failure
         return _handle_generic_import(
             url=url,
@@ -1703,17 +1723,21 @@ def _full_github_import(
         )
 
     # Normalize GitHub output into the schema the AI analyzer expects
+    logger.info(f'[GitHub Full Import] Normalizing GitHub data for {owner}/{repo}')
     repo_summary = normalize_github_repo_data(owner, repo, url, repo_files)
+    desc_len = len(repo_summary.get('description', ''))
+    logger.info(f'[GitHub Full Import] Normalized: name={repo_summary.get("name")}, desc_len={desc_len}')
 
     # Run AI analysis with error handling
     try:
-        logger.info(f'Running template-based AI analysis for {owner}/{repo}')
+        logger.info(f'[GitHub Full Import] Running template-based AI analysis for {owner}/{repo}')
         analysis = analyze_github_repo_for_template(
             repo_data=repo_summary,
             readme_content=repo_files.get('readme', ''),
         )
+        logger.info(f'[GitHub Full Import] AI analysis completed, sections count: {len(analysis.get("sections", []))}')
     except Exception as e:
-        logger.warning(f'AI analysis failed for {owner}/{repo}, using basic metadata: {e}')
+        logger.warning(f'[GitHub Full Import] AI analysis failed for {owner}/{repo}, using basic metadata: {e}')
         # Use basic metadata without AI analysis
         analysis = {
             'templateVersion': 2,
@@ -1749,9 +1773,10 @@ def _full_github_import(
             tools_order=[],
         )
 
+        logger.info(f'[GitHub Full Import] Applying AI metadata to project {project.id}')
         apply_ai_metadata(project, analysis, content=content)
 
-        logger.info(f'Successfully imported {owner}/{repo} as project {project.id}')
+        logger.info(f'[GitHub Full Import] Successfully imported {owner}/{repo} as project {project.id}')
 
         return {
             'success': True,
@@ -1762,7 +1787,7 @@ def _full_github_import(
             'project_type': 'github_repo',
         }
     except Exception as e:
-        logger.exception(f'Failed to create project for {owner}/{repo}: {e}')
+        logger.exception(f'[GitHub Full Import] Failed to create project for {owner}/{repo}: {e}')
         return {'success': False, 'error': f'Failed to create project: {str(e)}'}
 
 
@@ -1780,8 +1805,10 @@ def _handle_youtube_import(
     """
     # TODO: Implement YouTube Data API integration
     # For now, use generic scraper which handles YouTube well
-    logger.info(f'Handling YouTube import: {url}')
-    return _handle_generic_import(
+    logger.info(f'[YouTube Import] Starting import for URL: {url}')
+    logger.info(f'[YouTube Import] User: {user.id} ({user.username}), showcase={is_showcase}, private={is_private}')
+
+    result = _handle_generic_import(
         url=url,
         user=user,
         is_owned=False,  # YouTube videos are always clips unless user owns channel
@@ -1789,6 +1816,11 @@ def _handle_youtube_import(
         is_private=is_private,
         state=state,
     )
+    if result.get('success'):
+        logger.info(f'[YouTube Import] Successfully imported project {result.get("project_id")}')
+    else:
+        logger.warning(f'[YouTube Import] Failed to import: {result.get("error")}')
+    return result
 
 
 def _handle_gitlab_import(
@@ -1806,22 +1838,31 @@ def _handle_gitlab_import(
     - If user doesn't own project: auto-clip
     - If user owns project: imports as owned project
     """
+    logger.info(f'[GitLab Import] Starting import for URL: {url}')
+    logger.info(f'[GitLab Import] User: {user.id} ({user.username}), showcase={is_showcase}, private={is_private}')
+
     # Parse the GitLab URL to get namespace/project
     try:
         parsed = urlparse(url)
         path_parts = parsed.path.strip('/').split('/')
         if len(path_parts) < 2:
+            logger.error(f'[GitLab Import] Invalid URL format - not enough path parts: {path_parts}')
             return {'success': False, 'error': 'Invalid GitLab URL format'}
         namespace = '/'.join(path_parts[:-1])
         project_name = path_parts[-1]
+        logger.info(f'[GitLab Import] Parsed URL: namespace={namespace}, project={project_name}')
     except Exception as e:
+        logger.error(f'[GitLab Import] Failed to parse URL {url}: {e}')
         return {'success': False, 'error': f'Invalid GitLab URL: {str(e)}'}
 
     # Try to import GitLab service - if not available, fall back to generic import
     try:
         from core.integrations.gitlab.service import GitLabService
-    except ImportError:
-        logger.info(f'GitLab service not available, using generic import for {namespace}/{project_name}')
+
+        logger.info('[GitLab Import] GitLabService imported successfully')
+    except ImportError as e:
+        logger.warning(f'[GitLab Import] GitLabService not available: {e}')
+        logger.info(f'[GitLab Import] Falling back to generic import for {namespace}/{project_name}')
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1832,13 +1873,17 @@ def _handle_gitlab_import(
         )
         if result.get('success'):
             result['message'] = 'Successfully imported this GitLab project!'
+        logger.info(f'[GitLab Import] Generic import result: {result}')
         return result
 
     # Check if user has GitLab connected
+    logger.info(f'[GitLab Import] Checking GitLab connection for user {user.id}')
     gitlab_service = GitLabService.for_user(user)
     if not gitlab_service:
         # No GitLab connected - auto-fallback to clipping
-        logger.info(f'No GitLab token, auto-clipping {namespace}/{project_name}')
+        logger.warning(
+            f'[GitLab Import] No GitLab service for user {user.id}, auto-clipping {namespace}/{project_name}'
+        )
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1853,18 +1898,23 @@ def _handle_gitlab_import(
                 "I noticed you don't have GitLab connected, so I've added this to your clippings! "
                 'Connect GitLab to import your own projects with full analysis.'
             )
+        logger.info(f'[GitLab Import] Auto-clip result: {result}')
         return result
 
     # Check if user owns the project
+    logger.info(f'[GitLab Import] Verifying project access for {namespace}/{project_name}')
     try:
         is_owner = gitlab_service.verify_project_access_sync(namespace, project_name)
+        logger.info(f'[GitLab Import] Access verification result: is_owner={is_owner}')
     except Exception as e:
-        logger.warning(f'Failed to verify GitLab project access for {namespace}/{project_name}: {e}')
+        logger.error(
+            f'[GitLab Import] Failed to verify project access for {namespace}/{project_name}: {e}', exc_info=True
+        )
         is_owner = False
 
     if not is_owner:
         # User doesn't own this project - auto-clip
-        logger.info(f'User does not own {namespace}/{project_name}, auto-clipping')
+        logger.info(f'[GitLab Import] User {user.id} does not own {namespace}/{project_name}, auto-clipping')
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1879,10 +1929,11 @@ def _handle_gitlab_import(
                 "Looks like you don't own this GitLab project, so I've added it to your clippings! "
                 'You can find it in your Clipped tab.'
             )
+        logger.info(f'[GitLab Import] Non-owner import result: {result}')
         return result
 
     # User owns the project - import as owned
-    logger.info(f'User owns {namespace}/{project_name}, importing as owned project')
+    logger.info(f'[GitLab Import] User {user.id} owns {namespace}/{project_name}, importing as owned project')
     result = _handle_generic_import(
         url=url,
         user=user,
@@ -1893,6 +1944,7 @@ def _handle_gitlab_import(
     )
     if result.get('success'):
         result['message'] = 'Successfully imported your GitLab project!'
+    logger.info(f'[GitLab Import] Owner import result: {result}')
     return result
 
 
@@ -1908,8 +1960,15 @@ def _handle_figma_import(
 
     Figma links are always imported as owned designs since users only share
     their own Figma files. Uses generic scraper for metadata extraction.
+
+    Default category is "Design" (ID 3) for all Figma imports.
     """
-    logger.info(f'Handling Figma import: {url}')
+    from core.projects.models import Project
+    from core.taxonomy.models import Taxonomy
+
+    logger.info(f'[Figma Import] Starting import for URL: {url}')
+    logger.info(f'[Figma Import] User: {user.id} ({user.username}), showcase={is_showcase}, private={is_private}')
+
     result = _handle_generic_import(
         url=url,
         user=user,
@@ -1920,6 +1979,27 @@ def _handle_figma_import(
     )
     if result.get('success'):
         result['message'] = 'Successfully imported your Figma design!'
+        logger.info(f'[Figma Import] Successfully imported project {result.get("project_id")}')
+
+        # Ensure Figma imports have "Design" category (ID 3)
+        # This overrides the default "Developer & Coding" fallback
+        project_id = result.get('project_id')
+        if project_id:
+            try:
+                project = Project.objects.get(id=project_id)
+                # Check if Design category (ID 3) is already assigned
+                has_design_category = project.categories.filter(id=3).exists()
+                if not has_design_category:
+                    try:
+                        design_category = Taxonomy.objects.get(id=3, taxonomy_type='category', is_active=True)
+                        project.categories.add(design_category)
+                        logger.info(f'[Figma Import] Added Design category to project {project_id}')
+                    except Taxonomy.DoesNotExist:
+                        logger.warning('[Figma Import] Design category (ID 3) not found')
+            except Project.DoesNotExist:
+                logger.warning(f'[Figma Import] Project {project_id} not found when adding category')
+    else:
+        logger.warning(f'[Figma Import] Failed to import: {result.get("error")}')
     return result
 
 
@@ -1949,17 +2029,22 @@ def _handle_generic_import(
 
     # If ownership not specified, ask user
     if is_owned is None:
+        logger.info(f'[Generic Import] Ownership not specified for {url}, requesting confirmation')
         return {
             'success': False,
             'needs_ownership_confirmation': True,
             'message': 'Is this your own project, or are you clipping something you found?',
         }
 
-    logger.info(f'Scraping webpage for project: {url} (user: {user.username}, is_owned: {is_owned})')
+    logger.info(f'[Generic Import] Starting import for URL: {url}')
+    logger.info(f'[Generic Import] User: {user.id} ({user.username}), is_owned={is_owned}')
 
     try:
         # Scrape the webpage (already fetches HTML and extracts text internally)
+        logger.info(f'[Generic Import] Scraping webpage: {url}')
         extracted = scrape_url_for_project(url)
+        desc_len = len(extracted.description or '')
+        logger.info(f'[Generic Import] Scraped: title="{extracted.title}", desc_len={desc_len}')
 
         # Build extracted data dict for template analysis
         # Note: scrape_url_for_project already does AI extraction, so we use its
@@ -1981,13 +2066,16 @@ def _handle_generic_import(
         # Run template analysis to generate sections
         # Pass empty text_content since scrape_url_for_project already extracted
         # the relevant info via AI - no need to double-fetch the URL
+        logger.info(f'[Generic Import] Running template analysis for {url}')
         analysis = analyze_webpage_for_template(
             extracted_data=extracted_dict,
             text_content='',  # Skip double-fetch - extracted data is sufficient
             user=user,
         )
+        logger.info(f'[Generic Import] Template analysis complete, sections count: {len(analysis.get("sections", []))}')
 
         hero_image = analysis.get('hero_image') or extracted.image_url or ''
+        logger.info(f'[Generic Import] Hero image: {hero_image[:100] if hero_image else "None"}...')
 
         # Build content
         content = {
@@ -2004,8 +2092,28 @@ def _handle_generic_import(
 
         # Determine project type
         project_type = Project.ProjectType.OTHER if is_owned else Project.ProjectType.CLIPPED
+        logger.info(f'[Generic Import] Project type: {project_type}')
+
+        # Check if a project with this URL already exists for this user
+        existing_project = Project.objects.filter(user=user, external_url=url).first()
+        if existing_project:
+            logger.info(f'[Generic Import] Found existing project {existing_project.id} for URL {url}')
+            return {
+                'success': True,
+                'project_id': existing_project.id,
+                'slug': existing_project.slug,
+                'title': existing_project.title,
+                'url': f'/{user.username}/{existing_project.slug}',
+                'project_type': 'existing',
+                'already_imported': True,
+                'message': (
+                    f'This project was already imported! '
+                    f'You can find it at /{user.username}/{existing_project.slug}'
+                ),
+            }
 
         # Create project
+        logger.info(f'[Generic Import] Creating project for {url}')
         project = Project.objects.create(
             user=user,
             title=extracted.title or 'Imported Project',
@@ -2019,9 +2127,10 @@ def _handle_generic_import(
             tools_order=[],
         )
 
+        logger.info(f'[Generic Import] Applying AI metadata to project {project.id}')
         apply_ai_metadata(project, analysis, content=content)
 
-        logger.info(f'Successfully imported {url} as project {project.id}')
+        logger.info(f'[Generic Import] Successfully imported {url} as project {project.id}')
 
         return {
             'success': True,
@@ -2033,7 +2142,7 @@ def _handle_generic_import(
         }
 
     except URLScraperError as e:
-        logger.error(f'Failed to scrape URL {url}: {e}')
+        logger.error(f'[Generic Import] URL scraper error for {url}: {e}')
         return {
             'success': False,
             'error': f'Could not import from URL: {str(e)}',
@@ -2046,7 +2155,7 @@ def _handle_generic_import(
             ),
         }
     except Exception as e:
-        logger.exception(f'Unexpected error importing from URL {url}: {e}')
+        logger.exception(f'[Generic Import] Unexpected error importing from URL {url}: {e}')
         return {'success': False, 'error': f'Failed to create project: {str(e)}'}
 
 
@@ -2151,6 +2260,7 @@ def import_from_url(
     else:
         # Generic handler - default to owned if not specified
         # (most users sharing URLs are sharing their own projects)
+        logger.info(f'[Import Tool] Routing {url} to generic handler (domain_type={domain_type})')
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -2159,6 +2269,14 @@ def import_from_url(
             is_private=is_private,
             state=state,
         )
+
+    # Log final result
+    if result.get('success'):
+        logger.info(f'[Import Tool] Successfully imported {url} as project {result.get("project_id")}')
+    elif result.get('needs_github_connection') or result.get('needs_ownership_confirmation'):
+        logger.info(f'[Import Tool] Import pending user confirmation for {url}')
+    else:
+        logger.warning(f'[Import Tool] Failed to import {url}: {result.get("error")}')
 
     return result
 

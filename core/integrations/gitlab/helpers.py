@@ -114,22 +114,35 @@ def get_user_gitlab_token(user) -> str | None:
     # Import here to avoid circular import during Django app loading
     from allauth.socialaccount.models import SocialAccount, SocialToken
 
+    logger.info(f'[GitLab] Looking for token for user {user.id} ({user.username})')
+
     # First try django-allauth (for users who signed up with GitLab)
     try:
         social_account = SocialAccount.objects.get(user=user, provider='gitlab')
+        logger.info(f'[GitLab] Found allauth SocialAccount for user {user.id}')
         social_token = SocialToken.objects.get(account=social_account)
-        logger.debug(f'Using GitLab OAuth token for user {user.id} from django-allauth')
+        logger.info(f'[GitLab] Found allauth SocialToken for user {user.id}, token length: {len(social_token.token)}')
         return social_token.token
-    except (SocialAccount.DoesNotExist, SocialToken.DoesNotExist):
-        pass
+    except SocialAccount.DoesNotExist:
+        logger.info(f'[GitLab] No allauth SocialAccount for user {user.id}')
+    except SocialToken.DoesNotExist:
+        logger.warning(f'[GitLab] SocialAccount exists but no SocialToken for user {user.id}')
 
     # Fall back to SocialConnection (for users who connected GitLab separately)
     try:
         connection = SocialConnection.objects.get(user=user, provider=SocialProvider.GITLAB, is_active=True)
-        logger.debug(f'Using GitLab OAuth token for user {user.id} from SocialConnection')
-        return connection.access_token  # This uses the property that decrypts the token
+        logger.info(
+            f'[GitLab] Found SocialConnection for user {user.id}: '
+            f'provider_user={connection.provider_username}, scopes={connection.scopes}'
+        )
+        token = connection.access_token  # This uses the property that decrypts the token
+        if token:
+            logger.info(f'[GitLab] Decrypted token from SocialConnection, length: {len(token)}')
+        else:
+            logger.error(f'[GitLab] SocialConnection exists but token decryption failed for user {user.id}')
+        return token
     except SocialConnection.DoesNotExist:
-        logger.warning(f'No GitLab connection found for user {user.id}')
+        logger.warning(f'[GitLab] No SocialConnection found for user {user.id}')
         return None
 
 

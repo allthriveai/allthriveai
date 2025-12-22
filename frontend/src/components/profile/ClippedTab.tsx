@@ -24,6 +24,7 @@ interface ClippedTabProps {
   selectedProjectIds?: Set<number>;
   onSelect?: (projectId: number) => void;
   onRefresh?: () => void;
+  enableInlinePreview?: boolean;
 }
 
 export function ClippedTab({
@@ -34,6 +35,7 @@ export function ClippedTab({
   selectionMode = false,
   selectedProjectIds = new Set(),
   onSelect,
+  enableInlinePreview = false,
 }: ClippedTabProps) {
   // Use controlled state if provided, otherwise manage internally
   const [internalProjects, setInternalProjects] = useState<Project[]>([]);
@@ -200,6 +202,7 @@ export function ClippedTab({
             selectionMode={selectionMode}
             isSelected={selectedProjectIds.has(project.id)}
             onSelect={onSelect}
+            enableInlinePreview={enableInlinePreview}
           />
         </div>
       ))}

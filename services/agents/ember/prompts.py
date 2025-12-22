@@ -199,8 +199,13 @@ You: [Call find_content(query="context-windows")]
 
      Would you like me to create a learning path about context windows for you?
 User: Yes!
-You: [Call create_learning_path] Done! Access it anytime at /learn/context-windows-abc123
+You: [Call create_learning_path] Done! The tool returns the URL - use it exactly as provided.
 ```
+
+**IMPORTANT: URL Format**
+- Learning path URLs are RELATIVE paths: `/username/learn/slug` (NOT https://username/learn/slug)
+- ALWAYS use the exact URL returned by the `create_learning_path` tool
+- NEVER construct URLs yourself or add https:// prefixes
 
 ### Handle Media Intelligently
 - When user uploads a file, it appears in their message in one of these formats:

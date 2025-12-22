@@ -667,6 +667,58 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  // Name change handler for inline editing
+  const handleNameChange = useCallback(async (name: string) => {
+    if (!user) return;
+
+    try {
+      // Parse name into firstName and lastName
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      await api.patch('/me/profile/', {
+        firstName,
+        lastName,
+      });
+
+      await refreshUser();
+
+      if (isActualOwner) {
+        setProfileUser(prev => prev ? {
+          ...prev,
+          firstName,
+          lastName,
+          fullName: name.trim(),
+        } : prev);
+      }
+    } catch (error) {
+      console.error('Failed to update name:', error);
+      throw error; // Re-throw so InlineEditable can show error state
+    }
+  }, [user, isActualOwner, refreshUser]);
+
+  // Tagline change handler for inline editing
+  const handleTaglineChange = useCallback(async (tagline: string) => {
+    if (!user) return;
+
+    try {
+      await api.patch('/me/profile/', { tagline });
+
+      await refreshUser();
+
+      if (isActualOwner) {
+        setProfileUser(prev => prev ? {
+          ...prev,
+          tagline,
+        } : prev);
+      }
+    } catch (error) {
+      console.error('Failed to update tagline:', error);
+      throw error; // Re-throw so InlineEditable can show error state
+    }
+  }, [user, isActualOwner, refreshUser]);
+
   // Handle focal point save - saves both avatar URL and focal point
   const handleFocalPointSave = useCallback(async (focalX: number, focalY: number) => {
     if (!pendingAvatarUrl) return;
@@ -1148,6 +1200,8 @@ export default function ProfilePage() {
               }}
               onAvatarChange={handleAvatarChange}
               isAvatarUploading={isAvatarUploading}
+              onNameChange={handleNameChange}
+              onTaglineChange={handleTaglineChange}
             />
 
             {/* Tab Navigation - Always visible */}
@@ -1216,7 +1270,8 @@ export default function ProfilePage() {
                           {/* Edit Profile */}
                           <button
                             onClick={() => {
-                              setIsEditingShowcase(true);
+                              handleTabChange('showcase');
+                              setTimeout(() => setIsEditingShowcase(true), 100);
                               setShowMoreMenu(false);
                             }}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
@@ -1241,6 +1296,8 @@ export default function ProfilePage() {
                             <span>Add Project</span>
                           </button>
 
+                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
+
                           {/* See Public Profile */}
                           <button
                             onClick={() => {
@@ -1251,7 +1308,7 @@ export default function ProfilePage() {
                             role="menuitem"
                           >
                             <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
-                            <span>See Public Profile</span>
+                            <span>Preview as Visitor</span>
                           </button>
 
                           {/* Bulk Delete - Only show on Playground/Clipped tabs with projects */}
@@ -1330,6 +1387,7 @@ export default function ProfilePage() {
                     sections={profileSections}
                     user={profileUserData}
                     isEditing={isEditingShowcase}
+                    isOwnProfile={isOwnProfile}
                     onSectionUpdate={handleSectionUpdate}
                     onAddSection={handleAddSection}
                     onDeleteSection={handleDeleteSection}
@@ -1363,6 +1421,7 @@ export default function ProfilePage() {
                           showShowcaseButton={isOwnProfile}
                           isInShowcase={showcaseProjectIds.has(project.id)}
                           onShowcaseToggle={handleShowcaseToggle}
+                          enableInlinePreview
                         />
                       </div>
                     ))}
@@ -1431,6 +1490,7 @@ export default function ProfilePage() {
                   selectionMode={selectionMode}
                   selectedProjectIds={selectedProjectIds}
                   onSelect={toggleSelection}
+                  enableInlinePreview
                 />
               </div>
             )}
@@ -1689,11 +1749,31 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Social Links */}
-                    {socialLinks.length > 0 && (
-                      <div className="mb-6">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Connect</h4>
+                    {(socialLinks.length > 0 || isOwnProfile) && (
+                      <div className="mb-6 group/connect">
+                        <div className="flex items-center gap-2 mb-3">
+                          <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500">Connect</h4>
+                          {isOwnProfile && (
+                            <button
+                              onClick={() => {
+                                // Scroll to Links section in showcase tab
+                                setActiveTab('showcase');
+                                setTimeout(() => {
+                                  const linksSection = document.querySelector('[data-section-type="links"]');
+                                  if (linksSection) {
+                                    linksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  }
+                                }, 100);
+                              }}
+                              className="p-1 rounded text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 opacity-0 group-hover/connect:opacity-100 transition-all"
+                              title="Edit social links"
+                            >
+                              <FontAwesomeIcon icon={faPenToSquare} className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                          {socialLinks.map((link, i) => (
+                          {socialLinks.length > 0 ? socialLinks.map((link, i) => (
                             <a
                               key={i}
                               href={link.url}
@@ -1704,7 +1784,9 @@ export default function ProfilePage() {
                             >
                               <FontAwesomeIcon icon={link.icon} className="w-4 h-4" />
                             </a>
-                          ))}
+                          )) : isOwnProfile ? (
+                            <p className="text-sm text-gray-400 italic">Add your social links</p>
+                          ) : null}
                         </div>
                       </div>
                     )}
@@ -2034,6 +2116,8 @@ export default function ProfilePage() {
                             <span>Add Project</span>
                           </button>
 
+                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
+
                           {/* See Public Profile */}
                           <button
                             onClick={() => {
@@ -2138,6 +2222,7 @@ export default function ProfilePage() {
                             showShowcaseButton={isOwnProfile}
                             isInShowcase={showcaseProjectIds.has(project.id)}
                             onShowcaseToggle={handleShowcaseToggle}
+                            enableInlinePreview
                           />
                         </div>
                       ))}
@@ -2224,6 +2309,7 @@ export default function ProfilePage() {
                     selectionMode={selectionMode}
                     selectedProjectIds={selectedProjectIds}
                     onSelect={toggleSelection}
+                    enableInlinePreview
                   />
                 </div>
               )}

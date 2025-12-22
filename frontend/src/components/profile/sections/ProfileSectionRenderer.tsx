@@ -74,6 +74,7 @@ interface ProfileSectionRendererProps {
   section: ProfileSection;
   user: ProfileUser;
   isEditing?: boolean;
+  isOwnProfile?: boolean;
   onUpdate?: (content: ProfileSectionContent) => void;
   onSocialLinksUpdate?: (links: SocialLinksUpdate) => Promise<void>;
 }
@@ -82,14 +83,15 @@ export function ProfileSectionRenderer({
   section,
   user,
   isEditing,
+  isOwnProfile,
   onUpdate,
   onSocialLinksUpdate,
 }: ProfileSectionRendererProps) {
-  if (!section.visible && !isEditing) {
+  if (!section.visible && !isEditing && !isOwnProfile) {
     return null;
   }
 
-  const commonProps = { user, isEditing, onUpdate };
+  const commonProps = { user, isEditing, isOwnProfile, onUpdate };
 
   switch (section.type) {
     case 'about':
@@ -126,6 +128,7 @@ interface ProfileSectionsProps {
   sections: ProfileSection[];
   user: ProfileUser;
   isEditing?: boolean;
+  isOwnProfile?: boolean;
   onSectionUpdate?: (sectionId: string, content: ProfileSectionContent) => void;
   onAddSection?: (type: ProfileSectionType, afterSectionId?: string) => void;
   onDeleteSection?: (sectionId: string) => void;
@@ -138,6 +141,7 @@ export function ProfileSections({
   sections,
   user,
   isEditing,
+  isOwnProfile,
   onSectionUpdate,
   onAddSection,
   onDeleteSection,
@@ -268,6 +272,7 @@ export function ProfileSections({
           totalSections={displaySections.length}
           user={user}
           isEditing={isEditing}
+          isOwnProfile={isOwnProfile}
           onSectionUpdate={onSectionUpdate}
           onDeleteSection={onDeleteSection}
           onToggleVisibility={onToggleVisibility}
@@ -339,6 +344,7 @@ interface SortableProfileSectionProps {
   totalSections: number;
   user: ProfileUser;
   isEditing?: boolean;
+  isOwnProfile?: boolean;
   onSectionUpdate?: (sectionId: string, content: ProfileSectionContent) => void;
   onDeleteSection?: (sectionId: string) => void;
   onToggleVisibility?: (sectionId: string) => void;
@@ -353,6 +359,7 @@ function SortableProfileSection({
   totalSections,
   user,
   isEditing,
+  isOwnProfile,
   onSectionUpdate,
   onDeleteSection,
   onToggleVisibility,
@@ -435,6 +442,7 @@ function SortableProfileSection({
         section={section}
         user={user}
         isEditing={isEditing}
+        isOwnProfile={isOwnProfile}
         onUpdate={onSectionUpdate ? (content) => onSectionUpdate(section.id, content) : undefined}
         onSocialLinksUpdate={onSocialLinksUpdate}
       />

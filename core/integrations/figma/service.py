@@ -23,7 +23,9 @@ class FigmaService:
     def _make_request(self, endpoint: str, params: dict = None) -> dict:
         """Make authenticated request to Figma API."""
         url = f'{FIGMA_API_BASE_URL}{endpoint}'
+        response = None
         try:
+            logger.info(f'Figma API request: {url} with token prefix: {self.access_token[:10]}...')
             response = requests.get(
                 url,
                 headers=self.headers,
@@ -33,7 +35,10 @@ class FigmaService:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
-            logger.error(f'Figma API HTTP error: {e} - {response.text if response else ""}')
+            logger.error(f'Figma API HTTP error: {e}')
+            if response is not None:
+                logger.error(f'Figma API response body: {response.text}')
+                logger.error(f'Figma API status code: {response.status_code}')
             raise
         except requests.exceptions.RequestException as e:
             logger.error(f'Figma API request error: {e}')

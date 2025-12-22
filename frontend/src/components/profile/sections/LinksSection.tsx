@@ -1,13 +1,12 @@
 /**
  * LinksSection - Social and external links display
  *
- * Displays user's social links and custom links. In edit mode,
- * allows editing both the user's core social links (synced to profile)
- * and adding custom links (stored in section content).
+ * Displays user's social links and custom links. Supports inline editing
+ * when isOwnProfile is true, with click-to-edit for each link.
  */
 
 import { useState } from 'react';
-import { PlusIcon, XMarkIcon, LinkIcon, GlobeAltIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, LinkIcon, GlobeAltIcon, CheckIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGithub,
@@ -40,6 +39,7 @@ interface LinksSectionProps {
   content: LinksSectionContent;
   user: ProfileUser;
   isEditing?: boolean;
+  isOwnProfile?: boolean;
   onUpdate?: (content: LinksSectionContent) => void;
   onSocialLinksUpdate?: (links: SocialLinksUpdate) => Promise<void>;
 }
@@ -81,31 +81,35 @@ const SOCIAL_LINK_FIELDS = [
   { key: 'instagram_url', fieldKey: 'instagramUrl', label: 'Instagram', icon: 'instagram', placeholder: 'https://instagram.com/username' },
 ] as const;
 
-export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinksUpdate }: LinksSectionProps) {
+export function LinksSection({ content, user, isEditing, isOwnProfile, onUpdate, onSocialLinksUpdate }: LinksSectionProps) {
   const [newLabel, setNewLabel] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [isSavingSocial, setIsSavingSocial] = useState(false);
+  const [isAddingLink, setIsAddingLink] = useState(false);
+
+  // Determine if editable: inline editing for owners, or legacy isEditing mode
+  const canEdit = isOwnProfile || isEditing;
 
   // Local state for editing social links
   const [socialLinkEdits, setSocialLinkEdits] = useState<SocialLinksUpdate>({
-    websiteUrl: user.websiteUrl || '',
-    githubUrl: user.githubUrl || '',
-    linkedinUrl: user.linkedinUrl || '',
-    twitterUrl: user.twitterUrl || '',
-    youtubeUrl: user.youtubeUrl || '',
-    instagramUrl: user.instagramUrl || '',
+    websiteUrl: user.website_url || '',
+    githubUrl: user.github_url || '',
+    linkedinUrl: user.linkedin_url || '',
+    twitterUrl: user.twitter_url || '',
+    youtubeUrl: user.youtube_url || '',
+    instagramUrl: user.instagram_url || '',
   });
 
   // Combine user's social links with custom links (for display in non-edit mode)
   const userLinks: LinkItem[] = [];
 
   // Add user's social links if they exist
-  if (user.websiteUrl) userLinks.push({ label: 'Website', url: user.websiteUrl, icon: 'website' });
-  if (user.githubUrl) userLinks.push({ label: 'GitHub', url: user.githubUrl, icon: 'github' });
-  if (user.linkedinUrl) userLinks.push({ label: 'LinkedIn', url: user.linkedinUrl, icon: 'linkedin' });
-  if (user.twitterUrl) userLinks.push({ label: 'Twitter', url: user.twitterUrl, icon: 'twitter' });
-  if (user.youtubeUrl) userLinks.push({ label: 'YouTube', url: user.youtubeUrl, icon: 'youtube' });
-  if (user.instagramUrl) userLinks.push({ label: 'Instagram', url: user.instagramUrl, icon: 'instagram' });
+  if (user.website_url) userLinks.push({ label: 'Website', url: user.website_url, icon: 'website' });
+  if (user.github_url) userLinks.push({ label: 'GitHub', url: user.github_url, icon: 'github' });
+  if (user.linkedin_url) userLinks.push({ label: 'LinkedIn', url: user.linkedin_url, icon: 'linkedin' });
+  if (user.twitter_url) userLinks.push({ label: 'Twitter', url: user.twitter_url, icon: 'twitter' });
+  if (user.youtube_url) userLinks.push({ label: 'YouTube', url: user.youtube_url, icon: 'youtube' });
+  if (user.instagram_url) userLinks.push({ label: 'Instagram', url: user.instagram_url, icon: 'instagram' });
 
   // Combine with custom links from content
   const customLinks = content?.links || [];
@@ -161,16 +165,27 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
     }
   };
 
-  // Empty state when not editing and no links
-  if (allLinks.length === 0 && !isEditing) {
+  // Empty state when not editable and no links
+  if (allLinks.length === 0 && !canEdit) {
     return null;
   }
 
   return (
-    <div className="py-6 w-full">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-        Links
-      </h2>
+    <div className="py-6 w-full group/section" data-section-type="links">
+      <div className="flex items-center gap-2 mb-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          Links
+        </h2>
+        {canEdit && !isAddingLink && (
+          <button
+            onClick={() => setIsAddingLink(true)}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 opacity-0 group-hover/section:opacity-100 transition-all"
+            title="Add link"
+          >
+            <PencilIcon className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
       {/* Social Links Editor (editing mode) */}
       {isEditing && onSocialLinksUpdate && (
@@ -228,8 +243,8 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
         </div>
       )}
 
-      {/* Links display */}
-      {allLinks.length > 0 && !isEditing && (
+      {/* Links display - show for everyone, with edit controls for owners */}
+      {(allLinks.length > 0 || canEdit) && !isEditing && (
         <div
           className={
             layout === 'list'
@@ -260,13 +275,14 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
                     <GlobeAltIcon className="w-4 h-4" />
                   )}
                   <span className="text-sm font-medium">{link.label}</span>
-                  {isEditing && isCustomLink && (
+                  {canEdit && isCustomLink && (
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         handleRemoveLink(customIndex);
                       }}
                       className="ml-1 p-0.5 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove link"
                     >
                       <XMarkIcon className="w-3.5 h-3.5" />
                     </button>
@@ -299,13 +315,14 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
                       {link.url.replace(/^https?:\/\//, '')}
                     </div>
                   </div>
-                  {isEditing && isCustomLink && (
+                  {canEdit && isCustomLink && (
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         handleRemoveLink(customIndex);
                       }}
                       className="p-1.5 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove link"
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -333,13 +350,14 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
                   {link.label}
                 </span>
-                {isEditing && isCustomLink && (
+                {canEdit && isCustomLink && (
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       handleRemoveLink(customIndex);
                     }}
                     className="absolute top-1 right-1 p-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remove link"
                   >
                     <XMarkIcon className="w-4 h-4" />
                   </button>
@@ -347,6 +365,79 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
               </a>
             );
           })}
+
+          {/* Add Link button for owners - inline mode */}
+          {canEdit && !isAddingLink && (
+            <button
+              onClick={() => setIsAddingLink(true)}
+              className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500 rounded-xl transition-colors text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+            >
+              <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <PlusIcon className="w-5 h-5" />
+              </div>
+              <span className="text-sm font-medium">Add Link</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Inline Add Link Form */}
+      {canEdit && isAddingLink && !isEditing && (
+        <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Add New Link
+            </h3>
+            <button
+              onClick={() => {
+                setIsAddingLink(false);
+                setNewLabel('');
+                setNewUrl('');
+              }}
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Label (e.g., Portfolio)"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                autoFocus
+              />
+            </div>
+            <div className="relative flex-1">
+              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="url"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddLink();
+                    setIsAddingLink(false);
+                  }
+                }}
+                placeholder="https://..."
+                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              onClick={() => {
+                handleAddLink();
+                setIsAddingLink(false);
+              }}
+              disabled={!newLabel.trim() || !newUrl.trim()}
+              className="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              <PlusIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
 

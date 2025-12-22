@@ -156,7 +156,8 @@ api.interceptors.response.use(
       const responseData = error.response.data as Record<string, unknown> | undefined;
       const apiError: ApiError = {
         success: false,
-        error: (responseData?.error as string) || error.message || 'An error occurred',
+        // DRF uses 'detail' for auth errors, our API uses 'error'
+        error: (responseData?.error as string) || (responseData?.detail as string) || error.message || 'An error occurred',
         details: (responseData?.details as Record<string, string[]>) || undefined,
         statusCode: error.response.status,
       };
@@ -233,7 +234,7 @@ api.interceptors.response.use(
 
       // Handle 403 - Forbidden (user doesn't have permission)
       if (error.response.status === 403) {
-        apiError.error = (responseData?.error as string) || 'You do not have permission to access this resource';
+        apiError.error = (responseData?.error as string) || (responseData?.detail as string) || 'You do not have permission to access this resource';
       }
 
       return Promise.reject(apiError);

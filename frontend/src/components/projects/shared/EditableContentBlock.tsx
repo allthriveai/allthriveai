@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { marked } from 'marked';
+import { PhotoIcon, FilmIcon } from '@heroicons/react/24/outline';
 import { sanitizeHtml } from '@/utils/sanitize';
 import { updateProject } from '@/services/projects';
 import { MermaidDiagram } from './MermaidDiagram';
@@ -93,10 +94,16 @@ export function EditableContentBlock({
   // Check if this is a nested block within a column
   const isNestedInColumn = columnIndex !== undefined && nestedBlockIndex !== undefined && columnsBlock;
 
-  // Handle content block updates
+  // Handle content block updates - accepts either a single field or an object of updates
   const handleBlockChange = useCallback(
-    async (field: string, newValue: string) => {
+    async (fieldOrUpdates: string | Record<string, string>, newValue?: string) => {
       setIsSaving(true);
+
+      // Normalize to an updates object
+      const updates: Record<string, string> = typeof fieldOrUpdates === 'string'
+        ? { [fieldOrUpdates]: newValue! }
+        : fieldOrUpdates;
+
       try {
         let updatedBlocks: ProjectBlock[];
 
@@ -108,7 +115,7 @@ export function EditableContentBlock({
                 ...col,
                 blocks: col.blocks.map((b, blockIdx) => {
                   if (blockIdx === nestedBlockIndex) {
-                    return { ...b, [field]: newValue };
+                    return { ...b, ...updates };
                   }
                   return b;
                 }),
@@ -128,16 +135,31 @@ export function EditableContentBlock({
           const currentBlocks = project.content?.blocks || [];
           updatedBlocks = currentBlocks.map((b, idx) => {
             if (idx === index) {
-              return { ...b, [field]: newValue };
+              return { ...b, ...updates };
             }
             return b;
           });
         }
 
-        const updated = await updateProject(project.id, {
-          content: { ...project.content, blocks: updatedBlocks },
-        });
-        onProjectUpdate(updated);
+        // Check if we're in "blocks mode" (profile sections) vs "project mode"
+        // In blocks mode, project.id is 0 (mock project), so skip the API call
+        // The parent (EditableBlocksContainer/CustomSection) handles persistence
+        const isBlocksMode = !project.id || project.id === 0;
+
+        if (isBlocksMode) {
+          // Just do optimistic update - parent handles persistence
+          const optimisticProject = {
+            ...project,
+            content: { ...project.content, blocks: updatedBlocks },
+          };
+          onProjectUpdate(optimisticProject as Project);
+        } else {
+          // Real project mode - call API
+          const updated = await updateProject(project.id, {
+            content: { ...project.content, blocks: updatedBlocks },
+          });
+          onProjectUpdate(updated);
+        }
       } catch (error) {
         console.error('Failed to update block:', error);
         throw error; // Re-throw so InlineEditableText can show error
@@ -215,7 +237,24 @@ export function EditableContentBlock({
   // Image block
   if (block.type === 'image') {
     const imageBlock = block as Extract<ProjectBlock, { type: 'image' }>;
-    if (!imageBlock.url) return null;
+
+    // Show placeholder for owners when no URL
+    if (!imageBlock.url) {
+      if (!isOwner) return null;
+      return (
+        <div className="flex flex-col items-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+          <PhotoIcon className="w-12 h-12 text-gray-400 mb-3" />
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Add an image URL</p>
+          <InlineEditableText
+            value=""
+            isEditable={true}
+            onChange={(newValue) => handleBlockChange('url', newValue)}
+            placeholder="https://example.com/image.jpg"
+            className="w-full max-w-md text-center text-sm"
+          />
+        </div>
+      );
+    }
 
     return (
       <figure className="flex flex-col items-center">
@@ -275,7 +314,24 @@ export function EditableContentBlock({
   // Video block
   if (block.type === 'video') {
     const videoBlock = block as Extract<ProjectBlock, { type: 'video' }>;
-    if (!videoBlock.url) return null;
+
+    // Show placeholder for owners when no URL
+    if (!videoBlock.url) {
+      if (!isOwner) return null;
+      return (
+        <div className="flex flex-col items-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+          <FilmIcon className="w-12 h-12 text-gray-400 mb-3" />
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Add a video URL</p>
+          <InlineEditableText
+            value=""
+            isEditable={true}
+            onChange={(newValue) => handleBlockChange('url', newValue)}
+            placeholder="https://example.com/video.mp4"
+            className="w-full max-w-md text-center text-sm"
+          />
+        </div>
+      );
+    }
 
     return (
       <figure>
@@ -311,9 +367,8 @@ export function EditableContentBlock({
         isEditing={isOwner}
         variant="compact"
         onChange={(data) => {
-          // Update both icon and text
-          handleBlockChange('icon', data.icon);
-          handleBlockChange('text', data.title);
+          // Update both icon and text in a single operation
+          handleBlockChange({ icon: data.icon, text: data.title });
         }}
       />
     );
