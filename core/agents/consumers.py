@@ -212,11 +212,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             else:
                 # Queue message for async processing via Celery
                 # Circuit breaker is checked in the Celery task
+                # Optional image_url for multimodal messages (e.g., LinkedIn screenshot for profile)
+                image_url = data.get('image_url')
+
                 task = process_chat_message_task.delay(
                     conversation_id=self.conversation_id,
                     message=message,
                     user_id=self.user.id,
                     channel_name=self.group_name,  # Redis group name for broadcasting
+                    image_url=image_url,
                 )
 
                 # Send task queued confirmation

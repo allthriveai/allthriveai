@@ -1127,6 +1127,65 @@ export function useIntelligentChat({
     }
   }, [onError, addMessageWithDedup, conversationId]);
 
+  // Send message with an image through WebSocket (for multimodal messages like LinkedIn screenshots)
+  const sendMessageWithImage = useCallback((content: string, imageUrl: string) => {
+    // Reset cancelled flag when sending new message
+    isCancelledRef.current = false;
+
+    // Validate message length
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      onError?.(`Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`);
+      return;
+    }
+
+    // Generate a unique ID for this message using timestamp + content hash
+    const messageId = `user-${Date.now()}-${content.slice(0, 20).replace(/\s/g, '')}`;
+
+    // Check for duplicate (rapid double-click prevention)
+    if (seenMessageIdsRef.current.has(messageId)) {
+      return;
+    }
+
+    // Always add user message to chat immediately for instant feedback
+    // Include image URL indicator in the displayed message
+    const userMessage: ChatMessage = {
+      id: messageId,
+      content,
+      sender: 'user',
+      timestamp: new Date(),
+      metadata: {
+        imageUrl, // Store image URL for potential rendering
+      },
+    };
+    addMessageWithDedup(userMessage);
+
+    // Track conversation interaction for personalization (fire-and-forget)
+    trackInteraction({
+      interactionType: 'conversation',
+      metadata: {
+        message: content,
+        conversationId,
+        hasImage: true,
+      },
+    }).catch((err) => {
+      console.debug('Failed to track conversation interaction:', err);
+    });
+
+    // Check WebSocket connection AFTER adding user message
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      connectFnRef.current?.();
+      return;
+    }
+
+    // Send to WebSocket with image_url
+    try {
+      wsRef.current.send(JSON.stringify({ message: content, image_url: imageUrl }));
+    } catch (error) {
+      console.error('Failed to send message with image:', error);
+      onError?.('Failed to send message');
+    }
+  }, [onError, addMessageWithDedup, conversationId]);
+
   // Clear dedup Set when conversation changes to prevent memory leak
   useEffect(() => {
     if (lastConversationIdRef.current !== conversationId) {
@@ -1314,6 +1373,7 @@ export function useIntelligentChat({
     currentTool,
     reconnectAttempts,
     sendMessage,
+    sendMessageWithImage,
     connect,
     disconnect,
     clearMessages,

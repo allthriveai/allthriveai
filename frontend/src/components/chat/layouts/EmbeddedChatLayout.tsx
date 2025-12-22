@@ -657,8 +657,10 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
         const handleIntegrationSelect = (type: IntegrationType) => {
           if (type === 'clear-conversation') {
             state.clearMessages();
+            setLocalMessages([]);
             setTypedGreeting('');
             setIsTypingComplete(false);
+            setIsQuickWinFlow(false);
             return;
           }
 
@@ -670,10 +672,21 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
             return;
           }
 
+          // Handle integrations that have OAuth flows
+          switch (type) {
+            case 'github':
+              integrationFlow?.actions.startFlow('github');
+              return;
+            case 'gitlab':
+              integrationFlow?.actions.startFlow('gitlab');
+              return;
+            case 'figma':
+              integrationFlow?.actions.startFlow('figma');
+              return;
+          }
+
+          // For other types, send a message to the AI
           const messageMap: Partial<Record<IntegrationType, string>> = {
-            'github': 'I want to import a project from GitHub',
-            'gitlab': 'I want to import a project from GitLab',
-            'figma': 'I want to import a design from Figma',
             'youtube': 'I want to import a YouTube video as a project',
             'import-url': 'I want to import a project from a URL',
             'create-visual': 'Help me create an image or infographic',

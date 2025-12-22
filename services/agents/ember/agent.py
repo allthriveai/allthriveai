@@ -1038,6 +1038,7 @@ async def stream_ember_response(
     is_onboarding: bool = False,
     model_name: str | None = None,
     lesson_context: dict | None = None,
+    image_url: str | None = None,
 ):
     """
     Stream Ember agent response with tool execution events.
@@ -1062,6 +1063,7 @@ async def stream_ember_response(
         model_name: Optional model override (uses AI gateway default if None)
         lesson_context: Optional lesson context for learning path chat mode
             Contains: lesson_title, path_title, explanation, key_concepts, practice_prompt
+        image_url: Optional URL to an image for multimodal messages (e.g., LinkedIn screenshot)
 
     Yields:
         Event dicts with type and content
@@ -1143,8 +1145,23 @@ async def stream_ember_response(
 
                     # Create input state - only the new message
                     # The checkpointer automatically manages conversation history
+                    # For multimodal messages (with image), create content array with image + text
+                    if image_url:
+                        # Multimodal message with image
+                        # OpenAI format: [{"type": "image_url", ...}, {"type": "text", ...}]
+                        human_message = HumanMessage(
+                            content=[
+                                {'type': 'image_url', 'image_url': {'url': image_url}},
+                                {'type': 'text', 'text': user_message},
+                            ]
+                        )
+                        logger.info(f'Created multimodal HumanMessage with image: {image_url[:50]}...')
+                    else:
+                        # Text-only message
+                        human_message = HumanMessage(content=user_message)
+
                     input_state = {
-                        'messages': [HumanMessage(content=user_message)],
+                        'messages': [human_message],
                         'user_id': user_id,
                         'username': username,
                         'session_id': session_id,

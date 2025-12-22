@@ -395,6 +395,7 @@ class MemberContextService:
                     'reason_display': 'Popular topic',
                 },
             ],
+            'project_topics': [],
             'tool_preferences': [],
             'interests': [],
             'recent_queries': [],
@@ -476,6 +477,7 @@ class MemberContextService:
             'stats': learning_data['stats'],
             'progress': learning_data['progress'],
             'suggestions': learning_data['suggestions'],
+            'project_topics': learning_data['project_topics'],
             'tool_preferences': personalization_data['tool_preferences'],
             'interests': personalization_data['interests'],
             'recent_queries': personalization_data['recent_queries'],
@@ -575,11 +577,22 @@ class MemberContextService:
         # Generate suggestions
         suggestions = cls._generate_learning_suggestions(user_id, paths)
 
+        # Get project topics for learning connections (deduplicated)
+        from core.projects.models import Project
+
+        category_names = (
+            Project.objects.filter(user_id=user_id, is_archived=False)
+            .exclude(categories__isnull=True)
+            .values_list('categories__name', flat=True)
+        )
+        project_topics = list(dict.fromkeys(category_names))[:5]  # Dedupe preserving order
+
         return {
             'learning': learning,
             'stats': stats,
             'progress': progress,
             'suggestions': suggestions,
+            'project_topics': project_topics,
         }
 
     @classmethod

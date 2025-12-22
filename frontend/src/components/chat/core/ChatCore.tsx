@@ -76,6 +76,7 @@ export function ChatCore({
     isLoading,
     currentTool,
     sendMessage: rawSendMessage,
+    sendMessageWithImage: rawSendMessageWithImage,
     clearMessages,
     cancelProcessing,
     addLocalMessage,
@@ -112,6 +113,7 @@ export function ChatCore({
       setIsUploading(true);
 
       try {
+        const uploadedImages: { name: string; url: string }[] = [];
         const uploadedFiles: { name: string; url: string; type: string }[] = [];
 
         for (const file of attachments) {
@@ -124,10 +126,9 @@ export function ChatCore({
 
           if (isImage) {
             const result = await uploadImage(file, 'chat-attachments', true, abortController.signal);
-            uploadedFiles.push({
+            uploadedImages.push({
               name: file.name,
               url: result.url,
-              type: 'image',
             });
           } else {
             const result = await uploadFile(file, 'chat-attachments', true, abortController.signal);
@@ -139,19 +140,26 @@ export function ChatCore({
           }
         }
 
-        // Build message with uploaded file URLs
-        const fileDescriptions = uploadedFiles.map(f =>
-          f.type === 'image'
-            ? `[Image: ${f.name}](${f.url})`
-            : `[File: ${f.name}](${f.url})`
-        ).join('\n');
+        // If there's exactly one image and no other files, use multimodal message
+        // so Claude can actually see the image content
+        if (uploadedImages.length === 1 && uploadedFiles.length === 0) {
+          const imageUrl = uploadedImages[0].url;
+          const messageText = content.trim() || `Please analyze this image: ${uploadedImages[0].name}`;
+          rawSendMessageWithImage(messageText, imageUrl);
+        } else {
+          // Multiple files or mixed files - fall back to text descriptions
+          const fileDescriptions = [
+            ...uploadedImages.map(f => `[Image: ${f.name}](${f.url})`),
+            ...uploadedFiles.map(f => `[File: ${f.name}](${f.url})`),
+          ].join('\n');
 
-        // Send user's message with file descriptions appended
-        const messageWithAttachments = content.trim()
-          ? `${content}\n\n${fileDescriptions}`
-          : fileDescriptions;
+          // Send user's message with file descriptions appended
+          const messageWithAttachments = content.trim()
+            ? `${content}\n\n${fileDescriptions}`
+            : fileDescriptions;
 
-        rawSendMessage(messageWithAttachments);
+          rawSendMessage(messageWithAttachments);
+        }
       } catch (uploadError: unknown) {
         // Handle cancellation gracefully
         const err = uploadError as Error & { name?: string; message?: string; statusCode?: number; error?: string };
@@ -179,7 +187,7 @@ export function ChatCore({
       // No attachments, send message directly
       rawSendMessage(content);
     }
-  }, [rawSendMessage, isLoading, isUploading]);
+  }, [rawSendMessage, rawSendMessageWithImage, isLoading, isUploading]);
 
   // Integration flow hook
   const integrationFlow = useIntegrationFlow({

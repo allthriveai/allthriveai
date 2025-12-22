@@ -1196,7 +1196,7 @@ export default function ProfilePage() {
                       {/* Dropdown Menu */}
                       {showMoreMenu && (
                         <div
-                          className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                          className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
                           role="menu"
                         >
                           {/* Generate with AI */}
@@ -1210,10 +1210,8 @@ export default function ProfilePage() {
                             role="menuitem"
                           >
                             <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
-                            <span>Generate with AI</span>
+                            <span>Generate Profile with AI</span>
                           </button>
-
-                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
 
                           {/* Edit Profile */}
                           <button
@@ -1227,6 +1225,8 @@ export default function ProfilePage() {
                             <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
                             <span>Edit Profile</span>
                           </button>
+
+                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
 
                           {/* Add Project */}
                           <button
@@ -1451,6 +1451,8 @@ export default function ProfilePage() {
                 <ActivityInsightsTab
                   username={username || ''}
                   isOwnProfile={isOwnProfile}
+                  achievements={achievementsByCategory || undefined}
+                  isAchievementsLoading={isAchievementsLoading}
                 />
               </div>
             )}
@@ -1467,7 +1469,7 @@ export default function ProfilePage() {
 
             {/* My Battles Tab */}
             {activeTab === 'my-battles' && isOwnProfile && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-my-battles" aria-labelledby="tab-my-battles">
+              <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-my-battles" aria-labelledby="tab-my-battles">
                 <MyBattlesTab />
               </div>
             )}
@@ -1986,7 +1988,7 @@ export default function ProfilePage() {
                       {/* Dropdown Menu */}
                       {showMoreMenu && (
                         <div
-                          className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                          className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded shadow-lg border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
                           role="menu"
                         >
                           {/* Generate with AI */}
@@ -2000,10 +2002,8 @@ export default function ProfilePage() {
                             role="menuitem"
                           >
                             <FontAwesomeIcon icon={faWandMagicSparkles} className="w-4 h-4" />
-                            <span>Generate with AI</span>
+                            <span>Generate Profile with AI</span>
                           </button>
-
-                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
 
                           {/* Edit Profile */}
                           <button
@@ -2018,6 +2018,8 @@ export default function ProfilePage() {
                             <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
                             <span>Edit Profile</span>
                           </button>
+
+                          <div className="border-t border-gray-200 dark:border-slate-700 my-2" />
 
                           {/* Add Project */}
                           <button
@@ -2251,6 +2253,8 @@ export default function ProfilePage() {
                   <ActivityInsightsTab
                     username={username || ''}
                     isOwnProfile={isOwnProfile}
+                    achievements={achievementsByCategory || undefined}
+                    isAchievementsLoading={isAchievementsLoading}
                   />
                 </div>
               )}
@@ -2285,7 +2289,7 @@ export default function ProfilePage() {
               {/* My Battles Tab - User's pending async battles */}
               {activeTab === 'my-battles' && isOwnProfile && (
                 <div
-                  className="pb-20"
+                  className="pb-20 w-full"
                   role="tabpanel"
                   id="tabpanel-my-battles"
                   aria-labelledby="tab-my-battles"

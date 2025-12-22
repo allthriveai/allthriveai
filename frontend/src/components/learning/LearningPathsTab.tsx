@@ -4,7 +4,7 @@
  * Displays user's learning paths and recommendations on their profile.
  * Shows the "Find Your Perfect AI Tool" quiz prominently first for personalization.
  */
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSpinner,
@@ -23,12 +23,27 @@ import {
   useUserLearningPaths,
   useLearningPathRecommendations,
   useStartLearningPath,
+  useSavedPaths,
 } from '@/hooks/useLearningPaths';
 import { useQuery } from '@tanstack/react-query';
 import { getQuiz, getQuizHistory } from '@/services/quiz';
 import type { TopicRecommendation } from '@/types/models';
+import type { SavedLearningPathListItem } from '@/services/learningPaths';
 
 const PERSONALIZATION_QUIZ_SLUG = 'find-your-perfect-ai-tool';
+
+// Difficulty badge colors (same as PathLibraryGrid)
+const difficultyColors: Record<string, string> = {
+  beginner: 'from-green-500 to-emerald-600',
+  intermediate: 'from-yellow-500 to-amber-600',
+  advanced: 'from-red-500 to-rose-600',
+};
+
+const difficultyLabels: Record<string, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
 
 interface LearningPathsTabProps {
   username: string;
@@ -75,6 +90,9 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
   } = useLearningPathRecommendations(5);
 
   const startPathMutation = useStartLearningPath();
+
+  // Fetch saved learning paths (AI-generated paths with cover images)
+  const { data: savedPaths } = useSavedPaths(isOwnProfile);
 
   // Separate active paths and completed paths (expert level)
   const activePaths = paths?.filter(p => p.currentSkillLevel !== 'expert') || [];
@@ -183,6 +201,44 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
         </section>
       )}
 
+      {/* Saved Learning Paths (AI-generated paths with cover images) */}
+      {isOwnProfile && savedPaths && savedPaths.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faBookOpen} className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Your Learning Paths
+              </h2>
+            </div>
+            <Link
+              to="/learn"
+              className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+            >
+              View All <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {savedPaths.slice(0, 3).map((path) => (
+              <PathTeaserCard key={path.id} path={path} username={username} />
+            ))}
+          </div>
+
+          {savedPaths.length > 3 && (
+            <div className="mt-4 text-center">
+              <Link
+                to="/learn"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors"
+              >
+                View All {savedPaths.length} Paths
+                <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Active Learning Paths */}
       {activePaths.length > 0 && (
         <section>
@@ -257,7 +313,7 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
       )}
 
       {/* Empty State */}
-      {!hasAnyPaths && (
+      {!hasAnyPaths && !savedPaths?.length && (
         <div className="text-center py-20">
           <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
             <FontAwesomeIcon icon={faBookOpen} className="w-8 h-8 text-gray-400" />
@@ -265,11 +321,20 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             No learning paths yet
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
             {isOwnProfile
-              ? 'Start taking quizzes and completing side quests to build your learning journey!'
+              ? 'Start your learning journey by exploring topics that interest you!'
               : `${username} hasn't started any learning paths yet.`}
           </p>
+          {isOwnProfile && (
+            <Link
+              to="/learn"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors"
+            >
+              Start Learning
+              <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       )}
     </div>
@@ -308,5 +373,53 @@ function RecommendedPathCard({ recommendation, onStart, isStarting }: Recommende
         Start Learning
       </button>
     </div>
+  );
+}
+
+// Path Teaser Card Component (simplified version of PathCard for profile preview)
+interface PathTeaserCardProps {
+  path: SavedLearningPathListItem;
+  username: string;
+}
+
+function PathTeaserCard({ path, username }: PathTeaserCardProps) {
+  return (
+    <Link
+      to={`/${username}/learn/${path.slug}`}
+      className="block rounded overflow-hidden bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 transition-all hover:shadow-lg group"
+    >
+      {/* Cover Image */}
+      <div className="relative h-32 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
+        {path.coverImage ? (
+          <img src={path.coverImage} alt={path.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <FontAwesomeIcon icon={faGraduationCap} className="text-3xl text-emerald-500/30" />
+          </div>
+        )}
+
+        {/* Difficulty Badge */}
+        <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-white text-xs font-medium bg-gradient-to-r ${difficultyColors[path.difficulty] || difficultyColors.beginner}`}>
+          {difficultyLabels[path.difficulty] || path.difficulty}
+        </div>
+
+        {path.isActive && (
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-medium">
+            Active
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-3">
+        <h3 className="font-semibold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+          {path.title}
+        </h3>
+        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-gray-400 mt-1">
+          <span>{path.estimatedHours}h</span>
+          <span>{path.curriculumCount} items</span>
+        </div>
+      </div>
+    </Link>
   );
 }

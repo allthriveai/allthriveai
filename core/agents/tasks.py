@@ -160,7 +160,13 @@ def _get_user_friendly_error(exception: Exception) -> str:
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_chat_message_task(
-    self, conversation_id: str, message: str, user_id: int, channel_name: str, lesson_context: dict | None = None
+    self,
+    conversation_id: str,
+    message: str,
+    user_id: int,
+    channel_name: str,
+    lesson_context: dict | None = None,
+    image_url: str | None = None,
 ):
     """
     Process chat message asynchronously using LangGraph agent.
@@ -174,6 +180,7 @@ def process_chat_message_task(
         channel_name: Redis channel name for WebSocket broadcast
         lesson_context: Optional lesson context for learning path chat mode
             Contains: lesson_title, path_title, explanation, key_concepts, practice_prompt
+        image_url: Optional URL to an image for multimodal messages (e.g., LinkedIn screenshot)
 
     Returns:
         Dict with processing results
@@ -269,6 +276,7 @@ def process_chat_message_task(
             is_product_conversation=is_product_conversation,
             is_architecture_conversation=is_architecture_conversation,
             lesson_context=lesson_context,
+            image_url=image_url,
         )
 
         # Send completion event
@@ -401,6 +409,7 @@ def _process_with_orchestrator(
     is_product_conversation: bool = False,
     is_architecture_conversation: bool = False,
     lesson_context: dict | None = None,
+    image_url: str | None = None,
 ) -> dict:
     """
     Process message using the multi-agent orchestrator.
@@ -423,6 +432,7 @@ def _process_with_orchestrator(
         is_architecture_conversation: Whether this is an architecture diagram regeneration flow
         lesson_context: Optional lesson context for learning path chat mode
             Contains: lesson_title, path_title, explanation, key_concepts, practice_prompt
+        image_url: Optional URL to an image for multimodal messages
 
     Returns:
         Dict with processing results
@@ -489,6 +499,7 @@ def _process_with_orchestrator(
         is_onboarding=is_ember_conversation,  # Only EmberHomePage conversations are onboarding
         conversation_history=conversation_history,  # Pass conversation history for context
         lesson_context=lesson_context,  # Pass lesson context for learning path chat
+        image_url=image_url,  # Pass image URL for multimodal messages
     )
 
 
@@ -501,6 +512,7 @@ def _process_with_ember(
     is_onboarding: bool = False,
     conversation_history: list[dict] | None = None,
     lesson_context: dict | None = None,
+    image_url: str | None = None,
 ) -> dict:
     """
     Process message using the unified Ember agent with all tools.
@@ -522,6 +534,7 @@ def _process_with_ember(
         conversation_history: Recent conversation context for stateful processing
         lesson_context: Optional lesson context for learning path chat mode
             Contains: lesson_title, path_title, explanation, key_concepts, practice_prompt
+        image_url: Optional URL to an image for multimodal messages
 
     Returns:
         Dict with processing results
@@ -546,6 +559,7 @@ def _process_with_ember(
                 session_id=conversation_id,  # Used as thread_id for checkpointer
                 is_onboarding=is_onboarding,
                 lesson_context=lesson_context,
+                image_url=image_url,
             ):
                 event_type = event.get('type')
 
