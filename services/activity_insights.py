@@ -184,17 +184,20 @@ class ActivityInsightsService:
         )
 
         # 1. Quiz topics - highest weight (active learning)
-        quiz_attempts = QuizAttempt.objects.filter(
-            user=self.user,
-            completed_at__isnull=False,
-        ).select_related('quiz')
+        quiz_attempts = (
+            QuizAttempt.objects.filter(
+                user=self.user,
+                completed_at__isnull=False,
+            )
+            .select_related('quiz')
+            .prefetch_related('quiz__topics')
+        )
 
         for attempt in quiz_attempts:
-            topic = attempt.quiz.topic
-            if topic:
-                topic_scores[topic]['quiz_count'] += 1
+            for topic in attempt.quiz.topics.all():
+                topic_scores[topic.name]['quiz_count'] += 1
                 # Weight by score
-                topic_scores[topic]['points'] += attempt.percentage_score
+                topic_scores[topic.name]['points'] += attempt.percentage_score
 
         # 2. User's own created projects (non-clipped)
         user_projects = Project.objects.filter(

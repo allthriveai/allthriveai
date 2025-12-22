@@ -39,7 +39,7 @@ export interface ProfileTab {
 // All possible tabs with their metadata
 const ALL_TABS: ProfileTab[] = [
   { id: 'showcase', label: 'Showcase', icon: faTh, description: 'Your curated profile with featured work and customizable sections' },
-  { id: 'playground', label: 'Playground', icon: faFlask, description: 'All your projects and experiments in one place' },
+  { id: 'playground', label: 'Playground', icon: faFlask, description: 'Your creative sandbox where nothing needs to be perfect. Highlight your best work to Showcase anytime.' },
   { id: 'clipped', label: 'Clipped', icon: faPaperclip, description: 'Projects you\'ve saved from around the web and All Thrive' },
   { id: 'marketplace', label: 'Shop', icon: faStore, description: 'Your digital products and offerings for sale', creatorOnly: true },
   { id: 'my-battles', label: 'My Battles', icon: faBolt, description: 'Creative challenges you\'ve entered and your battle history', ownProfileOnly: true },

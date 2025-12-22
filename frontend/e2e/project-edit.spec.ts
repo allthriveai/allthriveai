@@ -976,4 +976,39 @@ test.describe('Project Editing Integration', () => {
     // Cleanup
     await deleteTestProject(page, tempProject.id);
   });
+
+  test('should hide Project Details header when empty and not in edit mode', async ({ page }) => {
+    // Create a project with no content blocks
+    const tempProject = await createTestProject(page, `Empty Project Test ${UNIQUE_SUFFIX}`);
+
+    await navigateToProject(page, TEST_USER.username, tempProject.slug);
+
+    // First, make sure we're NOT in edit mode (turn it off if on)
+    const editToggle = page.locator('button').filter({ hasText: /editing/i });
+    if (await editToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      // Check if editing is active (toggle is ON)
+      const isEditing = await page.locator('text=/editing/i').isVisible().catch(() => false);
+      if (isEditing) {
+        await editToggle.click();
+        await page.waitForTimeout(500);
+      }
+    }
+
+    // Project Details header should NOT be visible when empty and not editing
+    const projectDetailsHeader = page.locator('h2').filter({ hasText: 'Project Details' });
+    await expect(projectDetailsHeader).not.toBeVisible({ timeout: 5000 });
+
+    // Now turn ON edit mode
+    const editButton = page.locator('button').filter({ hasText: /editing/i });
+    if (await editButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await editButton.click();
+      await page.waitForTimeout(500);
+    }
+
+    // Project Details header SHOULD be visible when in edit mode (so owner can add content)
+    await expect(projectDetailsHeader).toBeVisible({ timeout: 5000 });
+
+    // Cleanup
+    await deleteTestProject(page, tempProject.id);
+  });
 });

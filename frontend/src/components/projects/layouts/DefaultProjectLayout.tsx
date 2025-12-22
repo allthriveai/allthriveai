@@ -218,9 +218,14 @@ export function DefaultProjectLayout() {
     if (!project.content?.sections) return;
 
     // Update the section content locally first for immediate feedback
-    const updatedSections = project.content.sections.map((section: ProjectSection) =>
-      section.id === sectionId ? { ...section, content } : section
-    );
+    // Ensure all required fields are present for each section
+    const updatedSections = project.content.sections.map((section: ProjectSection, idx: number) => ({
+      id: section.id,
+      type: section.type,
+      enabled: section.enabled ?? true,
+      order: section.order ?? idx,
+      content: section.id === sectionId ? content : (section.content || {}),
+    }));
 
     // Update project with new sections (filter out read-only keys)
     const updatedContent = {
@@ -695,7 +700,7 @@ export function DefaultProjectLayout() {
         );
       })()}
 
-      {/* Project Details Section - show for owners even if empty (so they can add blocks) */}
+      {/* Project Details Section - show for owners only when editing and empty, or when there's content */}
       {hasTemplateSections ? (
         <ProjectSections
           sections={(project.content.sections || []) as import('@/types/sections').ProjectSection[]}
@@ -705,7 +710,7 @@ export function DefaultProjectLayout() {
           onDeleteSection={handleDeleteSection}
           onReorderSections={handleReorderSections}
         />
-      ) : (visibleBlocks.length > 0 || isOwner) && (
+      ) : (visibleBlocks.length > 0 || isEditing) && (
         <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
           <div className="flex items-center gap-4 mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Project Details</h2>

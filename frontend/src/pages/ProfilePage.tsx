@@ -1258,7 +1258,20 @@ export default function ProfilePage() {
                 <div className="bg-gray-50/50 dark:bg-slate-800/50 border-b border-gray-200/30 dark:border-gray-700/30">
                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
                     <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                      {currentTab.description}
+                      {activeTab === 'playground' ? (
+                        <>
+                          Your creative sandbox where nothing needs to be perfect. Highlight your best work to{' '}
+                          <button
+                            onClick={() => setActiveTab('showcase')}
+                            className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                          >
+                            Showcase
+                          </button>{' '}
+                          anytime.
+                        </>
+                      ) : (
+                        currentTab.description
+                      )}
                     </p>
                   </div>
                 </div>
