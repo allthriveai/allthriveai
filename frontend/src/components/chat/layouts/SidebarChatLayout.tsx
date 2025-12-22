@@ -25,6 +25,7 @@ import {
   ChatInputArea,
   type ChatContext,
   type ArchitectureRegenerateContext,
+  type ProfileGenerateContext,
   type LearningSetupContext,
 } from '../core';
 import { ChatPlusMenu, type IntegrationType } from '../ChatPlusMenu';
@@ -74,6 +75,7 @@ interface SidebarChatLayoutProps {
   context?: ChatContext;
   // Special contexts for DashboardLayout compatibility
   architectureRegenerateContext?: ArchitectureRegenerateContext | null;
+  profileGenerateContext?: ProfileGenerateContext | null;
   learningSetupContext?: LearningSetupContext | null;
   // Expand mode for learning sessions
   defaultExpanded?: boolean;
@@ -119,12 +121,53 @@ function ArchitectureMessageSender({
   return null;
 }
 
+// Helper component to handle profile generation initial message
+function ProfileMessageSender({
+  profileGenerateContext,
+  isConnected,
+  isLoading,
+  messagesLength,
+  sendMessage,
+}: {
+  profileGenerateContext: ProfileGenerateContext | null;
+  isConnected: boolean;
+  isLoading: boolean;
+  messagesLength: number;
+  sendMessage: (message: string) => void;
+}) {
+  const sentRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      profileGenerateContext &&
+      isConnected &&
+      !sentRef.current &&
+      !isLoading &&
+      messagesLength === 0
+    ) {
+      const initialMessage = `I'd like help generating my profile. Can you help me create compelling profile sections based on my projects and interests?`;
+      sendMessage(initialMessage);
+      sentRef.current = true;
+    }
+  }, [profileGenerateContext, isConnected, isLoading, messagesLength, sendMessage]);
+
+  // Reset when context changes
+  useEffect(() => {
+    if (!profileGenerateContext) {
+      sentRef.current = false;
+    }
+  }, [profileGenerateContext]);
+
+  return null;
+}
+
 export function SidebarChatLayout({
   isOpen,
   onClose,
   conversationId,
   context = 'default',
   architectureRegenerateContext = null,
+  profileGenerateContext = null,
   learningSetupContext = null,
   defaultExpanded = false,
 }: SidebarChatLayoutProps) {
@@ -209,7 +252,8 @@ export function SidebarChatLayout({
           state.messages.length === 0 &&
           !state.onboarding?.isActive &&
           !showLearningSetup &&
-          !architectureRegenerateContext;
+          !architectureRegenerateContext &&
+          !profileGenerateContext;
 
         // Handle quick action click
         const handleQuickAction = (message: string) => {
@@ -347,6 +391,15 @@ export function SidebarChatLayout({
             {/* Architecture message sender - handles useEffect properly as a component */}
             <ArchitectureMessageSender
               architectureRegenerateContext={architectureRegenerateContext}
+              isConnected={state.isConnected}
+              isLoading={state.isLoading}
+              messagesLength={state.messages.length}
+              sendMessage={state.sendMessage}
+            />
+
+            {/* Profile generation message sender - auto-sends initial profile generation message */}
+            <ProfileMessageSender
+              profileGenerateContext={profileGenerateContext}
               isConnected={state.isConnected}
               isLoading={state.isLoading}
               messagesLength={state.messages.length}

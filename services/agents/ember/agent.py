@@ -34,6 +34,7 @@ from services.ai.callbacks import TokenTrackingCallback
 from .prompts import (
     EMBER_FULL_ONBOARDING_PROMPT,
     EMBER_SYSTEM_PROMPT,
+    SAGE_PERSONALITY,
     format_learning_intelligence,
     format_lesson_context,
     format_member_context,
@@ -661,7 +662,17 @@ def create_agent_node(model_name: str | None = None):
         lesson_context = state.get('lesson_context')
         lesson_context_section = format_lesson_context(lesson_context)
 
-        system_prompt = base_prompt + member_context_section + learning_intelligence_section + lesson_context_section
+        # Inject Sage personality for learn contexts (even without lesson_context)
+        # This covers the /learn page which uses "ember-{user_id}" as session_id
+        session_id = state.get('session_id', '')
+        sage_section = ''
+        if session_id.startswith('ember-') and not lesson_context:
+            # Inject Sage personality for /learn page (lesson_context already includes it)
+            sage_section = SAGE_PERSONALITY
+
+        system_prompt = (
+            base_prompt + sage_section + member_context_section + learning_intelligence_section + lesson_context_section
+        )
 
         # Build full message list with system prompt
         full_messages = [SystemMessage(content=system_prompt)] + list(messages)

@@ -6,13 +6,6 @@ from core.ai_usage import views as admin_analytics_views
 
 from .achievements.views import AchievementViewSet, get_user_achievements
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
-from .agents.profile_views import (
-    profile_generate_auto,
-    profile_generate_from_linkedin,
-    profile_generate_sources,
-    profile_generate_stream,
-    profile_preview_sections,
-)
 from .agents.project_chat_views import project_chat_stream_v2
 from .agents.views import (
     ConversationViewSet,
@@ -353,12 +346,6 @@ urlpatterns = [
     path('auth/chat/finalize/', auth_chat_finalize, name='auth_chat_finalize'),
     # Project chat endpoint
     path('project/chat/stream/', project_chat_stream_v2, name='project_chat_stream'),
-    # Profile generation agent endpoints
-    path('profile/generate/stream/', profile_generate_stream, name='profile_generate_stream'),
-    path('profile/generate/auto/', profile_generate_auto, name='profile_generate_auto'),
-    path('profile/generate/preview/', profile_preview_sections, name='profile_preview_sections'),
-    path('profile/generate/sources/', profile_generate_sources, name='profile_generate_sources'),
-    path('profile/generate/from-linkedin/', profile_generate_from_linkedin, name='profile_generate_from_linkedin'),
     # Agent endpoints
     path('agents/detect-intent/', detect_intent, name='detect_intent'),
     path('agents/create-project-from-image/', CreateProjectFromImageView.as_view(), name='create_project_from_image'),

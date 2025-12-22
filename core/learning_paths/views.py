@@ -174,7 +174,17 @@ class UserLearningPathBySlugView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(profile.generated_path)
+        # Merge the cover_image from SavedLearningPath (generated async)
+        response_data = dict(profile.generated_path)
+        saved_path = SavedLearningPath.objects.filter(
+            user=user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+        if saved_path and saved_path.cover_image:
+            response_data['cover_image'] = saved_path.cover_image
+
+        return Response(response_data)
 
 
 class AllTopicsView(APIView):
@@ -224,7 +234,17 @@ class LearningPathBySlugView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(profile.generated_path)
+        # Merge the cover_image from SavedLearningPath (generated async)
+        response_data = dict(profile.generated_path)
+        saved_path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+        if saved_path and saved_path.cover_image:
+            response_data['cover_image'] = saved_path.cover_image
+
+        return Response(response_data)
 
 
 # ============================================================================

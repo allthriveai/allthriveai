@@ -836,3 +836,6 @@ def gather_linkedin_data(user_id: int) -> dict:
 
 # Tool list for agent
 PROFILE_TOOLS = [gather_user_data, generate_profile_sections, save_profile_sections]
+
+# Tools that need state injection (user_id, username)
+TOOLS_NEEDING_STATE = {'gather_user_data', 'generate_profile_sections', 'save_profile_sections'}

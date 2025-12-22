@@ -11,7 +11,7 @@ import { useStableConversationId } from '@/hooks/useStableConversationId';
 import { useQuestTracking } from '@/hooks/useQuestTracking';
 import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGraduationCap, faArrowRight, faDragon } from '@fortawesome/free-solid-svg-icons';
+import { faGraduationCap, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
 import type { LearningGoal } from '@/types/models';
 
@@ -23,12 +23,12 @@ function GuestLearnPage() {
     <div className="h-full overflow-y-auto">
       {/* Hero Banner */}
       <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
-        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" />
-        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-purple-500/10 dark:bg-purple-500/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/20 dark:bg-emerald-500/15 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-teal-500/10 dark:bg-teal-500/10 blur-[100px] pointer-events-none" />
 
         <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">
               Learn AI
             </span>
           </h1>
@@ -41,7 +41,7 @@ function GuestLearnPage() {
       <div className="px-4 sm:px-6 lg:px-8 py-12">
         {/* Sign Up CTA */}
         <div className="glass-strong p-8 text-center mb-12">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <FontAwesomeIcon icon={faGraduationCap} className="text-white text-3xl" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
@@ -52,7 +52,7 @@ function GuestLearnPage() {
           </p>
           <Link
             to="/login?next=/learn"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
           >
             Sign In to Learn
             <FontAwesomeIcon icon={faArrowRight} />
@@ -100,27 +100,28 @@ function GuestLearnPage() {
 }
 
 /**
- * Waiting for setup view - shown when user needs to tell Ember what they want to learn
+ * Waiting for setup view - shown when user needs to tell Sage what they want to learn
  */
 function WaitingForSetupView() {
   return (
     <div className="h-full flex items-center justify-center p-6">
       <div className="text-center max-w-md">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-500/10 border border-orange-500/30 flex items-center justify-center">
-          <FontAwesomeIcon
-            icon={faDragon}
-            className="text-3xl text-orange-500 drop-shadow-[0_0_12px_rgba(249,115,22,0.6)]"
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center">
+          <img
+            src="/sage-avatar.png"
+            alt="Sage"
+            className="w-12 h-12 rounded-full"
           />
         </div>
-        <h2 className="text-xl font-bold text-white mb-3">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
           Let's Get Started!
         </h2>
-        <p className="text-gray-400">
-          Chat with Ember to tell me what you'd like to learn. I'll create a personalized learning path just for you.
+        <p className="text-slate-600 dark:text-gray-400">
+          Tell Sage what you'd like to learn. I'll create a personalized learning path just for you.
         </p>
-        <div className="mt-6 flex items-center justify-center gap-2 text-orange-400 text-sm">
+        <div className="mt-6 flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm">
           <FontAwesomeIcon icon={faArrowRight} />
-          <span>Start chatting with Ember</span>
+          <span>Start chatting with Sage</span>
         </div>
       </div>
     </div>
@@ -202,9 +203,12 @@ function AuthenticatedLearnPage() {
     }
   }, [isSettingUp, pathData, hasSavedPaths, handleSelectGoal, handleSkip]);
 
-  // Handle create new path - focus on Ember chat
+  // Trigger for "create new path" message to Sage
+  const [createPathTrigger, setCreatePathTrigger] = useState(0);
+
+  // Handle create new path - trigger message to Sage
   const handleCreateNew = useCallback(() => {
-    // Could scroll to chat or highlight it
+    setCreatePathTrigger(prev => prev + 1);
   }, []);
 
   if (isLoading) {
@@ -235,15 +239,15 @@ function AuthenticatedLearnPage() {
       {/* Hero Banner - Neon Glass Style */}
       <header className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden flex-shrink-0" aria-label="Learn page header">
         {/* Ambient Glow Background */}
-        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-orange-500/20 dark:bg-orange-500/15 blur-[120px] pointer-events-none" aria-hidden="true" />
-        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-amber-500/10 dark:bg-amber-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/20 dark:bg-emerald-500/15 blur-[120px] pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-teal-500/10 dark:bg-teal-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
         <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            <span className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 dark:from-orange-400 dark:via-amber-400 dark:to-yellow-400 bg-clip-text text-transparent">Learn</span>
+            <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">Learn</span>
           </h1>
           <p className="text-lg text-gray-700 dark:text-gray-300 max-w-2xl">
-            Expand your AI knowledge with personalized learning paths and Ember as your guide
+            Expand your AI knowledge with personalized learning paths and Sage as your guide
           </p>
         </div>
       </header>
@@ -261,6 +265,7 @@ function AuthenticatedLearnPage() {
             conversationId={conversationId}
             context="learn"
             learningSetupContext={learningSetupContext}
+            createPathTrigger={createPathTrigger}
             className="h-full"
           />
         </div>

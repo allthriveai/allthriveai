@@ -29,11 +29,73 @@ import {
   faComments,
 } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { MermaidDiagram } from '@/components/projects/shared/MermaidDiagram';
 import { ChatGameCard } from '@/components/chat/games/ChatGameCard';
 import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/gameRegistry';
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import type { CurriculumItem } from '@/services/learningPaths';
+
+/**
+ * Detect programming language from code content
+ */
+function detectLanguage(code: string): string {
+  const trimmed = code.trim();
+
+  // Python indicators
+  if (trimmed.includes('def ') || trimmed.includes('import ') ||
+      trimmed.includes('print(') || trimmed.includes('class ') && trimmed.includes(':')) {
+    return 'python';
+  }
+
+  // JavaScript/TypeScript indicators
+  if (trimmed.includes('const ') || trimmed.includes('let ') ||
+      trimmed.includes('function ') || trimmed.includes('=>') ||
+      trimmed.includes('console.log')) {
+    if (trimmed.includes(': string') || trimmed.includes(': number') ||
+        trimmed.includes('interface ') || trimmed.includes('<T>')) {
+      return 'typescript';
+    }
+    return 'javascript';
+  }
+
+  // JSON indicators
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      JSON.parse(trimmed);
+      return 'json';
+    } catch {
+      // Not valid JSON, continue checking
+    }
+  }
+
+  // Bash/shell indicators
+  if (trimmed.startsWith('$') || trimmed.startsWith('#!') ||
+      trimmed.includes('echo ') || trimmed.includes('curl ') ||
+      trimmed.includes('pip install') || trimmed.includes('npm ')) {
+    return 'bash';
+  }
+
+  // SQL indicators
+  if (/\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\b/i.test(trimmed)) {
+    return 'sql';
+  }
+
+  // HTML indicators
+  if (trimmed.includes('</') || trimmed.startsWith('<')) {
+    return 'html';
+  }
+
+  // CSS indicators
+  if (trimmed.includes('{') && (trimmed.includes(':') && trimmed.includes(';'))) {
+    return 'css';
+  }
+
+  // Default to javascript for code-like content
+  return 'javascript';
+}
 
 /**
  * Get icon for curriculum item type
@@ -101,7 +163,7 @@ function getTypeColor(type: CurriculumItem['type']) {
     case 'tool':
       return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
     case 'ai_lesson':
-      return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
     default:
       return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
   }
@@ -147,9 +209,9 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
   if (!gameType) {
     return (
       <Link to={`/play/${gameSlug}`}>
-        <div className="glass-strong p-4 rounded-xl hover:bg-white/10 transition-colors group">
+        <div className="glass-strong p-4 rounded hover:bg-white/5 dark:hover:bg-white/10 transition-colors group">
           <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white/70">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-white/70">
               {index + 1}
             </div>
             <div className="flex-1 min-w-0">
@@ -159,13 +221,13 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
                   Game
                 </span>
               </div>
-              <h3 className="text-white font-medium group-hover:text-cyan-400 transition-colors">
+              <h3 className="text-slate-900 dark:text-white font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                 {item.title}
               </h3>
             </div>
             <FontAwesomeIcon
               icon={faExternalLinkAlt}
-              className="text-white/30 group-hover:text-cyan-400 transition-colors flex-shrink-0"
+              className="text-slate-400 dark:text-white/30 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-shrink-0"
             />
           </div>
         </div>
@@ -174,9 +236,9 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
   }
 
   return (
-    <div className="glass-strong rounded-xl overflow-hidden">
+    <div className="glass-strong rounded overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-white/10">
+      <div className="p-4 border-b border-slate-200 dark:border-white/10">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-sm font-bold text-purple-400">
             {index + 1}
@@ -188,7 +250,7 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
                 Interactive Game
               </span>
             </div>
-            <h3 className="text-white font-medium">{item.title}</h3>
+            <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
           </div>
         </div>
       </div>
@@ -231,21 +293,21 @@ function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
   };
 
   return (
-    <div className="glass-strong rounded-xl overflow-hidden">
+    <div className="glass-strong rounded overflow-hidden">
       {/* Header - always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-4 flex items-start gap-4 hover:bg-white/5 transition-colors text-left"
+        className="w-full p-4 flex items-start gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left"
       >
         {/* Order number */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-sm font-bold text-amber-400">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-sm font-bold text-emerald-400">
           {index + 1}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-amber-500/20 text-amber-400 border-amber-500/30">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
               <FontAwesomeIcon icon={faLightbulb} className="text-[10px]" />
               AI Lesson
             </span>
@@ -254,8 +316,8 @@ function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
               Personalized
             </span>
           </div>
-          <h3 className="text-white font-medium mb-2">{item.title}</h3>
-          <p className="text-gray-400 text-sm line-clamp-2">{content.summary}</p>
+          <h3 className="text-slate-900 dark:text-white font-medium mb-2">{item.title}</h3>
+          <p className="text-slate-600 dark:text-gray-400 text-sm line-clamp-2">{content.summary}</p>
 
           {/* Key concepts chips */}
           {content.keyConcepts && content.keyConcepts.length > 0 && (
@@ -263,13 +325,13 @@ function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
               {content.keyConcepts.slice(0, 4).map((concept, i) => (
                 <span
                   key={i}
-                  className="px-2 py-0.5 rounded-full bg-white/10 text-gray-300 text-xs"
+                  className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 text-xs"
                 >
                   {concept}
                 </span>
               ))}
               {content.keyConcepts.length > 4 && (
-                <span className="px-2 py-0.5 text-gray-500 text-xs">
+                <span className="px-2 py-0.5 text-slate-500 dark:text-gray-500 text-xs">
                   +{content.keyConcepts.length - 4} more
                 </span>
               )}
@@ -280,33 +342,43 @@ function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
         {/* Expand/collapse indicator */}
         <FontAwesomeIcon
           icon={isExpanded ? faChevronDown : faChevronRight}
-          className="text-gray-400 flex-shrink-0 mt-1"
+          className="text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1"
         />
       </button>
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="border-t border-white/10 p-6 space-y-6">
+        <div className="border-t border-slate-200 dark:border-white/10 p-6 space-y-6">
           {/* Main explanation */}
-          <div className="prose prose-invert prose-sm max-w-none">
+          <div className="learning-prose">
             <ReactMarkdown>{content.explanation}</ReactMarkdown>
           </div>
 
           {/* Examples */}
           {content.examples && content.examples.length > 0 && (
             <div className="space-y-4">
-              <h4 className="text-white font-medium flex items-center gap-2">
-                <FontAwesomeIcon icon={faCode} className="text-green-400" />
+              <h4 className="text-slate-900 dark:text-white font-medium flex items-center gap-2">
+                <FontAwesomeIcon icon={faCode} className="text-green-500 dark:text-green-400" />
                 Examples
               </h4>
               {content.examples.map((example, i) => (
-                <div key={i} className="bg-white/5 rounded-lg p-4">
-                  <h5 className="text-white font-medium mb-2">{example.title}</h5>
-                  <p className="text-gray-400 text-sm mb-3">{example.description}</p>
+                <div key={i} className="bg-slate-100 dark:bg-white/5 rounded-lg p-4">
+                  <h5 className="text-slate-900 dark:text-white font-medium mb-2">{example.title}</h5>
+                  <p className="text-slate-600 dark:text-gray-400 text-sm mb-3">{example.description}</p>
                   {example.code && (
-                    <pre className="bg-slate-900 rounded-lg p-4 overflow-x-auto text-sm">
-                      <code className="text-green-400">{example.code}</code>
-                    </pre>
+                    <SyntaxHighlighter
+                      language={detectLanguage(example.code)}
+                      style={oneDark}
+                      customStyle={{
+                        margin: 0,
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        padding: '1rem',
+                      }}
+                      showLineNumbers={example.code.split('\n').length > 3}
+                    >
+                      {example.code}
+                    </SyntaxHighlighter>
                   )}
                 </div>
               ))}
@@ -317,27 +389,27 @@ function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
           {content.practicePrompt && (
             <button
               onClick={handleOpenChat}
-              className="w-full text-left bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 hover:bg-cyan-500/20 hover:border-cyan-400/50 transition-all group"
+              className="w-full text-left bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all group"
             >
-              <h4 className="text-cyan-400 font-medium mb-2 flex items-center justify-between">
+              <h4 className="text-emerald-400 font-medium mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <FontAwesomeIcon icon={faGamepad} />
                   Try It Yourself
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-cyan-400/70 group-hover:text-cyan-300">
+                <span className="flex items-center gap-1.5 text-xs text-emerald-500/70 dark:text-emerald-400/70 group-hover:text-emerald-600 dark:group-hover:text-emerald-300">
                   <FontAwesomeIcon icon={faComments} />
-                  Ask Ember
+                  Ask Sage
                 </span>
               </h4>
-              <p className="text-gray-300 text-sm">{content.practicePrompt}</p>
+              <p className="text-slate-600 dark:text-gray-300 text-sm">{content.practicePrompt}</p>
             </button>
           )}
 
           {/* Mermaid diagram */}
           {content.mermaidDiagram && (
-            <div className="bg-white/5 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3 flex items-center gap-2">
-                <FontAwesomeIcon icon={faSignal} className="text-purple-400" />
+            <div className="bg-slate-100 dark:bg-white/5 rounded-lg p-4">
+              <h4 className="text-slate-900 dark:text-white font-medium mb-3 flex items-center gap-2">
+                <FontAwesomeIcon icon={faSignal} className="text-purple-500 dark:text-purple-400" />
                 Diagram
               </h4>
               <MermaidDiagram
@@ -389,10 +461,10 @@ function CurriculumItemCard({ item, index, onOpenChat }: CurriculumItemCardProps
   }
 
   const content = (
-    <div className="glass-strong p-4 rounded-xl hover:bg-white/10 transition-colors group">
+    <div className="glass-strong p-4 rounded hover:bg-slate-50 dark:hover:bg-white/10 transition-colors group">
       <div className="flex items-start gap-4">
         {/* Order number */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white/70">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-white/70">
           {index + 1}
         </div>
 
@@ -404,7 +476,7 @@ function CurriculumItemCard({ item, index, onOpenChat }: CurriculumItemCardProps
               {label}
             </span>
           </div>
-          <h3 className="text-white font-medium group-hover:text-cyan-400 transition-colors line-clamp-2">
+          <h3 className="text-slate-900 dark:text-white font-medium group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
             {item.title}
           </h3>
         </div>
@@ -413,7 +485,7 @@ function CurriculumItemCard({ item, index, onOpenChat }: CurriculumItemCardProps
         {linkUrl && (
           <FontAwesomeIcon
             icon={faExternalLinkAlt}
-            className="text-white/30 group-hover:text-cyan-400 transition-colors flex-shrink-0"
+            className="text-slate-400 dark:text-white/30 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-shrink-0"
           />
         )}
       </div>
@@ -445,13 +517,13 @@ function NotFoundState() {
         <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center">
           <FontAwesomeIcon icon={faGraduationCap} className="text-3xl text-red-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-3">Learning Path Not Found</h2>
-        <p className="text-gray-400 mb-6">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Learning Path Not Found</h2>
+        <p className="text-slate-600 dark:text-gray-400 mb-6">
           This learning path doesn't exist or you don't have access to it.
         </p>
         <Link
           to="/learn"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
         >
           <FontAwesomeIcon icon={faArrowLeft} />
           Go to Learn
@@ -467,7 +539,7 @@ function NotFoundState() {
 function LoadingState() {
   return (
     <div className="h-full flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500" />
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500" />
     </div>
   );
 }
@@ -488,71 +560,92 @@ export default function LearningPathDetailPage() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout hideFooter>
       {() => (
-        <div className="h-full flex flex-col">
+        /* Fixed viewport height container - accounts for top nav (4rem) */
+        <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
           {isLoading ? (
             <LoadingState />
           ) : error || !path ? (
             <NotFoundState />
           ) : (
             <>
-              {/* Header - full width */}
-              <header className="relative bg-gradient-to-br from-slate-900 to-slate-800 border-b border-white/10 flex-shrink-0">
-                <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />
-                <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-purple-500/5 blur-[100px] pointer-events-none" />
+              {/* Header - compact, with cover image background */}
+              <header className="relative border-b border-white/10 flex-shrink-0 overflow-hidden">
+                {/* Cover image background */}
+                {path.coverImage ? (
+                  <>
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${path.coverImage})` }}
+                    />
+                    {/* Dark gradient overlay for readability */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-900/85 to-slate-900/70" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
+                  </>
+                ) : (
+                  <>
+                    {/* Fallback gradient background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800" />
+                    <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/10 blur-[120px] pointer-events-none" />
+                    <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-purple-500/5 blur-[100px] pointer-events-none" />
+                  </>
+                )}
 
-                <div className="relative px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
-                    {/* Back link */}
+                <div className="relative px-4 sm:px-6 lg:px-8 py-4 max-w-4xl">
+                    {/* Back link - over cover image */}
                     <Link
                       to="/learn"
-                      className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6"
+                      className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
                     >
                       <FontAwesomeIcon icon={faArrowLeft} />
                       Back to Learn
                     </Link>
 
-                    {/* Title */}
-                    <h1 className="text-3xl font-bold text-white mb-4">{path.title}</h1>
+                    {/* Title - stays white because it's over a cover image */}
+                    <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
 
-                    {/* Meta info */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <FontAwesomeIcon icon={faClock} />
-                        <span>{path.estimatedHours} hours</span>
+                    {/* Meta info - over cover image */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faClock} className="text-[10px]" />
+                        <span>{path.estimatedHours}h</span>
                       </div>
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <FontAwesomeIcon icon={faSignal} />
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faSignal} className="text-[10px]" />
                         <span className="capitalize">{path.difficulty}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <FontAwesomeIcon icon={faGraduationCap} />
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faGraduationCap} className="text-[10px]" />
                         <span>{path.curriculum?.length ?? 0} items</span>
                       </div>
+                      {/* Topics covered - inline (over cover image) */}
+                      {(path.topicsCovered?.length ?? 0) > 0 && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          {path.topicsCovered?.slice(0, 3).map((topic: string) => (
+                            <span
+                              key={topic}
+                              className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs"
+                            >
+                              {topic.replace(/-/g, ' ')}
+                            </span>
+                          ))}
+                          {(path.topicsCovered?.length ?? 0) > 3 && (
+                            <span className="text-gray-400">+{(path.topicsCovered?.length ?? 0) - 3} more</span>
+                          )}
+                        </>
+                      )}
                     </div>
-
-                    {/* Topics covered */}
-                    {(path.topicsCovered?.length ?? 0) > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        {path.topicsCovered?.map((topic: string) => (
-                          <span
-                            key={topic}
-                            className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-sm border border-cyan-500/30"
-                          >
-                            {topic.replace(/-/g, ' ')}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </header>
 
-              {/* Split-pane: Curriculum left, Chat right */}
-              <div className="flex-1 flex min-h-0">
+              {/* Split-pane: Curriculum left, Chat right - fixed height with inner scroll */}
+              <div className="flex-1 flex min-h-0 overflow-hidden">
                 {/* LEFT: Curriculum (scrollable) */}
-                <div className="flex-1 overflow-y-auto">
-                  <div className="px-4 sm:px-6 py-8">
-                    <h2 className="text-xl font-bold text-white mb-6">Curriculum</h2>
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  <div className="px-4 sm:px-6 py-4">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Curriculum</h2>
                     <div className="space-y-3">
                       {path.curriculum?.map((item, index) => (
                         <CurriculumItemCard
@@ -565,15 +658,15 @@ export default function LearningPathDetailPage() {
                     </div>
 
                     {(path.curriculum?.length ?? 0) === 0 && (
-                      <div className="text-center py-12 text-gray-400">
+                      <div className="text-center py-12 text-slate-500 dark:text-gray-400">
                         <p>No curriculum items found in this learning path.</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* RIGHT: Ember Chat Panel (always visible) */}
-                <div className="w-[400px] border-l border-white/10 flex-shrink-0">
+                {/* RIGHT: Sage Chat Panel (always visible, fixed to viewport height) */}
+                <div className="w-[480px] border-l border-slate-200 dark:border-white/10 flex-shrink-0 h-full min-h-0 flex flex-col">
                   <LearningChatPanel
                     context={currentLessonContext}
                     pathTitle={path.title}

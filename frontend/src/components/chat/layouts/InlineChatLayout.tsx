@@ -4,7 +4,7 @@
  * Features:
  * - Non-overlay design - sits inline with page content
  * - No backdrop blur - feels part of the page
- * - Ember header with avatar and connection status
+ * - Sage header with avatar and connection status
  * - Context-aware quick actions for learning
  * - Learning setup context support
  * - Neon Glass aesthetic
@@ -14,8 +14,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon } from '@fortawesome/free-solid-svg-icons';
 import { createProjectFromImageSession } from '@/services/projects';
 import {
   ChatCore,
@@ -51,6 +49,7 @@ export interface InlineChatLayoutProps {
   context?: ChatContext;
   learningSetupContext?: LearningSetupContext | null;
   conceptContext?: ConceptClickContext | null;
+  createPathTrigger?: number;
   className?: string;
 }
 
@@ -59,6 +58,7 @@ export function InlineChatLayout({
   context = 'learn',
   learningSetupContext = null,
   conceptContext = null,
+  createPathTrigger = 0,
   className = '',
 }: InlineChatLayoutProps) {
   const navigate = useNavigate();
@@ -74,6 +74,9 @@ export function InlineChatLayout({
 
   // Track if we've sent the concept context message
   const conceptMessageSentRef = useRef<string | null>(null);
+
+  // Track the createPathTrigger to send message when it changes
+  const lastCreatePathTriggerRef = useRef(0);
 
   // Panel-level drag handlers
   const handlePanelDragEnter = useCallback((e: React.DragEvent) => {
@@ -142,6 +145,14 @@ export function InlineChatLayout({
           // Use setTimeout to avoid updating state during render
           setTimeout(() => {
             state.sendMessage(conceptMessage);
+          }, 0);
+        }
+
+        // Send "create learning path" message when triggered from outside
+        if (createPathTrigger > 0 && createPathTrigger !== lastCreatePathTriggerRef.current) {
+          lastCreatePathTriggerRef.current = createPathTrigger;
+          setTimeout(() => {
+            state.sendMessage('Help me create a personalized learning path');
           }, 0);
         }
 
@@ -300,15 +311,15 @@ export function InlineChatLayout({
             {/* Panel-level drag overlay */}
             {isPanelDragging && (
               <div
-                className="absolute inset-0 z-[100] bg-cyan-500/10 border-4 border-dashed border-cyan-400 rounded-lg flex items-center justify-center pointer-events-none"
+                className="absolute inset-0 z-[100] bg-emerald-500/10 border-4 border-dashed border-emerald-400 rounded-lg flex items-center justify-center pointer-events-none"
                 style={{
                   backdropFilter: 'blur(8px)',
                   WebkitBackdropFilter: 'blur(8px)',
                 }}
               >
-                <div className="text-center p-6 rounded-xl bg-white/80 dark:bg-background/80 border border-cyan-500/30">
-                  <div className="text-cyan-600 dark:text-cyan-300 text-xl font-semibold mb-2">Drop files here</div>
-                  <div className="text-cyan-500/70 dark:text-cyan-400/70 text-sm">
+                <div className="text-center p-6 rounded-xl bg-white/80 dark:bg-background/80 border border-emerald-500/30">
+                  <div className="text-emerald-600 dark:text-emerald-300 text-xl font-semibold mb-2">Drop files here</div>
+                  <div className="text-emerald-500/70 dark:text-emerald-400/70 text-sm">
                     Images, videos, and documents supported
                   </div>
                 </div>
@@ -318,11 +329,13 @@ export function InlineChatLayout({
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-600/20 flex items-center justify-center">
-                  <FontAwesomeIcon icon={faDragon} className="w-5 h-5 text-orange-500 dark:text-orange-400" />
-                </div>
+                <img
+                  src="/sage-avatar.png"
+                  alt="Sage"
+                  className="w-12 h-12 rounded-full"
+                />
                 <div>
-                  <h2 className="font-semibold text-slate-900 dark:text-white">Ember</h2>
+                  <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Sage</h2>
                   <div className="flex items-center gap-1.5 text-xs">
                     <span className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-green-500 dark:bg-green-400' : 'bg-amber-500 dark:bg-amber-400 animate-pulse'}`} />
                     <span className="text-slate-500 dark:text-slate-400">
@@ -365,11 +378,11 @@ export function InlineChatLayout({
                               key={action.label}
                               onClick={() => handleQuickAction(action.message)}
                               className="px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                                bg-gradient-to-r from-orange-500/10 to-amber-500/10
-                                border border-orange-500/30
-                                text-orange-600 dark:text-orange-300 hover:text-orange-500 dark:hover:text-orange-200
-                                hover:border-orange-400/50 hover:from-orange-500/20 hover:to-amber-500/20
-                                hover:shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                                bg-gradient-to-r from-emerald-500/10 to-teal-500/10
+                                border border-emerald-500/30
+                                text-emerald-600 dark:text-emerald-300 hover:text-emerald-500 dark:hover:text-emerald-200
+                                hover:border-emerald-400/50 hover:from-emerald-500/20 hover:to-teal-500/20
+                                hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                             >
                               {action.label}
                             </button>

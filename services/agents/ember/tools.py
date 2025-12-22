@@ -34,8 +34,8 @@ from services.agents.learning.tools import (
     update_learner_profile,
 )
 from services.agents.orchestration.tools import ORCHESTRATION_TOOLS
-from services.agents.profile.agent import TOOLS_NEEDING_STATE as PROFILE_TOOLS_NEEDING_STATE
 from services.agents.profile.tools import PROFILE_TOOLS
+from services.agents.profile.tools import TOOLS_NEEDING_STATE as PROFILE_TOOLS_NEEDING_STATE
 from services.agents.profile_questions.tools import (
     PROFILE_QUESTION_TOOLS,
 )

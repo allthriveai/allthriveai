@@ -79,9 +79,11 @@ interface DashboardLayoutProps {
   }) => ReactNode);
   openAboutPanel?: boolean;
   autoCollapseSidebar?: boolean;
+  /** Hide footer for full-viewport layouts like learning paths */
+  hideFooter?: boolean;
 }
 
-export function DashboardLayout({ children, openAboutPanel = false }: DashboardLayoutProps) {
+export function DashboardLayout({ children, openAboutPanel = false, hideFooter = false }: DashboardLayoutProps) {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
   const [aboutOpen, setAboutOpen] = useState(openAboutPanel);
@@ -94,6 +96,12 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const [architectureRegenerateContext, setArchitectureRegenerateContext] = useState<{
     projectId: number;
     projectTitle: string;
+  } | null>(null);
+
+  // Profile generation state
+  const [profileGenerateContext, setProfileGenerateContext] = useState<{
+    userId: number;
+    username: string;
   } | null>(null);
 
   // Learning setup context state
@@ -240,6 +248,22 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
     return () => window.removeEventListener('openArchitectureRegenerate', handleArchitectureRegenerateEvent as EventListener);
   }, []);
 
+  // Listen for profile generation event (from ProfilePage)
+  useEffect(() => {
+    const handleProfileGenerateEvent = (event: CustomEvent<{
+      userId: number;
+      username: string;
+    }>) => {
+      const { userId, username } = event.detail;
+      setProfileGenerateContext({ userId, username });
+      setAddProjectOpen(true);
+      setAboutOpen(false);
+      setEventsOpen(false);
+    };
+    window.addEventListener('openProfileGenerate', handleProfileGenerateEvent as EventListener);
+    return () => window.removeEventListener('openProfileGenerate', handleProfileGenerateEvent as EventListener);
+  }, []);
+
   const handleMenuClick = useCallback((menuItem: string) => {
     if (menuItem === 'About Us') {
       setAboutOpen((wasOpen) => {
@@ -293,6 +317,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
   const handleCloseAddProject = () => {
     setAddProjectOpen(false);
     setArchitectureRegenerateContext(null);
+    setProfileGenerateContext(null);
   };
 
   const handleOpenCommentPanel = useCallback((project: Project) => {
@@ -336,7 +361,7 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             <AsyncBattleBanner />
             {typeof children === 'function' ? children({ openChat: handleMenuClick, openAddProject: handleOpenAddProject, openCommentPanel: handleOpenCommentPanel, openQuestTray, setLearningSetupContext }) : children}
           </div>
-          <Footer />
+          {!hideFooter && <Footer />}
         </MainScrollContainer>
 
         {/* Right About Panel */}
@@ -359,10 +384,13 @@ export function DashboardLayout({ children, openAboutPanel = false }: DashboardL
             conversationId={
               architectureRegenerateContext
                 ? `project-${architectureRegenerateContext.projectId}-architecture`
-                : conversationId
+                : profileGenerateContext
+                  ? `profile-${profileGenerateContext.userId}-generate`
+                  : conversationId
             }
             context={chatContext}
             architectureRegenerateContext={architectureRegenerateContext}
+            profileGenerateContext={profileGenerateContext}
             learningSetupContext={learningSetupContext}
             defaultExpanded={chatExpanded}
           />

@@ -23,7 +23,6 @@ import { MyBattlesTab } from '@/components/battles/MyBattlesTab';
 import { ProfileTabMenu, type ProfileTabId, ALL_TABS } from '@/components/profile/ProfileTabMenu';
 import { getUserBattles } from '@/services/battles';
 import { ToolTray } from '@/components/tools/ToolTray';
-import { ProfileGeneratorTray } from '@/components/profile/ProfileGeneratorTray';
 import { MasonryGrid } from '@/components/common/MasonryGrid';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
@@ -152,7 +151,6 @@ export default function ProfilePage() {
   const [profileSections, setProfileSections] = useState<ProfileSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
   const [isEditingShowcase, setIsEditingShowcase] = useState(false);
-  const [showProfileGeneratorTray, setShowProfileGeneratorTray] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<ProfileTemplate | undefined>();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
@@ -268,25 +266,39 @@ export default function ProfilePage() {
 
       // Short delay to let the page render first
       const timeoutId = setTimeout(() => {
-        setShowProfileGeneratorTray(true);
+        // Dispatch custom event to open Ember with profile generation context
+        if (user) {
+          window.dispatchEvent(new CustomEvent('openProfileGenerate', {
+            detail: {
+              userId: user.id,
+              username: username,
+            }
+          }));
+        }
       }, 300);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [isOwnProfile]);
+  }, [isOwnProfile, user, username]);
 
   // Listen for custom event when user is already on profile page
   useEffect(() => {
-    if (!isOwnProfile) return;
+    if (!isOwnProfile || !user) return;
 
     const handleOpenProfileGenerator = () => {
       localStorage.removeItem('ember_open_profile_generator');
-      setShowProfileGeneratorTray(true);
+      // Dispatch custom event to open Ember with profile generation context
+      window.dispatchEvent(new CustomEvent('openProfileGenerate', {
+        detail: {
+          userId: user.id,
+          username: username,
+        }
+      }));
     };
 
     window.addEventListener('ember-open-profile-generator', handleOpenProfileGenerator);
     return () => window.removeEventListener('ember-open-profile-generator', handleOpenProfileGenerator);
-  }, [isOwnProfile]);
+  }, [isOwnProfile, user, username]);
 
   // Update URL when tab changes
   const handleTabChange = (tab: 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles') => {
@@ -556,17 +568,17 @@ export default function ProfilePage() {
     setProfileSections(reorderedSections);
   }, []);
 
-  // Open the AI profile generator tray for conversational generation
+  // Open Ember chat with profile generation context
   const handleGenerateProfile = useCallback(() => {
-    if (!username) return;
-    setShowProfileGeneratorTray(true);
-  }, [username]);
-
-  // Handle sections generated from the AI conversation
-  const handleAIGeneratedSections = useCallback((sections: ProfileSection[]) => {
-    setProfileSections(sections);
-    setIsEditingShowcase(true); // Enter edit mode to let user review
-  }, []);
+    if (!username || !user) return;
+    // Dispatch custom event to open Ember with profile generation context
+    window.dispatchEvent(new CustomEvent('openProfileGenerate', {
+      detail: {
+        userId: user.id,
+        username: username,
+      }
+    }));
+  }, [username, user]);
 
   // Template change handler
   const handleTemplateChange = useCallback((template: ProfileTemplate) => {
@@ -1370,7 +1382,7 @@ export default function ProfilePage() {
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
                           <button
-                            onClick={() => setShowProfileGeneratorTray(true)}
+                            onClick={handleGenerateProfile}
                             className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
                           >
                             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -2147,7 +2159,7 @@ export default function ProfilePage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
                             {/* Generate Profile */}
                             <button
-                              onClick={() => setShowProfileGeneratorTray(true)}
+                              onClick={handleGenerateProfile}
                               className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
                             >
                               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -2291,13 +2303,6 @@ export default function ProfilePage() {
           isOpen={toolTrayOpen}
           onClose={() => setToolTrayOpen(false)}
           toolSlug={selectedToolSlug}
-        />
-
-        {/* AI Profile Generator Tray */}
-        <ProfileGeneratorTray
-          isOpen={showProfileGeneratorTray}
-          onClose={() => setShowProfileGeneratorTray(false)}
-          onSectionsGenerated={handleAIGeneratedSections}
         />
 
         {/* Delete Confirmation Modal */}

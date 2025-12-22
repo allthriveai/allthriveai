@@ -19,6 +19,12 @@ export interface ArchitectureRegenerateContext {
   projectTitle: string;
 }
 
+// Profile generation context - triggers initial message for profile generation
+export interface ProfileGenerateContext {
+  userId: number;
+  username: string;
+}
+
 // Learning setup context - shows learning goal selection before chat
 export interface LearningSetupContext {
   needsSetup: boolean;

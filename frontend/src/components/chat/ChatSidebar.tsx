@@ -9,7 +9,7 @@
 
 import { SidebarChatLayout } from './layouts';
 import { useStableConversationId, type ChatContext as StableChatContext } from '@/hooks/useStableConversationId';
-import type { ChatContext, ArchitectureRegenerateContext, LearningSetupContext } from './core';
+import type { ChatContext, ArchitectureRegenerateContext, ProfileGenerateContext, LearningSetupContext } from './core';
 
 export interface ChatSidebarProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ export interface ChatSidebarProps {
   context?: ChatContext;
   // Special contexts for DashboardLayout compatibility
   architectureRegenerateContext?: ArchitectureRegenerateContext | null;
+  profileGenerateContext?: ProfileGenerateContext | null;
   learningSetupContext?: LearningSetupContext | null;
   // Legacy prop for CreatorSettingsPage - translates to project context
   productCreationMode?: boolean;
@@ -31,6 +32,7 @@ export function ChatSidebar({
   conversationId,
   context = 'default',
   architectureRegenerateContext = null,
+  profileGenerateContext = null,
   learningSetupContext = null,
   productCreationMode = false,
   defaultExpanded = false,
@@ -54,6 +56,7 @@ export function ChatSidebar({
       conversationId={effectiveConversationId}
       context={effectiveContext}
       architectureRegenerateContext={architectureRegenerateContext}
+      profileGenerateContext={profileGenerateContext}
       learningSetupContext={learningSetupContext}
       defaultExpanded={defaultExpanded}
     />

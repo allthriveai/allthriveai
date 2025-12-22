@@ -67,18 +67,19 @@ function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleti
       exit={{ opacity: 0, scale: 0.9 }}
       whileHover={{ scale: 1.02 }}
       className={`
-        relative glass-subtle rounded-2xl overflow-hidden
+        relative rounded overflow-hidden
+        bg-white dark:bg-slate-800/50 backdrop-blur-sm
         border transition-all duration-200
         ${path.isActive
-          ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/10'
-          : 'border-white/10 hover:border-white/20'
+          ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/10'
+          : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
         }
       `}
     >
       {/* Clickable Link Area */}
       <Link to={`/${username}/learn/${path.slug}`} className="block">
         {/* Cover Image */}
-        <div className="relative h-40 bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden">
+        <div className="relative h-40 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 overflow-hidden">
           {path.coverImage ? (
             <img
               src={path.coverImage}
@@ -87,10 +88,10 @@ function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleti
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
                 <FontAwesomeIcon
                   icon={faGraduationCap}
-                  className="text-3xl text-cyan-400/50"
+                  className="text-3xl text-emerald-500/50 dark:text-emerald-400/50"
                 />
               </div>
             </div>
@@ -98,7 +99,7 @@ function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleti
 
           {/* Active Badge */}
           {path.isActive && (
-            <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-cyan-500/90 text-white text-xs font-semibold flex items-center gap-1.5">
+            <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-emerald-500/90 text-white text-xs font-semibold flex items-center gap-1.5">
               <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
               Active
             </div>
@@ -117,11 +118,11 @@ function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleti
 
         {/* Content */}
         <div className="p-4 pb-2">
-          <h3 className="font-semibold text-white text-lg mb-2 truncate hover:text-cyan-400 transition-colors">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-lg mb-2 truncate hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
             {path.title}
           </h3>
 
-          <div className="flex items-center gap-4 text-sm text-gray-400">
+          <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-gray-400">
             <span className="flex items-center gap-1.5">
               <FontAwesomeIcon icon={faClock} className="text-xs" />
               {path.estimatedHours}h
@@ -140,7 +141,7 @@ function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleti
             <button
               onClick={onActivate}
               disabled={isActivating}
-              className="flex-1 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-sm font-medium hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
+              className="flex-1 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
             >
               {isActivating ? (
                 <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
@@ -156,8 +157,8 @@ function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleti
             className={`
               px-3 py-2 rounded-lg text-sm transition-colors disabled:opacity-50
               ${showDeleteConfirm
-                ? 'bg-red-500/20 border border-red-500/50 text-red-400'
-                : 'bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10'
+                ? 'bg-red-500/20 border border-red-500/50 text-red-500 dark:text-red-400'
+                : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10'
               }
             `}
           >
@@ -184,23 +185,25 @@ function CreateNewCard({ onClick }: { onClick: () => void }) {
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className="
-        h-full min-h-[280px] glass-subtle rounded-2xl border border-dashed border-white/20
-        hover:border-cyan-500/40 hover:bg-white/[0.02] transition-all duration-200
+        h-full min-h-[280px] rounded border border-dashed
+        bg-white/50 dark:bg-slate-800/30 backdrop-blur-sm
+        border-slate-300 dark:border-white/20
+        hover:border-emerald-500/50 dark:hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all duration-200
         flex flex-col items-center justify-center gap-4 cursor-pointer group
       "
     >
-      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 flex items-center justify-center group-hover:border-cyan-500/40 transition-colors">
+      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:border-emerald-500/40 transition-colors">
         <FontAwesomeIcon
           icon={faPlus}
-          className="text-2xl text-cyan-400/60 group-hover:text-cyan-400 transition-colors"
+          className="text-2xl text-emerald-500/60 dark:text-emerald-400/60 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors"
         />
       </div>
       <div className="text-center">
-        <p className="font-medium text-white/80 group-hover:text-white transition-colors">
+        <p className="font-medium text-slate-700 dark:text-white/80 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
           Create New Path
         </p>
-        <p className="text-sm text-gray-500 mt-1">
-          Ask Ember to build one for you
+        <p className="text-sm text-slate-500 dark:text-gray-500 mt-1">
+          Ask Sage to build one for you
         </p>
       </div>
     </motion.button>
@@ -218,7 +221,7 @@ export function PathLibraryGrid({ onCreateNew }: PathLibraryGridProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <FontAwesomeIcon icon={faSpinner} className="text-2xl text-cyan-400 animate-spin" />
+        <FontAwesomeIcon icon={faSpinner} className="text-2xl text-emerald-400 animate-spin" />
       </div>
     );
   }
@@ -237,13 +240,13 @@ export function PathLibraryGrid({ onCreateNew }: PathLibraryGridProps) {
     <div className="p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white mb-2">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
           Your Learning Paths
         </h1>
-        <p className="text-gray-400">
+        <p className="text-slate-600 dark:text-gray-400">
           {hasPaths
-            ? 'Select a path to continue learning, or create a new one with Ember.'
-            : 'Get started by creating your first personalized learning path with Ember.'
+            ? 'Select a path to continue learning, or create a new one with Sage.'
+            : 'Get started by creating your first personalized learning path with Sage.'
           }
         </p>
       </div>

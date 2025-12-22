@@ -1,5 +1,5 @@
-"""Profile generation agent for auto-populating user profiles."""
+"""Profile tools for Ember agent."""
 
-from .agent import generate_profile, stream_profile_generation
+from .tools import PROFILE_TOOLS, TOOLS_NEEDING_STATE
 
-__all__ = ['generate_profile', 'stream_profile_generation']
+__all__ = ['PROFILE_TOOLS', 'TOOLS_NEEDING_STATE']

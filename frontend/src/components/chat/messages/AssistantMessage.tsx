@@ -244,12 +244,15 @@ export function AssistantMessage({
                       </a>
                     );
                   },
+                  pre: ({ children }) => (
+                    <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900/50 dark:bg-slate-950/50 p-3 rounded-lg text-sm my-2">{children}</pre>
+                  ),
                   code: ({ children, node }) => {
                     const isInline = node?.position?.start.line === node?.position?.end.line;
                     return isInline ? (
-                      <code className="bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
+                      <code className="bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono break-all">{children}</code>
                     ) : (
-                      <code>{children}</code>
+                      <code className="break-words">{children}</code>
                     );
                   },
                 }}
@@ -314,12 +317,15 @@ export function AssistantMessage({
                     </a>
                   );
                 },
+                pre: ({ children }) => (
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900 dark:bg-slate-950 p-3 rounded-lg text-sm my-2">{children}</pre>
+                ),
                 code: ({ children, node }) => {
                   const isInline = node?.position?.start.line === node?.position?.end.line;
                   return isInline ? (
-                    <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">{children}</code>
+                    <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm break-all">{children}</code>
                   ) : (
-                    <code>{children}</code>
+                    <code className="text-slate-300 break-words">{children}</code>
                   );
                 },
               }}

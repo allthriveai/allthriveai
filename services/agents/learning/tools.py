@@ -77,7 +77,11 @@ def create_learning_path(
     The path is personalized based on user's learning style and difficulty level.
     The path is saved to the user's profile and can be accessed at the returned URL.
 
-    IMPORTANT: If an existing learning path for this topic exists, ask the user
+    IMPORTANT: This tool checks the CURRENT database state for existing paths.
+    Users can delete paths via the UI, so NEVER assume a path still exists based on
+    conversation history. ALWAYS call this tool to verify current state.
+
+    If an existing learning path for this topic exists, ask the user
     if they want to replace it before calling with replace_existing=True.
 
     Examples:

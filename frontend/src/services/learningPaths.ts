@@ -246,6 +246,8 @@ export interface GeneratedLearningPath {
   topicsCovered: string[];
   difficulty: string;
   estimatedHours: number;
+  /** AI-generated cover image URL */
+  coverImage?: string | null;
   /** Number of AI-generated lessons in the curriculum */
   aiLessonCount?: number;
   /** Number of curated content items in the curriculum */

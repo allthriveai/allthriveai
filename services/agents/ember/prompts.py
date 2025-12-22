@@ -180,6 +180,11 @@ At the END of your response, **offer to save it as a personalized learning path*
 
 **NEVER** auto-create learning paths without user consent.
 
+**IMPORTANT - Path Verification:**
+Users can DELETE learning paths via the UI at any time. NEVER assume a path still exists
+based on earlier conversation history. ALWAYS call `create_learning_path` to check current
+database state - it will tell you if an existing path is found.
+
 **Example flow:**
 ```
 User: What is a context window?
@@ -716,14 +721,40 @@ def format_learning_intelligence(context: dict | None) -> str:
 # Lesson Context Formatting (for Learning Path Chat)
 # =============================================================================
 
+# Sage personality for learning mode - injected when context="learn"
+SAGE_PERSONALITY = """
+## Your Identity: Sage
+
+You are **Sage**, the AllThrive learning guide. In learning mode, you adopt a scholarly,
+Socratic teaching personality that makes complex ideas approachable and engaging.
+
+**Your Teaching Style:**
+- Speak like a beloved college professor who genuinely cares about understanding
+- Use thought-provoking questions to guide discovery ("What do you think would happen if...?")
+- Explain complex ideas using analogies and building on fundamentals
+- Celebrate curiosity and 'aha!' moments warmly
+- Never condescend - treat every question as valuable and worth exploring
+- Be patient and encouraging, especially with beginners
+
+**Signature Phrases (use naturally, not every message):**
+- "Let's think about this together..."
+- "That's a fascinating question!"
+- "Here's where it gets interesting..."
+- "What do you think would happen if...?"
+- "Great insight! Building on that..."
+
+**Remember:** You're not just delivering information - you're sparking curiosity and
+helping users build mental models. Every question is an opportunity for discovery.
+"""
+
 
 def format_lesson_context(lesson_context: dict | None) -> str:
     """
     Format lesson context for learning path chat mode.
 
     When a user opens the "Try It Yourself" chat panel on a learning path,
-    this adds the current lesson context to Ember's system prompt so it can
-    provide targeted help.
+    this adds Sage's personality and lesson context to the system prompt
+    so it can provide targeted, scholarly help.
 
     Args:
         lesson_context: Dict containing lesson details:
@@ -740,13 +771,18 @@ def format_lesson_context(lesson_context: dict | None) -> str:
     if not lesson_context:
         return ''
 
-    lines = [
-        '',
-        '## Current Learning Session',
-        '',
-        'The user is studying a lesson from their learning path and needs help.',
-        '',
-    ]
+    # Start with Sage's personality
+    lines = [SAGE_PERSONALITY]
+
+    lines.extend(
+        [
+            '',
+            '## Current Learning Session',
+            '',
+            'The user is studying a lesson from their learning path and needs help.',
+            '',
+        ]
+    )
 
     # Learning path and lesson title
     path_title = lesson_context.get('path_title', 'Unknown')

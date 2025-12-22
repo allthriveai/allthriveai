@@ -17,6 +17,7 @@ export type {
   ChatInputAreaProps,
   ChatContext,
   ArchitectureRegenerateContext,
+  ProfileGenerateContext,
   LearningSetupContext,
   PendingAction,
   OnboardingState,
