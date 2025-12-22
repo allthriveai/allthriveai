@@ -69,6 +69,6 @@ def process_agent_dm_task(self, message_id: str, thread_id: str, agent_user_id: 
 
         # Retry on transient errors
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e)
+            raise self.retry(exc=e) from e
 
         return {'status': 'error', 'reason': str(e)}

@@ -297,7 +297,7 @@ def _get_user_friendly_error(exception: Exception) -> str:
 MAX_SERIALIZE_DEPTH = 5
 
 
-def _serialize_tool_output(output, _depth: int = 0) -> dict:
+def _serialize_tool_output(output, _depth: int = 0) -> dict | list:
     """
     Serialize tool output to ensure it's JSON-compatible for Redis channels.
 
@@ -353,9 +353,9 @@ def _serialize_tool_output(output, _depth: int = 0) -> dict:
     if isinstance(output, str):
         return {'content': output}
 
-    # Handle list output
+    # Handle list output - preserve as list (don't wrap in dict)
     if isinstance(output, list):
-        return {'items': [_serialize_tool_output(item, _depth + 1) for item in output]}
+        return [_serialize_tool_output(item, _depth + 1) for item in output]
 
     # Fallback: convert to string
     try:
@@ -647,17 +647,19 @@ def create_agent_node(model_name: str | None = None):
         logger.info(f'[AGENT_NODE] Calling LLM with {len(full_messages)} messages')
 
         # Check if the last user message is a learning question
-        # If so, force find_content tool use to ensure consistent learning experience
+        # Only force find_content on the FIRST call (when last message is HumanMessage)
+        # After tool execution, last message will be ToolMessage - don't force again
         force_tool_choice = None
+        last_message = messages[-1] if messages else None
         last_human_message = None
-        for msg in reversed(messages):
-            if isinstance(msg, HumanMessage):
-                last_human_message = msg.content if hasattr(msg, 'content') else str(msg)
-                break
 
-        if last_human_message and _is_learning_question(last_human_message):
-            logger.info('[AGENT_NODE] Detected learning question, forcing find_content tool use')
-            force_tool_choice = {'type': 'function', 'function': {'name': 'find_content'}}
+        # Only consider forcing tool_choice if the last message is a HumanMessage
+        # (This means we're on the first call, not after tool execution)
+        if isinstance(last_message, HumanMessage):
+            last_human_message = last_message.content if hasattr(last_message, 'content') else str(last_message)
+            if _is_learning_question(last_human_message):
+                logger.info('[AGENT_NODE] Detected learning question, forcing find_content tool use')
+                force_tool_choice = {'type': 'function', 'function': {'name': 'find_content'}}
 
         # Call LLM (async - non-blocking)
         # Use tool_choice to force find_content for learning questions

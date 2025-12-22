@@ -16,7 +16,6 @@ import {
   faCircle,
   faChevronDown,
   faChevronRight,
-  faArrowRight,
   faClock,
   faGraduationCap,
   faRotate,

@@ -574,14 +574,16 @@ def _process_with_ember(
 
                     # DEBUG: Log what we're sending to frontend
                     if tool_name == 'find_content':
-                        content_count = len(tool_output.get('content', [])) if isinstance(tool_output, dict) else 0
-                        projects_count = len(tool_output.get('projects', [])) if isinstance(tool_output, dict) else 0
+                        content = tool_output.get('content', []) if isinstance(tool_output, dict) else []
+                        projects = tool_output.get('projects', []) if isinstance(tool_output, dict) else []
+                        content_list = list(content) if isinstance(content, list | tuple) else [content]
+                        projects_list = list(projects) if isinstance(projects, list | tuple) else [projects]
                         logger.info(
                             f'[DEBUG tool_end] Sending to frontend: tool={tool_name}, '
-                            f'content_count={content_count}, projects_count={projects_count}'
+                            f'content_count={len(content_list)}, projects_count={len(projects_list)}'
                         )
-                        if content_count > 0:
-                            logger.info(f'[DEBUG tool_end] content[0]: {tool_output.get("content", [])[0]}')
+                        if content_list:
+                            logger.info(f'[DEBUG tool_end] content[0] type: {type(content_list[0]).__name__}')
 
                     await async_channel_layer.group_send(
                         channel_name,

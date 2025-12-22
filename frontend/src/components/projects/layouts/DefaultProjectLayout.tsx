@@ -283,8 +283,14 @@ export function DefaultProjectLayout() {
     const newSections = [...currentSections];
     newSections.splice(insertIndex, 0, newSection);
 
-    // Update order values
-    const reorderedSections = newSections.map((s, idx) => ({ ...s, order: idx }));
+    // Update order values and ensure all required fields are present
+    const reorderedSections = newSections.map((s, idx) => ({
+      id: s.id,
+      type: s.type,
+      enabled: s.enabled ?? true,
+      order: idx,
+      content: s.content || {},
+    }));
 
     // Use helper to filter out read-only keys
     const updatedContent = {
@@ -315,7 +321,13 @@ export function DefaultProjectLayout() {
 
     const newSections = project.content.sections
       .filter(s => s.id !== sectionId)
-      .map((s, idx) => ({ ...s, order: idx }));
+      .map((s, idx) => ({
+        id: s.id,
+        type: s.type,
+        enabled: s.enabled ?? true,
+        order: idx,
+        content: s.content || {},
+      }));
 
     // Use helper to filter out read-only keys
     const updatedContent = {
@@ -336,11 +348,20 @@ export function DefaultProjectLayout() {
 
   // Handle reordering sections (drag-and-drop)
   const handleReorderSections = useCallback(async (reorderedSections: ProjectSection[]) => {
+    // Ensure all sections have required fields
+    const normalizedSections = reorderedSections.map((s, idx) => ({
+      id: s.id,
+      type: s.type,
+      enabled: s.enabled ?? true,
+      order: idx,
+      content: s.content || {},
+    }));
+
     // Use helper to filter out read-only keys
     const updatedContent = {
       ...filterContentKeys(project.content as Record<string, unknown>),
       templateVersion: 2 as const,
-      sections: reorderedSections,
+      sections: normalizedSections,
     };
 
     // Store original for rollback

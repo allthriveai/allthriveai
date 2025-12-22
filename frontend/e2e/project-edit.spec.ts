@@ -13,7 +13,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { loginViaAPI, TEST_USER, TEST_PROJECT_SLUG } from './helpers';
+import { loginViaAPI, TEST_USER } from './helpers';
 
 // Run tests serially to avoid conflicts when creating/editing projects
 test.describe.configure({ mode: 'serial' });
@@ -944,7 +944,7 @@ test.describe('Project Editing Integration', () => {
 
       // Verify edit controls are not visible
       const editButton = page.locator('button').filter({ hasText: /edit|settings/i });
-      const isEditVisible = await editButton.isVisible({ timeout: 3000 }).catch(() => false);
+      const _isEditVisible = await editButton.isVisible({ timeout: 3000 }).catch(() => false);
 
       // If on someone else's project, edit should not be visible (or should be disabled)
       // This is a soft check as the project might still be ours

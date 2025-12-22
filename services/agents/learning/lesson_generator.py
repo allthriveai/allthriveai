@@ -202,7 +202,7 @@ IMPORTANT: Return your response as valid JSON matching this exact structure:
     "key_concepts": ["concept1", "concept2", "concept3"],
     "explanation": "Full markdown explanation with formatting, code blocks if relevant",
     "examples": [
-        {"title": "Example Name", "description": "Brief description", "code": "optional code WITH COMMENTS for beginners"}
+        {"title": "Example Name", "description": "Brief description", "code": "optional code"}
     ],
     "practice_prompt": "A question or exercise for the learner to try",
     "mermaid_diagram": "optional mermaid diagram code if visual style. For beginners, add diagram explanation."
@@ -494,7 +494,7 @@ IMPORTANT: Return your response as valid JSON matching this exact structure:
         # Generate concept breakdown for the topic
         concepts = cls._break_down_topic(topic, lessons_to_generate)
 
-        for i, concept in enumerate(concepts):
+        for _i, concept in enumerate(concepts):
             try:
                 lesson_content = cls._generate_single_lesson(
                     concept=concept,

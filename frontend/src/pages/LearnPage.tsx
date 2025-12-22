@@ -1,10 +1,9 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { StructuredLearningPath, PathLibraryGrid } from '@/components/learning';
 import type { ConceptClickContext } from '@/components/learning/StructuredLearningPath';
 import {
   useStructuredPath,
-  useResetLearningSetup,
   useCompleteLearningSetup,
   useSavedPaths,
   useSavedPath,
