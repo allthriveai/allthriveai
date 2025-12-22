@@ -396,17 +396,13 @@ def check_and_reserve_ai_request(
             if token_balance.balance >= MIN_RESERVE_TOKENS:
                 # Reserve tokens now (will reconcile to actual usage later)
                 # Using F() for atomic update even though we have select_for_update
-                UserTokenBalance.objects.filter(pk=token_balance.pk).update(
-                    balance=F('balance') - MIN_RESERVE_TOKENS
-                )
+                UserTokenBalance.objects.filter(pk=token_balance.pk).update(balance=F('balance') - MIN_RESERVE_TOKENS)
                 return True, f'Reserved {MIN_RESERVE_TOKENS} from token balance (will reconcile)'
             elif token_balance.balance > 0:
                 # Balance is positive but low - reserve what's available
                 # User might see a slightly negative balance temporarily
                 available = token_balance.balance
-                UserTokenBalance.objects.filter(pk=token_balance.pk).update(
-                    balance=F('balance') - available
-                )
+                UserTokenBalance.objects.filter(pk=token_balance.pk).update(balance=F('balance') - available)
                 return True, f'Reserved {available} from token balance (will reconcile)'
 
             return False, 'AI request limit exceeded and no tokens available'
@@ -607,7 +603,8 @@ def reconcile_token_reservation(
                 transaction_type='reconciliation',
                 amount=-difference,  # Negative = deduction, positive = refund
                 balance_after=token_balance.balance,
-                description=description or f'Reconciled token usage (reserved: {reserved_amount}, actual: {actual_amount})',
+                description=description
+                or f'Reconciled token usage (reserved: {reserved_amount}, actual: {actual_amount})',
                 ai_provider=ai_provider,
                 ai_model=ai_model,
             )

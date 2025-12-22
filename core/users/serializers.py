@@ -345,11 +345,13 @@ class UserTaxonomyPreferencesSerializer(serializers.ModelSerializer):
         skill_level = validated_data.pop('skill_level', None)
         if skill_level is not None:
             from core.learning_paths.models import LearnerProfile
+
             learner_profile, _ = LearnerProfile.objects.get_or_create(user=instance)
             learner_profile.current_difficulty_level = skill_level
             learner_profile.save(update_fields=['current_difficulty_level'])
             # Invalidate member context cache so Ember sees the update
             from services.agents.context.member_context import MemberContextService
+
             MemberContextService.invalidate_cache(instance.id)
 
         # Handle M2M fields separately

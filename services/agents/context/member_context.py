@@ -341,6 +341,7 @@ class MemberContextService:
         else:
             # Another request is computing - wait briefly and retry cache
             import asyncio
+
             for _ in range(5):  # Retry up to 5 times
                 await asyncio.sleep(0.1)
                 cached = cache.get(cache_key)

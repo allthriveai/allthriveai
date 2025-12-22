@@ -16,9 +16,7 @@ from typing import TYPE_CHECKING
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models import Q
 from django.utils import timezone
 
 from services.ai import AIProvider
@@ -54,19 +52,15 @@ def get_agent_system_prompt(agent_user) -> str:
     signature_phrases = getattr(agent_user, 'signature_phrases', []) or []
     phrases_context = ''
     if signature_phrases:
-        phrases_context = (
-            f"\n\nYour signature phrases (use naturally in conversation):\n"
-            f"- " + "\n- ".join(signature_phrases[:5])
+        phrases_context = '\n\nYour signature phrases (use naturally in conversation):\n' '- ' + '\n- '.join(
+            signature_phrases[:5]
         )
 
     # Build interests context
     interests = getattr(agent_user, 'agent_interests', []) or []
     interests_context = ''
     if interests:
-        interests_context = (
-            f"\n\nYour areas of expertise and interest:\n"
-            f"- " + "\n- ".join(interests[:8])
-        )
+        interests_context = '\n\nYour areas of expertise and interest:\n' '- ' + '\n- '.join(interests[:8])
 
     dm_context = f"""
 You are {agent_user.first_name}, responding to a direct message on All Thrive.
@@ -103,11 +97,7 @@ def get_conversation_context(thread: 'DirectMessageThread', limit: int = 10) -> 
     """
     from core.community.models import Message
 
-    messages = (
-        Message.objects.filter(room=thread.room)
-        .select_related('author')
-        .order_by('-created_at')[:limit]
-    )
+    messages = Message.objects.filter(room=thread.room).select_related('author').order_by('-created_at')[:limit]
 
     # Reverse to chronological order
     messages = list(reversed(messages))
@@ -117,10 +107,12 @@ def get_conversation_context(thread: 'DirectMessageThread', limit: int = 10) -> 
         if msg.author:
             # Determine role based on tier
             role = 'assistant' if msg.author.tier == 'team' else 'user'
-            context.append({
-                'role': role,
-                'content': msg.content,
-            })
+            context.append(
+                {
+                    'role': role,
+                    'content': msg.content,
+                }
+            )
 
     return context
 
@@ -173,8 +165,8 @@ def generate_agent_response(
     if sender_user:
         sender_context = f"\nYou're talking to {sender_user.first_name or sender_user.username}"
         if sender_user.tagline:
-            sender_context += f" - {sender_user.tagline}"
-        system_prompt = sender_context + "\n\n" + system_prompt
+            sender_context += f' - {sender_user.tagline}'
+        system_prompt = sender_context + '\n\n' + system_prompt
 
     # Get conversation history for context
     conversation_history = get_conversation_context(thread, limit=8)
@@ -182,13 +174,13 @@ def generate_agent_response(
     # Build the prompt with history
     if conversation_history:
         # Format as conversation for context
-        history_text = ""
+        history_text = ''
         for msg in conversation_history[:-1]:  # Exclude the current message
             speaker = agent_user.first_name if msg['role'] == 'assistant' else 'User'
             history_text += f"{speaker}: {msg['content']}\n\n"
 
         if history_text:
-            full_prompt = f"Previous messages:\n{history_text}\nUser: {user_message}"
+            full_prompt = f'Previous messages:\n{history_text}\nUser: {user_message}'
         else:
             full_prompt = user_message
     else:
@@ -213,8 +205,8 @@ def generate_agent_response(
         logger.error(f'Failed to generate agent response: {e}', exc_info=True)
         # Return a graceful fallback
         return (
-            f"I'm having a bit of trouble right now, but I'll be back to full speed soon! "
-            f"Feel free to message me again in a moment. 💫"
+            "I'm having a bit of trouble right now, but I'll be back to full speed soon! "
+            'Feel free to message me again in a moment. 💫'
         )
 
 
@@ -384,10 +376,7 @@ def process_agent_dm(message: 'Message', thread: 'DirectMessageThread', recipien
         # Broadcast to WebSocket
         broadcast_agent_message(thread, response_message)
 
-        logger.info(
-            f'Agent DM response sent: message={response_message.id}, '
-            f'agent={recipient_agent.username}'
-        )
+        logger.info(f'Agent DM response sent: message={response_message.id}, ' f'agent={recipient_agent.username}')
 
     except Exception as e:
         logger.error(f'Failed to process agent DM: {e}', exc_info=True)

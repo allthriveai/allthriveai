@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('users', '0028_add_agent_personality_fields'),
     ]
@@ -13,6 +12,19 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='user',
             name='tier',
-            field=models.CharField(choices=[('seedling', 'Seedling'), ('sprout', 'Sprout'), ('blossom', 'Blossom'), ('bloom', 'Bloom'), ('evergreen', 'Evergreen'), ('curation', 'Curation'), ('team', 'All Thrive Team')], default='seedling', help_text='User tier based on total points', max_length=20),
+            field=models.CharField(
+                choices=[
+                    ('seedling', 'Seedling'),
+                    ('sprout', 'Sprout'),
+                    ('blossom', 'Blossom'),
+                    ('bloom', 'Bloom'),
+                    ('evergreen', 'Evergreen'),
+                    ('curation', 'Curation'),
+                    ('team', 'All Thrive Team'),
+                ],
+                default='seedling',
+                help_text='User tier based on total points',
+                max_length=20,
+            ),
         ),
     ]

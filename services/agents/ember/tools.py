@@ -38,6 +38,8 @@ from services.agents.profile.agent import TOOLS_NEEDING_STATE as PROFILE_TOOLS_N
 from services.agents.profile.tools import PROFILE_TOOLS
 from services.agents.profile_questions.tools import (
     PROFILE_QUESTION_TOOLS,
+)
+from services.agents.profile_questions.tools import (
     TOOLS_NEEDING_STATE as PROFILE_QUESTION_TOOLS_NEEDING_STATE,
 )
 from services.agents.project.tools import PROJECT_TOOLS

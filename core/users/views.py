@@ -193,11 +193,13 @@ def list_team_members(request):
         else:
             contributors.append(member)
 
-    return Response({
-        'core_team': core_team,
-        'contributors': contributors,
-        'total_count': len(serializer.data),
-    })
+    return Response(
+        {
+            'core_team': core_team,
+            'contributors': contributors,
+            'total_count': len(serializer.data),
+        }
+    )
 
 
 @api_view(['GET'])

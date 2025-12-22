@@ -161,23 +161,65 @@ def check_streak_bonuses():
 # Higher tiers get slightly more ambitious challenges
 CHALLENGE_CONFIGS = {
     'seedling': [
-        ('create_projects', 'Create 10 projects', 10, 50, 'Every project you add moves your circle closer to the goal.'),
-        ('give_feedback', 'Give feedback on 15 projects', 15, 40, 'Each comment or like you leave counts toward the goal.'),
+        (
+            'create_projects',
+            'Create 10 projects',
+            10,
+            50,
+            'Every project you add moves your circle closer to the goal.',
+        ),
+        (
+            'give_feedback',
+            'Give feedback on 15 projects',
+            15,
+            40,
+            'Each comment or like you leave counts toward the goal.',
+        ),
     ],
     'sprout': [
-        ('create_projects', 'Create 12 projects', 12, 60, 'Every project you add moves your circle closer to the goal.'),
-        ('give_feedback', 'Give feedback on 20 projects', 20, 50, 'Each comment or like you leave counts toward the goal.'),
+        (
+            'create_projects',
+            'Create 12 projects',
+            12,
+            60,
+            'Every project you add moves your circle closer to the goal.',
+        ),
+        (
+            'give_feedback',
+            'Give feedback on 20 projects',
+            20,
+            50,
+            'Each comment or like you leave counts toward the goal.',
+        ),
     ],
     'blossom': [
-        ('create_projects', 'Create 15 projects', 15, 70, 'Every project you add moves your circle closer to the goal.'),
+        (
+            'create_projects',
+            'Create 15 projects',
+            15,
+            70,
+            'Every project you add moves your circle closer to the goal.',
+        ),
         ('complete_quests', 'Complete 20 side quests', 20, 60, 'Each quest you complete counts toward the goal.'),
     ],
     'bloom': [
-        ('create_projects', 'Create 18 projects', 18, 80, 'Every project you add moves your circle closer to the goal.'),
+        (
+            'create_projects',
+            'Create 18 projects',
+            18,
+            80,
+            'Every project you add moves your circle closer to the goal.',
+        ),
         ('complete_quests', 'Complete 25 side quests', 25, 70, 'Each quest you complete counts toward the goal.'),
     ],
     'evergreen': [
-        ('create_projects', 'Create 20 projects', 20, 100, 'Every project you add moves your circle closer to the goal.'),
+        (
+            'create_projects',
+            'Create 20 projects',
+            20,
+            100,
+            'Every project you add moves your circle closer to the goal.',
+        ),
         ('earn_points', 'Earn 5000 points', 5000, 100, 'Every point you earn counts toward the goal.'),
     ],
 }

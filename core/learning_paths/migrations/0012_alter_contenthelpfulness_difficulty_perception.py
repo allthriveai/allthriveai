@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('learning_paths', '0011_feedback_models'),
     ]
@@ -13,6 +12,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='contenthelpfulness',
             name='difficulty_perception',
-            field=models.CharField(blank=True, choices=[('too_easy', 'Too Easy'), ('just_right', 'Just Right'), ('too_hard', 'Too Hard')], default='', help_text='How the user perceived the difficulty', max_length=20),
+            field=models.CharField(
+                blank=True,
+                choices=[('too_easy', 'Too Easy'), ('just_right', 'Just Right'), ('too_hard', 'Too Hard')],
+                default='',
+                help_text='How the user perceived the difficulty',
+                max_length=20,
+            ),
         ),
     ]

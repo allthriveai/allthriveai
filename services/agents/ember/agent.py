@@ -597,6 +597,7 @@ def create_agent_node(model_name: str | None = None):
         r'\bdefine\b',
     ]
     import re
+
     LEARNING_REGEX = re.compile('|'.join(LEARNING_QUESTION_PATTERNS), re.IGNORECASE)
 
     def _is_learning_question(message_content: str) -> bool:
@@ -655,7 +656,7 @@ def create_agent_node(model_name: str | None = None):
                 break
 
         if last_human_message and _is_learning_question(last_human_message):
-            logger.info(f'[AGENT_NODE] Detected learning question, forcing find_content tool use')
+            logger.info('[AGENT_NODE] Detected learning question, forcing find_content tool use')
             force_tool_choice = {'type': 'function', 'function': {'name': 'find_content'}}
 
         # Call LLM (async - non-blocking)

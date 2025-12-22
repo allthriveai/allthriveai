@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('learning_paths', '0012_alter_contenthelpfulness_difficulty_perception'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -16,7 +15,17 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='learnerprofile',
             name='learning_goal',
-            field=models.CharField(blank=True, choices=[('build_projects', 'Build AI Projects'), ('understand_concepts', 'Understand AI Concepts'), ('career', 'Get Unstuck'), ('exploring', 'Just Exploring')], help_text='User-selected learning goal from cold-start', max_length=30),
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ('build_projects', 'Build AI Projects'),
+                    ('understand_concepts', 'Understand AI Concepts'),
+                    ('career', 'Get Unstuck'),
+                    ('exploring', 'Just Exploring'),
+                ],
+                help_text='User-selected learning goal from cold-start',
+                max_length=30,
+            ),
         ),
         migrations.CreateModel(
             name='SavedLearningPath',
@@ -24,21 +33,53 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('slug', models.SlugField(help_text='URL-friendly identifier for this path', max_length=200)),
                 ('title', models.CharField(help_text='Display title for the learning path', max_length=255)),
-                ('path_data', models.JSONField(default=dict, help_text='Curriculum structure with items, tools, topics')),
-                ('difficulty', models.CharField(choices=[('beginner', 'Beginner'), ('intermediate', 'Intermediate'), ('advanced', 'Advanced')], default='beginner', max_length=20)),
+                (
+                    'path_data',
+                    models.JSONField(default=dict, help_text='Curriculum structure with items, tools, topics'),
+                ),
+                (
+                    'difficulty',
+                    models.CharField(
+                        choices=[('beginner', 'Beginner'), ('intermediate', 'Intermediate'), ('advanced', 'Advanced')],
+                        default='beginner',
+                        max_length=20,
+                    ),
+                ),
                 ('estimated_hours', models.FloatField(default=0.0, help_text='Total estimated hours to complete')),
                 ('cover_image', models.URLField(blank=True, help_text='URL to AI-generated cover image')),
-                ('is_active', models.BooleanField(db_index=True, default=False, help_text='Whether this is the currently active path')),
-                ('is_archived', models.BooleanField(db_index=True, default=False, help_text='Soft delete - archived paths are hidden but not deleted')),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        db_index=True, default=False, help_text='Whether this is the currently active path'
+                    ),
+                ),
+                (
+                    'is_archived',
+                    models.BooleanField(
+                        db_index=True,
+                        default=False,
+                        help_text='Soft delete - archived paths are hidden but not deleted',
+                    ),
+                ),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='saved_learning_paths', to=settings.AUTH_USER_MODEL)),
+                (
+                    'user',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='saved_learning_paths',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Saved Learning Path',
                 'verbose_name_plural': 'Saved Learning Paths',
                 'ordering': ['-is_active', '-updated_at'],
-                'indexes': [models.Index(fields=['user', 'is_active'], name='learning_pa_user_id_001309_idx'), models.Index(fields=['user', '-updated_at'], name='learning_pa_user_id_691a9e_idx')],
+                'indexes': [
+                    models.Index(fields=['user', 'is_active'], name='learning_pa_user_id_001309_idx'),
+                    models.Index(fields=['user', '-updated_at'], name='learning_pa_user_id_691a9e_idx'),
+                ],
                 'unique_together': {('user', 'slug')},
             },
         ),

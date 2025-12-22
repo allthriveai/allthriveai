@@ -90,8 +90,6 @@ def create_learning_path(
         return {'success': False, 'error': 'You need to be logged in to create a learning path.'}
 
     try:
-        from uuid import uuid4
-
         from django.utils.text import slugify
 
         from core.learning_paths.models import LearnerProfile, SavedLearningPath
@@ -150,8 +148,7 @@ def create_learning_path(
 
         # Create unique slug for this user
         existing_slugs = set(
-            SavedLearningPath.objects.filter(user_id=user_id, slug__startswith=base_slug)
-            .values_list('slug', flat=True)
+            SavedLearningPath.objects.filter(user_id=user_id, slug__startswith=base_slug).values_list('slug', flat=True)
         )
         path_slug = base_slug
         counter = 1

@@ -279,11 +279,7 @@ IMPORTANT: Return your response as valid JSON matching this exact structure:
 
         # Check top-level skill_level first (set from user profile settings),
         # then fall back to learning.difficulty_level, then default
-        skill_level = (
-            member_context.get('skill_level')
-            or learning.get('difficulty_level')
-            or defaults['difficulty']
-        )
+        skill_level = member_context.get('skill_level') or learning.get('difficulty_level') or defaults['difficulty']
 
         return {
             'style': learning.get('learning_style', defaults['style']),
@@ -488,7 +484,6 @@ IMPORTANT: Return your response as valid JSON matching this exact structure:
         user_id: int | None = None,
     ) -> list[CurriculumItem]:
         """Generate AI lessons to fill content gaps."""
-        from services.ai.provider import AIProvider
 
         lessons = []
 

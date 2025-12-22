@@ -969,9 +969,8 @@ class SavedLearningPathsView(APIView):
 
         Returns all saved learning paths for the current user.
         """
-        paths = (
-            SavedLearningPath.objects.filter(user=request.user, is_archived=False)
-            .order_by('-is_active', '-updated_at')
+        paths = SavedLearningPath.objects.filter(user=request.user, is_archived=False).order_by(
+            '-is_active', '-updated_at'
         )
         serializer = SavedLearningPathListSerializer(paths, many=True)
         return Response(serializer.data)

@@ -13,7 +13,11 @@ router.register(r'me/concept-mastery', views.UserConceptMasteryViewSet, basename
 urlpatterns = [
     path('', include(router.urls)),
     path('users/<str:username>/learning-paths/', views.UserLearningPathsView.as_view(), name='user-learning-paths'),
-    path('users/<str:username>/learning-paths/<str:slug>/', views.UserLearningPathBySlugView.as_view(), name='user-learning-path-by-slug'),
+    path(
+        'users/<str:username>/learning-paths/<str:slug>/',
+        views.UserLearningPathBySlugView.as_view(),
+        name='user-learning-path-by-slug',
+    ),
     path('learning-paths/topics/', views.AllTopicsView.as_view(), name='all-topics'),
     path('learning-paths/<str:slug>/', views.LearningPathBySlugView.as_view(), name='learning-path-by-slug'),
     # New learning endpoints

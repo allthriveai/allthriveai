@@ -24,7 +24,6 @@ from core.ai_usage.tracker import AIUsageTracker
 from core.billing.utils import (
     TRANSIENT_ERRORS,
     check_and_reserve_ai_request,
-    deduct_tokens,
     get_subscription_status,
     reconcile_token_reservation,
 )
@@ -319,8 +318,7 @@ def process_chat_message_task(self, conversation_id: str, message: str, user_id:
             )
             if reconcile_success:
                 logger.info(
-                    f'Reconciled token usage for user {user_id}: '
-                    f'reserved={reserved_amount}, actual={actual_tokens}'
+                    f'Reconciled token usage for user {user_id}: ' f'reserved={reserved_amount}, actual={actual_tokens}'
                 )
             else:
                 # Log but don't fail - the request already succeeded

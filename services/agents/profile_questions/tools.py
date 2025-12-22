@@ -10,7 +10,6 @@ from langchain.tools import tool
 from pydantic import BaseModel, Field
 
 from .question_bank import (
-    QUESTION_BANK,
     get_next_question,
     get_question_by_id,
 )
@@ -25,10 +24,7 @@ class AskProfileQuestionInput(BaseModel):
 
     question_id: str = Field(
         default='',
-        description=(
-            'Optional: specific question ID to ask. '
-            'If empty, auto-selects based on context gaps.'
-        ),
+        description=('Optional: specific question ID to ask. ' 'If empty, auto-selects based on context gaps.'),
     )
     context_hint: str = Field(
         default='',

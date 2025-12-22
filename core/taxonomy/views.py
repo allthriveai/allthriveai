@@ -8,7 +8,6 @@ from .models import Taxonomy, UserInteraction, UserTag
 from .serializers import (
     TaxonomySerializer,
     UserInteractionSerializer,
-    UserPersonalizationSerializer,
     UserTagCreateSerializer,
     UserTagSerializer,
 )

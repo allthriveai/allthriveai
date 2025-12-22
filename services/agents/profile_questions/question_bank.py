@@ -5,7 +5,7 @@ Contains all profile-building questions organized by category,
 with target fields that map to member_context/LearnerProfile.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -84,7 +84,7 @@ QUESTION_LEARNING_STYLE = ProfileQuestion(
     id='learning_style',
     category=QuestionCategory.LEARNING_STYLE,
     format=QuestionFormat.SINGLE_SELECT,
-    prompt="Quick vibe check! How do you like to learn new stuff?",
+    prompt='Quick vibe check! How do you like to learn new stuff?',
     options=[
         QuestionOption('visual', 'Watch videos', '📺', 'Video tutorials and visual explanations'),
         QuestionOption('hands_on', 'Build things', '🔧', 'Hands-on projects and coding'),
@@ -100,11 +100,11 @@ QUESTION_DIFFICULTY = ProfileQuestion(
     id='difficulty_level',
     category=QuestionCategory.DIFFICULTY,
     format=QuestionFormat.SINGLE_SELECT,
-    prompt="Where are you at with AI stuff?",
+    prompt='Where are you at with AI stuff?',
     options=[
-        QuestionOption('beginner', 'Just starting', '🌱', "New to AI and excited to learn"),
-        QuestionOption('intermediate', 'Getting the hang of it', '🌿', "Know the basics, building skills"),
-        QuestionOption('advanced', 'Pretty experienced', '🌳', "Deep knowledge, want to level up"),
+        QuestionOption('beginner', 'Just starting', '🌱', 'New to AI and excited to learn'),
+        QuestionOption('intermediate', 'Getting the hang of it', '🌿', 'Know the basics, building skills'),
+        QuestionOption('advanced', 'Pretty experienced', '🌳', 'Deep knowledge, want to level up'),
     ],
     target_field='learning.difficulty_level',
     priority=1,
@@ -133,7 +133,7 @@ QUESTION_TOOL_INTERESTS = ProfileQuestion(
     id='tool_interests',
     category=QuestionCategory.INTERESTS,
     format=QuestionFormat.MULTI_SELECT,
-    prompt="Which AI tools are you curious about? (Pick all that apply)",
+    prompt='Which AI tools are you curious about? (Pick all that apply)',
     options=[
         QuestionOption('langchain', 'LangChain', '🦜', 'Building AI apps with chains'),
         QuestionOption('openai', 'OpenAI/GPT', '🤖', 'ChatGPT, GPT-4, APIs'),
@@ -152,7 +152,7 @@ QUESTION_TOPIC_INTERESTS = ProfileQuestion(
     id='topic_interests',
     category=QuestionCategory.INTERESTS,
     format=QuestionFormat.MULTI_SELECT,
-    prompt="What topics get you excited? (Pick a few)",
+    prompt='What topics get you excited? (Pick a few)',
     options=[
         QuestionOption('ai-agents', 'AI Agents', '🤖', 'Autonomous AI systems'),
         QuestionOption('prompt-engineering', 'Prompt Engineering', '✍️', 'Crafting effective prompts'),
@@ -164,7 +164,7 @@ QUESTION_TOPIC_INTERESTS = ProfileQuestion(
     target_field='interests',
     priority=3,
     max_answers=None,
-    follow_up_prompt="Awesome! These are hot topics right now.",
+    follow_up_prompt='Awesome! These are hot topics right now.',
 )
 
 # Priority 4: Personality/vibe (fun this-or-that)
@@ -172,21 +172,21 @@ QUESTION_BUILDER_VS_EXPLORER = ProfileQuestion(
     id='builder_vs_explorer',
     category=QuestionCategory.PERSONALITY,
     format=QuestionFormat.THIS_OR_THAT,
-    prompt="Quick one - are you more of a...",
+    prompt='Quick one - are you more of a...',
     options=[
         QuestionOption('builder', 'Builder', '🔧', 'I like making things work'),
         QuestionOption('explorer', 'Explorer', '🔍', 'I like understanding how things work'),
     ],
     target_field='personality.builder_vs_explorer',
     priority=4,
-    follow_up_prompt="That tells me a lot about how you like to learn!",
+    follow_up_prompt='That tells me a lot about how you like to learn!',
 )
 
 QUESTION_THEORY_VS_PRACTICE = ProfileQuestion(
     id='theory_vs_practice',
     category=QuestionCategory.PERSONALITY,
     format=QuestionFormat.THIS_OR_THAT,
-    prompt="When learning something new, do you prefer...",
+    prompt='When learning something new, do you prefer...',
     options=[
         QuestionOption('theory_first', 'Theory first', '📖', 'Understand why before how'),
         QuestionOption('practice_first', 'Dive right in', '🏊', 'Learn by doing, theory later'),
@@ -200,7 +200,7 @@ QUESTION_SOLO_VS_COMMUNITY = ProfileQuestion(
     id='solo_vs_community',
     category=QuestionCategory.VIBE,
     format=QuestionFormat.THIS_OR_THAT,
-    prompt="How do you prefer to learn?",
+    prompt='How do you prefer to learn?',
     options=[
         QuestionOption('solo', 'Solo journey', '🧘', 'Focus and self-paced'),
         QuestionOption('community', 'With others', '👥', 'Discussion and collaboration'),
@@ -214,7 +214,7 @@ QUESTION_MOTIVATION = ProfileQuestion(
     id='motivation_style',
     category=QuestionCategory.VIBE,
     format=QuestionFormat.SINGLE_SELECT,
-    prompt="What keeps you motivated when learning?",
+    prompt='What keeps you motivated when learning?',
     options=[
         QuestionOption('streaks', 'Streaks & consistency', '🔥', 'Daily progress is key'),
         QuestionOption('goals', 'Clear goals', '🎯', 'Working toward something specific'),
@@ -223,7 +223,7 @@ QUESTION_MOTIVATION = ProfileQuestion(
     ],
     target_field='personality.motivation_style',
     priority=5,
-    follow_up_prompt="I love that energy!",
+    follow_up_prompt='I love that energy!',
 )
 
 # Priority 5: Session preferences
@@ -231,7 +231,7 @@ QUESTION_SESSION_LENGTH = ProfileQuestion(
     id='session_length',
     category=QuestionCategory.LEARNING_STYLE,
     format=QuestionFormat.SINGLE_SELECT,
-    prompt="How much time do you usually have for learning?",
+    prompt='How much time do you usually have for learning?',
     options=[
         QuestionOption('quick', '5-10 min', '⚡', 'Quick bites between tasks'),
         QuestionOption('medium', '15-30 min', '☕', 'A focused session'),
