@@ -61,7 +61,6 @@ const PrivacySettingsPage = lazy(() => import('@/pages/settings/PrivacySettingsP
 const ReferralsPage = lazy(() => import('@/pages/settings/ReferralsPage'));
 
 // Feature pages - lazy loaded
-const StyleGuidePage = lazy(() => import('@/pages/StyleGuidePage'));
 const NeonGlassStyleguide = lazy(() => import('@/pages/NeonGlassStyleguide'));
 const QuizListPage = lazy(() => import('@/pages/quizzes/QuizListPage'));
 const QuizPage = lazy(() => import('@/pages/quizzes/QuizPage'));
@@ -153,14 +152,6 @@ export function AppRoutes() {
       <Route path="/team" element={<TeamPage />} />
       <Route
         path="/styleguide"
-        element={
-          <ProtectedRoute>
-            <StyleGuidePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/styleguide-neon"
         element={
           <ProtectedRoute>
             <NeonGlassStyleguide />

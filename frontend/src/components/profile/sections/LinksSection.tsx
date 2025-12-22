@@ -167,7 +167,7 @@ export function LinksSection({ content, user, isEditing, onUpdate, onSocialLinks
   }
 
   return (
-    <div className="py-6">
+    <div className="py-6 w-full">
       <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
         Links
       </h2>

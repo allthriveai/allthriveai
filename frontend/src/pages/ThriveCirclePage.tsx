@@ -171,7 +171,7 @@ export default function ThriveCirclePage() {
               <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
               <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-pink-500/10 dark:bg-pink-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
-              <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
+              <div className="relative px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
                 {/* Member stats - shown at top on mobile */}
                 {myCircle && (
                   <dl className="flex items-center gap-4 text-sm mb-3 sm:hidden">
@@ -234,7 +234,7 @@ export default function ThriveCirclePage() {
             </header>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16 space-y-6">
+            <div className="px-4 sm:px-6 lg:px-8 py-8 pb-16 space-y-6">
               {/* Row 1: Circle Members (50%) + Activity Feed (50%) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Circle Members Grid */}

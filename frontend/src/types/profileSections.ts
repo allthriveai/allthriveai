@@ -45,8 +45,8 @@ export const PROFILE_TEMPLATES: Record<ProfileTemplate, ProfileTemplateConfig> =
     name: 'Explorer',
     description: 'Perfect for learners and newcomers. Highlight what you\'re learning and where to find you.',
     icon: 'CompassIcon',
-    sections: ['about', 'learning_goals', 'links'],
-    defaultSections: ['about', 'learning_goals', 'links'],
+    sections: ['about', 'all_projects', 'learning_goals', 'links'],
+    defaultSections: ['about', 'all_projects', 'learning_goals', 'links'],
     requiresProjects: false,
   },
   builder: {
@@ -54,8 +54,8 @@ export const PROFILE_TEMPLATES: Record<ProfileTemplate, ProfileTemplateConfig> =
     name: 'Builder',
     description: 'Showcase your projects and technical skills. Great for developers and makers.',
     icon: 'WrenchScrewdriverIcon',
-    sections: ['about', 'featured_projects', 'skills', 'links'],
-    defaultSections: ['about', 'featured_projects', 'skills', 'links'],
+    sections: ['about', 'featured_projects', 'all_projects', 'skills', 'links'],
+    defaultSections: ['about', 'featured_projects', 'all_projects', 'skills', 'links'],
     requiresProjects: true,
   },
   creator: {
@@ -63,8 +63,8 @@ export const PROFILE_TEMPLATES: Record<ProfileTemplate, ProfileTemplateConfig> =
     name: 'Creator',
     description: 'Feature your products and services. Ideal for content creators and sellers.',
     icon: 'SparklesIcon',
-    sections: ['about', 'storefront', 'featured_projects', 'links'],
-    defaultSections: ['about', 'storefront', 'featured_projects', 'links'],
+    sections: ['about', 'storefront', 'all_projects', 'links'],
+    defaultSections: ['about', 'storefront', 'all_projects', 'links'],
     forRoles: ['creator'],
   },
   curation: {
@@ -106,6 +106,7 @@ export type ProfileSectionType =
   | 'skills'             // Skill badges/tags
   | 'learning_goals'     // What they're learning/interested in
   | 'featured_projects'  // Masonry project cards (max 6)
+  | 'all_projects'       // Auto-fetched recent projects (6 by default)
   | 'storefront'         // Products/services for creators
   | 'featured_content'   // Curated content for curation bots
   | 'battle_stats'       // Win/loss record for battle bots
@@ -419,6 +420,15 @@ export const PROFILE_SECTION_METADATA: Record<ProfileSectionType, ProfileSection
     singleton: true,
     forTemplates: ['builder', 'creator'],
   },
+  all_projects: {
+    type: 'all_projects',
+    title: 'Projects',
+    description: 'Auto-display your recent projects from playground',
+    icon: 'FolderOpenIcon',
+    defaultVisible: true,
+    singleton: true,
+    forTemplates: ['explorer', 'builder', 'creator'],
+  },
   storefront: {
     type: 'storefront',
     title: 'Storefront',
@@ -512,6 +522,13 @@ export function createDefaultProfileSectionContent(
         layout: 'masonry',
         showDescription: true,
       } as FeaturedProjectsSectionContent;
+
+    case 'all_projects':
+      return {
+        title: 'Projects',
+        showDescription: true,
+        initialDisplayCount: 6,
+      } as AllProjectsSectionContent;
 
     case 'storefront':
       return {

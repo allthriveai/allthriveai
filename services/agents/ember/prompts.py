@@ -710,3 +710,85 @@ def format_learning_intelligence(context: dict | None) -> str:
         parts.append(proactive_section)
 
     return '\n'.join(parts)
+
+
+# =============================================================================
+# Lesson Context Formatting (for Learning Path Chat)
+# =============================================================================
+
+
+def format_lesson_context(lesson_context: dict | None) -> str:
+    """
+    Format lesson context for learning path chat mode.
+
+    When a user opens the "Try It Yourself" chat panel on a learning path,
+    this adds the current lesson context to Ember's system prompt so it can
+    provide targeted help.
+
+    Args:
+        lesson_context: Dict containing lesson details:
+            - lesson_title: Name of the current lesson
+            - path_title: Name of the learning path
+            - explanation: The lesson's main content
+            - key_concepts: List of key concepts covered
+            - practice_prompt: The "Try It Yourself" challenge prompt
+            - examples: List of example dicts
+
+    Returns:
+        Formatted string for system prompt, or empty string if no context
+    """
+    if not lesson_context:
+        return ''
+
+    lines = [
+        '',
+        '## Current Learning Session',
+        '',
+        'The user is studying a lesson from their learning path and needs help.',
+        '',
+    ]
+
+    # Learning path and lesson title
+    path_title = lesson_context.get('path_title', 'Unknown')
+    lesson_title = lesson_context.get('lesson_title', 'Unknown')
+    lines.append(f'**Learning Path:** {path_title}')
+    lines.append(f'**Current Lesson:** {lesson_title}')
+    lines.append('')
+
+    # Key concepts (useful for focused help)
+    key_concepts = lesson_context.get('key_concepts', [])
+    if key_concepts:
+        lines.append(f"**Key Concepts:** {', '.join(key_concepts)}")
+        lines.append('')
+
+    # Practice challenge (what they're working on)
+    practice_prompt = lesson_context.get('practice_prompt', '')
+    if practice_prompt:
+        lines.append(f'**Practice Challenge:** {practice_prompt}')
+        lines.append('')
+
+    # Lesson explanation (truncated to avoid token bloat)
+    explanation = lesson_context.get('explanation', '')
+    if explanation:
+        # Truncate to ~1500 chars to stay within budget
+        truncated = explanation[:1500]
+        if len(explanation) > 1500:
+            truncated += '... [truncated]'
+        lines.append('**Lesson Content:**')
+        lines.append(truncated)
+        lines.append('')
+
+    # Guidance for Ember
+    lines.extend(
+        [
+            '**Your Role:**',
+            '- Help the user understand this specific lesson',
+            '- Answer questions about the concepts covered',
+            '- Guide them through the practice challenge step by step',
+            '- Use examples relevant to the lesson content',
+            '- Keep responses focused on the current lesson topic',
+            '',
+        ]
+    )
+
+    return '\n'.join(lines)

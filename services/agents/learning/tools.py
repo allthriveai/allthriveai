@@ -46,6 +46,10 @@ class CreateLearningPathInput(BaseModel):
         default='',
         description='Time commitment: "quick" (< 1 hr), "short" (1-2 hrs), "medium" (2-4 hrs), "deep-dive" (4+ hrs)',
     )
+    replace_existing: bool = Field(
+        default=False,
+        description='If True, replace an existing learning path for this topic instead of creating a duplicate',
+    )
     state: dict | None = Field(
         default=None,
         description='Internal - injected by agent with user context and member_context',
@@ -57,6 +61,7 @@ def create_learning_path(
     query: str,
     difficulty: str = '',
     time_commitment: str = '',
+    replace_existing: bool = False,
     state: dict | None = None,
 ) -> dict:
     """
@@ -71,6 +76,9 @@ def create_learning_path(
     and AI-generated lessons when curated content is unavailable.
     The path is personalized based on user's learning style and difficulty level.
     The path is saved to the user's profile and can be accessed at the returned URL.
+
+    IMPORTANT: If an existing learning path for this topic exists, ask the user
+    if they want to replace it before calling with replace_existing=True.
 
     Examples:
     - "Create a learning path for RAG"
@@ -96,6 +104,34 @@ def create_learning_path(
         from core.learning_paths.tasks import generate_learning_path_cover
 
         from .lesson_generator import AILessonGenerator
+
+        # Check for existing learning path with the same topic
+        base_slug = slugify(query)
+        existing_path = SavedLearningPath.objects.filter(
+            user_id=user_id,
+            slug=base_slug,
+            is_archived=False,
+        ).first()
+
+        if existing_path and not replace_existing:
+            # Return a prompt to ask the user if they want to replace
+            return {
+                'success': False,
+                'existing_path_found': True,
+                'existing_path': {
+                    'slug': existing_path.slug,
+                    'title': existing_path.title,
+                    'url': f'/{username}/learn/{existing_path.slug}',
+                    'created_at': existing_path.created_at.isoformat(),
+                    'curriculum_count': len(existing_path.path_data.get('curriculum', []))
+                    if existing_path.path_data
+                    else 0,
+                },
+                'message': (
+                    f'You already have a learning path for "{query}" at /{username}/learn/{existing_path.slug}. '
+                    f'Would you like me to replace it with a fresh one, or would you prefer to keep it?'
+                ),
+            }
 
         # Get user's difficulty preference from profile or member context
         actual_difficulty = difficulty
@@ -144,17 +180,28 @@ def create_learning_path(
 
         # Generate path title and slug
         path_title = f"{query.replace('-', ' ').title()} Learning Path"
-        base_slug = slugify(query)
+        # base_slug already defined above when checking for existing path
 
-        # Create unique slug for this user
-        existing_slugs = set(
-            SavedLearningPath.objects.filter(user_id=user_id, slug__startswith=base_slug).values_list('slug', flat=True)
-        )
-        path_slug = base_slug
-        counter = 1
-        while path_slug in existing_slugs:
-            path_slug = f'{base_slug}-{counter}'
-            counter += 1
+        # Handle replace_existing: archive old path and reuse slug
+        if replace_existing and existing_path:
+            existing_path.is_archived = True
+            existing_path.save(update_fields=['is_archived', 'updated_at'])
+            path_slug = base_slug  # Reuse the same slug
+            logger.info(f'Archived existing path {existing_path.id} for replacement')
+        else:
+            # Create unique slug for this user (only if not replacing)
+            existing_slugs = set(
+                SavedLearningPath.objects.filter(
+                    user_id=user_id,
+                    slug__startswith=base_slug,
+                    is_archived=False,
+                ).values_list('slug', flat=True)
+            )
+            path_slug = base_slug
+            counter = 1
+            while path_slug in existing_slugs:
+                path_slug = f'{base_slug}-{counter}'
+                counter += 1
 
         # Get tools and topics covered
         tools_covered = [content_result['tool']['slug']] if content_result.get('tool') else []
@@ -232,7 +279,7 @@ def create_learning_path(
                 'slug': path_slug,
                 'title': path_title,
                 'description': f"A structured path to learn {query.replace('-', ' ')}",
-                'url': f'/learn/{path_slug}',
+                'url': f'/{username}/learn/{path_slug}',
                 'estimated_time': f'{estimated_hours} hours',
                 'difficulty': actual_difficulty,
             },
@@ -245,7 +292,7 @@ def create_learning_path(
             'message': (
                 f'Created a {actual_difficulty} learning path with {len(curriculum)} items '
                 f'({curated_count} curated, {ai_lesson_count} personalized lessons). '
-                f'Access it at /learn/{path_slug}'
+                f'Access it at /{username}/learn/{path_slug}'
             ),
         }
 

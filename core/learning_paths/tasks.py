@@ -20,67 +20,128 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 # Learning path cover image prompt template
-# Style: Neon glass aesthetic with minimalist academic/research feel
-COVER_IMAGE_PROMPT = """Create a minimalist, academic-style illustration for a learning path about "{title}".
+# Style: Neon glass aesthetic with warm learning theme (orange/amber/yellow)
+COVER_IMAGE_PROMPT = """Create a minimalist illustration that visually represents the concept of "{title}".
+
+IMPORTANT: The image should clearly depict {concept_visualization}. This is the primary focus.
 
 Style requirements:
-- Dark navy background (#020617)
-- Subtle cyan/teal neon accents (#22D3EE, #0EA5E9)
+- Dark slate background (#0F172A to #020617 gradient)
+- Warm neon accents using orange, amber, and yellow (#F97316 orange, #F59E0B amber, #EAB308 yellow)
+- Secondary cyan/teal accents for contrast (#22D3EE)
 - Clean geometric shapes with soft glow effects
-- Abstract, conceptual visualization
-- High-level research/academic aesthetic
-- No text or words in the image
+- No text, words, or letters in the image
 - Simple, elegant composition
-- Glass-like transparency effects
-- Subtle depth and layering
-- Professional and modern feel
+- Glass-like transparency effects with warm undertones
+- Professional and modern feel with an inviting, educational atmosphere
 
-The illustration should evoke learning, knowledge, and {theme_hint}.
+The illustration must visually communicate {theme_hint} in an immediately recognizable way.
 """
 
 
-def get_theme_hint(title: str) -> str:
+def get_theme_hint(title: str) -> tuple[str, str]:
     """
-    Generate a theme hint based on the learning path title.
+    Generate theme hint and concept visualization based on the learning path title.
 
     Args:
         title: Learning path title
 
     Returns:
-        Theme hint for the image prompt
+        Tuple of (theme_hint, concept_visualization) for the image prompt
     """
     title_lower = title.lower()
 
+    # Version control / Git themes
+    if any(kw in title_lower for kw in ['git', 'version control', 'github', 'gitlab']):
+        return (
+            'version control and collaborative development',
+            'branching tree structure with merge points, showing code branches '
+            'diverging and converging like a subway map or river delta',
+        )
+
     # AI/ML themes
     if any(kw in title_lower for kw in ['ai', 'machine learning', 'neural', 'deep learning']):
-        return 'artificial intelligence and neural networks'
+        return (
+            'artificial intelligence and neural networks',
+            'interconnected neural network nodes with glowing synaptic connections forming a brain-like structure',
+        )
 
-    # Programming themes
-    if any(kw in title_lower for kw in ['python', 'javascript', 'coding', 'programming']):
-        return 'code and software development'
-
-    # Data themes
-    if any(kw in title_lower for kw in ['data', 'analytics', 'database', 'sql']):
-        return 'data analysis and insights'
-
-    # Web themes
-    if any(kw in title_lower for kw in ['web', 'frontend', 'backend', 'api']):
-        return 'web technology and connectivity'
-
-    # Cloud themes
-    if any(kw in title_lower for kw in ['cloud', 'aws', 'azure', 'kubernetes']):
-        return 'cloud infrastructure and scalability'
-
-    # Security themes
-    if any(kw in title_lower for kw in ['security', 'cyber', 'encryption']):
-        return 'cybersecurity and protection'
+    # RAG / Vector themes
+    if any(kw in title_lower for kw in ['rag', 'retrieval', 'vector', 'embedding']):
+        return (
+            'retrieval augmented generation and semantic search',
+            'documents being transformed into vector points in 3D space, '
+            'with search rays connecting queries to relevant clusters',
+        )
 
     # LLM/NLP themes
-    if any(kw in title_lower for kw in ['llm', 'gpt', 'prompt', 'language model', 'nlp']):
-        return 'language models and natural language processing'
+    if any(kw in title_lower for kw in ['llm', 'gpt', 'prompt', 'language model', 'nlp', 'chatbot']):
+        return (
+            'language models and natural language processing',
+            'flowing text streams being transformed through layers of processing, '
+            'with attention beams highlighting connections between words',
+        )
 
-    # Default
-    return 'intellectual growth and discovery'
+    # Agent themes
+    if any(kw in title_lower for kw in ['agent', 'autonomous', 'agentic']):
+        return (
+            'AI agents and autonomous systems',
+            'interconnected agent nodes with tool connections radiating outward, showing planning and execution loops',
+        )
+
+    # Programming themes
+    if any(kw in title_lower for kw in ['python', 'javascript', 'coding', 'programming', 'typescript']):
+        return (
+            'code and software development',
+            'abstract code blocks and function calls flowing through a pipeline, with brackets and syntax structures',
+        )
+
+    # Data themes
+    if any(kw in title_lower for kw in ['data', 'analytics', 'database', 'sql', 'pandas']):
+        return (
+            'data analysis and insights',
+            'data tables transforming into charts and visualizations, '
+            'with data points flowing through transformation pipelines',
+        )
+
+    # Web themes
+    if any(kw in title_lower for kw in ['web', 'frontend', 'backend', 'api', 'react', 'next']):
+        return (
+            'web technology and connectivity',
+            'interconnected web of API endpoints and components, '
+            'with request/response flows between client and server nodes',
+        )
+
+    # Cloud themes
+    if any(kw in title_lower for kw in ['cloud', 'aws', 'azure', 'kubernetes', 'docker']):
+        return (
+            'cloud infrastructure and scalability',
+            'layered cloud infrastructure with containers and services '
+            'connected by network paths, showing scaling and deployment',
+        )
+
+    # Security themes
+    if any(kw in title_lower for kw in ['security', 'cyber', 'encryption', 'auth']):
+        return (
+            'cybersecurity and protection',
+            'shield-like structures with encryption key patterns and secure lock mechanisms protecting data flows',
+        )
+
+    # Context window / Tokenization
+    if any(kw in title_lower for kw in ['context window', 'token', 'attention']):
+        return (
+            'context windows and attention mechanisms',
+            'sliding window moving across a sequence of tokens, '
+            'with attention weights visualized as connection strengths',
+        )
+
+    # Default - try to extract the main concept
+    main_concept = title.replace('Learning Path', '').replace('learning path', '').strip()
+    return (
+        f'the concept of {main_concept}',
+        f'abstract geometric representation of {main_concept} concepts '
+        'with interconnected elements showing relationships and flow',
+    )
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
@@ -113,11 +174,12 @@ def generate_learning_path_cover(self, saved_path_id: int, user_id: int):
             logger.error(f'SavedLearningPath not found: id={saved_path_id}')
             return {'status': 'error', 'reason': 'path_not_found'}
 
-        # Build prompt with theme hint
-        theme_hint = get_theme_hint(saved_path.title)
+        # Build prompt with theme hint and concept visualization
+        theme_hint, concept_visualization = get_theme_hint(saved_path.title)
         prompt = COVER_IMAGE_PROMPT.format(
             title=saved_path.title,
             theme_hint=theme_hint,
+            concept_visualization=concept_visualization,
         )
 
         # Generate image using Gemini

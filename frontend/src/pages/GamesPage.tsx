@@ -342,7 +342,7 @@ export default function GamesPage() {
           <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
           <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-green-500/10 dark:bg-green-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
+          <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
               <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-green-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-green-400 bg-clip-text text-transparent">Games</span>
             </h1>
@@ -353,7 +353,7 @@ export default function GamesPage() {
         </header>
 
         {/* Main Content Container */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-8">
           {/* Success notification */}
           {successMessage && (
             <div className="bg-green-500/10 dark:bg-green-500/10 border border-green-500/30 dark:border-green-500/30 rounded-lg p-3 flex items-center justify-between" role="alert">

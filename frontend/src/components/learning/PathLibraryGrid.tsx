@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -16,11 +17,11 @@ import {
   faSpinner,
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '@/hooks/useAuth';
 import { useSavedPaths, useActivateSavedPath, useDeleteSavedPath } from '@/hooks/useLearningPaths';
 import type { SavedLearningPathListItem } from '@/services/learningPaths';
 
 interface PathLibraryGridProps {
-  onSelectPath: (slug: string) => void;
   onCreateNew: () => void;
 }
 
@@ -40,14 +41,14 @@ const difficultyLabels: Record<string, string> = {
 
 interface PathCardProps {
   path: SavedLearningPathListItem;
-  onSelect: () => void;
+  username: string;
   onActivate: () => void;
   onDelete: () => void;
   isActivating: boolean;
   isDeleting: boolean;
 }
 
-function PathCard({ path, onSelect, onActivate, onDelete, isActivating, isDeleting }: PathCardProps) {
+function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleting }: PathCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = () => {
@@ -66,71 +67,75 @@ function PathCard({ path, onSelect, onActivate, onDelete, isActivating, isDeleti
       exit={{ opacity: 0, scale: 0.9 }}
       whileHover={{ scale: 1.02 }}
       className={`
-        relative glass-subtle rounded-2xl overflow-hidden cursor-pointer
+        relative glass-subtle rounded-2xl overflow-hidden
         border transition-all duration-200
         ${path.isActive
           ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/10'
           : 'border-white/10 hover:border-white/20'
         }
       `}
-      onClick={onSelect}
     >
-      {/* Cover Image */}
-      <div className="relative h-40 bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden">
-        {path.coverImage ? (
-          <img
-            src={path.coverImage}
-            alt={path.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center">
-              <FontAwesomeIcon
-                icon={faGraduationCap}
-                className="text-3xl text-cyan-400/50"
-              />
+      {/* Clickable Link Area */}
+      <Link to={`/${username}/learn/${path.slug}`} className="block">
+        {/* Cover Image */}
+        <div className="relative h-40 bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden">
+          {path.coverImage ? (
+            <img
+              src={path.coverImage}
+              alt={path.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center">
+                <FontAwesomeIcon
+                  icon={faGraduationCap}
+                  className="text-3xl text-cyan-400/50"
+                />
+              </div>
             </div>
+          )}
+
+          {/* Active Badge */}
+          {path.isActive && (
+            <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-cyan-500/90 text-white text-xs font-semibold flex items-center gap-1.5">
+              <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
+              Active
+            </div>
+          )}
+
+          {/* Difficulty Badge */}
+          <div
+            className={`
+              absolute top-3 right-3 px-3 py-1 rounded-full text-white text-xs font-semibold
+              bg-gradient-to-r ${difficultyColors[path.difficulty] || difficultyColors.beginner}
+            `}
+          >
+            {difficultyLabels[path.difficulty] || path.difficulty}
           </div>
-        )}
-
-        {/* Active Badge */}
-        {path.isActive && (
-          <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-cyan-500/90 text-white text-xs font-semibold flex items-center gap-1.5">
-            <FontAwesomeIcon icon={faCheck} className="text-[10px]" />
-            Active
-          </div>
-        )}
-
-        {/* Difficulty Badge */}
-        <div
-          className={`
-            absolute top-3 right-3 px-3 py-1 rounded-full text-white text-xs font-semibold
-            bg-gradient-to-r ${difficultyColors[path.difficulty] || difficultyColors.beginner}
-          `}
-        >
-          {difficultyLabels[path.difficulty] || path.difficulty}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        <h3 className="font-semibold text-white text-lg mb-2 truncate">
-          {path.title}
-        </h3>
-
-        <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
-          <span className="flex items-center gap-1.5">
-            <FontAwesomeIcon icon={faClock} className="text-xs" />
-            {path.estimatedHours}h
-          </span>
-          <span>
-            {path.curriculumCount} items
-          </span>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+        {/* Content */}
+        <div className="p-4 pb-2">
+          <h3 className="font-semibold text-white text-lg mb-2 truncate hover:text-cyan-400 transition-colors">
+            {path.title}
+          </h3>
+
+          <div className="flex items-center gap-4 text-sm text-gray-400">
+            <span className="flex items-center gap-1.5">
+              <FontAwesomeIcon icon={faClock} className="text-xs" />
+              {path.estimatedHours}h
+            </span>
+            <span>
+              {path.curriculumCount} items
+            </span>
+          </div>
+        </div>
+      </Link>
+
+      {/* Actions - outside the link */}
+      <div className="px-4 pb-4">
+        <div className="flex items-center gap-2">
           {!path.isActive && (
             <button
               onClick={onActivate}
@@ -202,10 +207,13 @@ function CreateNewCard({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function PathLibraryGrid({ onSelectPath, onCreateNew }: PathLibraryGridProps) {
+export function PathLibraryGrid({ onCreateNew }: PathLibraryGridProps) {
+  const { user } = useAuth();
   const { data: paths, isLoading, error } = useSavedPaths();
   const { mutate: activatePath, isPending: isActivating, variables: activatingSlug } = useActivateSavedPath();
   const { mutate: deletePath, isPending: isDeleting, variables: deletingSlug } = useDeleteSavedPath();
+
+  const username = user?.username || '';
 
   if (isLoading) {
     return (
@@ -247,7 +255,7 @@ export function PathLibraryGrid({ onSelectPath, onCreateNew }: PathLibraryGridPr
             <PathCard
               key={path.id}
               path={path}
-              onSelect={() => onSelectPath(path.slug)}
+              username={username}
               onActivate={() => activatePath(path.slug)}
               onDelete={() => deletePath(path.slug)}
               isActivating={isActivating && activatingSlug === path.slug}

@@ -142,7 +142,7 @@ cd frontend && npm test                      # Run tests
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS
 - **Database**: PostgreSQL (via Docker)
 - **Cache/Queue**: Redis (via Docker)
-- **Design System**: Neon Glass aesthetic (see `/styleguide-neon`)
+- **Design System**: Neon Glass aesthetic (see `/styleguide`)
 
 ## User Model Reference
 

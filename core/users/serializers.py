@@ -196,7 +196,22 @@ class ProfileSectionsSerializer(serializers.ModelSerializer):
         if not isinstance(value, list):
             raise serializers.ValidationError('Profile sections must be a list.')
 
-        valid_types = {'hero', 'about', 'featured_projects', 'skills', 'stats', 'links', 'custom'}
+        valid_types = {
+            'about',
+            'links',
+            'skills',
+            'learning_goals',
+            'featured_projects',
+            'all_projects',
+            'storefront',
+            'featured_content',
+            'battle_stats',
+            'recent_battles',
+            'custom',
+            # Legacy types (kept for backwards compatibility)
+            'hero',
+            'stats',
+        }
 
         for section in value:
             if not isinstance(section, dict):

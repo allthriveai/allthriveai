@@ -97,7 +97,7 @@ export default function QuizListPage() {
         <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
         <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-pink-500/10 dark:bg-pink-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
+        <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-600 dark:from-cyan-400 dark:via-cyan-300 dark:to-cyan-500 bg-clip-text text-transparent">Quizzes</span>
           </h1>
@@ -107,7 +107,7 @@ export default function QuizListPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filters Section */}
         <div className="mb-8 bg-white/80 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl p-6 shadow-sm">
           {/* Search Bar */}

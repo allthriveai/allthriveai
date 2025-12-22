@@ -362,9 +362,25 @@ export default function ProfilePage() {
       .then((response) => {
         // Note: API response is transformed from snake_case to camelCase by the API interceptor
         const sections = response.data.profileSections || [];
-        setProfileSections(sections);
-        // Store initial state for change detection
-        initialSectionsRef.current = JSON.stringify(sections);
+
+        // If no sections exist, generate defaults based on user's template
+        if (sections.length === 0 && displayUser) {
+          const template = selectTemplateForUser({
+            tier: displayUser.tier,
+            role: displayUser.role,
+            username: displayUser.username,
+            projectCount: displayUser.lifetime_projects_created || 0,
+          });
+          const defaultSections = getDefaultSectionsForTemplate(template);
+          setProfileSections(defaultSections);
+          setCurrentTemplate(template);
+          // Store initial state for change detection
+          initialSectionsRef.current = JSON.stringify(defaultSections);
+        } else {
+          setProfileSections(sections);
+          // Store initial state for change detection
+          initialSectionsRef.current = JSON.stringify(sections);
+        }
       })
       .catch((error) => {
         console.error('Failed to fetch profile sections:', error);
@@ -373,7 +389,7 @@ export default function ProfilePage() {
       .finally(() => {
         setSectionsLoading(false);
       });
-  }, [username]);
+  }, [username, displayUser]);
 
   // Auto-save profile sections when they change
   useEffect(() => {

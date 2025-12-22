@@ -35,6 +35,7 @@ from .prompts import (
     EMBER_FULL_ONBOARDING_PROMPT,
     EMBER_SYSTEM_PROMPT,
     format_learning_intelligence,
+    format_lesson_context,
     format_member_context,
 )
 from .tools import EMBER_TOOLS, TOOLS_NEEDING_STATE
@@ -65,6 +66,16 @@ MAX_CONTEXT_MESSAGES = getattr(settings, 'EMBER_MAX_CONTEXT_MESSAGES', 50)
 
 # Tool execution timeout in seconds (prevents hanging on slow tools)
 TOOL_EXECUTION_TIMEOUT = getattr(settings, 'EMBER_TOOL_EXECUTION_TIMEOUT', 30)
+
+# Extended timeout for AI-heavy tools that make multiple LLM calls
+# create_learning_path generates AI lessons with LLM which takes ~60-90s
+EXTENDED_TIMEOUT_TOOLS = getattr(
+    settings,
+    'EMBER_EXTENDED_TIMEOUT_TOOLS',
+    {
+        'create_learning_path': 120,  # AI lesson generation takes 60-90s
+    },
+)
 
 # Maximum in-memory locks to keep (LRU eviction for memory safety at scale)
 # At 100k users, we limit to 10k locks (~1MB memory) and use Redis for distributed locking
@@ -383,6 +394,9 @@ class EmberState(TypedDict):
     # Member context (injected at conversation start)
     # Contains learning preferences, tool preferences, interests, etc.
     member_context: dict | None
+    # Lesson context for learning path chat mode
+    # Contains lesson_title, path_title, explanation, key_concepts, practice_prompt
+    lesson_context: dict | None
     # Tool execution results with frontend content (for manual event emission)
     # This is needed because LangGraph doesn't emit on_tool_start/on_tool_end
     # events for custom async tool nodes - we emit them manually
@@ -503,12 +517,15 @@ async def tools_node(state: EmberState) -> dict:
         for tool in EMBER_TOOLS:
             if tool.name == tool_name:
                 try:
-                    logger.info(f'Executing tool: {tool_name}')
+                    # Use extended timeout for AI-heavy tools
+                    timeout = EXTENDED_TIMEOUT_TOOLS.get(tool_name, TOOL_EXECUTION_TIMEOUT)
+                    logger.info(f'Executing tool: {tool_name} (timeout={timeout}s)')
                     # Execute with timeout (async, non-blocking)
-                    tool_result = await _execute_tool_with_timeout(tool, tool_args, timeout=TOOL_EXECUTION_TIMEOUT)
+                    tool_result = await _execute_tool_with_timeout(tool, tool_args, timeout=timeout)
                     logger.info(f'Tool {tool_name} completed successfully')
                 except TimeoutError:
-                    logger.error(f'Tool {tool_name} timed out after {TOOL_EXECUTION_TIMEOUT}s')
+                    timeout = EXTENDED_TIMEOUT_TOOLS.get(tool_name, TOOL_EXECUTION_TIMEOUT)
+                    logger.error(f'Tool {tool_name} timed out after {timeout}s')
                     tool_result = {
                         'error': 'Taking a bit longer than usual—give me another moment!',
                         'success': False,
@@ -640,7 +657,11 @@ def create_agent_node(model_name: str | None = None):
         # Inject learning intelligence (detected gaps + proactive offers)
         learning_intelligence_section = format_learning_intelligence(member_context)
 
-        system_prompt = base_prompt + member_context_section + learning_intelligence_section
+        # Inject lesson context for learning path chat mode
+        lesson_context = state.get('lesson_context')
+        lesson_context_section = format_lesson_context(lesson_context)
+
+        system_prompt = base_prompt + member_context_section + learning_intelligence_section + lesson_context_section
 
         # Build full message list with system prompt
         full_messages = [SystemMessage(content=system_prompt)] + list(messages)
@@ -1005,6 +1026,7 @@ async def stream_ember_response(
     session_id: str = '',
     is_onboarding: bool = False,
     model_name: str | None = None,
+    lesson_context: dict | None = None,
 ):
     """
     Stream Ember agent response with tool execution events.
@@ -1027,6 +1049,8 @@ async def stream_ember_response(
         session_id: WebSocket session ID (used as thread_id for checkpointing)
         is_onboarding: Whether this is an onboarding conversation
         model_name: Optional model override (uses AI gateway default if None)
+        lesson_context: Optional lesson context for learning path chat mode
+            Contains: lesson_title, path_title, explanation, key_concepts, practice_prompt
 
     Yields:
         Event dicts with type and content
@@ -1116,6 +1140,7 @@ async def stream_ember_response(
                         'is_onboarding': is_onboarding,
                         'conversation_id': session_id,
                         'member_context': member_context,
+                        'lesson_context': lesson_context,
                     }
 
                     # Track processed events to avoid duplicates

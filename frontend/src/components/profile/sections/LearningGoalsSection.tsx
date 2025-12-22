@@ -66,7 +66,7 @@ export function LearningGoalsSection({ content, isEditing, onUpdate }: LearningG
   }
 
   return (
-    <div className="py-6">
+    <div className="py-6 w-full">
       <div className="flex items-center gap-2 mb-4">
         <AcademicCapIcon className="w-6 h-6 text-primary-500" />
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">

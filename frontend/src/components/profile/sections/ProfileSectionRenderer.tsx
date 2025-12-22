@@ -31,6 +31,7 @@ import type {
   ProfileSectionContent,
 } from '@/types/profileSections';
 import { FeaturedProjectsSection } from './FeaturedProjectsSection';
+import { AllProjectsSection } from './AllProjectsSection';
 import { SkillsSection } from './SkillsSection';
 import { CustomSection } from './CustomSection';
 import { AboutSection } from './AboutSection';
@@ -101,6 +102,8 @@ export function ProfileSectionRenderer({
       return <LearningGoalsSection content={section.content as any} {...commonProps} />;
     case 'featured_projects':
       return <FeaturedProjectsSection content={section.content as any} {...commonProps} />;
+    case 'all_projects':
+      return <AllProjectsSection content={section.content as any} {...commonProps} />;
     case 'storefront':
       return <StorefrontSection content={section.content as any} {...commonProps} />;
     case 'featured_content':
@@ -256,7 +259,7 @@ export function ProfileSections({
 
   // Render sections with drag-and-drop when editing
   const renderSections = () => (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
       {displaySections.map((section, index) => (
         <SortableProfileSection
           key={section.id}
@@ -277,7 +280,7 @@ export function ProfileSections({
   );
 
   return (
-    <div className="pb-8">
+    <div className="pb-8 w-full">
       {/* Add Section at Top (editing mode) */}
       {isEditing && onAddSection && (
         <AddSectionButton onClick={() => handleAddClick()} position="top" />
@@ -378,7 +381,7 @@ function SortableProfileSection({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative group/section ${isHidden ? 'opacity-50' : ''}`}
+      className={`relative group/section w-full ${isHidden ? 'opacity-50' : ''}`}
     >
       {/* Section Controls (editing mode) */}
       {isEditing && (

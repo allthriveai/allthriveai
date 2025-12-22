@@ -20,6 +20,7 @@ export { CustomSection } from './CustomSection';
 
 // Builder sections
 export { FeaturedProjectsSection } from './FeaturedProjectsSection';
+export { AllProjectsSection } from './AllProjectsSection';
 export { SkillsSection } from './SkillsSection';
 
 // Explorer sections

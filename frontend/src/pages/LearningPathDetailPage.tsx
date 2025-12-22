@@ -1,8 +1,9 @@
 /**
  * Learning Path Detail Page
  *
- * Displays a generated learning path by its slug.
- * Accessed via /learn/:slug
+ * Displays a generated learning path by its slug with split-pane layout.
+ * Curriculum on left, Ember chat panel on right when active.
+ * Accessed via /:username/learn/:slug
  */
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -25,11 +26,13 @@ import {
   faChevronDown,
   faChevronRight,
   faRobot,
+  faComments,
 } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { MermaidDiagram } from '@/components/projects/shared/MermaidDiagram';
 import { ChatGameCard } from '@/components/chat/games/ChatGameCard';
 import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/gameRegistry';
+import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import type { CurriculumItem } from '@/services/learningPaths';
 
 /**
@@ -201,13 +204,31 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
 /**
  * AI Lesson Card component - renders expandable AI-generated lesson content
  */
-function AILessonCard({ item, index }: { item: CurriculumItem; index: number }) {
+interface AILessonCardProps {
+  item: CurriculumItem;
+  index: number;
+  onOpenChat?: (context: LessonContext) => void;
+}
+
+function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const content = item.content;
 
   if (!content) {
     return null;
   }
+
+  const handleOpenChat = () => {
+    if (onOpenChat && content) {
+      onOpenChat({
+        lessonTitle: item.title,
+        explanation: content.explanation,
+        examples: content.examples,
+        practicePrompt: content.practicePrompt,
+        keyConcepts: content.keyConcepts,
+      });
+    }
+  };
 
   return (
     <div className="glass-strong rounded-xl overflow-hidden">
@@ -292,15 +313,24 @@ function AILessonCard({ item, index }: { item: CurriculumItem; index: number }) 
             </div>
           )}
 
-          {/* Practice prompt */}
+          {/* Practice prompt - clickable to open Ember chat */}
           {content.practicePrompt && (
-            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
-              <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
-                <FontAwesomeIcon icon={faGamepad} />
-                Try It Yourself
+            <button
+              onClick={handleOpenChat}
+              className="w-full text-left bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 hover:bg-cyan-500/20 hover:border-cyan-400/50 transition-all group"
+            >
+              <h4 className="text-cyan-400 font-medium mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faGamepad} />
+                  Try It Yourself
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-cyan-400/70 group-hover:text-cyan-300">
+                  <FontAwesomeIcon icon={faComments} />
+                  Ask Ember
+                </span>
               </h4>
               <p className="text-gray-300 text-sm">{content.practicePrompt}</p>
-            </div>
+            </button>
           )}
 
           {/* Mermaid diagram */}
@@ -325,10 +355,16 @@ function AILessonCard({ item, index }: { item: CurriculumItem; index: number }) 
 /**
  * Curriculum item card component
  */
-function CurriculumItemCard({ item, index }: { item: CurriculumItem; index: number }) {
+interface CurriculumItemCardProps {
+  item: CurriculumItem;
+  index: number;
+  onOpenChat?: (context: LessonContext) => void;
+}
+
+function CurriculumItemCard({ item, index, onOpenChat }: CurriculumItemCardProps) {
   // Use AILessonCard for AI-generated lessons
   if (item.type === 'ai_lesson') {
-    return <AILessonCard item={item} index={index} />;
+    return <AILessonCard item={item} index={index} onOpenChat={onOpenChat} />;
   }
 
   // Use GameItemCard for inline games
@@ -443,80 +479,107 @@ export default function LearningPathDetailPage() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
   const { data: path, isLoading, error } = useLearningPathBySlug(username || '', slug || '');
 
+  // Chat panel is always visible on the right side
+  const [currentLessonContext, setCurrentLessonContext] = useState<LessonContext | null>(null);
+
+  // Handle updating lesson context when user clicks "Try It Yourself"
+  const handleOpenChat = (context: LessonContext) => {
+    setCurrentLessonContext(context);
+  };
+
   return (
     <DashboardLayout>
       {() => (
-        <div className="h-full overflow-y-auto">
+        <div className="h-full flex flex-col">
           {isLoading ? (
             <LoadingState />
           ) : error || !path ? (
             <NotFoundState />
           ) : (
             <>
-              {/* Header */}
-              <header className="relative bg-gradient-to-br from-slate-900 to-slate-800 border-b border-white/10">
+              {/* Header - full width */}
+              <header className="relative bg-gradient-to-br from-slate-900 to-slate-800 border-b border-white/10 flex-shrink-0">
                 <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />
                 <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-purple-500/5 blur-[100px] pointer-events-none" />
 
-                <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  {/* Back link */}
-                  <Link
-                    to="/learn"
-                    className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6"
-                  >
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                    Back to Learn
-                  </Link>
+                <div className="relative px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
+                    {/* Back link */}
+                    <Link
+                      to="/learn"
+                      className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6"
+                    >
+                      <FontAwesomeIcon icon={faArrowLeft} />
+                      Back to Learn
+                    </Link>
 
-                  {/* Title */}
-                  <h1 className="text-3xl font-bold text-white mb-4">{path.title}</h1>
+                    {/* Title */}
+                    <h1 className="text-3xl font-bold text-white mb-4">{path.title}</h1>
 
-                  {/* Meta info */}
-                  <div className="flex flex-wrap items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <FontAwesomeIcon icon={faClock} />
-                      <span>{path.estimatedHours} hours</span>
+                    {/* Meta info */}
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <FontAwesomeIcon icon={faClock} />
+                        <span>{path.estimatedHours} hours</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <FontAwesomeIcon icon={faSignal} />
+                        <span className="capitalize">{path.difficulty}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <FontAwesomeIcon icon={faGraduationCap} />
+                        <span>{path.curriculum?.length ?? 0} items</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <FontAwesomeIcon icon={faSignal} />
-                      <span className="capitalize">{path.difficulty}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <FontAwesomeIcon icon={faGraduationCap} />
-                      <span>{path.curriculum?.length ?? 0} items</span>
-                    </div>
+
+                    {/* Topics covered */}
+                    {(path.topicsCovered?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {path.topicsCovered?.map((topic: string) => (
+                          <span
+                            key={topic}
+                            className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-sm border border-cyan-500/30"
+                          >
+                            {topic.replace(/-/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                </header>
 
-                  {/* Topics covered */}
-                  {(path.topicsCovered?.length ?? 0) > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {path.topicsCovered?.map((topic: string) => (
-                        <span
-                          key={topic}
-                          className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-sm border border-cyan-500/30"
-                        >
-                          {topic.replace(/-/g, ' ')}
-                        </span>
+              {/* Split-pane: Curriculum left, Chat right */}
+              <div className="flex-1 flex min-h-0">
+                {/* LEFT: Curriculum (scrollable) */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="px-4 sm:px-6 py-8">
+                    <h2 className="text-xl font-bold text-white mb-6">Curriculum</h2>
+                    <div className="space-y-3">
+                      {path.curriculum?.map((item, index) => (
+                        <CurriculumItemCard
+                          key={`${item.type}-${item.order}`}
+                          item={item}
+                          index={index}
+                          onOpenChat={handleOpenChat}
+                        />
                       ))}
                     </div>
-                  )}
-                </div>
-              </header>
 
-              {/* Curriculum */}
-              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h2 className="text-xl font-bold text-white mb-6">Curriculum</h2>
-                <div className="space-y-3">
-                  {path.curriculum?.map((item, index) => (
-                    <CurriculumItemCard key={`${item.type}-${item.order}`} item={item} index={index} />
-                  ))}
-                </div>
-
-                {(path.curriculum?.length ?? 0) === 0 && (
-                  <div className="text-center py-12 text-gray-400">
-                    <p>No curriculum items found in this learning path.</p>
+                    {(path.curriculum?.length ?? 0) === 0 && (
+                      <div className="text-center py-12 text-gray-400">
+                        <p>No curriculum items found in this learning path.</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* RIGHT: Ember Chat Panel (always visible) */}
+                <div className="w-[400px] border-l border-white/10 flex-shrink-0">
+                  <LearningChatPanel
+                    context={currentLessonContext}
+                    pathTitle={path.title}
+                    pathSlug={slug || ''}
+                  />
+                </div>
               </div>
             </>
           )}
