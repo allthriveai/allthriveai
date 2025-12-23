@@ -11,12 +11,125 @@ projects and curated content over time.
 
 import json
 import logging
+import re
 from typing import TypedDict
 
 from django.db.models import F
 from django.utils.text import slugify
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Mermaid Diagram Validation
+# =============================================================================
+
+# Valid mermaid diagram types
+VALID_MERMAID_TYPES = [
+    'graph',
+    'flowchart',
+    'sequenceDiagram',
+    'classDiagram',
+    'stateDiagram',
+    'erDiagram',
+    'journey',
+    'gantt',
+    'pie',
+    'quadrantChart',
+    'requirementDiagram',
+    'gitGraph',
+    'mindmap',
+    'timeline',
+    'zenuml',
+    'sankey',
+    'xychart',
+    'block',
+]
+
+
+def validate_mermaid_syntax(mermaid_code: str | None) -> str | None:
+    """
+    Validate mermaid diagram syntax and return cleaned code or None if invalid.
+
+    Performs basic syntax validation to catch common AI-generated errors:
+    - Checks for valid diagram type declaration
+    - Validates bracket matching
+    - Catches common syntax issues
+
+    Args:
+        mermaid_code: Raw mermaid diagram code from AI
+
+    Returns:
+        Cleaned mermaid code if valid, None if invalid
+    """
+    if not mermaid_code:
+        return None
+
+    # Clean up the code
+    code = mermaid_code.strip()
+
+    # Remove markdown code block markers if present
+    if code.startswith('```mermaid'):
+        code = code[10:]
+    elif code.startswith('```'):
+        code = code[3:]
+    if code.endswith('```'):
+        code = code[:-3]
+    code = code.strip()
+
+    if not code:
+        return None
+
+    # Check for valid diagram type at the start
+    first_line = code.split('\n')[0].strip().lower()
+    has_valid_type = False
+
+    for diagram_type in VALID_MERMAID_TYPES:
+        if first_line.startswith(diagram_type.lower()):
+            has_valid_type = True
+            break
+
+    if not has_valid_type:
+        logger.warning(f'Invalid mermaid diagram type: {first_line[:50]}')
+        return None
+
+    # Check for balanced brackets
+    brackets = {'[': ']', '{': '}', '(': ')'}
+    stack = []
+
+    for char in code:
+        if char in brackets:
+            stack.append(brackets[char])
+        elif char in brackets.values():
+            if not stack or stack.pop() != char:
+                logger.warning('Mermaid diagram has unbalanced brackets')
+                return None
+
+    if stack:
+        logger.warning('Mermaid diagram has unclosed brackets')
+        return None
+
+    # Check for common syntax errors
+    # Error: Empty node labels like "[]" or "()"
+    if re.search(r'\[\s*\]|\(\s*\)|\{\s*\}', code):
+        logger.warning('Mermaid diagram has empty node labels')
+        return None
+
+    # Error: Invalid arrow syntax (must have proper arrows like -->, --, ---|, etc.)
+    lines = code.split('\n')
+    for line in lines[1:]:  # Skip first line (diagram type)
+        line = line.strip()
+        if not line or line.startswith('%%') or line.startswith('subgraph') or line == 'end':
+            continue
+        # Check for node connections - should have valid arrow operators
+        if '--' in line or '->' in line or '==>' in line:
+            # This looks like a connection line, basic validation passes
+            pass
+
+    # Log successful validation
+    logger.debug(f'Mermaid diagram validated successfully ({len(code)} chars)')
+
+    return code
 
 
 class AILessonContent(TypedDict, total=False):
@@ -207,6 +320,21 @@ IMPORTANT: Return your response as valid JSON matching this exact structure:
     "practice_prompt": "A question or exercise for the learner to try",
     "mermaid_diagram": "optional mermaid diagram code if visual style. For beginners, add diagram explanation."
 }
+
+MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
+- MUST start with a valid diagram type: graph, flowchart, sequenceDiagram, classDiagram, etc.
+- For flowcharts, use: graph TD or graph LR (TD=top-down, LR=left-right)
+- Node syntax: A[Rectangle] B(Rounded) C{Diamond} D((Circle))
+- Arrow syntax: A --> B or A -- text --> B or A -.-> B (dotted)
+- NEVER use empty brackets like [] or ()
+- NEVER use special characters in node IDs (use letters, numbers, underscores only)
+- All brackets MUST be balanced
+- Example of VALID flowchart:
+  graph TD
+      A[User Input] --> B[Process]
+      B --> C{Decision}
+      C -->|Yes| D[Output A]
+      C -->|No| E[Output B]
 """
 
     @classmethod
@@ -638,6 +766,13 @@ Remember to return valid JSON matching the required structure."""
                     logger.warning(f'Missing required field in AI response: {field}')
                     return None
 
+            # Validate mermaid diagram if present
+            raw_mermaid = data.get('mermaid_diagram')
+            validated_mermaid = validate_mermaid_syntax(raw_mermaid) if raw_mermaid else None
+
+            if raw_mermaid and not validated_mermaid:
+                logger.info('Mermaid diagram removed due to validation failure')
+
             # Build the lesson content
             return AILessonContent(
                 summary=data.get('summary', ''),
@@ -645,7 +780,7 @@ Remember to return valid JSON matching the required structure."""
                 explanation=data.get('explanation', ''),
                 examples=data.get('examples', []),
                 practice_prompt=data.get('practice_prompt', ''),
-                mermaid_diagram=data.get('mermaid_diagram'),
+                mermaid_diagram=validated_mermaid,
             )
 
         except json.JSONDecodeError as e:

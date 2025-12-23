@@ -938,11 +938,9 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': [
             'profile',
             'email',
-            'https://www.googleapis.com/auth/youtube.readonly',  # Read access to YouTube data
         ],
         'AUTH_PARAMS': {
-            'access_type': 'offline',  # Get refresh token for long-term access
-            'prompt': 'consent',  # Force consent screen to get refresh token
+            'access_type': 'online',  # No refresh token needed for basic sign-in
         },
     },
     'github': {

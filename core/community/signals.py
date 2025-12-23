@@ -34,6 +34,8 @@ def trigger_agent_dm_response(sender, instance: Message, created: bool, **kwargs
         created: True if this is a new message (not an update)
         **kwargs: Additional signal arguments
     """
+    logger.info(f'[SIGNAL] Message post_save triggered: id={instance.id}, created={created}')
+
     # Only process newly created messages
     if not created:
         return

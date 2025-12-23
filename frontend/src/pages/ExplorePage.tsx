@@ -184,8 +184,8 @@ export function ExplorePage() {
     error: profilesError,
     refetch: refetchProfiles,
   } = useInfiniteQuery({
-    queryKey: ['exploreProfiles'],
-    queryFn: ({ pageParam = 1 }) => exploreProfiles(pageParam, 30),
+    queryKey: ['exploreProfiles', searchQuery],
+    queryFn: ({ pageParam = 1 }) => exploreProfiles(pageParam, 30, true, searchQuery || undefined),
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.next ? allPages.length + 1 : undefined;
     },

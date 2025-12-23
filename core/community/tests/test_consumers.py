@@ -145,7 +145,9 @@ class CommunityRoomConnectionTestCase(TransactionTestCase):
 
     async def test_invalid_room_rejected(self):
         """Test that connections to non-existent rooms are rejected."""
-        communicator = self._create_communicator(self.user, room_id=99999)
+        # Use a valid UUID format for non-existent room
+        fake_uuid = '00000000-0000-0000-0000-000000000000'
+        communicator = self._create_communicator(self.user, room_id=fake_uuid)
 
         connected, _ = await communicator.connect()
         self.assertFalse(connected)
@@ -210,6 +212,9 @@ class CommunityRoomMessagingTestCase(TransactionTestCase):
         self.assertTrue(connected)
 
         # Receive initial state
+        await communicator.receive_json_from()
+
+        # Receive user_joined event (broadcast to room on connect)
         await communicator.receive_json_from()
 
         # Send message
@@ -350,6 +355,9 @@ class CommunityRoomTypingTestCase(TransactionTestCase):
         # Receive initial state
         await communicator.receive_json_from()
 
+        # Receive user_joined event (broadcast to room on connect)
+        await communicator.receive_json_from()
+
         # Send typing indicator
         await communicator.send_json_to(
             {
@@ -358,11 +366,11 @@ class CommunityRoomTypingTestCase(TransactionTestCase):
             }
         )
 
-        # Should receive typing event
+        # Should receive typing event (WebSocket uses camelCase)
         response = await communicator.receive_json_from()
         self.assertEqual(response['event'], 'typing')
-        self.assertEqual(response['user_id'], str(self.user.id))
-        self.assertTrue(response['is_typing'])
+        self.assertEqual(response['userId'], str(self.user.id))
+        self.assertTrue(response['isTyping'])
 
         await communicator.disconnect()
 
@@ -577,7 +585,9 @@ class DirectMessageConnectionTestCase(TransactionTestCase):
 
     async def test_invalid_thread_rejected(self):
         """Test that connections to non-existent threads are rejected."""
-        communicator = self._create_communicator(self.user1, thread_id=99999)
+        # Use a valid UUID format for non-existent thread
+        fake_uuid = '00000000-0000-0000-0000-000000000000'
+        communicator = self._create_communicator(self.user1, thread_id=fake_uuid)
 
         connected, _ = await communicator.connect()
         self.assertFalse(connected)
@@ -639,6 +649,10 @@ class DirectMessageMessagingTestCase(TransactionTestCase):
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
+        # Consume initial dm_state event sent on connect
+        initial_response = await communicator.receive_json_from()
+        self.assertEqual(initial_response['event'], 'dm_state')
+
         # Send message
         await communicator.send_json_to(
             {
@@ -662,6 +676,10 @@ class DirectMessageMessagingTestCase(TransactionTestCase):
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
+        # Consume initial dm_state event sent on connect
+        initial_response = await communicator.receive_json_from()
+        self.assertEqual(initial_response['event'], 'dm_state')
+
         # Send ping
         await communicator.send_json_to({'type': 'ping'})
 
@@ -678,6 +696,10 @@ class DirectMessageMessagingTestCase(TransactionTestCase):
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
+        # Consume initial dm_state event sent on connect
+        initial_response = await communicator.receive_json_from()
+        self.assertEqual(initial_response['event'], 'dm_state')
+
         # Send typing indicator
         await communicator.send_json_to(
             {
@@ -686,9 +708,9 @@ class DirectMessageMessagingTestCase(TransactionTestCase):
             }
         )
 
-        # Should receive typing event
+        # Should receive typing event (WebSocket uses camelCase)
         response = await communicator.receive_json_from()
         self.assertEqual(response['event'], 'typing')
-        self.assertTrue(response['is_typing'])
+        self.assertTrue(response['isTyping'])
 
         await communicator.disconnect()

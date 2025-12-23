@@ -156,6 +156,7 @@ class UserLearningPathBySlugView(APIView):
         GET /api/v1/users/{username}/learning-paths/{slug}/
 
         Returns a user's generated learning path by slug.
+        Checks both LearnerProfile.generated_path and SavedLearningPath.
         Requires authentication.
         """
         try:
@@ -163,28 +164,54 @@ class UserLearningPathBySlugView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        # First, check LearnerProfile.generated_path (active path)
         profile = LearnerProfile.objects.filter(
             user=user,
             generated_path__slug=slug,
         ).first()
 
-        if not profile or not profile.generated_path:
-            return Response(
-                {'error': 'Learning path not found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        if profile and profile.generated_path:
+            # Merge the cover_image from SavedLearningPath (generated async)
+            response_data = dict(profile.generated_path)
+            saved_path = SavedLearningPath.objects.filter(
+                user=user,
+                slug=slug,
+                is_archived=False,
+            ).first()
+            if saved_path and saved_path.cover_image:
+                response_data['cover_image'] = saved_path.cover_image
+            return Response(response_data)
 
-        # Merge the cover_image from SavedLearningPath (generated async)
-        response_data = dict(profile.generated_path)
+        # Fall back to SavedLearningPath (saved paths library)
         saved_path = SavedLearningPath.objects.filter(
             user=user,
             slug=slug,
             is_archived=False,
         ).first()
-        if saved_path and saved_path.cover_image:
-            response_data['cover_image'] = saved_path.cover_image
 
-        return Response(response_data)
+        if saved_path:
+            # Build response from SavedLearningPath
+            # path_data contains curriculum, topics_covered, etc.
+            response_data = saved_path.path_data.copy() if saved_path.path_data else {}
+            response_data.update(
+                {
+                    'id': saved_path.id,
+                    'slug': saved_path.slug,
+                    'title': saved_path.title,
+                    'difficulty': saved_path.difficulty,
+                    'estimated_hours': saved_path.estimated_hours,
+                    'cover_image': saved_path.cover_image,
+                }
+            )
+            # Ensure curriculum is present
+            if 'curriculum' not in response_data:
+                response_data['curriculum'] = []
+            return Response(response_data)
+
+        return Response(
+            {'error': 'Learning path not found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
 
 class AllTopicsView(APIView):
@@ -200,7 +227,7 @@ class AllTopicsView(APIView):
         """
         from core.taxonomy.models import Taxonomy
 
-        topic_taxonomies = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('order', 'name')
+        topic_taxonomies = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('name')
         topics = [
             {
                 'slug': t.slug,

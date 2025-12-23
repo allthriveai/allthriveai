@@ -10,8 +10,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon } from '@fortawesome/free-solid-svg-icons';
 import type { LoadingMessageProps } from '../core/types';
 
 // Human-friendly tool names for the loading indicator
@@ -68,11 +66,13 @@ export function LoadingMessage({
   if (isNeon) {
     // Neon Glass variant (EmberHomePage)
     return (
-      <div className="flex justify-start">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-500 dark:text-cyan-400" />
-        </div>
-        <div className="glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
+      <div className="flex items-end">
+        <img
+          src="/ember-avatar.png"
+          alt="Ember"
+          className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover"
+        />
+        <div className="glass-subtle px-5 py-4 rounded-2xl rounded-br-sm flex-1">
           <div className="flex items-center gap-3">
             <div className="flex gap-1.5">
               <div className="w-2.5 h-2.5 bg-cyan-500 dark:bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />

@@ -126,11 +126,6 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
             except (ValueError, IndexError):
                 pass  # Invalid topics, ignore
 
-        # Filter by legacy topic field (kept for backward compatibility)
-        topic = self.request.query_params.get('topic')
-        if topic:
-            queryset = queryset.filter(topic__iexact=topic)
-
         # Filter by difficulty
         difficulty = self.request.query_params.get('difficulty')
         if difficulty:
@@ -139,9 +134,7 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
         # Search by title or description
         search = self.request.query_params.get('search')
         if search:
-            queryset = queryset.filter(
-                Q(title__icontains=search) | Q(description__icontains=search) | Q(topic__icontains=search)
-            )
+            queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search))
 
         return queryset
 
@@ -394,19 +387,22 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         average_percentage = (avg_score['avg_score'] / avg_score['avg_total'] * 100) if avg_score['avg_total'] else 0
 
         # Topic breakdown - single query with annotation instead of N+1 loop
+        # Now uses topics M2M field instead of deprecated topic field
         topic_aggregates = (
-            attempts.values('quiz__topic')
+            attempts.values('quiz__topics__name')
             .annotate(
                 topic_count=Count('id'),
                 topic_avg_score=Avg('score'),
                 topic_avg_total=Avg('total_questions'),
             )
-            .order_by('quiz__topic')
+            .order_by('quiz__topics__name')
         )
 
         topic_stats = {}
         for row in topic_aggregates:
-            topic = row['quiz__topic']
+            topic = row['quiz__topics__name']
+            if topic is None:
+                topic = 'General'  # Default for quizzes without topics
             if row['topic_avg_total'] and row['topic_avg_total'] > 0:
                 topic_percentage = row['topic_avg_score'] / row['topic_avg_total'] * 100
             else:

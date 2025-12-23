@@ -539,6 +539,9 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
 
         logger.info(f'DM WebSocket connected: user={self.user.id}, thread={self.thread_id}')
 
+        # Send initial message history
+        await self._send_dm_state()
+
     async def disconnect(self, close_code):
         """Handle WebSocket disconnection."""
         if hasattr(self, 'group_name'):
@@ -652,8 +655,9 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _create_dm_message(self, content: str) -> Message:
-        """Create a new DM message."""
+        """Create a new DM message and trigger agent responses if needed."""
         from core.community.models import DirectMessageThread
+        from core.community.tasks import process_agent_dm_task
 
         thread = DirectMessageThread.objects.get(id=self.thread_id)
 
@@ -667,6 +671,20 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
         # Update thread
         thread.last_message_at = timezone.now()
         thread.save(update_fields=['last_message_at', 'updated_at'])
+
+        # Trigger agent responses for team-tier participants
+        # (signals may not fire reliably in async contexts)
+        if self.user.tier != 'team':  # Don't respond to agents
+            team_agents = thread.participants.filter(tier='team')
+            for agent in team_agents:
+                logger.info(
+                    f'Triggering agent DM response from consumer: ' f'message={message.id}, agent={agent.username}'
+                )
+                process_agent_dm_task.delay(
+                    message_id=str(message.id),
+                    thread_id=str(thread.id),
+                    agent_user_id=agent.id,
+                )
 
         return message
 
@@ -690,3 +708,73 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
             'isPinned': message.is_pinned,
             'createdAt': message.created_at.isoformat(),
         }
+
+    async def _send_dm_state(self):
+        """Send initial DM state including message history to client."""
+
+        thread = await self._get_thread()
+        if not thread:
+            return
+
+        # Get recent messages
+        messages = await self._get_dm_message_history(limit=50)
+
+        await self.send(
+            text_data=json.dumps(
+                {
+                    'event': 'dm_state',
+                    'threadId': str(thread.id),
+                    'messages': messages,
+                }
+            )
+        )
+
+    @database_sync_to_async
+    def _get_thread(self):
+        """Get the DM thread."""
+        from core.community.models import DirectMessageThread
+
+        try:
+            return DirectMessageThread.objects.get(id=self.thread_id)
+        except DirectMessageThread.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def _get_dm_message_history(self, limit: int = 50) -> list[dict]:
+        """Get message history for the DM thread."""
+        from core.community.models import DirectMessageThread
+
+        try:
+            thread = DirectMessageThread.objects.get(id=self.thread_id)
+        except DirectMessageThread.DoesNotExist:
+            return []
+
+        messages = list(
+            Message.objects.filter(
+                room=thread.room,
+                is_hidden=False,
+            )
+            .select_related('author')
+            .order_by('-created_at')[:limit]
+        )
+
+        return [
+            {
+                'id': str(msg.id),
+                'author': {
+                    'id': str(msg.author.id) if msg.author else None,
+                    'username': msg.author.username if msg.author else 'Unknown',
+                    'avatarUrl': getattr(msg.author, 'avatar_url', None) if msg.author else None,
+                },
+                'content': msg.content,
+                'messageType': msg.message_type,
+                'attachments': msg.attachments,
+                'mentions': msg.mentions,
+                'replyToId': str(msg.reply_to_id) if msg.reply_to_id else None,
+                'reactionCounts': msg.reaction_counts,
+                'isEdited': msg.is_edited,
+                'isPinned': msg.is_pinned,
+                'createdAt': msg.created_at.isoformat(),
+            }
+            for msg in reversed(messages)  # Reverse to get chronological order
+        ]

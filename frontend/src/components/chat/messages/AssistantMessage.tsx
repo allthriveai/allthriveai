@@ -16,7 +16,6 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faFigma } from '@fortawesome/free-brands-svg-icons';
-import { faDragon } from '@fortawesome/free-solid-svg-icons';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import type { AssistantMessageProps } from '../core/types';
 import { LearningTeaserCard } from '../cards';
@@ -218,76 +217,89 @@ export function AssistantMessage({
   if (isNeon) {
     // Neon Glass variant (EmberHomePage)
     return (
-      <div className="flex justify-start w-full">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-          <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-500 dark:text-cyan-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="glass-message px-5 py-4 rounded-2xl rounded-bl-sm">
-            <div className="text-lg text-slate-700 dark:text-slate-200 prose prose-lg prose-slate dark:prose-invert max-w-none">
-              <ReactMarkdown
-                components={{
-                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                  a: ({ href, children }) => {
-                    const isInternal = href?.startsWith('/');
-                    if (isInternal) {
+      <div className="flex flex-col justify-start w-full">
+        <div className="flex items-end">
+          <img
+            src="/ember-avatar.png"
+            alt="Ember"
+            className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="glass-message px-5 py-4 rounded-2xl rounded-br-sm">
+              <div className="text-lg text-slate-700 dark:text-slate-200 prose prose-lg prose-slate dark:prose-invert max-w-none">
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
+                    ul: ({ children }) => <ul className="mb-4 ml-4 space-y-2 list-disc list-outside">{children}</ul>,
+                    ol: ({ children }) => <ol className="mb-4 ml-4 space-y-2 list-decimal list-outside">{children}</ol>,
+                    li: ({ children }) => <li className="leading-relaxed pl-1">{children}</li>,
+                    h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-4 first:mt-0">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-4 first:mt-0">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h3>,
+                    strong: ({ children }) => <strong className="font-semibold text-slate-900 dark:text-white">{children}</strong>,
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                    blockquote: ({ children }) => <blockquote className="border-l-4 border-cyan-500/50 pl-4 my-4 italic text-slate-600 dark:text-slate-300">{children}</blockquote>,
+                    a: ({ href, children }) => {
+                      const isInternal = href?.startsWith('/');
+                      if (isInternal) {
+                        return (
+                          <a
+                            href={href}
+                            onClick={(e) => handleLinkClick(href, e)}
+                            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline cursor-pointer"
+                          >
+                            {children}
+                          </a>
+                        );
+                      }
                       return (
                         <a
                           href={href}
-                          onClick={(e) => handleLinkClick(href, e)}
-                          className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline cursor-pointer"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline"
                         >
                           {children}
                         </a>
                       );
-                    }
-                    return (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline"
-                      >
-                        {children}
-                      </a>
-                    );
-                  },
-                  pre: ({ children }) => (
-                    <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900/50 dark:bg-slate-950/50 p-3 rounded-lg text-sm my-2">{children}</pre>
-                  ),
-                  code: ({ children, node }) => {
-                    const isInline = node?.position?.start.line === node?.position?.end.line;
-                    return isInline ? (
-                      <code className="bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono break-all">{children}</code>
-                    ) : (
-                      <code className="break-words">{children}</code>
-                    );
-                  },
-                }}
-              >
-                {mainContent}
-              </ReactMarkdown>
-            </div>
-            {showGitHubConnectButton && onConnectGitHub && (
-              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/10">
-                <button
-                  onClick={onConnectGitHub}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"
+                    },
+                    pre: ({ children }) => (
+                      <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900/50 dark:bg-slate-950/50 p-4 rounded-lg text-sm my-4">{children}</pre>
+                    ),
+                    code: ({ children, node }) => {
+                      const isInline = node?.position?.start.line === node?.position?.end.line;
+                      return isInline ? (
+                        <code className="bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono break-all">{children}</code>
+                      ) : (
+                        <code className="break-words">{children}</code>
+                      );
+                    },
+                  }}
                 >
-                  <FontAwesomeIcon icon={faGithub} />
-                  Connect GitHub
-                </button>
+                  {mainContent}
+                </ReactMarkdown>
               </div>
-            )}
-            {renderFigmaAction()}
+              {showGitHubConnectButton && onConnectGitHub && (
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <button
+                    onClick={onConnectGitHub}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <FontAwesomeIcon icon={faGithub} />
+                    Connect GitHub
+                  </button>
+                </div>
+              )}
+              {renderFigmaAction()}
+            </div>
           </div>
-          {renderLearningCards()}
-          {renderInlineGame()}
-          {/* Learning path offer rendered after cards and game */}
-          {learningPathOffer && hasLearningContent && (
-            <p className="mt-4 text-lg text-slate-700 dark:text-slate-200">{learningPathOffer}</p>
-          )}
         </div>
+        {renderLearningCards()}
+        {renderInlineGame()}
+        {/* Learning path offer rendered after cards and game */}
+        {learningPathOffer && hasLearningContent && (
+          <p className="mt-4 text-lg text-slate-700 dark:text-slate-200">{learningPathOffer}</p>
+        )}
       </div>
     );
   }
@@ -300,7 +312,16 @@ export function AssistantMessage({
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <ReactMarkdown
               components={{
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
+                ul: ({ children }) => <ul className="mb-3 ml-4 space-y-1.5 list-disc list-outside">{children}</ul>,
+                ol: ({ children }) => <ol className="mb-3 ml-4 space-y-1.5 list-decimal list-outside">{children}</ol>,
+                li: ({ children }) => <li className="leading-relaxed pl-1">{children}</li>,
+                h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-sm font-semibold mb-1.5 mt-3 first:mt-0">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-2 first:mt-0">{children}</h3>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                blockquote: ({ children }) => <blockquote className="border-l-2 border-cyan-500/50 pl-3 my-3 italic text-slate-400">{children}</blockquote>,
                 a: ({ href, children }) => {
                   const isInternal = href?.startsWith('/');
                   if (isInternal) {
@@ -326,7 +347,7 @@ export function AssistantMessage({
                   );
                 },
                 pre: ({ children }) => (
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900 dark:bg-slate-950 p-3 rounded-lg text-sm my-2">{children}</pre>
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900 dark:bg-slate-950 p-3 rounded-lg text-sm my-3">{children}</pre>
                 ),
                 code: ({ children, node }) => {
                   const isInline = node?.position?.start.line === node?.position?.end.line;

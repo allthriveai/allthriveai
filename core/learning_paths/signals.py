@@ -122,11 +122,11 @@ def emit_learning_event_on_quiz_completion(sender, instance, created, **kwargs):
         else:
             xp = 5
 
-        # Find related concept based on quiz topic
+        # Find related concept based on quiz topics
         concept = None
-        topic = quiz.topic if quiz.topic else None
-        if not topic and quiz.topics:
-            topic = quiz.topics[0]
+        topic = None
+        if quiz.topics.exists():
+            topic = quiz.topics.first().name if quiz.topics.first() else None
 
         if topic:
             # Try to find a concept that matches this topic

@@ -124,6 +124,12 @@ help:
 	@echo "  make pull-prod-db    - Pull production database to local (anonymizes user PII)"
 	@echo "  make anonymize-users - Anonymize user PII in local database (for prod data safety)"
 	@echo ""
+	@echo "AWS Weaviate (Vector Search):"
+	@echo "  make aws-weaviate-setup - Create Weaviate collections on AWS (idempotent)"
+	@echo "  make aws-weaviate-check - Check Weaviate connection status on AWS"
+	@echo "  make aws-weaviate-reindex - Reindex all projects in Weaviate on AWS"
+	@echo "  make aws-weaviate-reindex-all - Reindex all content (projects, users, quizzes, tools) on AWS"
+	@echo ""
 	@echo "Django:"
 	@echo "  make collectstatic   - Collect static files"
 	@echo "  make frontend        - Run frontend dev server locally (non-Docker)"
@@ -973,7 +979,7 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_credit_packs"
 	@make aws-run-command CMD="seed_ai_pricing"
 	@make aws-run-command CMD="seed_achievements"
-	@make aws-run-command CMD="create_pip"
+	@make aws-run-command CMD="seed_core_team"
 	@make aws-run-command CMD="seed_ai_daily_brief_agent"
 	@echo "✓ All data seeded on AWS!"
 
@@ -1001,6 +1007,13 @@ aws-import-user-projects:
 	fi
 	@echo "Importing projects for $(USERNAME) on AWS..."
 	@make aws-run-command CMD="sync_user_projects_to_prod --username $(USERNAME) --import"
+
+# Setup Weaviate collections on AWS (idempotent - creates if missing)
+# Usage: make aws-weaviate-setup ENVIRONMENT=production
+aws-weaviate-setup:
+	@echo "Setting up Weaviate collections on AWS..."
+	@echo "This creates collections if they don't exist (idempotent)."
+	@make aws-run-command CMD="setup_weaviate"
 
 # Reindex all projects in Weaviate on AWS
 # Usage: make aws-weaviate-reindex ENVIRONMENT=production

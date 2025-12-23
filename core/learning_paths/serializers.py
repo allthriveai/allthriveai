@@ -24,7 +24,7 @@ class UserLearningPathSerializer(serializers.ModelSerializer):
     """Serializer for UserLearningPath model."""
 
     topic_display = serializers.SerializerMethodField()
-    topic_data = TaxonomySerializer(source='topic', read_only=True)
+    topic_data = TaxonomySerializer(source='topic_taxonomy', read_only=True)
     skill_level_display = serializers.CharField(source='get_current_skill_level_display', read_only=True)
     progress_percentage = serializers.IntegerField(read_only=True)
     points_to_next_level = serializers.IntegerField(read_only=True)
@@ -53,8 +53,12 @@ class UserLearningPathSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_topic_display(self, obj):
-        """Get topic display name from taxonomy FK."""
-        return obj.topic.name if obj.topic else None
+        """Get topic display name from topic_taxonomy FK or TOPIC_CHOICES."""
+        # Prefer the FK relationship if populated
+        if obj.topic_taxonomy:
+            return obj.topic_taxonomy.name
+        # Fallback to choices display for the CharField
+        return obj.get_topic_display()
 
 
 class LearningPathDetailSerializer(serializers.Serializer):
@@ -254,7 +258,7 @@ class ConceptSerializer(serializers.ModelSerializer):
 
     tool_name = serializers.CharField(source='tool.name', read_only=True, allow_null=True)
     tool_slug = serializers.CharField(source='tool.slug', read_only=True, allow_null=True)
-    topic_data = TaxonomySerializer(source='topic', read_only=True)
+    topic_data = TaxonomySerializer(source='topic_taxonomy', read_only=True)
     topic_display = serializers.SerializerMethodField()
 
     class Meta:
@@ -276,8 +280,10 @@ class ConceptSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_topic_display(self, obj):
-        """Get topic display name from taxonomy FK."""
-        return obj.topic.name if obj.topic else None
+        """Get topic display name from taxonomy FK or string field."""
+        if obj.topic_taxonomy:
+            return obj.topic_taxonomy.name
+        return obj.topic if obj.topic else None
 
 
 class UserConceptMasterySerializer(serializers.ModelSerializer):

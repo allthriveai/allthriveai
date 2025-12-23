@@ -279,20 +279,32 @@ class ProjectTopicsTaxonomyIntegrationTests(TestCase):
             password='testpass123',
         )
 
-        # Create a project with topics
+        # Create topics in taxonomy first (since topics is now M2M to Taxonomy)
+        topic1 = Taxonomy.objects.create(
+            taxonomy_type=Taxonomy.TaxonomyType.TOPIC,
+            name='New Topic One',
+            slug='new-topic-one',
+            is_active=True,
+        )
+        topic2 = Taxonomy.objects.create(
+            taxonomy_type=Taxonomy.TaxonomyType.TOPIC,
+            name='New Topic Two',
+            slug='new-topic-two',
+            is_active=True,
+        )
+
+        # Create project and assign topics via M2M
         project = Project.objects.create(
             user=user,
             title='Test Project',
             description='A test project',
-            topics=['New Topic One', 'New Topic Two'],
         )
+        project.topics.set([topic1, topic2])
 
-        # Verify topics were added to taxonomy
-        topic1 = Taxonomy.objects.filter(slug='new-topic-one').first()
-        topic2 = Taxonomy.objects.filter(slug='new-topic-two').first()
-
-        self.assertIsNotNone(topic1)
-        self.assertIsNotNone(topic2)
+        # Verify topics are correctly linked
+        self.assertEqual(project.topics.count(), 2)
+        self.assertTrue(project.topics.filter(slug='new-topic-one').exists())
+        self.assertTrue(project.topics.filter(slug='new-topic-two').exists())
         self.assertEqual(topic1.taxonomy_type, Taxonomy.TaxonomyType.TOPIC)
         self.assertEqual(topic2.taxonomy_type, Taxonomy.TaxonomyType.TOPIC)
 

@@ -40,6 +40,14 @@ export function DMThreadView({ threadId, onBack }: DMThreadViewProps) {
     }
   }, [messages]);
 
+  // Get the other participant in 1:1 DMs
+  const getOtherParticipant = () => {
+    if (!threadInfo) return null;
+    return threadInfo.participants.find(
+      (p) => String(p.id) !== String(user?.id)
+    ) || null;
+  };
+
   // Get display name for the thread
   const getDisplayName = () => {
     if (!threadInfo) return 'Loading...';
@@ -47,10 +55,14 @@ export function DMThreadView({ threadId, onBack }: DMThreadViewProps) {
       return threadInfo.name;
     }
     // For 1:1 DMs, show the other person's name
-    const otherParticipant = threadInfo.participants.find(
-      (p) => p.id !== user?.id?.toString()
-    );
+    const otherParticipant = getOtherParticipant();
     return otherParticipant?.username || 'Unknown';
+  };
+
+  // Get avatar URL for the other participant
+  const getAvatarUrl = () => {
+    const otherParticipant = getOtherParticipant();
+    return otherParticipant?.avatarUrl || null;
   };
 
   // Get avatar initial
@@ -84,8 +96,16 @@ export function DMThreadView({ threadId, onBack }: DMThreadViewProps) {
             )}
 
             {/* Avatar */}
-            <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20">
-              {getAvatarInitial()}
+            <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 overflow-hidden">
+              {getAvatarUrl() ? (
+                <img
+                  src={getAvatarUrl()!}
+                  alt={getDisplayName()}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                getAvatarInitial()
+              )}
             </div>
 
             <div>
@@ -141,7 +161,7 @@ export function DMThreadView({ threadId, onBack }: DMThreadViewProps) {
             <MessageBubble
               key={message.id}
               message={message}
-              isOwn={message.author?.id === user?.id?.toString()}
+              isOwn={String(message.author?.id) === String(user?.id)}
             />
           ))
         )}

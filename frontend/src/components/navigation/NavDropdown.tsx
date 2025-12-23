@@ -9,9 +9,10 @@ interface NavDropdownProps {
   label: string;
   section: MenuSection;
   isActive?: boolean;
+  avatarSrc?: string;
 }
 
-export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
+export function NavDropdown({ label, section, isActive, avatarSrc }: NavDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [openSubItems, setOpenSubItems] = useState<string[]>([]);
   const navigate = useNavigate();
@@ -95,6 +96,13 @@ export function NavDropdown({ label, section, isActive }: NavDropdownProps) {
             : 'hover:bg-white/[0.15] dark:hover:bg-white/[0.1] text-gray-900 dark:text-gray-100'
         }`}
       >
+        {avatarSrc && (
+          <img
+            src={avatarSrc}
+            alt=""
+            className="w-5 h-5 rounded-full object-cover ring-1 ring-white/20"
+          />
+        )}
         {label}
         <ChevronDownIcon
           className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}

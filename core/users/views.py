@@ -38,12 +38,13 @@ class UserPagination(PageNumberPagination):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def explore_users(request):
-    """Explore user profiles with pagination.
+    """Explore user profiles with pagination and search.
 
     Query parameters:
     - page: page number (default: 1)
     - page_size: results per page (default: 20, max: 100)
     - include_all: if 'true', include users without projects (default: false)
+    - search: search query to filter by username, name, bio, or tagline
 
     Returns paginated list of users sorted by:
     1. Number of projects (descending)
@@ -52,6 +53,7 @@ def explore_users(request):
     from core.users.models import UserRole
 
     include_all = request.GET.get('include_all', 'false').lower() == 'true'
+    search_query = request.GET.get('search', '').strip()
 
     # Prefetch projects with their tools to avoid N+1 queries
     projects_prefetch = Prefetch(
@@ -87,6 +89,16 @@ def explore_users(request):
             is_guest=True  # Don't show guest users in explore
         )
     )
+
+    # Apply search filter if provided
+    if search_query:
+        queryset = queryset.filter(
+            Q(username__icontains=search_query)
+            | Q(first_name__icontains=search_query)
+            | Q(last_name__icontains=search_query)
+            | Q(bio__icontains=search_query)
+            | Q(tagline__icontains=search_query)
+        )
 
     # Annotate with project count
     queryset = queryset.annotate(

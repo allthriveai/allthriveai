@@ -49,6 +49,12 @@ interface ErrorEvent extends DMWebSocketEvent {
   message: string;
 }
 
+interface DMStateEvent extends DMWebSocketEvent {
+  event: 'dm_state';
+  threadId: string;
+  messages: Message[];
+}
+
 export interface UseDMThreadReturn {
   // State
   messages: Message[];
@@ -186,6 +192,13 @@ export function useDMThread(threadId: string | null): UseDMThreadReturn {
             case 'pong':
               // Heartbeat response - no action needed
               break;
+
+            case 'dm_state': {
+              // Initial message history from server
+              const stateEvent = data as DMStateEvent;
+              setMessages(stateEvent.messages);
+              break;
+            }
 
             default:
               // Unknown event type

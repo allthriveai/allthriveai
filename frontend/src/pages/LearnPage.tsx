@@ -16,6 +16,41 @@ import { Link } from 'react-router-dom';
 import type { LearningGoal } from '@/types/models';
 
 /**
+ * Smooth-looping video avatar for Sage
+ * Resets video slightly before end to avoid the skip/gap on loop
+ */
+function SageVideo({ className }: { className?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleEnded = () => {
+      // Wait 3 seconds before restarting
+      setTimeout(() => {
+        video.currentTime = 0;
+        video.play();
+      }, 3000);
+    };
+
+    video.addEventListener('ended', handleEnded);
+    return () => video.removeEventListener('ended', handleEnded);
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      src="/sage-learn-home.mp4"
+      autoPlay
+      muted
+      playsInline
+      className={className}
+    />
+  );
+}
+
+/**
  * Guest view for unauthenticated users
  */
 function GuestLearnPage() {
@@ -26,15 +61,18 @@ function GuestLearnPage() {
         <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/20 dark:bg-emerald-500/15 blur-[120px] pointer-events-none" />
         <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-teal-500/10 dark:bg-teal-500/10 blur-[100px] pointer-events-none" />
 
-        <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">
-              Learn AI
-            </span>
-          </h1>
-          <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
-            Expand your AI knowledge with personalized learning paths, interactive quizzes, and expert guidance
-          </p>
+        <div className="relative px-4 sm:px-6 lg:px-8 h-full flex items-center">
+          <SageVideo className="w-32 h-32 rounded-full ring-2 ring-white/20 flex-shrink-0 object-cover object-[center_20%]" />
+          <div className="ml-6">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">
+                Learn
+              </span>
+            </h1>
+            <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
+              Expand your AI knowledge with personalized learning paths and Sage as your guide
+            </p>
+          </div>
         </div>
       </header>
 
@@ -242,13 +280,16 @@ function AuthenticatedLearnPage() {
         <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/20 dark:bg-emerald-500/15 blur-[120px] pointer-events-none" aria-hidden="true" />
         <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-teal-500/10 dark:bg-teal-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
 
-        <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">Learn</span>
-          </h1>
-          <p className="text-lg text-gray-700 dark:text-gray-300 max-w-2xl">
-            Expand your AI knowledge with personalized learning paths and Sage as your guide
-          </p>
+        <div className="relative px-4 sm:px-6 lg:px-8 h-full flex items-center">
+          <SageVideo className="w-32 h-32 rounded-full ring-2 ring-white/20 flex-shrink-0 object-cover object-[center_20%]" />
+          <div className="ml-6">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">Learn</span>
+            </h1>
+            <p className="text-lg text-gray-700 dark:text-gray-300 max-w-2xl">
+              Expand your AI knowledge with personalized learning paths and Sage as your guide
+            </p>
+          </div>
         </div>
       </header>
 

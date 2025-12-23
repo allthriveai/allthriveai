@@ -804,17 +804,21 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                 <div className="space-y-4">
                   {/* Greeting message (when no onboarding) */}
                   {!state.onboarding?.isActive && (
-                    <div className="flex justify-start">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-teal-600/20 flex items-center justify-center flex-shrink-0 mr-4">
-                        <FontAwesomeIcon icon={faDragon} className="w-6 h-6 text-cyan-500" />
-                      </div>
-                      <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
-                        <div className="text-lg text-slate-700 dark:text-slate-200">
-                          <span className="whitespace-pre-wrap">{typedGreeting}</span>
-                          {!isTypingComplete && (
-                            <span className="inline-block w-0.5 h-5 bg-cyan-500 dark:bg-cyan-400 ml-0.5 animate-pulse" />
-                          )}
+                    <div className="flex flex-col justify-start">
+                      <div className="flex items-end">
+                        <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
+                          <div className="text-lg text-slate-700 dark:text-slate-200">
+                            <span className="whitespace-pre-wrap">{typedGreeting}</span>
+                            {!isTypingComplete && (
+                              <span className="inline-block w-0.5 h-5 bg-cyan-500 dark:bg-cyan-400 ml-0.5 animate-pulse" />
+                            )}
+                          </div>
                         </div>
+                        <img
+                          src="/ember-avatar.png"
+                          alt="Ember"
+                          className="w-12 h-12 rounded-full flex-shrink-0 ml-4 object-cover"
+                        />
                       </div>
                     </div>
                   )}

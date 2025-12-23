@@ -16,7 +16,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
+import { faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { createProjectFromImageSession } from '@/services/projects';
 import {
@@ -446,9 +446,11 @@ export function SidebarChatLayout({
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center">
-                    <FontAwesomeIcon icon={faDragon} className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />
-                  </div>
+                  <img
+                    src="/ember-avatar.png"
+                    alt="Ember"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
                   <div>
                     <h2 className="font-semibold text-slate-900 dark:text-white">Ember</h2>
                     <div className="flex items-center gap-1.5 text-xs">

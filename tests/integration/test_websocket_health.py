@@ -16,6 +16,10 @@ import websockets
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.getenv('API_URL'),
+    reason='API_URL not set - run with API_URL=https://api.allthrive.ai',
+)
 async def test_websocket_health_check():
     """
     Test WebSocket health check endpoint is accessible.
@@ -58,6 +62,10 @@ async def test_websocket_health_check():
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.getenv('API_URL'),
+    reason='API_URL not set - run with API_URL=https://api.allthrive.ai',
+)
 async def test_websocket_ssl_redirect_not_triggered():
     """
     Test that WebSocket connections don't trigger SSL redirects.

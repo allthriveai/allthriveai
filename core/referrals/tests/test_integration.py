@@ -1,25 +1,38 @@
 """Integration tests for complete referral workflows."""
 
-from django.test import TestCase, override_settings
+import uuid
+
+from django.test import TestCase, TransactionTestCase, override_settings
 from rest_framework.test import APIClient
 
 from core.referrals.models import Referral, ReferralCode, ReferralStatus
 from core.users.models import User
 
 
-class CompleteReferralFlowTestCase(TestCase):
+def unique_username(prefix='user'):
+    """Generate a unique username for testing."""
+    return f'{prefix}_{uuid.uuid4().hex[:8]}'
+
+
+class CompleteReferralFlowTestCase(TransactionTestCase):
     """Test the complete referral flow from start to finish."""
 
     def setUp(self):
         """Set up test client."""
         self.client = APIClient()
-        # Clear any existing referrals to ensure test isolation
+        # Clear any existing referrals and codes to ensure test isolation
         Referral.objects.all().delete()
+        ReferralCode.objects.all().delete()
 
     def test_complete_referral_workflow(self):
         """Test complete workflow: create user, get code, share, validate, track."""
         # Step 1: User signs up and gets a referral code
-        referrer = User.objects.create_user(username='alice', email='alice@example.com', password='testpass123')
+        referrer_username = unique_username('alice')
+        referrer = User.objects.create_user(
+            username=referrer_username,
+            email=f'{referrer_username}@example.com',
+            password='testpass123',
+        )
         self.client.force_authenticate(user=referrer)
 
         # Get referral code (auto-created)
@@ -28,23 +41,29 @@ class CompleteReferralFlowTestCase(TestCase):
         referral_code = response.data['code']
         self.assertIsNotNone(referral_code)
 
-        # Step 2: User customizes their referral code
-        response = self.client.post('/api/v1/me/referral-code/update_code/', {'code': 'ALICE2024'})
+        # Step 2: User customizes their referral code (use unique code to avoid conflicts)
+        custom_code = unique_username('ALICE').upper()[:12]
+        response = self.client.post('/api/v1/me/referral-code/update_code/', {'code': custom_code})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['code'], 'ALICE2024')
+        self.assertEqual(response.data['code'], custom_code)
 
         # Step 3: New user validates the referral code (public endpoint)
         self.client.force_authenticate(user=None)
-        response = self.client.get('/api/v1/referrals/validate/ALICE2024/')
+        response = self.client.get(f'/api/v1/referrals/validate/{custom_code}/')
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['valid'])
-        self.assertEqual(response.data['referrer_username'], 'alice')
+        self.assertEqual(response.data['referrer_username'], referrer_username)
 
         # Step 4: New user signs up with referral code
-        referred = User.objects.create_user(username='bob', email='bob@example.com', password='testpass123')
+        referred_username = unique_username('bob')
+        referred = User.objects.create_user(
+            username=referred_username,
+            email=f'{referred_username}@example.com',
+            password='testpass123',
+        )
 
         # Step 5: System creates referral relationship
-        referral_code_obj = ReferralCode.objects.get(code='ALICE2024')
+        referral_code_obj = ReferralCode.objects.get(code=custom_code)
         referral = Referral.objects.create(
             referrer=referrer, referred_user=referred, referral_code=referral_code_obj, status=ReferralStatus.PENDING
         )
@@ -92,26 +111,30 @@ class CompleteReferralFlowTestCase(TestCase):
 
 
 @override_settings(REST_FRAMEWORK={'DEFAULT_THROTTLE_CLASSES': [], 'DEFAULT_THROTTLE_RATES': {}})
-class MultipleReferralsTestCase(TestCase):
+class MultipleReferralsTestCase(TransactionTestCase):
     """Test scenarios with multiple referrals."""
 
     def setUp(self):
         """Set up test users and client."""
         self.client = APIClient()
-        # Clear any existing referrals to ensure test isolation
+        # Clear any existing referrals and codes to ensure test isolation
         Referral.objects.all().delete()
+        ReferralCode.objects.all().delete()
+        referrer_username = unique_username('referrer')
         self.referrer = User.objects.create_user(
-            username='referrer', email='referrer@example.com', password='testpass123'
+            username=referrer_username, email=f'{referrer_username}@example.com', password='testpass123'
         )
-        self.referral_code = ReferralCode.objects.create(user=self.referrer, code='REFER')
+        self.unique_code = unique_username('REFER').upper()[:12]
+        self.referral_code = ReferralCode.objects.create(user=self.referrer, code=self.unique_code)
 
     def test_multiple_successful_referrals(self):
         """Test that one user can refer multiple people."""
         # Create 3 referred users
         referred_users = []
         for i in range(3):
+            referred_username = unique_username(f'referred{i}')
             user = User.objects.create_user(
-                username=f'referred{i}', email=f'referred{i}@example.com', password='testpass123'
+                username=referred_username, email=f'{referred_username}@example.com', password='testpass123'
             )
             referred_users.append(user)
 
@@ -144,7 +167,12 @@ class MultipleReferralsTestCase(TestCase):
 
         # Create 2 referrals (within limit)
         for i in range(2):
-            user = User.objects.create_user(username=f'user{i}', email=f'user{i}@example.com', password='testpass123')
+            user_username = unique_username(f'user{i}')
+            user = User.objects.create_user(
+                username=user_username,
+                email=f'{user_username}@example.com',
+                password='testpass123',
+            )
             Referral.objects.create(referrer=self.referrer, referred_user=user, referral_code=self.referral_code)
             self.referral_code.increment_usage()
 

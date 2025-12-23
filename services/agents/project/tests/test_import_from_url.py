@@ -108,31 +108,25 @@ class TestHandleGitHubImport:
     These tests should FAIL initially until _handle_github_import is implemented.
     """
 
-    def test_no_oauth_token_auto_clips(self, mock_user, agent_state):
-        """User without GitHub OAuth should auto-clip."""
+    def test_no_oauth_token_asks_to_connect(self, mock_user, agent_state):
+        """User without GitHub OAuth should be prompted to connect or clip."""
         from services.agents.project.tools import _handle_github_import
 
         with patch('core.integrations.github.helpers.get_user_github_token', return_value=None):
-            with patch('services.agents.project.tools._handle_generic_import') as mock_generic:
-                mock_generic.return_value = {
-                    'success': True,
-                    'url': f'/{mock_user.username}/fastmcp',
-                    'project_type': 'clipped',
-                }
+            result = _handle_github_import(
+                url='https://github.com/jlowin/fastmcp',
+                user=mock_user,
+                is_showcase=True,
+                is_private=False,
+                state=agent_state,
+            )
 
-                result = _handle_github_import(
-                    url='https://github.com/jlowin/fastmcp',
-                    user=mock_user,
-                    is_showcase=True,
-                    is_private=False,
-                    state=agent_state,
-                )
-
-                assert result['success'] is True
-                assert result['auto_clipped'] is True
-                assert 'message' in result
-                # Message should explain what happened
-                assert 'clipping' in result['message'].lower() or 'github' in result['message'].lower()
+            # Should return needs_github_connection flag instead of auto-clipping
+            assert result['success'] is False
+            assert result['needs_github_connection'] is True
+            assert 'message' in result
+            # Message should explain options: connect GitHub or clip
+            assert 'github' in result['message'].lower()
 
     def test_user_does_not_own_repo_auto_clips(self, mock_user, agent_state):
         """User with OAuth but doesn't own repo should auto-clip."""
