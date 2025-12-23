@@ -5,7 +5,7 @@
  * Curriculum on left, Ember chat panel on right when active.
  * Accessed via /:username/learn/:slug
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useLearningPathBySlug } from '@/hooks/useLearningPaths';
@@ -609,24 +609,50 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
   const [showLightbox, setShowLightbox] = useState(false);
   const [userRating, setUserRating] = useState<'helpful' | 'not_helpful' | null>(null);
   const [isRating, setIsRating] = useState(false);
+  const [hasStartedLoading, setHasStartedLoading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const content = item.content;
 
-  // Fetch lesson image when expanded for the first time
+  // Start loading image when card comes into view (preload before user clicks)
   useEffect(() => {
-    if (isExpanded && !imageUrl && !imageLoading && !imageError && pathSlug) {
-      setImageLoading(true);
-      getLessonImage(pathSlug, item.order)
-        .then((url) => {
-          if (url) {
-            setImageUrl(url);
-          } else {
-            setImageError(true);
-          }
-        })
-        .catch(() => setImageError(true))
-        .finally(() => setImageLoading(false));
+    if (!pathSlug || hasStartedLoading || imageUrl || imageError) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setHasStartedLoading(true);
+          setImageLoading(true);
+          getLessonImage(pathSlug, item.order)
+            .then((url) => {
+              if (url) {
+                setImageUrl(url);
+              } else {
+                setImageError(true);
+              }
+            })
+            .catch(() => setImageError(true))
+            .finally(() => setImageLoading(false));
+        }
+      },
+      {
+        root: null,
+        // Start loading when card is 500px away from viewport
+        rootMargin: '500px',
+        threshold: 0,
+      }
+    );
+
+    const currentRef = cardRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
     }
-  }, [isExpanded, imageUrl, imageLoading, imageError, pathSlug, item.order]);
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [pathSlug, item.order, hasStartedLoading, imageUrl, imageError]);
 
   if (!content) {
     return null;
@@ -670,7 +696,7 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
   };
 
   return (
-    <div className="glass-strong rounded overflow-hidden">
+    <div ref={cardRef} className="glass-strong rounded overflow-hidden">
       {/* Header - always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
