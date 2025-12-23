@@ -9,6 +9,7 @@ router = DefaultRouter()
 router.register(r'me/learning-paths', views.MyLearningPathsViewSet, basename='my-learning-paths')
 router.register(r'concepts', views.ConceptViewSet, basename='concepts')
 router.register(r'me/concept-mastery', views.UserConceptMasteryViewSet, basename='my-concept-mastery')
+router.register(r'admin/learning/lessons', views.AdminLessonViewSet, basename='admin-lessons')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1358,3 +1358,152 @@ class LessonRatingView(APIView):
                 'createdAt': rating.created_at.isoformat(),
             }
         )
+
+
+# =============================================================================
+# ADMIN LESSON MANAGEMENT
+# =============================================================================
+
+
+class AdminLessonViewSet(viewsets.ModelViewSet):
+    """Admin viewset for managing lesson metadata."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectLearningMetadataSerializer
+
+    def get_queryset(self):
+        """Only admins can access this viewset."""
+        if not self.request.user.is_authenticated or self.request.user.role != 'admin':
+            return ProjectLearningMetadata.objects.none()
+
+        queryset = ProjectLearningMetadata.objects.select_related(
+            'project',
+            'project__user',
+        ).order_by('-is_lesson', '-positive_ratings', '-id')
+
+        # Filter by is_lesson
+        is_lesson = self.request.query_params.get('isLesson')
+        if is_lesson is not None:
+            queryset = queryset.filter(is_lesson=is_lesson.lower() == 'true')
+
+        # Search by title or author
+        search = self.request.query_params.get('search')
+        if search:
+            from django.db.models import Q
+
+            queryset = queryset.filter(
+                Q(project__title__icontains=search) | Q(project__user__username__icontains=search)
+            )
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """List all lesson metadata with pagination."""
+        queryset = self.get_queryset()
+
+        # Pagination
+        page = safe_int(request.query_params.get('page'), 1)
+        page_size = safe_int(request.query_params.get('pageSize'), 20, max_value=100)
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        total = queryset.count()
+        results = list(queryset[start:end])
+
+        serializer = self.get_serializer(results, many=True)
+
+        return Response(
+            {
+                'count': total,
+                'next': f'?page={page + 1}' if end < total else None,
+                'previous': f'?page={page - 1}' if page > 1 else None,
+                'results': serializer.data,
+            }
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        """Update lesson metadata (mark/unmark as lesson, etc)."""
+        instance = self.get_object()
+
+        # Only allow updating specific fields
+        # Note: Frontend axios converts camelCase to snake_case, so we check for snake_case
+        update_data = {}
+
+        if 'is_lesson' in request.data:
+            update_data['is_lesson'] = request.data['is_lesson']
+        if 'complexity_level' in request.data:
+            update_data['complexity_level'] = request.data['complexity_level']
+        if 'learning_summary' in request.data:
+            update_data['learning_summary'] = request.data['learning_summary']
+
+        for field, value in update_data.items():
+            setattr(instance, field, value)
+
+        instance.save()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='bulk-mark')
+    def bulk_mark(self, request):
+        """Bulk mark projects as lessons."""
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'error': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated = ProjectLearningMetadata.objects.filter(id__in=ids).update(is_lesson=True)
+        return Response({'updated': updated})
+
+    @action(detail=False, methods=['post'], url_path='bulk-unmark')
+    def bulk_unmark(self, request):
+        """Bulk unmark projects as lessons."""
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'error': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated = ProjectLearningMetadata.objects.filter(id__in=ids).update(is_lesson=False)
+        return Response({'updated': updated})
+
+    @action(detail=False, methods=['get'], url_path='stats')
+    def stats(self, request):
+        """Get lesson library stats."""
+        from django.db.models import Sum
+
+        # Total lessons
+        total_lessons = ProjectLearningMetadata.objects.filter(is_lesson=True).count()
+
+        # AI-generated vs curated (check content_type_taxonomy)
+        ai_lessons = ProjectLearningMetadata.objects.filter(
+            is_lesson=True,
+            project__content_type_taxonomy__slug='ai-lesson',
+        ).count()
+
+        curated_lessons = total_lessons - ai_lessons
+
+        # Ratings
+        ratings_agg = ProjectLearningMetadata.objects.filter(is_lesson=True).aggregate(
+            total_positive=Sum('positive_ratings'),
+            total_negative=Sum('negative_ratings'),
+        )
+        total_ratings = (ratings_agg['total_positive'] or 0) + (ratings_agg['total_negative'] or 0)
+        avg_rating = 0
+        if total_ratings > 0:
+            avg_rating = (ratings_agg['total_positive'] or 0) / total_ratings
+
+        # Top rated lessons
+        top_rated = (
+            ProjectLearningMetadata.objects.filter(is_lesson=True, positive_ratings__gt=0)
+            .select_related('project', 'project__user')
+            .order_by('-positive_ratings')[:5]
+        )
+
+        return Response(
+            {
+                'totalLessons': total_lessons,
+                'aiGeneratedLessons': ai_lessons,
+                'curatedLessons': curated_lessons,
+                'totalRatings': total_ratings,
+                'averageRating': round(avg_rating, 2),
+                'topRatedLessons': ProjectLearningMetadataSerializer(top_rated, many=True).data,
+            }
+        )

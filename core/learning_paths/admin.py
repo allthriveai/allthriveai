@@ -2,6 +2,8 @@
 
 from django.contrib import admin
 
+from core.projects.models import Project
+
 from .models import (
     Concept,
     ContentGap,
@@ -373,3 +375,62 @@ class SavedLearningPathAdmin(admin.ModelAdmin):
         ),
         ('Timestamps', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    """Admin for Projects with special support for AI-generated lessons."""
+
+    list_display = [
+        'title',
+        'user',
+        'content_type_taxonomy',
+        'difficulty_taxonomy',
+        'is_lesson_display',
+        'is_private',
+        'created_at',
+    ]
+    list_filter = [
+        'content_type_taxonomy',
+        'difficulty_taxonomy',
+        'is_private',
+        'is_archived',
+        'created_at',
+    ]
+    search_fields = ['title', 'description', 'user__username', 'slug']
+    ordering = ['-created_at']
+    raw_id_fields = ['user', 'content_type_taxonomy', 'difficulty_taxonomy']
+    filter_horizontal = ['tools', 'topics']
+    readonly_fields = ['created_at', 'updated_at', 'published_date']
+    list_per_page = 50
+
+    fieldsets = (
+        ('Project Info', {'fields': ('user', 'title', 'slug', 'description')}),
+        (
+            'Classification',
+            {'fields': ('type', 'content_type_taxonomy', 'difficulty_taxonomy', 'tools', 'topics')},
+        ),
+        ('Visibility', {'fields': ('is_private', 'is_showcased', 'is_archived')}),
+        (
+            'Content',
+            {
+                'fields': ('content',),
+                'description': 'JSON content data. For AI lessons, contains lesson_data.',
+            },
+        ),
+        ('Media', {'fields': ('featured_image', 'banner'), 'classes': ('collapse',)}),
+        ('Timestamps', {'fields': ('created_at', 'updated_at', 'published_date'), 'classes': ('collapse',)}),
+    )
+
+    @admin.display(description='Is Lesson', boolean=True)
+    def is_lesson_display(self, obj):
+        """Check if this project is marked as a lesson via ProjectLearningMetadata."""
+        try:
+            metadata = ProjectLearningMetadata.objects.filter(project=obj).first()
+            return metadata.is_lesson if metadata else False
+        except Exception:
+            return False
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related('user', 'content_type_taxonomy', 'difficulty_taxonomy')

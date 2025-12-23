@@ -364,3 +364,130 @@ export async function getLessonImage(pathSlug: string, lessonOrder: number): Pro
     return null;
   }
 }
+
+// =============================================================================
+// ADMIN LESSON MANAGEMENT APIs
+// =============================================================================
+
+/**
+ * Lesson metadata for admin management
+ */
+export interface LessonMetadata {
+  id: number;
+  projectId: number;
+  projectTitle: string;
+  projectSlug: string;
+  authorUsername: string;
+  isLesson: boolean;
+  isLearningEligible: boolean;
+  learningQualityScore: number | null;
+  complexityLevel: string;
+  learningSummary: string;
+  keyTechniques: string[];
+  positiveRatings: number;
+  negativeRatings: number;
+  ratingQualityScore: number;
+  timesUsedForLearning: number;
+}
+
+/**
+ * Lesson rating from a user
+ */
+export interface LessonRating {
+  id: number;
+  projectId: number;
+  rating: 'helpful' | 'not_helpful';
+  feedback: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Paginated response for admin endpoints
+ */
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+/**
+ * Get all lesson metadata for admin (paginated)
+ */
+export async function getAdminLessons(params?: {
+  page?: number;
+  pageSize?: number;
+  isLesson?: boolean;
+  search?: string;
+  ordering?: string;
+}): Promise<PaginatedResponse<LessonMetadata>> {
+  const response = await api.get<PaginatedResponse<LessonMetadata>>(
+    '/admin/learning/lessons/',
+    { params }
+  );
+  return response.data;
+}
+
+/**
+ * Update lesson metadata (mark/unmark as lesson)
+ */
+export async function updateLessonMetadata(
+  metadataId: number,
+  data: Partial<Pick<LessonMetadata, 'isLesson' | 'complexityLevel' | 'learningSummary'>>
+): Promise<LessonMetadata> {
+  const response = await api.patch<LessonMetadata>(
+    `/admin/learning/lessons/${metadataId}/`,
+    data
+  );
+  return response.data;
+}
+
+/**
+ * Bulk mark projects as lessons
+ */
+export async function bulkMarkAsLessons(metadataIds: number[]): Promise<{ updated: number }> {
+  const response = await api.post<{ updated: number }>(
+    '/admin/learning/lessons/bulk-mark/',
+    { ids: metadataIds }
+  );
+  return response.data;
+}
+
+/**
+ * Bulk unmark projects as lessons
+ */
+export async function bulkUnmarkAsLessons(metadataIds: number[]): Promise<{ updated: number }> {
+  const response = await api.post<{ updated: number }>(
+    '/admin/learning/lessons/bulk-unmark/',
+    { ids: metadataIds }
+  );
+  return response.data;
+}
+
+/**
+ * Get lesson ratings for a specific lesson
+ */
+export async function getLessonRatings(projectId: number): Promise<LessonRating[]> {
+  const response = await api.get<LessonRating[]>(
+    `/admin/learning/lessons/${projectId}/ratings/`
+  );
+  return response.data;
+}
+
+/**
+ * Get lesson library stats
+ */
+export interface LessonStats {
+  totalLessons: number;
+  aiGeneratedLessons: number;
+  curatedLessons: number;
+  totalRatings: number;
+  averageRating: number;
+  topRatedLessons: LessonMetadata[];
+}
+
+export async function getLessonStats(): Promise<LessonStats> {
+  const response = await api.get<LessonStats>('/admin/learning/lessons/stats/');
+  return response.data;
+}

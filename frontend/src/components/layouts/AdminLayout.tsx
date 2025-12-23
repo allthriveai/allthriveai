@@ -18,6 +18,7 @@ import {
   RocketLaunchIcon,
   CurrencyDollarIcon,
   ChevronDownIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {
@@ -123,6 +124,11 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       label: 'Ember Flows',
       path: '/admin/ember-flows',
       icon: MapIcon,
+    },
+    {
+      label: 'Lesson Library',
+      path: '/admin/lessons',
+      icon: AcademicCapIcon,
     },
   ];
 

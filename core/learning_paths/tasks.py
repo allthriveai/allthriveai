@@ -21,24 +21,42 @@ User = get_user_model()
 
 # Learning path cover image prompt template
 # Style: Neon glass aesthetic with AllThrive brand colors (emerald/cyan/yellow)
-COVER_IMAGE_PROMPT = """Create a clear, recognizable illustration that visually represents "{title}".
+COVER_IMAGE_PROMPT = """Create an EDUCATIONAL DIAGRAM that teaches the concept of "{title}".
 
-CRITICAL: The image must clearly depict {concept_visualization}.
-Make it obvious what the topic is - avoid being too abstract.
+MANDATORY - THE IMAGE MUST SHOW THIS EXACT VISUAL:
+{concept_visualization}
 
-Style requirements:
-- Dark slate background (#0F172A to #020617 gradient)
-- Primary emerald/green neon accents (#10B981 emerald, #22C55E green, #4ADE80 light green)
-- Secondary cyan/teal highlights (#22D3EE cyan, #14B8A6 teal)
-- Tertiary yellow/amber accents for energy (#EAB308 yellow, #FBBF24 amber)
-- Clean geometric shapes with soft glow effects
-- No text, words, or letters in the image
-- Concrete, recognizable imagery over abstract shapes
-- Glass-like transparency effects with cool undertones
-- Professional and modern feel with an inviting, educational atmosphere
+This is an INSTRUCTIONAL illustration - someone should LEARN something by looking at it.
+The image must be a DIAGRAM or INFOGRAPHIC, not abstract art.
 
-The illustration must visually communicate {theme_hint} in an immediately recognizable way.
-Viewers should understand the topic at a glance.
+DO NOT CREATE:
+- Abstract glowing shapes with no meaning
+- Generic "tech" or "AI" aesthetic
+- Floating geometric patterns
+- Images that could represent any topic
+- Decorative visuals with no educational value
+
+THE IMAGE MUST:
+- Show the actual mechanism/process/concept being taught
+- Help learners build a mental model
+- Include clear visual components that explain how things work
+- Be specific to THIS topic - not generic
+
+Visual style:
+- Dark slate background (#0F172A to #020617)
+- Emerald/green glows (#10B981, #22C55E) for main elements
+- Cyan/teal (#22D3EE, #14B8A6) for highlights
+- Yellow/amber (#EAB308) for emphasis
+- Clean diagram aesthetic
+
+CRITICAL - NO TEXT IN THE IMAGE:
+- Do NOT include any labels, captions, or text
+- The image will be displayed as a small thumbnail
+- Use visual metaphors, colors, and shapes instead of words
+- Icons and symbols are okay, but no readable text
+
+The goal is {theme_hint}.
+A learner should understand the concept from the visual alone.
 """
 
 
@@ -54,104 +72,215 @@ def get_theme_hint(title: str) -> tuple[str, str]:
     """
     title_lower = title.lower()
 
+    # Context window / Tokenization - SPECIFIC diagram
+    if any(kw in title_lower for kw in ['context window', 'context length']):
+        return (
+            'teaching how context windows limit what an LLM can "see"',
+            'A horizontal row of small rectangular blocks representing tokens (like a long document). '
+            'A bright emerald GLOWING FRAME/WINDOW highlights only 5-7 blocks in the center. '
+            'Blocks INSIDE the window are bright and vivid. '
+            'Blocks OUTSIDE the window are dark, faded, almost invisible. '
+            'Cyan arrows on left and right edges show the window can slide. '
+            'NO TEXT OR LABELS - purely visual. '
+            'The contrast between bright inside vs dark outside tells the story.',
+        )
+
+    # Tokenization specifically
+    if 'token' in title_lower and 'context' not in title_lower:
+        return (
+            'teaching how text gets split into tokens',
+            'Show a sentence like "Hello world!" being broken into pieces. '
+            'Draw arrows from the text to individual token boxes below: ["Hello", " world", "!"]. '
+            'Each token box has a number ID underneath (like 15496, 995, 0). '
+            'This teaches: text is split into subword pieces, each with an ID.',
+        )
+
     # Version control / Git themes
     if any(kw in title_lower for kw in ['git', 'version control', 'github', 'gitlab']):
         return (
-            'version control and collaborative development',
-            'branching tree structure with merge points, showing code branches '
-            'diverging and converging like a subway map or river delta',
-        )
-
-    # AI/ML themes
-    if any(kw in title_lower for kw in ['ai', 'machine learning', 'neural', 'deep learning']):
-        return (
-            'artificial intelligence and neural networks',
-            'interconnected neural network nodes with glowing synaptic connections forming a brain-like structure',
+            'teaching how git branching and merging works',
+            'A timeline diagram showing: main branch as a horizontal line with commit dots. '
+            'A feature branch splits off diagonally, has its own commits, then merges back. '
+            'Label the branches "main" and "feature". Show merge point with converging arrows. '
+            'This teaches: code can diverge and later combine.',
         )
 
     # RAG / Vector themes
-    if any(kw in title_lower for kw in ['rag', 'retrieval', 'vector', 'embedding']):
+    if any(kw in title_lower for kw in ['rag', 'retrieval']):
         return (
-            'retrieval augmented generation and semantic search',
-            'documents being transformed into vector points in 3D space, '
-            'with search rays connecting queries to relevant clusters',
+            'teaching how RAG retrieves relevant documents to answer questions',
+            'Three-stage diagram: (1) Documents on left being converted to vectors (show embedding arrows). '
+            '(2) A search query in the middle sending rays to find similar vectors. '
+            '(3) Retrieved documents being fed into an LLM box on the right that outputs an answer. '
+            'This teaches: RAG finds relevant docs then uses them to answer.',
         )
 
-    # LLM/NLP themes
-    if any(kw in title_lower for kw in ['llm', 'gpt', 'prompt', 'language model', 'nlp', 'chatbot']):
+    # Vector / Embedding themes
+    if any(kw in title_lower for kw in ['vector', 'embedding']):
         return (
-            'language models and natural language processing',
-            'flowing text streams being transformed through layers of processing, '
-            'with attention beams highlighting connections between words',
+            'teaching how text becomes numerical vectors for similarity search',
+            'Show text phrases on the left (like "happy dog", "joyful puppy", "sad cat"). '
+            'Arrows transform them into dots in a 2D/3D coordinate space on the right. '
+            'Similar meanings cluster together (happy dog near joyful puppy). '
+            'Draw a distance line between similar items. '
+            'This teaches: similar meanings = nearby vectors.',
+        )
+
+    # LLM themes
+    if any(kw in title_lower for kw in ['llm', 'large language model']):
+        return (
+            'teaching the basic input/output flow of language models',
+            'Show a simple flow diagram: User prompt (speech bubble) → LLM box (labeled "GPT/Claude") → Response text. '
+            'Inside the LLM box, show layers or a transformer icon. '
+            'Add arrows showing the flow from input to output. '
+            'This teaches: you give text in, model gives text out.',
+        )
+
+    # Prompt engineering themes
+    if any(kw in title_lower for kw in ['prompt', 'prompting']):
+        return (
+            'teaching how prompt structure affects LLM output',
+            'Side-by-side comparison: Left shows a vague prompt → mediocre output. '
+            'Right shows a structured prompt with [Role] [Context] [Task] sections → excellent output. '
+            'Use checkmarks and X marks to show quality difference. '
+            'This teaches: how you write prompts matters.',
         )
 
     # Agent themes
     if any(kw in title_lower for kw in ['agent', 'autonomous', 'agentic']):
         return (
-            'AI agents and autonomous systems',
-            'interconnected agent nodes with tool connections radiating outward, showing planning and execution loops',
+            'teaching how AI agents use tools in a loop',
+            'Circular flow diagram: LLM Brain → "Think: I need to search" → Tool: Web Search → '
+            'Results return to LLM → "Think: Now I can answer" → Final Response. '
+            'Show the loop with arrows. Include tool icons (search, calculator, code). '
+            'This teaches: agents think, act, observe, repeat.',
+        )
+
+    # Neural network / Deep learning
+    if any(kw in title_lower for kw in ['neural', 'deep learning']):
+        return (
+            'teaching how neural networks process information through layers',
+            'Classic neural network diagram: Input nodes on left, 2-3 hidden layers in middle, output on right. '
+            'Show connections between nodes. Highlight one path through the network. '
+            'Label: Input Layer, Hidden Layers, Output Layer. '
+            'This teaches: data flows through layers that transform it.',
+        )
+
+    # AI/ML general themes
+    if any(kw in title_lower for kw in ['ai', 'machine learning', 'ml ']):
+        return (
+            'teaching the supervised learning feedback loop',
+            'Flow diagram: Training Data → Model → Predictions. '
+            'Show comparison with "Correct Answers" and feedback arrow back to model. '
+            'Include a graph showing error decreasing over time. '
+            'This teaches: models learn by comparing predictions to truth.',
+        )
+
+    # Attention mechanism
+    if 'attention' in title_lower:
+        return (
+            'teaching how attention lets models focus on relevant words',
+            'Show a sentence where one word needs to understand another distant word. '
+            'Draw attention lines of varying thickness connecting related words. '
+            'Example: "The cat sat on the mat. It was soft." - thick line from "It" to "mat". '
+            'This teaches: attention weights show which words matter for understanding each word.',
         )
 
     # Programming themes
     if any(kw in title_lower for kw in ['python', 'javascript', 'coding', 'programming', 'typescript']):
         return (
-            'code and software development',
-            'abstract code blocks and function calls flowing through a pipeline, with brackets and syntax structures',
+            'teaching the programming workflow',
+            'Show a code editor with simple code → arrow to terminal/console output. '
+            'Include a bug icon with arrow to debugger, then fixed code. '
+            'This teaches: write code, run it, fix errors, repeat.',
         )
 
     # Data themes
-    if any(kw in title_lower for kw in ['data', 'analytics', 'database', 'sql', 'pandas']):
+    if any(kw in title_lower for kw in ['data', 'analytics', 'database', 'sql']):
         return (
-            'data analysis and insights',
-            'data tables transforming into charts and visualizations, '
-            'with data points flowing through transformation pipelines',
+            'teaching data transformation pipelines',
+            'Flow from raw messy data → cleaning step → structured table → chart/insight. '
+            'Show each transformation as a step with arrow. '
+            'This teaches: raw data needs processing to become useful.',
+        )
+
+    # API themes
+    if any(kw in title_lower for kw in ['api', 'rest', 'endpoint']):
+        return (
+            'teaching how APIs enable communication between systems',
+            'Client/Server diagram: App icon sends "Request" arrow to Server. '
+            'Server processes and sends "Response" arrow back. '
+            'Show JSON payload example between them. '
+            'This teaches: APIs are request/response communication.',
         )
 
     # Web themes
-    if any(kw in title_lower for kw in ['web', 'frontend', 'backend', 'api', 'react', 'next']):
+    if any(kw in title_lower for kw in ['web', 'frontend', 'backend', 'react', 'next']):
         return (
-            'web technology and connectivity',
-            'interconnected web of API endpoints and components, '
-            'with request/response flows between client and server nodes',
+            'teaching frontend/backend architecture',
+            'Split diagram: Browser (Frontend) on left with UI mockup. '
+            'Server (Backend) on right with database. '
+            'Arrows showing HTTP requests/responses between them. '
+            'This teaches: frontend handles UI, backend handles data.',
         )
 
     # Cloud themes
     if any(kw in title_lower for kw in ['cloud', 'aws', 'azure', 'kubernetes', 'docker']):
         return (
-            'cloud infrastructure and scalability',
-            'layered cloud infrastructure with containers and services '
-            'connected by network paths, showing scaling and deployment',
+            'teaching cloud deployment concepts',
+            'Show local computer → upload arrow → cloud region with multiple server boxes. '
+            'Include auto-scaling indicator (1x → 3x servers). '
+            'This teaches: deploy once, scale automatically.',
         )
 
     # Security themes
     if any(kw in title_lower for kw in ['security', 'cyber', 'encryption', 'auth']):
         return (
-            'cybersecurity and protection',
-            'shield-like structures with encryption key patterns and secure lock mechanisms protecting data flows',
+            'teaching encryption and secure communication',
+            'Show: Plain text → Key + Lock icon → Encrypted gibberish → Key + Unlock → Plain text again. '
+            'Draw the flow with arrows through each stage. '
+            'This teaches: encryption scrambles data, only the key holder can read it.',
         )
 
-    # API / Pricing / Cost themes (check before tokenization since "token pricing" should match here)
-    if any(kw in title_lower for kw in ['pricing', 'cost', 'billing', 'budget', 'usage', 'api key']):
+    # Pricing / Cost themes
+    if any(kw in title_lower for kw in ['pricing', 'cost', 'billing', 'budget', 'usage']):
         return (
-            'API pricing and cost management',
-            'layered pricing tiers with tokens flowing through meters and gauges, '
-            'showing usage dashboards with charts, coin/credit symbols, and API request counters',
+            'teaching how API pricing works',
+            'Show: API request with token count → meter/gauge → cost in dollars. '
+            'Include a simple pricing table: "1K tokens = $0.01". '
+            'Show input tokens + output tokens = total cost formula. '
+            'This teaches: more tokens = more cost.',
         )
 
-    # Context window / Tokenization
-    if any(kw in title_lower for kw in ['context window', 'token', 'attention']):
+    # Fine-tuning themes
+    if any(kw in title_lower for kw in ['fine-tun', 'finetun', 'training']):
         return (
-            'context windows and attention mechanisms',
-            'sliding window moving across a sequence of tokens, '
-            'with attention weights visualized as connection strengths',
+            'teaching how fine-tuning customizes a model',
+            'Show: Base Model + Custom Training Data → arrow → Fine-tuned Model. '
+            'The fine-tuned model has a special badge/color indicating specialization. '
+            'Include example: "General LLM + Medical Data = Medical Expert LLM". '
+            'This teaches: fine-tuning specializes general models.',
+        )
+
+    # Transformer themes
+    if 'transformer' in title_lower:
+        return (
+            'teaching the transformer architecture',
+            'Block diagram showing: Input Embedding → Attention Block → Feed Forward → Output. '
+            'Show multiple stacked layers with arrows. '
+            'Highlight the Attention block as the key innovation. '
+            'This teaches: transformers stack attention and feed-forward layers.',
         )
 
     # Default - try to extract the main concept
     main_concept = title.replace('Learning Path', '').replace('learning path', '').strip()
     return (
-        f'the concept of {main_concept}',
-        f'abstract geometric representation of {main_concept} concepts '
-        'with interconnected elements showing relationships and flow',
+        f'teaching the core concept of {main_concept}',
+        f'Create a simple educational diagram that explains {main_concept}. '
+        f'Show the key components and how they connect/interact. '
+        f'Use arrows to show flow or relationships. '
+        f'Include simple labels. Make it look like something from a textbook. '
+        f'This teaches: the fundamental idea behind {main_concept}.',
     )
 
 
@@ -264,26 +393,37 @@ def generate_learning_path_cover(self, saved_path_id: int, user_id: int):
 
 
 # Lesson image prompt template for educational illustrations
-LESSON_IMAGE_PROMPT = """Create an educational illustration that helps explain: "{lesson_title}"
+LESSON_IMAGE_PROMPT = """Create an EDUCATIONAL DIAGRAM that teaches: "{lesson_title}"
 
-Key concepts to visualize: {key_concepts}
+The diagram must visualize these specific concepts: {key_concepts}
 
-This illustration should:
-1. Visually represent the core concept in an intuitive way
-2. Help learners build a mental model of how this works
-3. Show relationships between components or ideas
-4. Be instructive - someone should learn from looking at it
+REQUIREMENTS - This must be an instructional diagram, not abstract art:
+1. Show the actual mechanism/process/concept step by step
+2. Use arrows to show flow, cause-and-effect, or relationships
+3. Include labeled components so viewers understand what each part represents
+4. Make it look like a diagram from a textbook or technical documentation
 
-Summary: {summary}
+Context: {summary}
 
-Style requirements:
-- Dark background (#0F172A to #020617 gradient)
-- Primary emerald/green neon accents (#10B981 emerald, #22C55E green)
-- Secondary cyan/teal highlights (#22D3EE cyan, #14B8A6 teal)
-- Clean educational diagram style
-- Clear visual hierarchy with labeled components where helpful
-- No text unless essential for understanding the concept
-- Professional and modern educational aesthetic
+DO NOT CREATE:
+- Abstract glowing shapes
+- Generic "tech" imagery
+- Decorative patterns
+- Anything that could represent multiple topics
+
+THE DIAGRAM MUST:
+- Be specific to "{lesson_title}"
+- Teach something concrete
+- Help build a mental model
+- Use visual metaphors that clarify the concept
+
+Style:
+- Dark background (#0F172A to #020617)
+- Emerald/green (#10B981, #22C55E) for main elements
+- Cyan/teal (#22D3EE, #14B8A6) for highlights
+- Yellow (#EAB308) for emphasis points
+- Clean diagram/infographic aesthetic
+- Labels and arrows where they aid understanding
 """
 
 
