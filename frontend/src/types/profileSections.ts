@@ -111,7 +111,10 @@ export type ProfileSectionType =
   | 'featured_content'   // Curated content for curation bots
   | 'battle_stats'       // Win/loss record for battle bots
   | 'recent_battles'     // Battle history for battle bots
-  | 'custom';            // Free-form blocks
+  | 'custom'             // Free-form blocks
+  // Legacy types (deprecated, kept for backwards compatibility)
+  | 'hero'               // @deprecated - Header now handles profile display
+  | 'stats';             // @deprecated - Header now shows XP/level/achievements
 
 // ============================================================================
 // ABOUT SECTION
@@ -472,6 +475,23 @@ export const PROFILE_SECTION_METADATA: Record<ProfileSectionType, ProfileSection
     icon: 'PlusCircleIcon',
     defaultVisible: false,
     singleton: false,
+  },
+  // Legacy types - deprecated, kept for backwards compatibility
+  hero: {
+    type: 'hero',
+    title: 'Hero (Deprecated)',
+    description: 'Legacy hero section - functionality moved to profile header',
+    icon: 'UserIcon',
+    defaultVisible: false,
+    singleton: true,
+  },
+  stats: {
+    type: 'stats',
+    title: 'Stats (Deprecated)',
+    description: 'Legacy stats section - functionality moved to profile header',
+    icon: 'ChartBarIcon',
+    defaultVisible: false,
+    singleton: true,
   },
 };
 
