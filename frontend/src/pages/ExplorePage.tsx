@@ -409,9 +409,9 @@ export function ExplorePage() {
       {
         root: null, // Use viewport
         threshold: 0,
-        // Large rootMargin ensures we start loading well before user reaches the bottom
+        // Very large rootMargin ensures we start loading well before user reaches the bottom
         // This prevents gaps in the feed by preloading content early
-        rootMargin: '1500px'
+        rootMargin: '3000px'
       }
     );
 
@@ -431,15 +431,15 @@ export function ExplorePage() {
   // This ensures content is ready before user scrolls to it
   useEffect(() => {
     if (activeTab === 'profiles') {
-      // For profiles: preload if we have less than 2 pages worth and more available
+      // For profiles: preload if we have less than 3 pages worth and more available
       const totalProfiles = allProfiles.length;
-      if (totalProfiles > 0 && totalProfiles < 60 && hasNextProfiles && !isFetchingNextProfiles) {
+      if (totalProfiles > 0 && totalProfiles < 90 && hasNextProfiles && !isFetchingNextProfiles) {
         fetchNextProfiles();
       }
     } else {
-      // For projects: preload if we have less than 2 pages worth and more available
+      // For projects: preload if we have less than 3 pages worth and more available
       const totalProjects = allProjects.length;
-      if (totalProjects > 0 && totalProjects < 60 && hasNextPage && !isFetchingNextPage) {
+      if (totalProjects > 0 && totalProjects < 90 && hasNextPage && !isFetchingNextPage) {
         fetchNextPage();
       }
     }
