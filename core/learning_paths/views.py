@@ -1278,14 +1278,14 @@ class ExploreLessonsView(APIView):
                         'path_title': path.title,
                         'username': path.user.username,
                         'user_full_name': path.user.get_full_name() or path.user.username,
-                        'user_avatar_url': path.user.avatar_url if hasattr(path.user, 'avatar_url') else None,
+                        'user_avatar_url': getattr(path.user, 'avatar_url', None),
                         'lesson_order': lesson_order,
                         'published_at': path.published_at,
                     }
                 )
 
-        # Simple pagination (return first 50 for now)
-        page = int(request.GET.get('page', 1))
+        # Simple pagination
+        page = safe_int(request.GET.get('page', 1), default=1, max_value=100)
         page_size = 20
         start = (page - 1) * page_size
         end = start + page_size

@@ -62,7 +62,6 @@ export function LessonPreviewTrayProvider({ children }: LessonPreviewTrayProvide
         isOpen={isOpen}
         onClose={closeLessonPreview}
         lesson={currentLesson}
-        feedScrollContainerRef={feedScrollContainerRef}
       />
     </LessonPreviewTrayContext.Provider>
   );

@@ -14,7 +14,6 @@ interface LessonPreviewTrayProps {
   isOpen: boolean;
   onClose: () => void;
   lesson: PublicLesson | null;
-  feedScrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTrayProps) {
