@@ -517,11 +517,11 @@ export function SidebarChatLayout({
                     className="w-10 h-10 rounded-full object-cover"
                   />
                   <div>
-                    <h2 className="font-semibold text-slate-900 dark:text-white">Ember</h2>
+                    <h2 className="font-semibold text-slate-900 dark:text-white">AllThrive Chat</h2>
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-green-500 dark:bg-green-400' : 'bg-amber-500 dark:bg-amber-400 animate-pulse'}`} />
                       <span className="text-slate-500 dark:text-slate-400">
-                        {state.isConnected ? 'Online' : 'Connecting...'}
+                        Ember {state.isConnected ? '· Online' : '· Connecting...'}
                       </span>
                     </div>
                   </div>
