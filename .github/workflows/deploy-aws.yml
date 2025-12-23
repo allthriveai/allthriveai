@@ -772,6 +772,40 @@ jobs:
             echo "⚠️ AI tagging had issues (exit code: $EXIT_CODE) - continuing anyway"
           fi
 
+      - name: Backfill platform analytics stats
+        run: |
+          echo "📊 Backfilling platform daily stats for analytics dashboard..."
+
+          # Backfill last 30 days of platform stats (including today)
+          # This populates PlatformDailyStats for the admin analytics dashboard
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["python","manage.py","backfill_platform_stats","--days","30","--today"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "📦 Started platform stats backfill: $TASK_ARN"
+
+          # Wait for completion
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Platform stats backfill complete"
+          else
+            echo "⚠️ Platform stats backfill had issues (exit code: $EXIT_CODE) - continuing anyway"
+          fi
+
       - name: Setup Weaviate collections (idempotent)
         run: |
           echo "🔍 Setting up Weaviate collections..."

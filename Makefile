@@ -330,6 +330,20 @@ backfill-ai-tags-sync-weaviate:
 	@echo "Backfilling AI tags and syncing to Weaviate..."
 	docker-compose exec web python manage.py backfill_ai_tags --sync-weaviate --limit 100
 
+# Platform analytics backfill commands
+backfill-platform-stats:
+	@echo "Backfilling platform daily stats (last 30 days)..."
+	docker-compose exec web python manage.py backfill_platform_stats --days 30 --today
+
+backfill-engagement-stats:
+	@echo "Backfilling engagement daily stats (last 30 days)..."
+	docker-compose exec web python manage.py backfill_engagement_stats --days 30
+
+backfill-all-stats:
+	@echo "Backfilling all platform analytics..."
+	docker-compose exec web python manage.py backfill_platform_stats --days 90 --today
+	docker-compose exec web python manage.py backfill_engagement_stats --days 90
+
 add-tool:
 	@echo "Adding new tool to directory..."
 ifdef WEBSITE
@@ -1029,6 +1043,20 @@ aws-seed-all:
 aws-backfill-ai-tags:
 	@echo "Backfilling AI taxonomy tags on AWS (async)..."
 	@make aws-run-command CMD="backfill_ai_tags --async --limit 500"
+
+# Platform analytics on AWS
+aws-backfill-platform-stats:
+	@echo "Backfilling platform daily stats on AWS (last 30 days)..."
+	@make aws-run-command CMD="backfill_platform_stats --days 30 --today"
+
+aws-backfill-engagement-stats:
+	@echo "Backfilling engagement daily stats on AWS (last 30 days)..."
+	@make aws-run-command CMD="backfill_engagement_stats --days 30"
+
+aws-backfill-all-stats:
+	@echo "Backfilling all platform analytics on AWS..."
+	@make aws-run-command CMD="backfill_platform_stats --days 90 --today"
+	@make aws-run-command CMD="backfill_engagement_stats --days 90"
 
 # Sync user projects from local to AWS production
 # Step 1: Export local projects to S3 (run locally)
