@@ -11,6 +11,7 @@ from django.core.management.base import BaseCommand
 from core.games.config import GAMES
 from core.projects.models import Project
 from core.taxonomy.models import Taxonomy
+from core.taxonomy.topic_service import ensure_topics_in_taxonomy
 from core.users.models import User
 
 # Map game slugs to their promo image paths
@@ -60,6 +61,23 @@ class Command(BaseCommand):
             },
         )
 
+        # Get difficulty taxonomies for mapping
+        difficulty_map = {}
+        for diff_slug, diff_name in [
+            ('beginner', 'Beginner'),
+            ('intermediate', 'Intermediate'),
+            ('advanced', 'Advanced'),
+        ]:
+            diff_taxonomy, _ = Taxonomy.objects.get_or_create(
+                taxonomy_type='difficulty',
+                slug=diff_slug,
+                defaults={
+                    'name': diff_name,
+                    'is_active': True,
+                },
+            )
+            difficulty_map[diff_slug] = diff_taxonomy
+
         if options['reset']:
             # Delete existing game projects
             deleted_count, _ = Project.objects.filter(
@@ -74,6 +92,11 @@ class Command(BaseCommand):
         for game in GAMES:
             slug = game['slug']
             promo_image = GAME_PROMO_IMAGES.get(slug, '')
+            difficulty = game.get('difficulty', 'beginner')
+            topic_tags = game.get('topic_tags', [])
+
+            # Ensure topics exist in taxonomy
+            topics = ensure_topics_in_taxonomy(topic_tags)
 
             # Check if project already exists
             existing = Project.objects.filter(
@@ -85,17 +108,19 @@ class Command(BaseCommand):
                 'title': game['title'],
                 'description': game['description'],
                 'type': Project.ProjectType.GAME,
+                'banner_url': promo_image,  # Used in explore feed cards
                 'featured_image_url': promo_image,
                 'is_showcased': True,
                 'is_private': False,
                 'is_archived': False,
                 'is_promoted': True,  # Show games prominently in feed
+                'difficulty_taxonomy': difficulty_map.get(difficulty),
                 'content': {
-                    'game_url': game['url'],
-                    'game_id': game['game_id'],
-                    'difficulty': game['difficulty'],
-                    'learning_outcomes': game['learning_outcomes'],
-                    'topic_tags': game['topic_tags'],
+                    'gameUrl': game['url'],
+                    'gameId': game['game_id'],
+                    'difficulty': difficulty,
+                    'learningOutcomes': game['learning_outcomes'],
+                    'topicTags': topic_tags,
                     'heroDisplayMode': 'image',
                 },
             }
@@ -106,8 +131,11 @@ class Command(BaseCommand):
                     setattr(existing, key, value)
                 existing.save()
                 existing.categories.add(game_content_type)
+                # Add topics
+                if topics:
+                    existing.topics.set(topics)
                 updated_count += 1
-                self.stdout.write(f'  Updated: @{username}/{existing.slug}')
+                self.stdout.write(f'  Updated: @{username}/{existing.slug} with {len(topics)} topics')
             else:
                 # Create new project
                 project = Project.objects.create(
@@ -116,8 +144,11 @@ class Command(BaseCommand):
                     **project_data,
                 )
                 project.categories.add(game_content_type)
+                # Add topics
+                if topics:
+                    project.topics.set(topics)
                 created_count += 1
-                self.stdout.write(f'  Created: @{username}/{project.slug}')
+                self.stdout.write(f'  Created: @{username}/{project.slug} with {len(topics)} topics')
 
         self.stdout.write(
             self.style.SUCCESS(

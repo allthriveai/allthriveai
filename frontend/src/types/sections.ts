@@ -452,7 +452,7 @@ export function createDefaultSectionContent(type: SectionType): SectionContent {
       return {
         url: '',
         platform: 'youtube',
-        video_id: '',
+        videoId: '',
       } as VideoSectionContent;
     case 'architecture':
       return {

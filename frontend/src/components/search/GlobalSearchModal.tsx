@@ -304,7 +304,7 @@ export function GlobalSearchModal() {
                   onResultClick={handleResultClick}
                   renderResult={(result: ToolSearchResult, isSelected) => {
                     const logoUrl = result.logoUrl;
-                    const title = result.title || result.name;
+                    const title = result.title;
                     const hasFreeTier = result.hasFreeTier;
                     return (
                       <div className="flex items-center gap-3 min-w-0">

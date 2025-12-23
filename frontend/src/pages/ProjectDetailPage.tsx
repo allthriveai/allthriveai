@@ -147,7 +147,10 @@ export default function ProjectDetailPage() {
     }
   }, [project, username, projectSlug]);
 
-  const isOwner = isAuthenticated && user && project && user.username.toLowerCase() === project.username.toLowerCase();
+  // Allow editing if user is the project owner OR is an admin
+  const isProjectOwner = isAuthenticated && user && project && user.username.toLowerCase() === project.username.toLowerCase();
+  const isAdmin = isAuthenticated && user && (user.role === 'admin' || user.isAdminRole);
+  const isOwner = isProjectOwner || isAdmin;
 
   // Handler functions for ProjectContext
   const handleDelete = async () => {

@@ -54,7 +54,7 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
 
   // Variant-specific settings
   const GRID_SIZE = isMini ? 12 : 15;
-  const INITIAL_SPEED = isMini ? 160 : 180;
+  const INITIAL_SPEED = isMini ? 190 : 210; // Higher = slower (milliseconds per move)
   const HIGH_SCORE_THRESHOLD = isMini ? 15 : 30;
 
   // Auth and points

@@ -17,6 +17,8 @@ interface ChatGameCardProps {
   };
   onPlayAgain?: () => void;
   onTryAnother?: () => void;
+  /** Hide the "Try Another" button (e.g., when embedded in lesson plans) */
+  hideTryAnother?: boolean;
 }
 
 // Cache for lazy-loaded components
@@ -31,7 +33,7 @@ const componentCache = new Map<PlayableGameType, ComponentType<MiniGameProps>>()
  *
  * Uses the game registry for scalability - add new games to gameRegistry.ts
  */
-export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, onTryAnother }: ChatGameCardProps) {
+export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, onTryAnother, hideTryAnother }: ChatGameCardProps) {
   // Resolve 'random' to an actual game
   const [currentGame, setCurrentGame] = useState<PlayableGameType>(() => {
     if (initialGameType === 'random') {
@@ -177,7 +179,7 @@ export function ChatGameCard({ gameType: initialGameType, config, onPlayAgain, o
                   <FontAwesomeIcon icon={faRotateRight} className="w-3 h-3" />
                   Play Again
                 </button>
-                {enabledGames.length > 1 && (
+                {enabledGames.length > 1 && !hideTryAnother && (
                   <button
                     onClick={handleTryAnother}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg transition-colors"

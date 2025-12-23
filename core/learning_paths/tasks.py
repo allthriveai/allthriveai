@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 # Learning path cover image prompt template
-# Style: Neon glass aesthetic with AllThrive brand colors (emerald/cyan/yellow)
+# Style: Neon glass aesthetic with AllThrive brand colors (emerald/cyan/amber)
+# Colors rotate between green, cyan, and amber for variety
 COVER_IMAGE_PROMPT = """Create an EDUCATIONAL DIAGRAM that teaches the concept of "{title}".
 
 MANDATORY - THE IMAGE MUST SHOW THIS EXACT VISUAL:
@@ -44,9 +45,7 @@ THE IMAGE MUST:
 
 Visual style:
 - Dark slate background (#0F172A to #020617)
-- Emerald/green glows (#10B981, #22C55E) for main elements
-- Cyan/teal (#22D3EE, #14B8A6) for highlights
-- Yellow/amber (#EAB308) for emphasis
+{color_scheme}
 - Clean diagram aesthetic
 
 CRITICAL - NO TEXT IN THE IMAGE:
@@ -58,6 +57,28 @@ CRITICAL - NO TEXT IN THE IMAGE:
 The goal is {theme_hint}.
 A learner should understand the concept from the visual alone.
 """
+
+# Color schemes that rotate for visual variety
+COLOR_SCHEMES = [
+    # Green primary
+    (
+        '- Emerald/green glows (#10B981, #22C55E) for main elements\n'
+        '- Cyan/teal (#22D3EE, #14B8A6) for highlights\n'
+        '- Yellow/amber (#EAB308) for emphasis'
+    ),
+    # Cyan primary
+    (
+        '- Cyan/teal (#22D3EE, #14B8A6) for main elements\n'
+        '- Emerald/green (#10B981, #22C55E) for highlights\n'
+        '- Yellow/amber (#EAB308) for emphasis'
+    ),
+    # Amber primary
+    (
+        '- Yellow/amber (#EAB308, #F59E0B) for main elements\n'
+        '- Emerald/green (#10B981, #22C55E) for highlights\n'
+        '- Cyan/teal (#22D3EE, #14B8A6) for emphasis'
+    ),
+]
 
 
 def get_theme_hint(title: str) -> tuple[str, str]:
@@ -316,10 +337,13 @@ def generate_learning_path_cover(self, saved_path_id: int, user_id: int):
 
         # Build prompt with theme hint and concept visualization
         theme_hint, concept_visualization = get_theme_hint(saved_path.title)
+        # Rotate color scheme based on path ID for visual variety
+        color_scheme = COLOR_SCHEMES[saved_path_id % len(COLOR_SCHEMES)]
         prompt = COVER_IMAGE_PROMPT.format(
             title=saved_path.title,
             theme_hint=theme_hint,
             concept_visualization=concept_visualization,
+            color_scheme=color_scheme,
         )
 
         # Generate image using Gemini
