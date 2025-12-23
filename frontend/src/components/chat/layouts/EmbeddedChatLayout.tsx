@@ -229,6 +229,8 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
   const projectPreviewTray = useProjectPreviewTraySafe();
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [excitedFeatures, setExcitedFeatures] = useState<string[]>([]);
+  // Random seed that changes on each mount to rotate feeling pills
+  const [pillSeed] = useState(() => Math.random());
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const triggerFileSelectRef = useRef<(() => void) | null>(null);
@@ -459,7 +461,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
     // Shuffle the final selection for visual variety
     return shuffleArray(topOptions);
-  }, [excitedFeatures, hasPersonalized, hasAvatar, isNewUser]);
+  }, [excitedFeatures, hasPersonalized, hasAvatar, isNewUser, pillSeed]);
 
   // Show feeling pills with animation
   const [showPills, setShowPills] = useState(false);
@@ -806,7 +808,12 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                   {!state.onboarding?.isActive && (
                     <div className="flex flex-col justify-start">
                       <div className="flex items-end">
-                        <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm">
+                        <img
+                          src="/ember-avatar.png"
+                          alt="Ember"
+                          className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover"
+                        />
+                        <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-br-sm">
                           <div className="text-lg text-slate-700 dark:text-slate-200">
                             <span className="whitespace-pre-wrap">{typedGreeting}</span>
                             {!isTypingComplete && (
@@ -814,11 +821,6 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                             )}
                           </div>
                         </div>
-                        <img
-                          src="/ember-avatar.png"
-                          alt="Ember"
-                          className="w-12 h-12 rounded-full flex-shrink-0 ml-4 object-cover"
-                        />
                       </div>
                     </div>
                   )}

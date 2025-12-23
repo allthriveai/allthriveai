@@ -261,3 +261,111 @@ def generate_learning_path_cover(self, saved_path_id: int, user_id: int):
         except self.MaxRetriesExceededError:
             logger.error(f'Cover image generation failed after max retries: {exc}')
             return {'status': 'error', 'reason': 'max_retries_exceeded'}
+
+
+# Lesson image prompt template for educational illustrations
+LESSON_IMAGE_PROMPT = """Create an educational illustration that helps explain: "{lesson_title}"
+
+Key concepts to visualize: {key_concepts}
+
+This illustration should:
+1. Visually represent the core concept in an intuitive way
+2. Help learners build a mental model of how this works
+3. Show relationships between components or ideas
+4. Be instructive - someone should learn from looking at it
+
+Summary: {summary}
+
+Style requirements:
+- Dark background (#0F172A to #020617 gradient)
+- Primary emerald/green neon accents (#10B981 emerald, #22C55E green)
+- Secondary cyan/teal highlights (#22D3EE cyan, #14B8A6 teal)
+- Clean educational diagram style
+- Clear visual hierarchy with labeled components where helpful
+- No text unless essential for understanding the concept
+- Professional and modern educational aesthetic
+"""
+
+
+def generate_lesson_image(lesson: dict, path_title: str, user_id: int | None = None) -> str | None:
+    """
+    Generate an educational illustration for an AI lesson.
+
+    Args:
+        lesson: Curriculum item with 'title' and 'content' (AILessonContent)
+        path_title: Title of the learning path for context
+        user_id: User ID for AI usage tracking
+
+    Returns:
+        URL to the generated image, or None on failure
+    """
+    content = lesson.get('content', {})
+
+    # Build prompt from lesson content
+    key_concepts = content.get('key_concepts', content.get('keyConcepts', []))
+    summary = content.get('summary', '')
+
+    if not key_concepts:
+        # Fall back to extracting from explanation if no key concepts
+        key_concepts = [lesson.get('title', 'this concept')]
+
+    prompt = LESSON_IMAGE_PROMPT.format(
+        lesson_title=lesson.get('title', 'AI Lesson'),
+        key_concepts=', '.join(key_concepts) if isinstance(key_concepts, list) else str(key_concepts),
+        summary=summary or f"A lesson about {lesson.get('title', 'AI concepts')}",
+    )
+
+    try:
+        start_time = time.time()
+        ai = AIProvider(provider='gemini', user_id=user_id)
+        image_bytes, mime_type, text_response = ai.generate_image(prompt=prompt)
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        if not image_bytes:
+            logger.warning(f'Lesson image generation returned no image: {text_response}')
+            return None
+
+        # Upload to S3/MinIO
+        filename = f'lesson-{uuid.uuid4().hex[:8]}.png'
+        storage = StorageService()
+        image_url, upload_error = storage.upload_file(
+            file_data=image_bytes,
+            filename=filename,
+            folder='lesson-images',
+            content_type=mime_type or 'image/png',
+            is_public=True,
+        )
+
+        if upload_error or not image_url:
+            logger.error(f'Failed to upload lesson image: {upload_error}')
+            return None
+
+        logger.info(f'Lesson image generated and uploaded: {image_url}')
+
+        # Track AI usage
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id)
+                AIUsageTracker.track_usage(
+                    user=user,
+                    feature='lesson_image',
+                    provider='gemini',
+                    model='gemini-2.0-flash',
+                    input_tokens=len(prompt) // 4,
+                    output_tokens=len(text_response) // 4 if text_response else 0,
+                    latency_ms=latency_ms,
+                    status='success',
+                    request_metadata={
+                        'lesson_title': lesson.get('title'),
+                        'path_title': path_title,
+                        'image_size_bytes': len(image_bytes),
+                    },
+                )
+            except Exception as tracking_error:
+                logger.warning(f'Failed to track lesson image generation usage: {tracking_error}')
+
+        return image_url
+
+    except Exception as exc:
+        logger.error(f'Lesson image generation failed: {exc}', exc_info=True)
+        return None

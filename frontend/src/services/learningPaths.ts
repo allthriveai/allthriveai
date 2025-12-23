@@ -213,12 +213,36 @@ export interface AILessonContent {
 }
 
 /**
+ * Project info for related projects section
+ */
+export interface RelatedProject {
+  id: string;
+  title: string;
+  slug: string;
+  username: string;
+  contentType: string;
+  thumbnail: string;
+  url: string;
+  difficulty: string;
+  description: string;
+}
+
+/**
  * Curriculum item in a generated learning path
  * Can be either curated content (video, article, etc.) or AI-generated lesson
  */
 export interface CurriculumItem {
   order: number;
-  type: 'tool' | 'video' | 'article' | 'quiz' | 'game' | 'code-repo' | 'ai_lesson' | 'other';
+  type:
+    | 'tool'
+    | 'video'
+    | 'article'
+    | 'quiz'
+    | 'game'
+    | 'code-repo'
+    | 'ai_lesson'
+    | 'related_projects'
+    | 'other';
   title: string;
   // For existing curated content
   projectId?: number;
@@ -232,6 +256,8 @@ export interface CurriculumItem {
   difficulty?: string;
   /** True if this item was AI-generated, false/undefined for curated content */
   generated?: boolean;
+  /** For related_projects type - list of project cards to display */
+  projects?: RelatedProject[];
 }
 
 /**
@@ -322,4 +348,19 @@ export async function activateSavedPath(slug: string): Promise<SavedLearningPath
  */
 export async function deleteSavedPath(slug: string): Promise<void> {
   await api.delete(`/me/saved-paths/${slug}/`);
+}
+
+/**
+ * Get or generate an AI illustration for a lesson
+ * Returns the image URL on success, null on failure
+ */
+export async function getLessonImage(pathSlug: string, lessonOrder: number): Promise<string | null> {
+  try {
+    const response = await api.get<{ imageUrl: string }>(
+      `/me/saved-paths/${pathSlug}/lessons/${lessonOrder}/image/`
+    );
+    return response.data.imageUrl;
+  } catch {
+    return null;
+  }
 }

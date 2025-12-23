@@ -147,7 +147,7 @@ class CurriculumItem(TypedDict, total=False):
     """Structure of a curriculum item."""
 
     order: int
-    type: str  # 'ai_lesson', 'video', 'article', 'quiz', 'game', 'code-repo', 'tool'
+    type: str  # 'ai_lesson', 'video', 'article', 'quiz', 'game', 'code-repo', 'tool', 'related_projects'
     title: str
     content: AILessonContent | None
     estimated_minutes: int
@@ -159,6 +159,8 @@ class CurriculumItem(TypedDict, total=False):
     quiz_id: int | None
     game_slug: str | None
     url: str | None
+    # For related_projects type - list of project info
+    projects: list[dict] | None
 
 
 # Style-specific prompt instructions
@@ -388,6 +390,9 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
                 curriculum.append(lesson)
                 order += 1
 
+        # Add related projects section at the end
+        order = cls._add_related_projects_section(curriculum, existing_content, order)
+
         return curriculum
 
     @classmethod
@@ -442,10 +447,11 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
             order += 1
 
         # Categorize projects by content type
+        # Use 'in' matching to handle variants like 'content-video', 'content-article'
         projects = existing_content.get('projects', [])
-        video_projects = [p for p in projects if p.get('content_type') == 'video']
-        article_projects = [p for p in projects if p.get('content_type') == 'article']
-        code_projects = [p for p in projects if p.get('content_type') == 'code-repo']
+        video_projects = [p for p in projects if 'video' in (p.get('content_type') or '').lower()]
+        article_projects = [p for p in projects if 'article' in (p.get('content_type') or '').lower()]
+        code_projects = [p for p in projects if 'code-repo' in (p.get('content_type') or '').lower()]
 
         # Add videos (introduction) - max 2
         for project in video_projects[:2]:
@@ -524,16 +530,64 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
         return order
 
     @classmethod
+    def _add_related_projects_section(
+        cls,
+        curriculum: list[CurriculumItem],
+        existing_content: dict,
+        order: int,
+    ) -> int:
+        """Add 'See what others are doing' section with related projects at the end."""
+        projects = existing_content.get('projects', [])
+
+        # Need at least 3 projects to show this section
+        if len(projects) < 3:
+            return order
+
+        # Take 3-5 projects (dynamic based on availability)
+        project_count = min(5, len(projects))
+        selected_projects = projects[:project_count]
+
+        curriculum.append(
+            CurriculumItem(
+                order=order,
+                type='related_projects',
+                title='See what others are doing',
+                projects=selected_projects,
+                estimated_minutes=10,
+                generated=False,
+            )
+        )
+        return order + 1
+
+    @classmethod
     def _has_content_gap(cls, existing_content: dict) -> bool:
-        """Determine if there's a content gap requiring AI generation."""
+        """Determine if there's a content gap requiring AI generation.
+
+        Only counts content that would actually be added as individual curriculum items:
+        - Videos, articles, code-repos (from projects with matching content_type)
+        - Quizzes and games
+        - Tool overview
+
+        Does NOT count generic projects (they only appear in related_projects section).
+        """
         projects = existing_content.get('projects', [])
         quizzes = existing_content.get('quizzes', [])
         games = existing_content.get('games', [])
+        tool = existing_content.get('tool')
 
-        total_content = len(projects) + len(quizzes) + len(games)
+        # Count projects that would be added as curriculum items
+        # Match content-video, video, content-article, article, etc.
+        curriculum_content_types = {'video', 'article', 'code-repo'}
+        curriculum_projects = [
+            p for p in projects if any(ct in (p.get('content_type') or '').lower() for ct in curriculum_content_types)
+        ]
 
-        # Consider it a gap if we have fewer than 3 pieces of content
-        return total_content < 3
+        # Total = tool (if exists) + curriculum projects + quizzes + games
+        total_curriculum_items = (1 if tool else 0) + len(curriculum_projects) + len(quizzes) + len(games)
+
+        # Consider it a gap if we have fewer than 3 curriculum items
+        # This ensures AI lessons are generated when we only have related projects
+        return total_curriculum_items < 3
 
     @classmethod
     def _log_content_gap(

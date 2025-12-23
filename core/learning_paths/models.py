@@ -1756,3 +1756,47 @@ class SavedLearningPath(models.Model):
         # Activate this one
         self.is_active = True
         self.save(update_fields=['is_active', 'updated_at'])
+
+
+# ============================================================================
+# LESSON IMAGE - Cache for on-demand generated illustrations
+# ============================================================================
+
+
+class LessonImage(models.Model):
+    """
+    Cache for on-demand generated lesson illustrations.
+
+    Stores Gemini-generated educational images for AI lessons.
+    Images are generated lazily when users first expand a lesson,
+    then cached here for subsequent views.
+    """
+
+    saved_path = models.ForeignKey(
+        SavedLearningPath,
+        on_delete=models.CASCADE,
+        related_name='lesson_images',
+    )
+    lesson_order = models.PositiveIntegerField(
+        help_text='Order number of the curriculum item this image belongs to',
+    )
+    content_hash = models.CharField(
+        max_length=64,
+        db_index=True,
+        help_text='Hash of lesson content for cache invalidation',
+    )
+    image_url = models.URLField(
+        help_text='URL to the generated image in storage',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['saved_path', 'lesson_order']
+        verbose_name = 'Lesson Image'
+        verbose_name_plural = 'Lesson Images'
+        indexes = [
+            models.Index(fields=['saved_path', 'lesson_order']),
+        ]
+
+    def __str__(self):
+        return f'Image for lesson {self.lesson_order} in {self.saved_path.title}'

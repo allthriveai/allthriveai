@@ -18,10 +18,194 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faFigma } from '@fortawesome/free-brands-svg-icons';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import type { AssistantMessageProps } from '../core/types';
+import type { LearningContentItem } from '@/hooks/useIntelligentChat';
 import { LearningTeaserCard } from '../cards';
 import { ChatGameCard } from '../games';
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
 import { isFigmaUrl } from '@/services/figma';
+
+// Reserved paths that are NOT project URLs
+const RESERVED_PATHS = [
+  'explore', 'tools', 'battles', 'quizzes', 'challenges', 'play',
+  'thrive-circle', 'onboarding', 'account', 'settings', 'login',
+  'signup', 'creator', 'styleguide', 'api', 'admin', 'learn'
+];
+
+/**
+ * Check if a path is a project URL (/{username}/{project-slug})
+ * Returns the username and slug if it is, null otherwise
+ */
+function isProjectUrl(path: string): { username: string; slug: string } | null {
+  if (!path.startsWith('/')) return null;
+  const parts = path.split('/').filter(Boolean);
+  // Must be exactly 2 parts: username and slug
+  if (parts.length !== 2) return null;
+  // First part can't be a reserved path
+  if (RESERVED_PATHS.includes(parts[0].toLowerCase())) return null;
+  // Second part can't be 'learn' (learning paths: /username/learn/slug)
+  if (parts[1].toLowerCase() === 'learn') return null;
+  return { username: parts[0], slug: parts[1] };
+}
+
+/**
+ * Parsed card item from markdown list with image
+ */
+interface ParsedCardItem {
+  title: string;
+  description: string;
+  imageUrl: string;
+  linkUrl?: string;
+  difficulty?: string;
+}
+
+/**
+ * Parse markdown content to extract list items that contain images.
+ * Returns the extracted items and the remaining content without the image list.
+ *
+ * Expected format:
+ * - **Title** - Description *(Difficulty)*
+ *   ![alt](imageUrl)
+ *
+ * Or with links:
+ * - [**Title**](/path) - Description *(Difficulty)*
+ *   ![alt](imageUrl)
+ */
+function parseImageListFromMarkdown(content: string): {
+  items: ParsedCardItem[];
+  contentBefore: string;
+  contentAfter: string;
+} | null {
+  // Pattern to match a block of list items with images
+  // This is tricky - we need to find a sequence of list items that each have an image
+  const listItemWithImagePattern = /^[-*]\s+(?:\[?\*\*([^*\]]+)\*\*\]?\(?([^)]*)\)?)?\s*[-–—]?\s*([^\n]*?)(?:\s*\*?\(([^)]+)\)\*?)?\s*\n\s*!\[([^\]]*)\]\(([^)]+)\)/gm;
+
+  const items: ParsedCardItem[] = [];
+  let firstMatchStart = -1;
+  let lastMatchEnd = -1;
+
+  let match;
+  while ((match = listItemWithImagePattern.exec(content)) !== null) {
+    const [fullMatch, title, linkUrl, description, difficulty, , imageUrl] = match;
+
+    if (firstMatchStart === -1) {
+      firstMatchStart = match.index;
+    }
+    lastMatchEnd = match.index + fullMatch.length;
+
+    items.push({
+      title: title || 'Untitled',
+      description: description?.trim() || '',
+      imageUrl: imageUrl,
+      linkUrl: linkUrl?.startsWith('/') ? linkUrl : undefined,
+      difficulty: difficulty,
+    });
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    items,
+    contentBefore: content.slice(0, firstMatchStart).trim(),
+    contentAfter: content.slice(lastMatchEnd).trim(),
+  };
+}
+
+/**
+ * ImageCardGrid - Renders parsed image list items as a horizontal card grid
+ */
+function ImageCardGrid({
+  items,
+  onOpenProjectPreview,
+  onNavigate,
+  isNeon = false,
+}: {
+  items: ParsedCardItem[];
+  onOpenProjectPreview?: (item: LearningContentItem) => void;
+  onNavigate?: (path: string) => void;
+  isNeon?: boolean;
+}) {
+  const handleCardClick = (item: ParsedCardItem) => {
+    if (item.linkUrl) {
+      const projectInfo = isProjectUrl(item.linkUrl);
+      if (projectInfo && onOpenProjectPreview) {
+        // Open in preview tray
+        onOpenProjectPreview({
+          id: '0',
+          title: item.title,
+          slug: projectInfo.slug,
+          url: item.linkUrl,
+          author_username: projectInfo.username,
+          featured_image_url: item.imageUrl,
+          description: item.description,
+        });
+        return;
+      }
+      // Fall back to navigation
+      if (onNavigate) {
+        onNavigate(item.linkUrl);
+      }
+    }
+  };
+
+  return (
+    <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 ${isNeon ? 'my-4' : 'my-3'}`}>
+      {items.map((item, i) => (
+        <div
+          key={i}
+          onClick={() => handleCardClick(item)}
+          className={`rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02]
+            ${isNeon
+              ? 'bg-slate-800/50 border border-slate-700/50 hover:border-cyan-500/30'
+              : 'bg-slate-200/50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 hover:border-cyan-500/30'
+            }`}
+        >
+          <div className={`${isNeon ? 'bg-slate-900/50' : 'bg-slate-100 dark:bg-slate-800'}`}>
+            <img
+              src={item.imageUrl}
+              alt={item.title}
+              className="w-full h-20 sm:h-24 object-contain p-1"
+            />
+          </div>
+          <div className={`p-2 ${isNeon ? 'text-sm' : 'text-xs'}`}>
+            <p className={`font-medium line-clamp-1 ${isNeon ? 'text-slate-200' : 'text-slate-900 dark:text-slate-100'}`}>
+              {item.title}
+            </p>
+            {item.description && (
+              <p className={`line-clamp-1 mt-0.5 ${isNeon ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                {item.description}
+              </p>
+            )}
+            {item.difficulty && (
+              <p className="text-cyan-400 text-xs italic mt-0.5">({item.difficulty})</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Normalize AllThrive URLs to relative paths.
+ * Converts absolute URLs like https://allthriveai.com/path or https://www.allthriveai.com/path
+ * to relative URLs like /path for proper internal navigation.
+ */
+function normalizeAllThriveUrl(href: string | undefined): string | undefined {
+  if (!href) return href;
+
+  // Match allthriveai.com or www.allthriveai.com (with or without https://)
+  const allThrivePattern = /^(https?:\/\/)?(www\.)?allthriveai\.com/i;
+  if (allThrivePattern.test(href)) {
+    // Extract the path portion after the domain
+    const url = href.replace(allThrivePattern, '');
+    // Ensure it starts with /
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+
+  return href;
+}
 
 export function AssistantMessage({
   content,
@@ -76,14 +260,34 @@ export function AssistantMessage({
   const learningPathOffer = match ? match[1] : null;
   const hasLearningContent = learningContent && (learningContent.items?.length > 0 || learningContent.inlineGame);
 
-  // Markdown link handler
+  // Markdown link handler - opens projects in tray, others navigate
   const handleLinkClick = (href: string | undefined, e: React.MouseEvent) => {
     if (!href) return;
 
-    const isInternal = href.startsWith('/');
-    if (isInternal && onNavigate) {
+    // Normalize AllThrive URLs to relative paths
+    const normalizedHref = normalizeAllThriveUrl(href);
+    const isInternal = normalizedHref?.startsWith('/');
+
+    if (isInternal && normalizedHref) {
       e.preventDefault();
-      onNavigate(href);
+
+      // Check if it's a project URL - open in tray instead of navigating
+      const projectInfo = isProjectUrl(normalizedHref);
+      if (projectInfo && onOpenProjectPreview) {
+        onOpenProjectPreview({
+          id: '0', // Tray will fetch full data
+          title: projectInfo.slug.replace(/-/g, ' '),
+          slug: projectInfo.slug,
+          url: normalizedHref,
+          author_username: projectInfo.username,
+        });
+        return;
+      }
+
+      // Fall back to navigation for non-project URLs
+      if (onNavigate) {
+        onNavigate(normalizedHref);
+      }
     }
   };
 
@@ -214,6 +418,122 @@ export function AssistantMessage({
     return null;
   };
 
+  // Parse content for image lists - render as card grid if found
+  const parsedContent = parseImageListFromMarkdown(mainContent);
+
+  // Common markdown components factory
+  const getMarkdownComponents = (neon: boolean) => ({
+    p: ({ children }: { children: React.ReactNode }) => (
+      <p className={`${neon ? 'mb-4' : 'mb-3'} last:mb-0 leading-relaxed`}>{children}</p>
+    ),
+    ul: ({ children }: { children: React.ReactNode }) => (
+      <ul className={`${neon ? 'mb-4' : 'mb-3'} ml-4 space-y-2 list-disc list-outside`}>{children}</ul>
+    ),
+    ol: ({ children }: { children: React.ReactNode }) => (
+      <ol className={`${neon ? 'mb-4' : 'mb-3'} ml-4 space-y-2 list-decimal list-outside`}>{children}</ol>
+    ),
+    li: ({ children }: { children: React.ReactNode }) => (
+      <li className="leading-relaxed pl-1">{children}</li>
+    ),
+    h1: ({ children }: { children: React.ReactNode }) => (
+      <h1 className={`${neon ? 'text-xl' : 'text-base'} font-bold ${neon ? 'mb-3 mt-4' : 'mb-2 mt-3'} first:mt-0`}>{children}</h1>
+    ),
+    h2: ({ children }: { children: React.ReactNode }) => (
+      <h2 className={`${neon ? 'text-lg' : 'text-sm'} font-semibold ${neon ? 'mb-2 mt-4' : 'mb-1.5 mt-3'} first:mt-0`}>{children}</h2>
+    ),
+    h3: ({ children }: { children: React.ReactNode }) => (
+      <h3 className={`${neon ? 'text-base' : 'text-sm'} font-semibold ${neon ? 'mb-2 mt-3' : 'mb-1 mt-2'} first:mt-0`}>{children}</h3>
+    ),
+    strong: ({ children }: { children: React.ReactNode }) => (
+      <strong className={`font-semibold ${neon ? 'text-slate-900 dark:text-white' : ''}`}>{children}</strong>
+    ),
+    em: ({ children }: { children: React.ReactNode }) => <em className="italic">{children}</em>,
+    blockquote: ({ children }: { children: React.ReactNode }) => (
+      <blockquote className={`border-l-${neon ? '4' : '2'} border-cyan-500/50 pl-${neon ? '4' : '3'} my-${neon ? '4' : '3'} italic ${neon ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400'}`}>
+        {children}
+      </blockquote>
+    ),
+    a: ({ href, children }: { href?: string; children: React.ReactNode }) => {
+      const normalizedHref = normalizeAllThriveUrl(href);
+      const isInternal = normalizedHref?.startsWith('/');
+      if (isInternal && normalizedHref) {
+        return (
+          <a
+            href={normalizedHref}
+            onClick={(e) => handleLinkClick(normalizedHref, e)}
+            className={`${neon ? 'text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300' : 'text-cyan-400 hover:text-cyan-300'} hover:underline cursor-pointer`}
+          >
+            {children}
+          </a>
+        );
+      }
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${neon ? 'text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300' : 'text-cyan-400 hover:text-cyan-300'} hover:underline`}
+        >
+          {children}
+        </a>
+      );
+    },
+    pre: ({ children }: { children: React.ReactNode }) => (
+      <pre className={`overflow-x-auto whitespace-pre-wrap break-words ${neon ? 'bg-slate-900/50 dark:bg-slate-950/50 p-4' : 'bg-slate-900 dark:bg-slate-950 p-3'} rounded-lg text-sm ${neon ? 'my-4' : 'my-3'}`}>
+        {children}
+      </pre>
+    ),
+    code: ({ children, node }: { children: React.ReactNode; node?: { position?: { start: { line: number }; end: { line: number } } } }) => {
+      const isInline = node?.position?.start.line === node?.position?.end.line;
+      return isInline ? (
+        <code className={`${neon ? 'bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5' : 'bg-gray-200 dark:bg-gray-700 px-1 py-0.5'} rounded text-sm font-mono break-all`}>
+          {children}
+        </code>
+      ) : (
+        <code className={`${neon ? '' : 'text-slate-300'} break-words`}>{children}</code>
+      );
+    },
+    img: ({ src, alt }: { src?: string; alt?: string }) => (
+      <img
+        src={src}
+        alt={alt || ''}
+        className={`max-w-full ${neon ? 'max-h-48' : 'max-h-40'} w-auto h-auto rounded-lg my-2 object-contain`}
+      />
+    ),
+  });
+
+  // Render markdown content with optional image card grid
+  const renderMarkdownContent = (contentToRender: string, neon: boolean) => {
+    if (parsedContent && contentToRender === mainContent) {
+      // Render in parts: before, card grid, after
+      return (
+        <>
+          {parsedContent.contentBefore && (
+            <ReactMarkdown components={getMarkdownComponents(neon)}>
+              {parsedContent.contentBefore}
+            </ReactMarkdown>
+          )}
+          <ImageCardGrid
+            items={parsedContent.items}
+            onOpenProjectPreview={onOpenProjectPreview}
+            onNavigate={onNavigate}
+            isNeon={neon}
+          />
+          {parsedContent.contentAfter && (
+            <ReactMarkdown components={getMarkdownComponents(neon)}>
+              {parsedContent.contentAfter}
+            </ReactMarkdown>
+          )}
+        </>
+      );
+    }
+    return (
+      <ReactMarkdown components={getMarkdownComponents(neon)}>
+        {contentToRender}
+      </ReactMarkdown>
+    );
+  };
+
   if (isNeon) {
     // Neon Glass variant (EmberHomePage)
     return (
@@ -227,57 +547,7 @@ export function AssistantMessage({
           <div className="flex-1 min-w-0">
             <div className="glass-message px-5 py-4 rounded-2xl rounded-br-sm">
               <div className="text-lg text-slate-700 dark:text-slate-200 prose prose-lg prose-slate dark:prose-invert max-w-none">
-                <ReactMarkdown
-                  components={{
-                    p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
-                    ul: ({ children }) => <ul className="mb-4 ml-4 space-y-2 list-disc list-outside">{children}</ul>,
-                    ol: ({ children }) => <ol className="mb-4 ml-4 space-y-2 list-decimal list-outside">{children}</ol>,
-                    li: ({ children }) => <li className="leading-relaxed pl-1">{children}</li>,
-                    h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-4 first:mt-0">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-semibold mb-2 mt-4 first:mt-0">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h3>,
-                    strong: ({ children }) => <strong className="font-semibold text-slate-900 dark:text-white">{children}</strong>,
-                    em: ({ children }) => <em className="italic">{children}</em>,
-                    blockquote: ({ children }) => <blockquote className="border-l-4 border-cyan-500/50 pl-4 my-4 italic text-slate-600 dark:text-slate-300">{children}</blockquote>,
-                    a: ({ href, children }) => {
-                      const isInternal = href?.startsWith('/');
-                      if (isInternal) {
-                        return (
-                          <a
-                            href={href}
-                            onClick={(e) => handleLinkClick(href, e)}
-                            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline cursor-pointer"
-                          >
-                            {children}
-                          </a>
-                        );
-                      }
-                      return (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline"
-                        >
-                          {children}
-                        </a>
-                      );
-                    },
-                    pre: ({ children }) => (
-                      <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900/50 dark:bg-slate-950/50 p-4 rounded-lg text-sm my-4">{children}</pre>
-                    ),
-                    code: ({ children, node }) => {
-                      const isInline = node?.position?.start.line === node?.position?.end.line;
-                      return isInline ? (
-                        <code className="bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono break-all">{children}</code>
-                      ) : (
-                        <code className="break-words">{children}</code>
-                      );
-                    },
-                  }}
-                >
-                  {mainContent}
-                </ReactMarkdown>
+                {renderMarkdownContent(mainContent, true)}
               </div>
               {showGitHubConnectButton && onConnectGitHub && (
                 <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/10">
@@ -310,57 +580,7 @@ export function AssistantMessage({
       <div className="max-w-[85%]">
         <div className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
-                ul: ({ children }) => <ul className="mb-3 ml-4 space-y-1.5 list-disc list-outside">{children}</ul>,
-                ol: ({ children }) => <ol className="mb-3 ml-4 space-y-1.5 list-decimal list-outside">{children}</ol>,
-                li: ({ children }) => <li className="leading-relaxed pl-1">{children}</li>,
-                h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-sm font-semibold mb-1.5 mt-3 first:mt-0">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-2 first:mt-0">{children}</h3>,
-                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                em: ({ children }) => <em className="italic">{children}</em>,
-                blockquote: ({ children }) => <blockquote className="border-l-2 border-cyan-500/50 pl-3 my-3 italic text-slate-400">{children}</blockquote>,
-                a: ({ href, children }) => {
-                  const isInternal = href?.startsWith('/');
-                  if (isInternal) {
-                    return (
-                      <a
-                        href={href}
-                        onClick={(e) => handleLinkClick(href, e)}
-                        className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
-                      >
-                        {children}
-                      </a>
-                    );
-                  }
-                  return (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-cyan-400 hover:text-cyan-300 hover:underline"
-                    >
-                      {children}
-                    </a>
-                  );
-                },
-                pre: ({ children }) => (
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900 dark:bg-slate-950 p-3 rounded-lg text-sm my-3">{children}</pre>
-                ),
-                code: ({ children, node }) => {
-                  const isInline = node?.position?.start.line === node?.position?.end.line;
-                  return isInline ? (
-                    <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm break-all">{children}</code>
-                  ) : (
-                    <code className="text-slate-300 break-words">{children}</code>
-                  );
-                },
-              }}
-            >
-              {mainContent}
-            </ReactMarkdown>
+            {renderMarkdownContent(mainContent, false)}
           </div>
           {showGitHubConnectButton && onConnectGitHub && (
             <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">

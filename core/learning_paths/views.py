@@ -18,6 +18,7 @@ from .models import (
     GoalCheckIn,
     LearnerProfile,
     LearningEvent,
+    LessonImage,
     ProactiveOfferResponse,
     ProjectLearningMetadata,
     SavedLearningPath,
@@ -1102,3 +1103,86 @@ class ActivateSavedPathView(APIView):
 
         serializer = SavedLearningPathSerializer(path)
         return Response(serializer.data)
+
+
+class LessonImageView(APIView):
+    """View for on-demand lesson image generation."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slug, order):
+        """
+        GET /api/v1/me/saved-paths/{slug}/lessons/{order}/image/
+
+        Get or generate an educational illustration for an AI lesson.
+        Images are generated on-demand and cached for future requests.
+        """
+        import hashlib
+        import json
+
+        from .tasks import generate_lesson_image
+
+        # Get the saved learning path
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Find the lesson in the curriculum
+        order = int(order)
+        curriculum = path.path_data.get('curriculum', [])
+        lesson = next(
+            (c for c in curriculum if c.get('order') == order and c.get('type') == 'ai_lesson'),
+            None,
+        )
+
+        if not lesson or not lesson.get('content'):
+            return Response(
+                {'error': 'AI lesson not found at this order'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Calculate content hash for cache invalidation
+        content = lesson.get('content', {})
+        content_hash = hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()[:16]
+
+        # Check cache first
+        cached = LessonImage.objects.filter(
+            saved_path=path,
+            lesson_order=order,
+        ).first()
+
+        if cached and cached.content_hash == content_hash:
+            return Response({'imageUrl': cached.image_url})
+
+        # Generate new image (synchronous - runs during request)
+        image_url = generate_lesson_image(
+            lesson=lesson,
+            path_title=path.title,
+            user_id=request.user.id,
+        )
+
+        if not image_url:
+            return Response(
+                {'error': 'Failed to generate image'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Cache the result
+        LessonImage.objects.update_or_create(
+            saved_path=path,
+            lesson_order=order,
+            defaults={
+                'content_hash': content_hash,
+                'image_url': image_url,
+            },
+        )
+
+        return Response({'imageUrl': image_url})

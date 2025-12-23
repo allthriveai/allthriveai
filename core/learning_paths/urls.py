@@ -81,4 +81,10 @@ urlpatterns = [
         views.ActivateSavedPathView.as_view(),
         name='activate-saved-path',
     ),
+    # Lesson image endpoint - on-demand image generation
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/image/',
+        views.LessonImageView.as_view(),
+        name='lesson-image',
+    ),
 ]

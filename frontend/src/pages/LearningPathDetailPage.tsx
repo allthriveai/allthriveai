@@ -5,7 +5,7 @@
  * Curriculum on left, Ember chat panel on right when active.
  * Accessed via /:username/learn/:slug
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useLearningPathBySlug } from '@/hooks/useLearningPaths';
@@ -27,6 +27,7 @@ import {
   faChevronRight,
   faRobot,
   faComments,
+  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -37,7 +38,7 @@ import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/ga
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
-import type { CurriculumItem } from '@/services/learningPaths';
+import { getLessonImage, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
 
 /**
  * Detect programming language from code content
@@ -118,6 +119,8 @@ function getTypeIcon(type: CurriculumItem['type']) {
       return faWrench;
     case 'ai_lesson':
       return faLightbulb;
+    case 'related_projects':
+      return faUsers;
     default:
       return faBook;
   }
@@ -142,6 +145,8 @@ function getTypeLabel(type: CurriculumItem['type']) {
       return 'Tool';
     case 'ai_lesson':
       return 'Lesson';
+    case 'related_projects':
+      return 'Community';
     default:
       return 'Content';
   }
@@ -166,6 +171,8 @@ function getTypeColor(type: CurriculumItem['type']) {
       return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
     case 'ai_lesson':
       return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    case 'related_projects':
+      return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
     default:
       return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
   }
@@ -266,17 +273,134 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
 }
 
 /**
+ * Project Card for related projects grid
+ */
+function ProjectCard({ project }: { project: RelatedProject }) {
+  return (
+    <Link
+      to={project.url || `/${project.username}/${project.slug}`}
+      className="group block bg-slate-100 dark:bg-white/5 rounded-lg overflow-hidden hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+    >
+      {/* Thumbnail */}
+      {project.thumbnail && (
+        <div className="aspect-video bg-slate-200 dark:bg-white/10 overflow-hidden">
+          <img
+            src={project.thumbnail}
+            alt={project.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="p-3">
+        {/* Type badge and difficulty */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-xs text-slate-500 dark:text-gray-400 capitalize">
+            {project.contentType?.replace(/-/g, ' ') || 'Project'}
+          </span>
+          {project.difficulty && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-300 capitalize">
+              {project.difficulty}
+            </span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h4 className="text-sm font-medium text-slate-900 dark:text-white line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors mb-1">
+          {project.title}
+        </h4>
+
+        {/* Author */}
+        <p className="text-xs text-slate-500 dark:text-gray-500">
+          by {project.username}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+/**
+ * Related Projects Card - shows community projects section
+ */
+function RelatedProjectsCard({ item, index }: { item: CurriculumItem; index: number }) {
+  const projects = item.projects || [];
+
+  if (projects.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="glass-strong rounded overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b border-slate-200 dark:border-white/10">
+        <div className="flex items-start gap-4">
+          {/* Order number */}
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-sm font-bold text-amber-400">
+            {index + 1}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-amber-500/20 text-amber-400 border-amber-500/30">
+                <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
+                Community
+              </span>
+            </div>
+            <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
+            <p className="text-slate-600 dark:text-gray-400 text-sm mt-1">
+              Explore projects from the AllThrive community
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Projects grid */}
+      <div className="p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * AI Lesson Card component - renders expandable AI-generated lesson content
  */
 interface AILessonCardProps {
   item: CurriculumItem;
   index: number;
+  pathSlug?: string;
   onOpenChat?: (context: LessonContext) => void;
 }
 
-function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
+function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const content = item.content;
+
+  // Fetch lesson image when expanded for the first time
+  useEffect(() => {
+    if (isExpanded && !imageUrl && !imageLoading && !imageError && pathSlug) {
+      setImageLoading(true);
+      getLessonImage(pathSlug, item.order)
+        .then((url) => {
+          if (url) {
+            setImageUrl(url);
+          } else {
+            setImageError(true);
+          }
+        })
+        .catch(() => setImageError(true))
+        .finally(() => setImageLoading(false));
+    }
+  }, [isExpanded, imageUrl, imageLoading, imageError, pathSlug, item.order]);
 
   if (!content) {
     return null;
@@ -351,6 +475,23 @@ function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
       {/* Expanded content */}
       {isExpanded && (
         <div className="border-t border-slate-200 dark:border-white/10 p-6 space-y-6">
+          {/* AI-generated illustration */}
+          {imageLoading && (
+            <div className="bg-slate-100 dark:bg-white/5 rounded-lg p-8 flex flex-col items-center justify-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500" />
+              <p className="text-slate-500 dark:text-gray-400 text-sm">Generating illustration...</p>
+            </div>
+          )}
+          {imageUrl && (
+            <div className="bg-slate-100 dark:bg-white/5 rounded-lg overflow-hidden">
+              <img
+                src={imageUrl}
+                alt={`Illustration for ${item.title}`}
+                className="w-full h-auto"
+              />
+            </div>
+          )}
+
           {/* Main explanation */}
           <div className="learning-prose">
             <ReactMarkdown>{content.explanation}</ReactMarkdown>
@@ -432,18 +573,24 @@ function AILessonCard({ item, index, onOpenChat }: AILessonCardProps) {
 interface CurriculumItemCardProps {
   item: CurriculumItem;
   index: number;
+  pathSlug?: string;
   onOpenChat?: (context: LessonContext) => void;
 }
 
-function CurriculumItemCard({ item, index, onOpenChat }: CurriculumItemCardProps) {
+function CurriculumItemCard({ item, index, pathSlug, onOpenChat }: CurriculumItemCardProps) {
   // Use AILessonCard for AI-generated lessons
   if (item.type === 'ai_lesson') {
-    return <AILessonCard item={item} index={index} onOpenChat={onOpenChat} />;
+    return <AILessonCard item={item} index={index} pathSlug={pathSlug} onOpenChat={onOpenChat} />;
   }
 
   // Use GameItemCard for inline games
   if (item.type === 'game' && item.gameSlug) {
     return <GameItemCard item={item} index={index} />;
+  }
+
+  // Use RelatedProjectsCard for community projects section
+  if (item.type === 'related_projects') {
+    return <RelatedProjectsCard item={item} index={index} />;
   }
 
   const icon = getTypeIcon(item.type);
@@ -658,6 +805,7 @@ export default function LearningPathDetailPage() {
                           key={`${item.type}-${item.order}`}
                           item={item}
                           index={index}
+                          pathSlug={slug}
                           onOpenChat={handleOpenChat}
                         />
                       ))}
