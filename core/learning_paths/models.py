@@ -1768,7 +1768,7 @@ class SavedLearningPath(models.Model):
 
     # Publishing to explore feed
     is_published = models.BooleanField(
-        default=False,
+        default=True,
         db_index=True,
         help_text='Whether this path is published to the explore feed',
     )
@@ -1798,6 +1798,15 @@ class SavedLearningPath(models.Model):
     def __str__(self):
         status = ' (active)' if self.is_active else ''
         return f"{self.user.username}'s path: {self.title}{status}"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-set published_at when is_published is True on creation."""
+        from django.utils import timezone
+
+        # On first save, if is_published is True but published_at is not set, set it now
+        if not self.pk and self.is_published and not self.published_at:
+            self.published_at = timezone.now()
+        super().save(*args, **kwargs)
 
     def publish(self):
         """Publish this path to the explore feed."""

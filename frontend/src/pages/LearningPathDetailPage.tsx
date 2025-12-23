@@ -1110,27 +1110,70 @@ export default function LearningPathDetailPage() {
                 )}
 
                 <div className="relative px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-start justify-between gap-4 max-w-4xl">
-                      <div className="flex-1">
-                        {/* Back link - over cover image */}
-                        <Link
-                          to="/learn"
-                          className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
-                        >
-                          <FontAwesomeIcon icon={faArrowLeft} />
-                          Back to Learn
-                        </Link>
+                    <div className="max-w-4xl">
+                      {/* Back link - over cover image */}
+                      <Link
+                        to="/learn"
+                        className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
+                      >
+                        <FontAwesomeIcon icon={faArrowLeft} />
+                        Back to Learn
+                      </Link>
 
-                        {/* Title - stays white because it's over a cover image */}
-                        <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
+                      {/* Title - stays white because it's over a cover image */}
+                      <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
+                    </div>
+
+                    {/* Meta info row with Share button on right - over cover image */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faClock} className="text-[10px]" />
+                          <span>{path.estimatedHours}h</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faSignal} className="text-[10px]" />
+                          <span className="capitalize">{path.difficulty}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faGraduationCap} className="text-[10px]" />
+                          <span>{path.curriculum?.length ?? 0} items</span>
+                        </div>
+                        {/* Published indicator - for non-owners viewing */}
+                        {savedPath?.isPublished && !isOwner && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <span className="inline-flex items-center gap-1 text-emerald-400">
+                              <FontAwesomeIcon icon={faGlobe} className="text-[10px]" />
+                              Shared on Explore
+                            </span>
+                          </>
+                        )}
+                        {/* Topics covered - inline (over cover image) */}
+                        {(path.topicsCovered?.length ?? 0) > 0 && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            {path.topicsCovered?.slice(0, 3).map((topic: string) => (
+                              <span
+                                key={topic}
+                                className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs"
+                              >
+                                {topic.replace(/-/g, ' ')}
+                              </span>
+                            ))}
+                            {(path.topicsCovered?.length ?? 0) > 3 && (
+                              <span className="text-gray-400">+{(path.topicsCovered?.length ?? 0) - 3} more</span>
+                            )}
+                          </>
+                        )}
                       </div>
 
-                      {/* Share button - only show for path owner */}
+                      {/* Share button - only show for path owner, positioned bottom-right */}
                       {isOwner && savedPath && (
                         <button
                           onClick={handleTogglePublish}
                           disabled={isPublishing}
-                          className={`flex-shrink-0 mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                             savedPath.isPublished
                               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
                               : 'bg-white/10 text-gray-300 border border-white/20 hover:bg-white/20 hover:text-white'
@@ -1148,49 +1191,6 @@ export default function LearningPathDetailPage() {
                             {savedPath.isPublished ? 'Shared on Explore' : 'Share on Explore'}
                           </span>
                         </button>
-                      )}
-                    </div>
-
-                    {/* Meta info - over cover image */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300 max-w-4xl">
-                      <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faClock} className="text-[10px]" />
-                        <span>{path.estimatedHours}h</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faSignal} className="text-[10px]" />
-                        <span className="capitalize">{path.difficulty}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faGraduationCap} className="text-[10px]" />
-                        <span>{path.curriculum?.length ?? 0} items</span>
-                      </div>
-                      {/* Published indicator - for non-owners viewing */}
-                      {savedPath?.isPublished && !isOwner && (
-                        <>
-                          <span className="text-gray-400">•</span>
-                          <span className="inline-flex items-center gap-1 text-emerald-400">
-                            <FontAwesomeIcon icon={faGlobe} className="text-[10px]" />
-                            Shared on Explore
-                          </span>
-                        </>
-                      )}
-                      {/* Topics covered - inline (over cover image) */}
-                      {(path.topicsCovered?.length ?? 0) > 0 && (
-                        <>
-                          <span className="text-gray-400">•</span>
-                          {path.topicsCovered?.slice(0, 3).map((topic: string) => (
-                            <span
-                              key={topic}
-                              className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs"
-                            >
-                              {topic.replace(/-/g, ' ')}
-                            </span>
-                          ))}
-                          {(path.topicsCovered?.length ?? 0) > 3 && (
-                            <span className="text-gray-400">+{(path.topicsCovered?.length ?? 0) - 3} more</span>
-                          )}
-                        </>
                       )}
                     </div>
                   </div>
