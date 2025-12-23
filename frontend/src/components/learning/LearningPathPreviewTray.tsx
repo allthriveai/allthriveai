@@ -1,9 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
-import { XMarkIcon, ArrowRightIcon, ClockIcon, AcademicCapIcon, SignalIcon, UserIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowRightIcon, ClockIcon, AcademicCapIcon, SignalIcon, UserIcon, PlayCircleIcon, DocumentTextIcon, BookOpenIcon, PuzzlePieceIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/hooks/useTheme';
 import type { PublicLearningPath } from '@/services/learningPaths';
+
+// Icon mapping for curriculum item types
+const curriculumTypeIcons: Record<string, typeof PlayCircleIcon> = {
+  video: PlayCircleIcon,
+  article: DocumentTextIcon,
+  lesson: BookOpenIcon,
+  quiz: PuzzlePieceIcon,
+  micro_lesson: BookOpenIcon,
+};
 
 // Threshold for dismissing the tray (in pixels)
 const DISMISS_THRESHOLD = 100;
@@ -220,20 +229,6 @@ export function LearningPathPreviewTray({ isOpen, onClose, learningPath }: Learn
               </div>
             </div>
 
-            {/* Topics */}
-            {learningPath.topicsCovered && learningPath.topicsCovered.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {learningPath.topicsCovered.map((topic) => (
-                  <span
-                    key={topic}
-                    className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm"
-                  >
-                    {topic.replace(/-/g, ' ')}
-                  </span>
-                ))}
-              </div>
-            )}
-
             {/* Author */}
             <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
               {learningPath.userAvatarUrl ? (
@@ -261,15 +256,51 @@ export function LearningPathPreviewTray({ isOpen, onClose, learningPath }: Learn
               </div>
             </div>
 
-            {/* What you'll learn teaser */}
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                What you'll learn
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                This learning path covers {learningPath.curriculumCount} lessons designed to take you from {learningPath.difficulty} level through practical, hands-on exercises.
-              </p>
-            </div>
+            {/* Curriculum Preview */}
+            {learningPath.curriculumPreview && learningPath.curriculumPreview.length > 0 && (
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  Curriculum
+                </h3>
+                <ul className="space-y-2">
+                  {learningPath.curriculumPreview.map((item, index) => {
+                    const Icon = curriculumTypeIcons[item.type] || BookOpenIcon;
+                    return (
+                      <li key={index} className="flex items-start gap-2">
+                        <Icon className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 line-clamp-1">
+                          {item.title}
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {learningPath.curriculumCount > learningPath.curriculumPreview.length && (
+                    <li className="text-sm text-gray-500 dark:text-gray-400 pl-6">
+                      +{learningPath.curriculumCount - learningPath.curriculumPreview.length} more items
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Topics */}
+            {learningPath.topicsCovered && learningPath.topicsCovered.length > 0 && (
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  Topics Covered
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {learningPath.topicsCovered.map((topic) => (
+                    <span
+                      key={topic}
+                      className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm"
+                    >
+                      {topic.replace(/-/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

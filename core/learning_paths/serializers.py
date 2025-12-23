@@ -270,6 +270,7 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     user_avatar_url = serializers.CharField(source='user.avatar_url', read_only=True)
     curriculum_count = serializers.SerializerMethodField()
+    curriculum_preview = serializers.SerializerMethodField()
     topics_covered = serializers.SerializerMethodField()
 
     class Meta:
@@ -282,6 +283,7 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
             'estimated_hours',
             'cover_image',
             'curriculum_count',
+            'curriculum_preview',
             'topics_covered',
             'username',
             'user_full_name',
@@ -299,6 +301,11 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
         """Get total curriculum item count."""
         curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
         return len(curriculum)
+
+    def get_curriculum_preview(self, obj):
+        """Get curriculum titles and types for preview (limit to 8 items)."""
+        curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
+        return [{'title': item.get('title', 'Untitled'), 'type': item.get('type', 'lesson')} for item in curriculum[:8]]
 
     def get_topics_covered(self, obj):
         """Get topics covered from path_data (limit to 5 for display)."""

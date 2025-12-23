@@ -376,6 +376,14 @@ export async function unpublishSavedPath(slug: string): Promise<SavedLearningPat
 /**
  * Public learning path for explore feed
  */
+/**
+ * Curriculum item preview (title and type only, for explore feed)
+ */
+export interface CurriculumPreviewItem {
+  title: string;
+  type: string;
+}
+
 export interface PublicLearningPath {
   id: number;
   slug: string;
@@ -384,6 +392,7 @@ export interface PublicLearningPath {
   estimatedHours: number;
   coverImage: string | null;
   curriculumCount: number;
+  curriculumPreview: CurriculumPreviewItem[];
   topicsCovered: string[];
   username: string;
   userFullName: string;
