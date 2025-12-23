@@ -485,11 +485,11 @@ function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) 
               </p>
 
               {/* Features */}
-              {tool.features && tool.features.length > 0 && (
+              {tool.keyFeatures && tool.keyFeatures.length > 0 && (
                 <div>
                   <h5 className="text-slate-900 dark:text-white font-medium text-sm mb-2">Key Features</h5>
                   <ul className="space-y-1">
-                    {tool.features.slice(0, 4).map((feature, i) => (
+                    {tool.keyFeatures.slice(0, 4).map((feature: { title: string; description: string }, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-300">
                         <span className="text-cyan-500 mt-1">•</span>
                         <span><strong>{feature.title}:</strong> {feature.description}</span>
