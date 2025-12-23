@@ -232,6 +232,18 @@ recreate-core-team:
 	@echo "Recreating All Thrive Core Team..."
 	docker-compose exec web python manage.py seed_core_team --recreate
 
+seed-rooms:
+	@echo "Seeding community rooms (The Lounge)..."
+	docker-compose exec web python manage.py seed_rooms
+
+seed-curation-agents:
+	@echo "Seeding curation agents (Reddit, YouTube, RSS)..."
+	docker-compose exec web python manage.py seed_curation_agents
+
+seed-curation-agents-sync:
+	@echo "Seeding curation agents with initial sync..."
+	docker-compose exec web python manage.py seed_curation_agents --sync
+
 # Create a YouTube feed agent
 # Usage: make create-youtube-agent CHANNEL_URL="https://www.youtube.com/@ChannelName" SOURCE_NAME="Channel Name"
 # Optional: AVATAR="https://..." WEBSITE="https://..." TWITTER="https://..." INSTAGRAM="https://..." LINKEDIN="https://..." GITHUB="https://..."
@@ -287,6 +299,7 @@ seed-all:
 	docker-compose exec web python manage.py seed_taxonomies
 	docker-compose exec web python manage.py seed_categories
 	docker-compose exec web python manage.py seed_tools
+	docker-compose exec web python manage.py seed_technologies
 	docker-compose exec web python manage.py seed_quizzes
 	docker-compose exec web python manage.py seed_concepts
 	docker-compose exec web python manage.py seed_battle_prompts
@@ -294,9 +307,42 @@ seed-all:
 	docker-compose exec web python manage.py seed_credit_packs
 	docker-compose exec web python manage.py seed_ai_pricing
 	docker-compose exec web python manage.py seed_achievements
+	docker-compose exec web python manage.py seed_quests
+	docker-compose exec web python manage.py seed_tasks
+	docker-compose exec web python manage.py seed_uat_scenarios
+	docker-compose exec web python manage.py seed_rooms
 	docker-compose exec web python manage.py seed_core_team
+	docker-compose exec web python manage.py seed_curation_agents
+	docker-compose exec web python manage.py seed_games
 	docker-compose exec web python manage.py create_test_users --count=10
 	@echo "✓ All data seeded successfully!"
+
+# AI Tagging commands
+backfill-ai-tags:
+	@echo "Backfilling AI taxonomy tags for untagged content..."
+	docker-compose exec web python manage.py backfill_ai_tags --limit 100
+
+backfill-ai-tags-all:
+	@echo "Backfilling AI taxonomy tags for ALL untagged content (async)..."
+	docker-compose exec web python manage.py backfill_ai_tags --async --limit 500
+
+backfill-ai-tags-sync-weaviate:
+	@echo "Backfilling AI tags and syncing to Weaviate..."
+	docker-compose exec web python manage.py backfill_ai_tags --sync-weaviate --limit 100
+
+# Platform analytics backfill commands
+backfill-platform-stats:
+	@echo "Backfilling platform daily stats (last 30 days)..."
+	docker-compose exec web python manage.py backfill_platform_stats --days 30 --today
+
+backfill-engagement-stats:
+	@echo "Backfilling engagement daily stats (last 30 days)..."
+	docker-compose exec web python manage.py backfill_engagement_stats --days 30
+
+backfill-all-stats:
+	@echo "Backfilling all platform analytics..."
+	docker-compose exec web python manage.py backfill_platform_stats --days 90 --today
+	docker-compose exec web python manage.py backfill_engagement_stats --days 90
 
 add-tool:
 	@echo "Adding new tool to directory..."
@@ -972,6 +1018,7 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_taxonomies"
 	@make aws-run-command CMD="seed_categories"
 	@make aws-run-command CMD="seed_tools"
+	@make aws-run-command CMD="seed_technologies"
 	@make aws-run-command CMD="seed_quizzes"
 	@make aws-run-command CMD="seed_concepts"
 	@make aws-run-command CMD="seed_battle_prompts"
@@ -979,9 +1026,37 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_credit_packs"
 	@make aws-run-command CMD="seed_ai_pricing"
 	@make aws-run-command CMD="seed_achievements"
+	@make aws-run-command CMD="seed_quests"
+	@make aws-run-command CMD="seed_tasks"
+	@make aws-run-command CMD="seed_uat_scenarios"
+	@make aws-run-command CMD="seed_rooms"
 	@make aws-run-command CMD="seed_core_team"
-	@make aws-run-command CMD="seed_ai_daily_brief_agent"
+	@make aws-run-command CMD="seed_curation_agents"
+	@make aws-run-command CMD="seed_games"
 	@echo "✓ All data seeded on AWS!"
+	@echo ""
+	@echo "💡 To AI tag and index to Weaviate, run:"
+	@echo "   make aws-backfill-ai-tags"
+	@echo "   make aws-weaviate-reindex-all"
+
+# AI tagging on AWS
+aws-backfill-ai-tags:
+	@echo "Backfilling AI taxonomy tags on AWS (async)..."
+	@make aws-run-command CMD="backfill_ai_tags --async --limit 500"
+
+# Platform analytics on AWS
+aws-backfill-platform-stats:
+	@echo "Backfilling platform daily stats on AWS (last 30 days)..."
+	@make aws-run-command CMD="backfill_platform_stats --days 30 --today"
+
+aws-backfill-engagement-stats:
+	@echo "Backfilling engagement daily stats on AWS (last 30 days)..."
+	@make aws-run-command CMD="backfill_engagement_stats --days 30"
+
+aws-backfill-all-stats:
+	@echo "Backfilling all platform analytics on AWS..."
+	@make aws-run-command CMD="backfill_platform_stats --days 90 --today"
+	@make aws-run-command CMD="backfill_engagement_stats --days 90"
 
 # Sync user projects from local to AWS production
 # Step 1: Export local projects to S3 (run locally)
@@ -1022,11 +1097,13 @@ aws-weaviate-reindex:
 	@echo "This queues Celery tasks to regenerate all embeddings."
 	@make aws-run-command CMD="setup_weaviate --reindex"
 
-# Reindex all content (projects, users, quizzes) in Weaviate on AWS
+# Reindex all content (projects, users, quizzes, tools, concepts, lessons) in Weaviate on AWS
 # Usage: make aws-weaviate-reindex-all ENVIRONMENT=production
 aws-weaviate-reindex-all:
 	@echo "Triggering Weaviate full reindex of ALL content on AWS..."
-	@echo "This queues Celery tasks to regenerate embeddings for projects, users, and quizzes."
+	@echo "This queues Celery tasks to regenerate embeddings for:"
+	@echo "  - Projects, Users, Quizzes"
+	@echo "  - Tools, Concepts, Micro Lessons"
 	@make aws-run-command CMD="setup_weaviate --reindex-all"
 
 # Check Weaviate connection status on AWS

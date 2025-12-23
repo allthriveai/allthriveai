@@ -226,6 +226,17 @@ export function SidebarChatLayout({
   const [isPanelDragging, setIsPanelDragging] = useState(false);
   const panelDragCounterRef = useRef(0);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // Panel-level drag handlers
   const handlePanelDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -459,10 +470,11 @@ export function SidebarChatLayout({
               sendMessage={state.sendMessage}
             />
 
-            {/* Backdrop */}
+            {/* Subtle backdrop overlay - pointer-events-none allows scrolling main content */}
+            {/* Use the X button or click outside (on the page itself) to close */}
             <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-              onClick={onClose}
+              className="fixed inset-0 bg-black/10 z-40 pointer-events-none"
+              aria-hidden="true"
             />
 
             {/* Sidebar Panel */}
@@ -502,14 +514,14 @@ export function SidebarChatLayout({
                   <img
                     src="/ember-avatar.png"
                     alt="Ember"
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-10 h-10 rounded-full object-cover -scale-x-100"
                   />
                   <div>
-                    <h2 className="font-semibold text-slate-900 dark:text-white">Ember</h2>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">AllThrive Chat</h2>
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-green-500 dark:bg-green-400' : 'bg-amber-500 dark:bg-amber-400 animate-pulse'}`} />
                       <span className="text-slate-500 dark:text-slate-400">
-                        {state.isConnected ? 'Online' : 'Connecting...'}
+                        Ember {state.isConnected ? '· Online' : '· Connecting...'}
                       </span>
                     </div>
                   </div>

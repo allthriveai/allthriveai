@@ -713,7 +713,7 @@ jobs:
             --task-definition ${{ steps.network.outputs.task_definition }} \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
-            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py seed_topics && python manage.py seed_taxonomies && python manage.py seed_categories && python manage.py seed_tools && python manage.py seed_quizzes && python manage.py seed_concepts && python manage.py seed_battle_prompts && python manage.py seed_billing && python manage.py seed_credit_packs && python manage.py seed_ai_pricing && python manage.py seed_achievements && python manage.py seed_core_team && python manage.py seed_ai_daily_brief_agent"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py seed_topics && python manage.py seed_taxonomies && python manage.py seed_categories && python manage.py seed_tools && python manage.py seed_technologies && python manage.py seed_quizzes && python manage.py seed_concepts && python manage.py seed_battle_prompts && python manage.py seed_billing && python manage.py seed_credit_packs && python manage.py seed_ai_pricing && python manage.py seed_achievements && python manage.py seed_quests && python manage.py seed_tasks && python manage.py seed_uat_scenarios && python manage.py seed_rooms && python manage.py seed_core_team && python manage.py seed_curation_agents && python manage.py seed_games"]}]}' \
             --query 'tasks[0].taskArn' \
             --output text)
 
@@ -735,6 +735,75 @@ jobs:
           else
             echo "⚠️ Seed commands had issues (exit code: $EXIT_CODE) - continuing anyway"
             # Don't fail the deploy for seed issues - data may already exist
+          fi
+
+      - name: AI tag seeded content (async)
+        run: |
+          echo "🏷️ Triggering AI tagging for seeded content..."
+
+          # Queue async AI tagging tasks for untagged content
+          # This runs before Weaviate indexing so embeddings include taxonomy tags
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["python","manage.py","backfill_ai_tags","--async","--limit","500"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "📦 Started AI tagging task: $TASK_ARN"
+
+          # Wait for completion (this just queues Celery tasks, actual tagging is async)
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ AI tagging tasks queued successfully"
+            echo "   Note: Actual tagging runs async via Celery workers"
+          else
+            echo "⚠️ AI tagging had issues (exit code: $EXIT_CODE) - continuing anyway"
+          fi
+
+      - name: Backfill platform analytics stats
+        run: |
+          echo "📊 Backfilling platform daily stats for analytics dashboard..."
+
+          # Backfill last 30 days of platform stats (including today)
+          # This populates PlatformDailyStats for the admin analytics dashboard
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["python","manage.py","backfill_platform_stats","--days","30","--today"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "📦 Started platform stats backfill: $TASK_ARN"
+
+          # Wait for completion
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Platform stats backfill complete"
+          else
+            echo "⚠️ Platform stats backfill had issues (exit code: $EXIT_CODE) - continuing anyway"
           fi
 
       - name: Setup Weaviate collections (idempotent)
@@ -774,9 +843,10 @@ jobs:
 
       - name: Index seeded content to Weaviate (async)
         run: |
-          echo "📊 Triggering async Weaviate indexing for seeded content..."
+          echo "📊 Triggering async Weaviate indexing for ALL seeded content..."
 
-          # Queue async reindex tasks for seeded content
+          # Queue async reindex tasks for ALL seeded content types
+          # Now includes: projects, users, quizzes, tools, concepts, and micro lessons
           # This runs quickly (just queues Celery tasks) and indexing happens in background
           TASK_ARN=$(aws ecs run-task \
             --cluster ${{ env.ECS_CLUSTER }} \

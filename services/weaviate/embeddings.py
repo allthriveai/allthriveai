@@ -708,6 +708,63 @@ class EmbeddingService:
 
         return '\n'.join(parts)
 
+    def generate_learning_path_embedding_text(self, learning_path) -> str:
+        """
+        Generate combined text for learning path embedding.
+
+        Combines:
+        - Title (weighted high - repeated)
+        - Topics covered
+        - Difficulty level
+        - Curriculum item titles
+        - Owner/author info
+
+        Args:
+            learning_path: SavedLearningPath model instance
+
+        Returns:
+            Combined text string for embedding
+        """
+        parts = []
+
+        # Title (repeat for weight)
+        if learning_path.title:
+            parts.append(learning_path.title)
+            parts.append(learning_path.title)
+
+        # Extract path_data
+        path_data = learning_path.path_data or {}
+
+        # Difficulty
+        difficulty = path_data.get('difficulty', 'beginner')
+        parts.append(f'Difficulty: {difficulty}')
+
+        # Topics covered
+        topics_covered = path_data.get('topics_covered', [])
+        if topics_covered:
+            topics_str = ', '.join(t.replace('-', ' ') for t in topics_covered)
+            parts.append(f'Topics: {topics_str}')
+
+        # Curriculum titles for searchability
+        curriculum = path_data.get('curriculum', [])
+        curriculum_titles = []
+        for item in curriculum[:20]:  # Limit to first 20 items
+            if 'title' in item:
+                curriculum_titles.append(item['title'])
+        if curriculum_titles:
+            parts.append(f'Curriculum: {", ".join(curriculum_titles)}')
+
+        # Owner username and name for searchability
+        if hasattr(learning_path, 'user') and learning_path.user:
+            user = learning_path.user
+            if user.username:
+                parts.append(f'By: {user.username}')
+            full_name = user.get_full_name()
+            if full_name:
+                parts.append(f'Author: {full_name}')
+
+        return '\n'.join(parts)
+
     # =========================================================================
     # Learning Intelligence Embeddings
     # =========================================================================

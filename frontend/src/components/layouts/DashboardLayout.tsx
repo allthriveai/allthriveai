@@ -15,6 +15,7 @@ import { AsyncBattleBanner } from '@/components/battles/AsyncBattleBanner';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { TopicTrayProvider } from '@/context/TopicTrayContext';
 import { ProjectPreviewTrayProvider, useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
+import { LearningPathPreviewTrayProvider } from '@/context/LearningPathPreviewTrayContext';
 import { PointsNotificationProvider } from '@/context/PointsNotificationContext';
 import { GlobalPointsAwardOverlay } from '@/components/thrive-circle/PointsAwardOverlay';
 import { useAuth } from '@/hooks/useAuth';
@@ -361,6 +362,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
     <PointsNotificationProvider>
     <TopicTrayProvider>
     <ProjectPreviewTrayProvider>
+    <LearningPathPreviewTrayProvider>
     <div className="relative h-screen w-full overflow-hidden">
       {/* Background is now handled by CSS in index.css - uses CSS gradients instead of images */}
 
@@ -470,6 +472,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
         )}
       </div>
     </div>
+    </LearningPathPreviewTrayProvider>
     </ProjectPreviewTrayProvider>
     </TopicTrayProvider>
     {/* Global Points Award Overlay - shows when any component triggers a points notification */}

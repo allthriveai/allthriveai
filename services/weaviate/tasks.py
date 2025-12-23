@@ -847,6 +847,181 @@ def full_reindex_quizzes():
         return {'status': 'error', 'error': str(e)}
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def sync_learning_path_to_weaviate(self, learning_path_id: int):
+    """
+    Sync a single learning path to Weaviate.
+
+    Called when a learning path is published to the explore feed.
+    Generates embedding and upserts to Weaviate.
+
+    Args:
+        learning_path_id: ID of the learning path to sync
+    """
+    from core.learning_paths.models import SavedLearningPath
+
+    try:
+        learning_path = SavedLearningPath.objects.select_related('user').get(id=learning_path_id)
+    except SavedLearningPath.DoesNotExist:
+        logger.warning(f'LearningPath {learning_path_id} not found, skipping Weaviate sync')
+        return {'status': 'skipped', 'reason': 'not_found'}
+
+    # Skip unpublished or archived paths
+    if not learning_path.is_published or learning_path.is_archived:
+        logger.info(f'LearningPath {learning_path_id} is not published/archived, queueing removal')
+        remove_learning_path_from_weaviate.delay(learning_path_id)
+        return {'status': 'queued_removal', 'reason': 'not_published_or_archived'}
+
+    try:
+        client = WeaviateClient()
+
+        if not client.is_available():
+            logger.warning('Weaviate unavailable, retrying later')
+            raise self.retry(exc=WeaviateClientError('Weaviate unavailable'))
+
+        # Generate embedding
+        embedding_service = get_embedding_service()
+        embedding_text = embedding_service.generate_learning_path_embedding_text(learning_path)
+        embedding_vector = embedding_service.generate_embedding(embedding_text)
+
+        if not embedding_vector:
+            logger.warning(f'Failed to generate embedding for learning path {learning_path_id}')
+            return {'status': 'failed', 'reason': 'embedding_failed'}
+
+        # Extract data from path_data
+        path_data = learning_path.path_data or {}
+        topics_covered = path_data.get('topics_covered', [])
+        curriculum = path_data.get('curriculum', [])
+        difficulty = path_data.get('difficulty', 'beginner')
+        estimated_hours = path_data.get('estimated_hours', 0)
+
+        # Prepare properties
+        properties = {
+            'learning_path_id': learning_path.id,
+            'slug': learning_path.slug,
+            'title': learning_path.title,
+            'combined_text': embedding_text[:5000],  # Truncate for storage
+            'difficulty': difficulty,
+            'estimated_hours': float(estimated_hours),
+            'topics_covered': topics_covered,
+            'curriculum_count': len(curriculum),
+            'owner_id': learning_path.user_id,
+            'owner_username': learning_path.user.username,
+            'owner_full_name': learning_path.user.get_full_name() or learning_path.user.username,
+            'is_published': learning_path.is_published,
+            'published_at': learning_path.published_at.isoformat() if learning_path.published_at else None,
+            'created_at': learning_path.created_at.isoformat(),
+        }
+
+        # Check if learning path already exists in Weaviate
+        existing = client.get_by_property(WeaviateSchema.LEARNING_PATH_COLLECTION, 'learning_path_id', learning_path_id)
+
+        if existing:
+            # Update existing object
+            uuid = existing['_additional']['id']
+            client.update_object(
+                collection=WeaviateSchema.LEARNING_PATH_COLLECTION,
+                uuid=uuid,
+                properties=properties,
+                vector=embedding_vector,
+            )
+            logger.info(f'Updated learning path {learning_path_id} in Weaviate')
+        else:
+            # Create new object
+            client.add_object(
+                collection=WeaviateSchema.LEARNING_PATH_COLLECTION,
+                properties=properties,
+                vector=embedding_vector,
+            )
+            logger.info(f'Added learning path {learning_path_id} to Weaviate')
+
+        return {'status': 'success', 'learning_path_id': learning_path_id}
+
+    except WeaviateClientError as e:
+        logger.error(f'Weaviate error syncing learning path {learning_path_id}: {e}')
+        raise self.retry(exc=e) from e
+    except Exception as e:
+        logger.error(f'Error syncing learning path {learning_path_id} to Weaviate: {e}', exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def remove_learning_path_from_weaviate(self, learning_path_id: int) -> dict:
+    """
+    Remove a learning path from Weaviate.
+
+    Called when:
+    - Learning path is unpublished
+    - Learning path is deleted
+    - Learning path is archived
+
+    This ensures unpublished content is not searchable.
+    """
+    try:
+        client = WeaviateClient()
+        if not client.is_available():
+            logger.warning(f'Weaviate unavailable, retrying learning path removal {learning_path_id}')
+            raise self.retry(exc=WeaviateClientError('Weaviate unavailable'))
+
+        existing = client.get_by_property(WeaviateSchema.LEARNING_PATH_COLLECTION, 'learning_path_id', learning_path_id)
+        if existing:
+            uuid = existing['_additional']['id']
+            client.delete_object(WeaviateSchema.LEARNING_PATH_COLLECTION, uuid)
+            logger.info(f'Removed learning path {learning_path_id} from Weaviate')
+            return {'status': 'removed', 'learning_path_id': learning_path_id}
+        else:
+            logger.debug(f'Learning path {learning_path_id} not found in Weaviate, nothing to remove')
+            return {'status': 'not_found', 'learning_path_id': learning_path_id}
+
+    except WeaviateClientError as e:
+        logger.error(f'Weaviate error removing learning path {learning_path_id}: {e}')
+        raise self.retry(exc=e) from e
+    except Exception as e:
+        logger.error(f'Error removing learning path {learning_path_id} from Weaviate: {e}', exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task
+def full_reindex_learning_paths():
+    """
+    Full reindex of all published learning paths to Weaviate.
+
+    Called manually or scheduled periodically.
+    """
+    from core.learning_paths.models import SavedLearningPath
+
+    logger.info('Starting full learning path reindex')
+
+    try:
+        client = WeaviateClient()
+        if not client.is_available():
+            logger.error('Weaviate unavailable, aborting learning path reindex')
+            return {'status': 'aborted', 'reason': 'weaviate_unavailable'}
+
+        # Get published, non-archived learning paths
+        paths = SavedLearningPath.objects.filter(
+            is_published=True,
+            is_archived=False,
+        ).values_list('id', flat=True)
+        path_ids = list(paths)
+        total = len(path_ids)
+
+        if total == 0:
+            logger.warning('No published learning paths found for reindex')
+            return {'status': 'skipped', 'reason': 'no_learning_paths', 'total': 0}
+
+        logger.info(f'Queueing {total} learning path reindex tasks')
+
+        for path_id in path_ids:
+            sync_learning_path_to_weaviate.delay(path_id)
+
+        return {'status': 'queued', 'total_learning_paths': total}
+
+    except Exception as e:
+        logger.error(f'Learning path reindex failed: {e}', exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+
+
 @shared_task
 def full_reindex_users():
     """

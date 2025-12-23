@@ -22,6 +22,8 @@ import {
   getSavedPathBySlug,
   activateSavedPath,
   deleteSavedPath,
+  publishSavedPath,
+  unpublishSavedPath,
 } from '@/services/learningPaths';
 import type {
   GeneratedLearningPath,
@@ -326,6 +328,38 @@ export function useDeleteSavedPath() {
     onSuccess: () => {
       // Invalidate saved paths list
       queryClient.invalidateQueries({ queryKey: learningPathKeys.savedPaths() });
+    },
+  });
+}
+
+/**
+ * Publish a saved learning path to the explore feed
+ */
+export function usePublishSavedPath() {
+  const queryClient = useQueryClient();
+
+  return useMutation<SavedLearningPath, Error, string>({
+    mutationFn: publishSavedPath,
+    onSuccess: (_data, slug) => {
+      // Invalidate saved paths list and the specific path
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.savedPaths() });
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.savedPath(slug) });
+    },
+  });
+}
+
+/**
+ * Unpublish a saved learning path from the explore feed
+ */
+export function useUnpublishSavedPath() {
+  const queryClient = useQueryClient();
+
+  return useMutation<SavedLearningPath, Error, string>({
+    mutationFn: unpublishSavedPath,
+    onSuccess: (_data, slug) => {
+      // Invalidate saved paths list and the specific path
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.savedPaths() });
+      queryClient.invalidateQueries({ queryKey: learningPathKeys.savedPath(slug) });
     },
   });
 }

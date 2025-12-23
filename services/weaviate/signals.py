@@ -315,6 +315,106 @@ def sync_micro_lesson_on_save(sender, instance, created, **kwargs):
 
 
 # ============================================================================
+# SAVED LEARNING PATH SIGNALS (for Explore Feed)
+# ============================================================================
+
+# Track publish state changes for learning paths
+_learning_path_publish_cache: dict[int, dict] = {}
+
+
+@receiver(pre_save, sender='learning_paths.SavedLearningPath')
+def track_learning_path_publish_change(sender, instance, **kwargs):
+    """
+    Track learning path publish status before save to detect changes.
+
+    This is needed to detect when:
+    - A learning path is published (requires adding to Weaviate)
+    - A learning path is unpublished (requires removal from Weaviate)
+    - A learning path is archived (requires removal from Weaviate)
+    """
+    if instance.pk:
+        try:
+            from core.learning_paths.models import SavedLearningPath
+
+            old_instance = (
+                SavedLearningPath.objects.filter(pk=instance.pk).values('is_published', 'is_archived').first()
+            )
+            if old_instance:
+                _learning_path_publish_cache[instance.pk] = old_instance
+        except Exception as e:
+            logger.debug(f'Error tracking learning path publish state: {e}')
+
+
+@receiver(post_save, sender='learning_paths.SavedLearningPath')
+def sync_learning_path_on_save(sender, instance, created, **kwargs):
+    """
+    Sync learning path to Weaviate when published/unpublished.
+
+    Handles visibility changes:
+    - Published → Unpublished: Remove from Weaviate immediately
+    - Unpublished → Published: Add to Weaviate
+    - Archived: Remove from Weaviate
+    - Any other change while published: Update in Weaviate
+
+    Queues a Celery task to avoid blocking the save operation.
+    """
+    # Always clean up cache to prevent memory leaks
+    old_publish_state = _learning_path_publish_cache.pop(instance.pk, None)
+
+    if not _should_sync_to_weaviate():
+        return
+
+    try:
+        from .tasks import remove_learning_path_from_weaviate, sync_learning_path_to_weaviate
+
+        # Determine if path should be in Weaviate (published + not archived)
+        should_be_searchable = instance.is_published and not instance.is_archived
+
+        was_searchable = False
+        if old_publish_state:
+            was_searchable = old_publish_state.get('is_published', False) and not old_publish_state.get(
+                'is_archived', True
+            )
+
+        if was_searchable and not should_be_searchable:
+            # Path became non-searchable - REMOVE from Weaviate immediately
+            logger.info(f'Learning path {instance.id} unpublished/archived, removing from Weaviate')
+            remove_learning_path_from_weaviate.delay(instance.id)
+        elif should_be_searchable:
+            # Path is searchable - sync to Weaviate
+            sync_learning_path_to_weaviate.delay(instance.id)
+            logger.debug(f'Queued Weaviate sync for learning path {instance.id}')
+        # else: path is not searchable and wasn't before - nothing to do
+
+    except Exception as e:
+        # Log but don't fail the save
+        logger.error(f'Failed to queue Weaviate sync for learning path {instance.id}: {e}')
+
+
+@receiver(post_delete, sender='learning_paths.SavedLearningPath')
+def remove_learning_path_on_delete(sender, instance, **kwargs):
+    """
+    Remove learning path from Weaviate when deleted.
+    """
+    if not _should_sync_to_weaviate():
+        return
+
+    try:
+        from .client import WeaviateClient
+        from .schema import WeaviateSchema
+
+        client = WeaviateClient()
+        if client.is_available():
+            existing = client.get_by_property(WeaviateSchema.LEARNING_PATH_COLLECTION, 'learning_path_id', instance.id)
+            if existing:
+                client.delete_object(WeaviateSchema.LEARNING_PATH_COLLECTION, existing['_additional']['id'])
+                logger.info(f'Removed learning path {instance.id} from Weaviate')
+
+    except Exception as e:
+        logger.error(f'Failed to remove learning path {instance.id} from Weaviate: {e}')
+
+
+# ============================================================================
 # LEARNING INTELLIGENCE SIGNALS
 # ============================================================================
 

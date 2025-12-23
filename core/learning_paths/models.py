@@ -1766,6 +1766,19 @@ class SavedLearningPath(models.Model):
         help_text='Soft delete - archived paths are hidden but not deleted',
     )
 
+    # Publishing to explore feed
+    is_published = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text='Whether this path is published to the explore feed',
+    )
+    published_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='When this path was published to explore feed',
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1778,11 +1791,36 @@ class SavedLearningPath(models.Model):
         indexes = [
             models.Index(fields=['user', 'is_active']),
             models.Index(fields=['user', '-updated_at']),
+            # For explore feed queries
+            models.Index(fields=['is_published', 'is_archived', '-published_at']),
         ]
 
     def __str__(self):
         status = ' (active)' if self.is_active else ''
         return f"{self.user.username}'s path: {self.title}{status}"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-set published_at when is_published is True on creation."""
+        from django.utils import timezone
+
+        # On first save, if is_published is True but published_at is not set, set it now
+        if not self.pk and self.is_published and not self.published_at:
+            self.published_at = timezone.now()
+        super().save(*args, **kwargs)
+
+    def publish(self):
+        """Publish this path to the explore feed."""
+        from django.utils import timezone
+
+        self.is_published = True
+        self.published_at = timezone.now()
+        self.save(update_fields=['is_published', 'published_at', 'updated_at'])
+
+    def unpublish(self):
+        """Remove this path from the explore feed."""
+        self.is_published = False
+        self.published_at = None
+        self.save(update_fields=['is_published', 'published_at', 'updated_at'])
 
     def activate(self):
         """Set this path as active and deactivate others."""

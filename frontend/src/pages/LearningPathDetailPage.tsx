@@ -5,10 +5,10 @@
  * Curriculum on left, Ember chat panel on right when active.
  * Accessed via /:username/learn/:slug
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { useLearningPathBySlug } from '@/hooks/useLearningPaths';
+import { useLearningPathBySlug, useSavedPath, usePublishSavedPath, useUnpublishSavedPath } from '@/hooks/useLearningPaths';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGraduationCap,
@@ -32,6 +32,9 @@ import {
   faThumbsDown,
   faTimes,
   faSearchPlus,
+  faGlobe,
+  faLock,
+  faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -609,24 +612,50 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
   const [showLightbox, setShowLightbox] = useState(false);
   const [userRating, setUserRating] = useState<'helpful' | 'not_helpful' | null>(null);
   const [isRating, setIsRating] = useState(false);
+  const [hasStartedLoading, setHasStartedLoading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const content = item.content;
 
-  // Fetch lesson image when expanded for the first time
+  // Start loading image when card comes into view (preload before user clicks)
   useEffect(() => {
-    if (isExpanded && !imageUrl && !imageLoading && !imageError && pathSlug) {
-      setImageLoading(true);
-      getLessonImage(pathSlug, item.order)
-        .then((url) => {
-          if (url) {
-            setImageUrl(url);
-          } else {
-            setImageError(true);
-          }
-        })
-        .catch(() => setImageError(true))
-        .finally(() => setImageLoading(false));
+    if (!pathSlug || hasStartedLoading || imageUrl || imageError) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setHasStartedLoading(true);
+          setImageLoading(true);
+          getLessonImage(pathSlug, item.order)
+            .then((url) => {
+              if (url) {
+                setImageUrl(url);
+              } else {
+                setImageError(true);
+              }
+            })
+            .catch(() => setImageError(true))
+            .finally(() => setImageLoading(false));
+        }
+      },
+      {
+        root: null,
+        // Start loading when card is 500px away from viewport
+        rootMargin: '500px',
+        threshold: 0,
+      }
+    );
+
+    const currentRef = cardRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
     }
-  }, [isExpanded, imageUrl, imageLoading, imageError, pathSlug, item.order]);
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [pathSlug, item.order, hasStartedLoading, imageUrl, imageError]);
 
   if (!content) {
     return null;
@@ -670,7 +699,7 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
   };
 
   return (
-    <div className="glass-strong rounded overflow-hidden">
+    <div ref={cardRef} className="glass-strong rounded overflow-hidden">
       {/* Header - always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -1014,6 +1043,16 @@ export default function LearningPathDetailPage() {
   const { data: path, isLoading, error } = useLearningPathBySlug(username || '', slug || '');
   const { user } = useAuth();
 
+  // Check if current user is the owner of this path
+  const isOwner = !!(user && username && user.username === username);
+
+  // Fetch saved path data (has isPublished field) only if user is owner
+  const { data: savedPath } = useSavedPath(slug || '', isOwner);
+
+  // Publish/unpublish mutations
+  const publishMutation = usePublishSavedPath();
+  const unpublishMutation = useUnpublishSavedPath();
+
   // Chat panel state - visible on right side (desktop), bottom sheet (mobile)
   const [currentLessonContext, setCurrentLessonContext] = useState<LessonContext | null>(null);
 
@@ -1024,6 +1063,18 @@ export default function LearningPathDetailPage() {
   const handleOpenChat = (context: LessonContext) => {
     setCurrentLessonContext(context);
   };
+
+  // Handle publish/unpublish toggle
+  const handleTogglePublish = () => {
+    if (!slug) return;
+    if (savedPath?.isPublished) {
+      unpublishMutation.mutate(slug);
+    } else {
+      publishMutation.mutate(slug);
+    }
+  };
+
+  const isPublishing = publishMutation.isPending || unpublishMutation.isPending;
 
   return (
     <DashboardLayout hideFooter>
@@ -1058,49 +1109,88 @@ export default function LearningPathDetailPage() {
                   </>
                 )}
 
-                <div className="relative px-4 sm:px-6 lg:px-8 py-4 max-w-4xl">
-                    {/* Back link - over cover image */}
-                    <Link
-                      to="/learn"
-                      className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
-                    >
-                      <FontAwesomeIcon icon={faArrowLeft} />
-                      Back to Learn
-                    </Link>
+                <div className="relative px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="max-w-4xl">
+                      {/* Back link - over cover image */}
+                      <Link
+                        to="/learn"
+                        className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
+                      >
+                        <FontAwesomeIcon icon={faArrowLeft} />
+                        Back to Learn
+                      </Link>
 
-                    {/* Title - stays white because it's over a cover image */}
-                    <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
+                      {/* Title - stays white because it's over a cover image */}
+                      <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
+                    </div>
 
-                    {/* Meta info - over cover image */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
-                      <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faClock} className="text-[10px]" />
-                        <span>{path.estimatedHours}h</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faSignal} className="text-[10px]" />
-                        <span className="capitalize">{path.difficulty}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faGraduationCap} className="text-[10px]" />
-                        <span>{path.curriculum?.length ?? 0} items</span>
-                      </div>
-                      {/* Topics covered - inline (over cover image) */}
-                      {(path.topicsCovered?.length ?? 0) > 0 && (
-                        <>
-                          <span className="text-gray-400">•</span>
-                          {path.topicsCovered?.slice(0, 3).map((topic: string) => (
-                            <span
-                              key={topic}
-                              className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs"
-                            >
-                              {topic.replace(/-/g, ' ')}
+                    {/* Meta info row with Share button on right - over cover image */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faClock} className="text-[10px]" />
+                          <span>{path.estimatedHours}h</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faSignal} className="text-[10px]" />
+                          <span className="capitalize">{path.difficulty}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faGraduationCap} className="text-[10px]" />
+                          <span>{path.curriculum?.length ?? 0} items</span>
+                        </div>
+                        {/* Published indicator - for non-owners viewing */}
+                        {savedPath?.isPublished && !isOwner && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <span className="inline-flex items-center gap-1 text-emerald-400">
+                              <FontAwesomeIcon icon={faGlobe} className="text-[10px]" />
+                              Shared on Explore
                             </span>
-                          ))}
-                          {(path.topicsCovered?.length ?? 0) > 3 && (
-                            <span className="text-gray-400">+{(path.topicsCovered?.length ?? 0) - 3} more</span>
+                          </>
+                        )}
+                        {/* Topics covered - inline (over cover image) */}
+                        {(path.topicsCovered?.length ?? 0) > 0 && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            {path.topicsCovered?.slice(0, 3).map((topic: string) => (
+                              <span
+                                key={topic}
+                                className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs"
+                              >
+                                {topic.replace(/-/g, ' ')}
+                              </span>
+                            ))}
+                            {(path.topicsCovered?.length ?? 0) > 3 && (
+                              <span className="text-gray-400">+{(path.topicsCovered?.length ?? 0) - 3} more</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Share button - only show for path owner, positioned bottom-right */}
+                      {isOwner && savedPath && (
+                        <button
+                          onClick={handleTogglePublish}
+                          disabled={isPublishing}
+                          className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            savedPath.isPublished
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                              : 'bg-white/10 text-gray-300 border border-white/20 hover:bg-white/20 hover:text-white'
+                          } ${isPublishing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={savedPath.isPublished ? 'Remove from Explore' : 'Share with others through Explore'}
+                        >
+                          {isPublishing ? (
+                            <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          ) : savedPath.isPublished ? (
+                            <FontAwesomeIcon icon={faGlobe} />
+                          ) : (
+                            <FontAwesomeIcon icon={faLock} />
                           )}
-                        </>
+                          <span className="hidden sm:inline">
+                            {savedPath.isPublished ? 'Shared on Explore' : 'Share on Explore'}
+                          </span>
+                        </button>
                       )}
                     </div>
                   </div>

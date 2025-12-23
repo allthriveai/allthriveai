@@ -304,6 +304,7 @@ export interface SavedLearningPathListItem {
   estimatedHours: number;
   coverImage: string | null;
   isActive: boolean;
+  isPublished: boolean;
   curriculumCount: number;
   createdAt: string;
 }
@@ -313,7 +314,9 @@ export interface SavedLearningPathListItem {
  */
 export interface SavedLearningPath extends SavedLearningPathListItem {
   isArchived: boolean;
+  publishedAt: string | null;
   curriculum: CurriculumItem[];
+  topicsCovered: string[];
   aiLessonCount: number;
   curatedCount: number;
   updatedAt: string;
@@ -348,6 +351,79 @@ export async function activateSavedPath(slug: string): Promise<SavedLearningPath
  */
 export async function deleteSavedPath(slug: string): Promise<void> {
   await api.delete(`/me/saved-paths/${slug}/`);
+}
+
+/**
+ * Publish a saved learning path to the explore feed
+ */
+export async function publishSavedPath(slug: string): Promise<SavedLearningPath> {
+  const response = await api.post<SavedLearningPath>(`/me/saved-paths/${slug}/publish/`);
+  return response.data;
+}
+
+/**
+ * Unpublish a saved learning path from the explore feed
+ */
+export async function unpublishSavedPath(slug: string): Promise<SavedLearningPath> {
+  const response = await api.delete<SavedLearningPath>(`/me/saved-paths/${slug}/publish/`);
+  return response.data;
+}
+
+// =============================================================================
+// EXPLORE LEARNING PATHS - Public APIs
+// =============================================================================
+
+/**
+ * Public learning path for explore feed
+ */
+/**
+ * Curriculum item preview (title and type only, for explore feed)
+ */
+export interface CurriculumPreviewItem {
+  title: string;
+  type: string;
+}
+
+export interface PublicLearningPath {
+  id: number;
+  slug: string;
+  title: string;
+  difficulty: string;
+  estimatedHours: number;
+  coverImage: string | null;
+  curriculumCount: number;
+  curriculumPreview: CurriculumPreviewItem[];
+  topicsCovered: string[];
+  username: string;
+  userFullName: string;
+  userAvatarUrl: string | null;
+  publishedAt: string;
+  createdAt: string;
+}
+
+/**
+ * Paginated response for explore endpoint
+ */
+export interface ExploreLearningPathsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: PublicLearningPath[];
+}
+
+/**
+ * Get published learning paths for the explore feed
+ */
+export async function getExploreLearningPaths(params?: {
+  page?: number;
+  difficulty?: string;
+  search?: string;
+}): Promise<ExploreLearningPathsResponse> {
+  const response = await api.get<ExploreLearningPathsResponse>(
+    '/explore/learning-paths/',
+    { params }
+  );
+  return response.data;
 }
 
 /**

@@ -2,7 +2,8 @@
 Agent DM Service - AI-powered responses for Core Team agents.
 
 When users send DMs to Core Team agents (tier='team'), this service
-generates personalized AI responses using the agent's personality_prompt.
+generates personalized AI responses using the agent's personality_prompt
+combined with shared platform knowledge.
 
 Core Team Agents:
 - Ember: Core guide, onboarding, learning journeys
@@ -19,6 +20,7 @@ from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from services.agents.shared.platform_knowledge import get_agent_knowledge
 from services.ai import AIProvider
 
 if TYPE_CHECKING:
@@ -38,7 +40,8 @@ def get_agent_system_prompt(agent_user) -> str:
     """
     Build the full system prompt for an agent DM conversation.
 
-    Combines the agent's personality_prompt with DM-specific context.
+    Combines the agent's personality_prompt with shared platform knowledge
+    and DM-specific context.
 
     Args:
         agent_user: The Core Team agent User instance
@@ -62,6 +65,9 @@ def get_agent_system_prompt(agent_user) -> str:
     if interests:
         interests_context = '\n\nYour areas of expertise and interest:\n' '- ' + '\n- '.join(interests[:8])
 
+    # Get shared platform knowledge for this agent
+    platform_knowledge = get_agent_knowledge(agent_user.username)
+
     dm_context = f"""
 You are {agent_user.first_name}, responding to a direct message on All Thrive.
 This is a private 1:1 conversation, so be personal and conversational.
@@ -70,15 +76,18 @@ This is a private 1:1 conversation, so be personal and conversational.
 {phrases_context}
 {interests_context}
 
+{platform_knowledge}
+
 Important guidelines for DM conversations:
 - Keep responses concise (1-3 short paragraphs max for most messages)
 - Be warm and personal - this is a private chat, not a public forum
 - Remember you're talking to one person, use "you" not "users"
-- If they ask about platform features, be helpful but suggest exploring
-- If you don't know something specific about All Thrive, be honest
+- Use your platform knowledge to help users with questions about features
+- If you don't know something specific, be honest and suggest who might help
 - Never pretend to be human - you can acknowledge being an AI agent if asked
 - Don't use markdown headers or bullet lists unless explaining something complex
 - Match the energy and tone of the person messaging you
+- When linking to pages, always use relative URLs (e.g., /explore not https://...)
 """
 
     return dm_context.strip()

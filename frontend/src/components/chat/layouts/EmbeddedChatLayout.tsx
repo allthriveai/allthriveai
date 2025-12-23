@@ -811,7 +811,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                         <img
                           src="/ember-avatar.png"
                           alt="Ember"
-                          className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover"
+                          className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover -scale-x-100"
                         />
                         <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-br-sm">
                           <div className="text-lg text-slate-700 dark:text-slate-200">

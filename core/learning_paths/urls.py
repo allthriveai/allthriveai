@@ -82,6 +82,18 @@ urlpatterns = [
         views.ActivateSavedPathView.as_view(),
         name='activate-saved-path',
     ),
+    # Publish/unpublish learning path to explore feed
+    path(
+        'me/saved-paths/<str:slug>/publish/',
+        views.PublishSavedPathView.as_view(),
+        name='publish-saved-path',
+    ),
+    # Explore endpoint for published learning paths
+    path(
+        'explore/learning-paths/',
+        views.ExploreLearningPathsView.as_view(),
+        name='explore-learning-paths',
+    ),
     # Lesson image endpoint - on-demand image generation
     path(
         'me/saved-paths/<str:slug>/lessons/<int:order>/image/',

@@ -21,6 +21,8 @@ import {
   getFilterOptions,
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
+import { getExploreLearningPaths, type PublicLearningPath } from '@/services/learningPaths';
+import { LearningPathCard } from '@/components/explore/LearningPathCard';
 import { useAuth } from '@/hooks/useAuth';
 import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 import { useFreshnessToken } from '@/hooks/useFreshnessToken';
@@ -207,6 +209,18 @@ export function ExplorePage() {
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Fetch learning paths (exclude from profiles tab)
+  const {
+    data: learningPathsData,
+    isLoading: isLoadingLearningPaths,
+  } = useQuery({
+    queryKey: ['exploreLearningPaths', searchQuery],
+    queryFn: () => getExploreLearningPaths({ search: searchQuery || undefined }),
+    enabled: activeTab !== 'profiles',
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   // Determine which data to display
   // IMPORTANT: If category or tool filters are selected but taxonomies/tools haven't loaded yet,
   // show loading state instead of showing unfiltered results
@@ -280,7 +294,7 @@ export function ExplorePage() {
 
     return quizzes;
   }, [activeTab, quizzesData?.results, selectedContentType, selectedCategorySlugs, selectedToolSlugs]);
-  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
+  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isLoadingLearningPaths || isWaitingForFilters;
 
   // Determine if there's an error to display
   const hasError = activeTab === 'profiles' ? !!profilesError : !!projectsError;
@@ -289,21 +303,46 @@ export function ExplorePage() {
     : (projectsError as any)?.error || 'Failed to load projects';
   const handleRetry = activeTab === 'profiles' ? refetchProfiles : refetchProjects;
 
-  // Mix quizzes into projects while preserving backend sort order
+  // Get learning paths to display (filter by search if applicable)
+  const displayLearningPaths = useMemo(() => {
+    // Don't show learning paths in profiles tab
+    if (activeTab === 'profiles') return [];
+
+    // Hide learning paths when a specific content type is selected (except 'all')
+    if (selectedContentType !== 'all') return [];
+
+    return learningPathsData?.results || [];
+  }, [activeTab, learningPathsData?.results, selectedContentType]);
+
+  // Mix quizzes and learning paths into projects while preserving backend sort order
   // Projects maintain their order from the API (sorted by recency/trending/relevance)
-  // Quizzes are interleaved at regular intervals for variety
+  // Quizzes and learning paths are interleaved at regular intervals for variety
   type MixedItem =
     | { type: 'quiz'; data: Quiz; stableKey: string }
-    | { type: 'project'; data: Project; stableKey: string };
+    | { type: 'project'; data: Project; stableKey: string }
+    | { type: 'learning-path'; data: PublicLearningPath; stableKey: string };
 
   const mixedItems = useMemo(() => {
     const QUIZ_INTERVAL = 8; // Insert a quiz every N projects
+    const LEARNING_PATH_INTERVAL = 12; // Insert a learning path every N projects
     const result: MixedItem[] = [];
 
     let quizIndex = 0;
+    let learningPathIndex = 0;
 
     // Iterate through projects in their original order from backend
     displayProjects.forEach((project, projectIndex) => {
+      // Insert a learning path at specific intervals (if available)
+      if (projectIndex > 0 && projectIndex % LEARNING_PATH_INTERVAL === 0 && learningPathIndex < displayLearningPaths.length) {
+        const learningPath = displayLearningPaths[learningPathIndex];
+        result.push({
+          type: 'learning-path' as const,
+          data: learningPath,
+          stableKey: `learning-path-${learningPath.slug || learningPath.id}`
+        });
+        learningPathIndex++;
+      }
+
       // Insert a quiz before every QUIZ_INTERVAL projects (if quizzes available)
       if (projectIndex > 0 && projectIndex % QUIZ_INTERVAL === 0 && quizIndex < displayQuizzes.length) {
         const quiz = displayQuizzes[quizIndex];
@@ -334,8 +373,19 @@ export function ExplorePage() {
       quizIndex++;
     }
 
+    // Add any remaining learning paths at the end
+    while (learningPathIndex < displayLearningPaths.length) {
+      const learningPath = displayLearningPaths[learningPathIndex];
+      result.push({
+        type: 'learning-path' as const,
+        data: learningPath,
+        stableKey: `learning-path-${learningPath.slug || learningPath.id}`
+      });
+      learningPathIndex++;
+    }
+
     return result;
-  }, [displayQuizzes, displayProjects]);
+  }, [displayQuizzes, displayProjects, displayLearningPaths]);
 
   // Handle tab change
   const handleTabChange = (tab: ExploreTab) => {
@@ -409,9 +459,9 @@ export function ExplorePage() {
       {
         root: null, // Use viewport
         threshold: 0,
-        // Large rootMargin ensures we start loading well before user reaches the bottom
+        // Very large rootMargin ensures we start loading well before user reaches the bottom
         // This prevents gaps in the feed by preloading content early
-        rootMargin: '1500px'
+        rootMargin: '3000px'
       }
     );
 
@@ -431,15 +481,15 @@ export function ExplorePage() {
   // This ensures content is ready before user scrolls to it
   useEffect(() => {
     if (activeTab === 'profiles') {
-      // For profiles: preload if we have less than 2 pages worth and more available
+      // For profiles: preload if we have less than 3 pages worth and more available
       const totalProfiles = allProfiles.length;
-      if (totalProfiles > 0 && totalProfiles < 60 && hasNextProfiles && !isFetchingNextProfiles) {
+      if (totalProfiles > 0 && totalProfiles < 90 && hasNextProfiles && !isFetchingNextProfiles) {
         fetchNextProfiles();
       }
     } else {
-      // For projects: preload if we have less than 2 pages worth and more available
+      // For projects: preload if we have less than 3 pages worth and more available
       const totalProjects = allProjects.length;
-      if (totalProjects > 0 && totalProjects < 60 && hasNextPage && !isFetchingNextPage) {
+      if (totalProjects > 0 && totalProjects < 90 && hasNextPage && !isFetchingNextPage) {
         fetchNextPage();
       }
     }
@@ -582,7 +632,7 @@ export function ExplorePage() {
                 )}
               </div>
             ) : (
-              // Mixed Projects and Quizzes Grid
+              // Mixed Projects, Quizzes, and Learning Paths Grid
               <div
                 role="tabpanel"
                 id={`tabpanel-${activeTab}`}
@@ -631,7 +681,7 @@ export function ExplorePage() {
                 ) : (
                   <>
                     <MasonryGrid>
-                      {/* Interleave quizzes and projects with stable ordering */}
+                      {/* Interleave quizzes, learning paths, and projects with stable ordering */}
                       {mixedItems.map((item) => (
                         <div key={item.stableKey} className="break-inside-avoid mb-2">
                           {item.type === 'quiz' ? (
@@ -640,6 +690,8 @@ export function ExplorePage() {
                               variant="compact"
                               onOpen={() => handleOpenQuiz(item.data.slug)}
                             />
+                          ) : item.type === 'learning-path' ? (
+                            <LearningPathCard learningPath={item.data} />
                           ) : (
                             <ProjectCard
                               project={item.data}
