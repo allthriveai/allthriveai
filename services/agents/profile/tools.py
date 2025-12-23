@@ -697,7 +697,7 @@ def _generate_section(
             'visible': True,
             'order': order,
             'content': {
-                'maxBattles': 6,
+                'maxBattles': MAX_RECENT_BATTLES,
                 'showOutcome': True,
                 'showChallenge': True,
                 'layout': 'grid',
