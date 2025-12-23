@@ -31,12 +31,15 @@ def migrate_userlearningpath_topics(apps, schema_editor):
 
             if not taxonomy:
                 # Create if missing (shouldn't happen with seeded data)
-                taxonomy = Taxonomy.objects.create(
+                # Use get_or_create to handle case where name already exists
+                taxonomy, _ = Taxonomy.objects.get_or_create(
                     slug=slug,
-                    taxonomy_type='topic',
-                    name=slug.replace('-', ' ').title(),
-                    description='Auto-migrated from learning path.',
-                    is_active=True,
+                    defaults={
+                        'taxonomy_type': 'topic',
+                        'name': slug.replace('-', ' ').title(),
+                        'description': 'Auto-migrated from learning path.',
+                        'is_active': True,
+                    },
                 )
 
             topic_cache[slug] = taxonomy
