@@ -40,7 +40,7 @@ Respond with a JSON plan:
   "plan_type": "single" | "sequential",
   "agents": [
     {{
-      "agent": "discovery" | "learning" | "project" | "image_generation" | "support",
+      "agent": "discovery" | "learning" | "project" | "image_generation" | "support" | "orchestration",
       "task": "What this agent should do",
       "depends_on": null | "previous agent's output"
     }}
@@ -95,6 +95,42 @@ User: "Import this: https://github.com/..." or GitHub URL
   "plan_type": "single",
   "agents": [
     {{"agent": "project", "task": "Import the GitHub repository as a project", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
+
+User: "Take me to battles" or "Go to the battles page"
+```json
+{{
+  "analysis": "User wants to navigate to the battles page",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "orchestration", "task": "Navigate user to /battles", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
+
+User: "Where do I create a project?" or "Show me where to add a project"
+```json
+{{
+  "analysis": "User wants to find the project creation feature",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "orchestration", "task": "Highlight the add project button and explain how to create projects", "depends_on": null}}
+  ],
+  "synthesis_needed": false
+}}
+```
+
+User: "Show me my quests" or "Open my quest board"
+```json
+{{
+  "analysis": "User wants to see their quests",
+  "plan_type": "single",
+  "agents": [
+    {{"agent": "orchestration", "task": "Open the quest tray to show user's quests", "depends_on": null}}
   ],
   "synthesis_needed": false
 }}

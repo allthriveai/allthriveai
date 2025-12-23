@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from core.integrations.rss_models import RSSFeedAgent, RSSFeedItem
 from core.projects.models import Project
+from core.projects.topic_utils import get_project_topic_names, project_has_topics, set_project_topics
 from core.taxonomy.models import Taxonomy
 from services.ai import AIProvider
 from services.ai.topic_extraction import TopicExtractionService
@@ -612,6 +613,21 @@ class RSSFeedSyncService:
 
             logger.info(f'Created RSS feed item: {project.title} ({feed_item.feed_item_id})')
 
+            # Queue async AI taxonomy tagging for richer classification
+            try:
+                from services.tagging.tasks import tag_content_task
+
+                tag_content_task.delay(
+                    content_type='project',
+                    content_id=project.id,
+                    tier='bulk',  # Use cheap model for imported content
+                    force=False,
+                )
+                logger.debug(f'Queued AI tagging for RSS project {project.id}')
+            except Exception as e:
+                # Don't fail project creation if tagging queue fails
+                logger.warning(f'Failed to queue AI tagging for project {project.id}: {e}')
+
     @classmethod
     def _update_feed_item(cls, feed_item: RSSFeedItem, item_data: dict):
         """Update an existing RSS feed item."""
@@ -634,7 +650,7 @@ class RSSFeedSyncService:
             updated = True
         elif not project.featured_image_url and django_settings.RSS_GENERATE_HERO_IMAGES:
             # No image - try to generate one with curator's visual style
-            topics = project.topics or cls._extract_topics_from_article(item_data)
+            topics = get_project_topic_names(project) or cls._extract_topics_from_article(item_data)
             generated_url = cls._generate_hero_image(item_data, topics, agent.visual_style)
             if generated_url:
                 project.featured_image_url = generated_url
@@ -650,9 +666,9 @@ class RSSFeedSyncService:
             updated = True
 
         # Update topics if empty
-        if not project.topics:
+        if not project_has_topics(project):
             topics = cls._extract_topics_from_article(item_data)
-            project.topics = topics
+            set_project_topics(project, topics)
             updated = True
 
             # Add categories if not already set (with AI fallback)

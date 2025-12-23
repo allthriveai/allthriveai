@@ -64,7 +64,7 @@ export function ProtectedRoute({
   // Redirect authenticated users away from login page
   // BUT allow guest users to stay - they're trying to convert to a full account
   if (redirectIfAuthenticated && isAuthenticated && !isGuestUser) {
-    return <Navigate to="/explore" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   // Redirect unauthenticated users to auth (chat onboarding)
@@ -75,7 +75,8 @@ export function ProtectedRoute({
   // Handle guest user restrictions
   if (isGuestUser && !allowGuest) {
     // Check if this is a battle page the guest participated in
-    const battleMatch = location.pathname.match(/^\/battles\/(\d+)/);
+    const battleMatch = location.pathname.match(/^\/play\/prompt-battles\/(\d+)/) ||
+                        location.pathname.match(/^\/battles\/(\d+)/); // Legacy route
     const requestedBattleId = battleMatch ? battleMatch[1] : null;
 
     // Allow guest to access their own battle
@@ -85,7 +86,7 @@ export function ProtectedRoute({
 
     // Redirect guest to their battle (with signup banner) or to auth
     if (guestBattleId) {
-      return <Navigate to={`/battles/${guestBattleId}`} replace />;
+      return <Navigate to={`/play/prompt-battles/${guestBattleId}`} replace />;
     } else {
       // No battle ID stored, redirect to auth
       return <Navigate to="/auth" state={{ returnUrl: location.pathname }} replace />;

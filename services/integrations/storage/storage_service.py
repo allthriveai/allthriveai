@@ -147,12 +147,23 @@ class StorageService:
             file_stream = BytesIO(file_data)
             file_size = len(file_data)
 
+            # Set Content-Disposition to prevent browser from executing uploaded files
+            # Inline for safe types (images), attachment for others
+            safe_content_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'}
+            if content_type in safe_content_types:
+                content_disposition = 'inline'
+            else:
+                # Force download for potentially dangerous files
+                safe_filename = filename.replace('"', '\\"')  # Escape quotes
+                content_disposition = f'attachment; filename="{safe_filename}"'
+
             self.client.put_object(
                 bucket_name=self.bucket_name,
                 object_name=object_name,
                 data=file_stream,
                 length=file_size,
                 content_type=content_type,
+                metadata={'Content-Disposition': content_disposition},
             )
 
             # Construct URL - use public endpoint for browser access

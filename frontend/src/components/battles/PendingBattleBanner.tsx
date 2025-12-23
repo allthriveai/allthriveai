@@ -40,7 +40,7 @@ export function PendingBattleBanner() {
           // Battle already has opponent - clear storage and navigate
           clearStoredPendingBattle();
           setPendingBattle(null);
-          navigate(`/battles/${stored.battleId}`);
+          navigate(`/play/prompt-battles/${stored.battleId}`);
         } else if (response.data.status === 'cancelled' || response.data.status === 'expired') {
           // Battle was cancelled or expired
           clearStoredPendingBattle();
@@ -77,7 +77,7 @@ export function PendingBattleBanner() {
           clearInterval(pollInterval);
           clearStoredPendingBattle();
           setPendingBattle(null);
-          navigate(`/battles/${pendingBattle.battleId}`);
+          navigate(`/play/prompt-battles/${pendingBattle.battleId}`);
         }
       } catch {
         // Ignore polling errors
@@ -110,7 +110,7 @@ export function PendingBattleBanner() {
   }, []);
 
   const handleGoToBattle = useCallback(() => {
-    navigate('/battles');
+    navigate('/play/prompt-battles');
   }, [navigate]);
 
   const handleDismiss = useCallback(() => {
@@ -124,7 +124,10 @@ export function PendingBattleBanner() {
 
   // Don't show banner on battles page (MatchmakingScreen has its own banner)
   // Don't show if no pending battle or dismissed
-  if (location.pathname.startsWith('/battles') || !pendingBattle || isDismissed) {
+  if (location.pathname.startsWith('/play/prompt-battles') ||
+      location.pathname.startsWith('/battles') || // Legacy route
+      !pendingBattle ||
+      isDismissed) {
     return null;
   }
 

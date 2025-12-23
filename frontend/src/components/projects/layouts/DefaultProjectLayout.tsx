@@ -26,13 +26,12 @@ import { createDefaultSectionContent, generateSectionId } from '@/types/sections
 import type { Taxonomy } from '@/types/models';
 import { CommentTray } from '../CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { ProjectSettingsPanel } from '../shared/ProjectSettingsPanel';
 import {
-  EllipsisVerticalIcon,
-  TrashIcon,
+  Cog6ToothIcon,
   ChevronDownIcon,
   CalendarIcon,
   PencilIcon,
-  SwatchIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
@@ -89,7 +88,7 @@ export function DefaultProjectLayout() {
     isAuthenticated,
   } = useProjectContext();
 
-  const [showMenu, setShowMenu] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [isEditMode, setIsEditMode] = useState(true); // Default to edit mode for owners
   const [isSaving, setIsSaving] = useState(false);
 
@@ -108,10 +107,6 @@ export function DefaultProjectLayout() {
   const [showHeroEditor, setShowHeroEditor] = useState(false);
   // Pending file from drag-and-drop on hero image
   const [pendingHeroFile, setPendingHeroFile] = useState<File | null>(null);
-
-  // Background gradient picker state
-  const [showGradientPicker, setShowGradientPicker] = useState(false);
-  const gradientPickerRef = useRef<HTMLDivElement>(null);
 
   // Toggle between edit and published view
   const toggleEditMode = useCallback(() => {
@@ -140,9 +135,6 @@ export function DefaultProjectLayout() {
       }
       if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
         setShowDatePicker(false);
-      }
-      if (gradientPickerRef.current && !gradientPickerRef.current.contains(event.target as Node)) {
-        setShowGradientPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -198,24 +190,6 @@ export function DefaultProjectLayout() {
     }
   }, [project.id, setProject]);
 
-  // Handle background gradient change
-  const handleGradientChange = useCallback(async (fromColor: string, toColor: string) => {
-    try {
-      setIsSaving(true);
-      const updatedContent = {
-        ...project.content,
-        heroGradientFrom: fromColor || undefined,
-        heroGradientTo: toColor || undefined,
-      };
-      const updated = await updateProject(project.id, { content: updatedContent });
-      setProject(updated);
-    } catch (error) {
-      console.error('Failed to update background gradient:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [project.id, project.content, setProject]);
-
   // Helper to filter content keys to only allowed ones for updates
   // Note: We exclude large read-only data (github, figma, reddit) that was imported
   // and shouldn't be sent back on every update to avoid exceeding size limits
@@ -244,9 +218,14 @@ export function DefaultProjectLayout() {
     if (!project.content?.sections) return;
 
     // Update the section content locally first for immediate feedback
-    const updatedSections = project.content.sections.map((section: ProjectSection) =>
-      section.id === sectionId ? { ...section, content } : section
-    );
+    // Ensure all required fields are present for each section
+    const updatedSections = project.content.sections.map((section: ProjectSection, idx: number) => ({
+      id: section.id,
+      type: section.type,
+      enabled: section.enabled ?? true,
+      order: section.order ?? idx,
+      content: section.id === sectionId ? content : (section.content || {}),
+    }));
 
     // Update project with new sections (filter out read-only keys)
     const updatedContent = {
@@ -309,8 +288,14 @@ export function DefaultProjectLayout() {
     const newSections = [...currentSections];
     newSections.splice(insertIndex, 0, newSection);
 
-    // Update order values
-    const reorderedSections = newSections.map((s, idx) => ({ ...s, order: idx }));
+    // Update order values and ensure all required fields are present
+    const reorderedSections = newSections.map((s, idx) => ({
+      id: s.id,
+      type: s.type,
+      enabled: s.enabled ?? true,
+      order: idx,
+      content: s.content || {},
+    }));
 
     // Use helper to filter out read-only keys
     const updatedContent = {
@@ -341,7 +326,13 @@ export function DefaultProjectLayout() {
 
     const newSections = project.content.sections
       .filter(s => s.id !== sectionId)
-      .map((s, idx) => ({ ...s, order: idx }));
+      .map((s, idx) => ({
+        id: s.id,
+        type: s.type,
+        enabled: s.enabled ?? true,
+        order: idx,
+        content: s.content || {},
+      }));
 
     // Use helper to filter out read-only keys
     const updatedContent = {
@@ -362,11 +353,20 @@ export function DefaultProjectLayout() {
 
   // Handle reordering sections (drag-and-drop)
   const handleReorderSections = useCallback(async (reorderedSections: ProjectSection[]) => {
+    // Ensure all sections have required fields
+    const normalizedSections = reorderedSections.map((s, idx) => ({
+      id: s.id,
+      type: s.type,
+      enabled: s.enabled ?? true,
+      order: idx,
+      content: s.content || {},
+    }));
+
     // Use helper to filter out read-only keys
     const updatedContent = {
       ...filterContentKeys(project.content as Record<string, unknown>),
       templateVersion: 2 as const,
-      sections: reorderedSections,
+      sections: normalizedSections,
     };
 
     // Store original for rollback
@@ -479,133 +479,16 @@ export function DefaultProjectLayout() {
 
         {/* Content Container */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-8 py-6 md:py-8">
-          {/* Owner Menu */}
+          {/* Owner Settings Button */}
           {isOwner && (
             <div className="absolute top-0 right-8 z-30">
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-md"
-                >
-                  <EllipsisVerticalIcon className="w-8 h-8" />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden z-50">
-                    <button
-                      onClick={() => {
-                        setShowGradientPicker(true);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 flex items-center gap-3 transition-colors"
-                    >
-                      <SwatchIcon className="w-4 h-4" />
-                      Change Background
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      className="w-full px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-900/20 flex items-center gap-3 border-t border-gray-200/50 dark:border-gray-700/50 transition-colors"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Background Gradient Picker Panel */}
-          {showGradientPicker && (
-            <div
-              ref={gradientPickerRef}
-              className="absolute top-0 right-8 z-40 w-72 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden"
-            >
-              <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white flex items-center gap-2">
-                  <SwatchIcon className="w-4 h-4" />
-                  Background Gradient
-                </h3>
-                <button
-                  onClick={() => setShowGradientPicker(false)}
-                  className="text-white/60 hover:text-white"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="p-4 space-y-4">
-                {/* Preview */}
-                <div
-                  className="w-full h-16 rounded-lg"
-                  style={{
-                    background: `linear-gradient(135deg, ${project.content?.heroGradientFrom || heroGradientFrom} 0%, ${project.content?.heroGradientTo || heroGradientTo} 100%)`
-                  }}
-                />
-
-                {/* Preset Gradients */}
-                <div>
-                  <label className="block text-xs text-white/60 mb-2">Presets</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {[
-                      { from: '#7c3aed', to: '#4f46e5', name: 'Violet' },
-                      { from: '#0ea5e9', to: '#6366f1', name: 'Sky' },
-                      { from: '#10b981', to: '#06b6d4', name: 'Emerald' },
-                      { from: '#f59e0b', to: '#ef4444', name: 'Sunset' },
-                      { from: '#ec4899', to: '#8b5cf6', name: 'Pink' },
-                      { from: '#0a0a12', to: '#1e1b4b', name: 'Dark' },
-                      { from: '#1e3a5f', to: '#0f172a', name: 'Navy' },
-                      { from: '#064e3b', to: '#0f172a', name: 'Forest' },
-                      { from: '#4c1d95', to: '#0f172a', name: 'Plum' },
-                      { from: '#7f1d1d', to: '#0f172a', name: 'Wine' },
-                    ].map((preset) => (
-                      <button
-                        key={preset.name}
-                        onClick={() => handleGradientChange(preset.from, preset.to)}
-                        className={`h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
-                          project.content?.heroGradientFrom === preset.from && project.content?.heroGradientTo === preset.to
-                            ? 'border-white'
-                            : 'border-transparent'
-                        }`}
-                        style={{
-                          background: `linear-gradient(135deg, ${preset.from} 0%, ${preset.to} 100%)`
-                        }}
-                        title={preset.name}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom Colors */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-white/60 mb-1">From</label>
-                    <input
-                      type="color"
-                      value={project.content?.heroGradientFrom || heroGradientFrom}
-                      onChange={(e) => handleGradientChange(e.target.value, project.content?.heroGradientTo || heroGradientTo)}
-                      className="w-full h-8 rounded cursor-pointer border border-white/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-white/60 mb-1">To</label>
-                    <input
-                      type="color"
-                      value={project.content?.heroGradientTo || heroGradientTo}
-                      onChange={(e) => handleGradientChange(project.content?.heroGradientFrom || heroGradientFrom, e.target.value)}
-                      className="w-full h-8 rounded cursor-pointer border border-white/20"
-                    />
-                  </div>
-                </div>
-
-                {/* Reset */}
-                {(project.content?.heroGradientFrom || project.content?.heroGradientTo) && (
-                  <button
-                    onClick={() => handleGradientChange('', '')}
-                    className="w-full px-3 py-2 text-xs text-white/60 hover:text-white rounded-lg hover:bg-white/10 transition-colors border border-white/10"
-                  >
-                    Reset to default
-                  </button>
-                )}
-              </div>
+              <button
+                onClick={() => setShowSettingsPanel(true)}
+                className="p-2 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-md"
+                title="Project Settings"
+              >
+                <Cog6ToothIcon className="w-8 h-8" />
+              </button>
             </div>
           )}
 
@@ -817,7 +700,7 @@ export function DefaultProjectLayout() {
         );
       })()}
 
-      {/* Project Details Section - show for owners even if empty (so they can add blocks) */}
+      {/* Project Details Section - show for owners only when editing and empty, or when there's content */}
       {hasTemplateSections ? (
         <ProjectSections
           sections={(project.content.sections || []) as import('@/types/sections').ProjectSection[]}
@@ -827,7 +710,7 @@ export function DefaultProjectLayout() {
           onDeleteSection={handleDeleteSection}
           onReorderSections={handleReorderSections}
         />
-      ) : (visibleBlocks.length > 0 || isOwner) && (
+      ) : (visibleBlocks.length > 0 || isEditing) && (
         <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
           <div className="flex items-center gap-4 mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Project Details</h2>
@@ -880,6 +763,16 @@ export function DefaultProjectLayout() {
         onProjectUpdate={setProject}
         pendingFile={pendingHeroFile}
         onPendingFileProcessed={() => setPendingHeroFile(null)}
+      />
+
+      {/* Project Settings Panel */}
+      <ProjectSettingsPanel
+        project={project}
+        isOpen={showSettingsPanel}
+        onClose={() => setShowSettingsPanel(false)}
+        onProjectUpdate={setProject}
+        onOpenHeroEditor={() => setShowHeroEditor(true)}
+        onDelete={handleDelete}
       />
     </>
   );

@@ -112,7 +112,7 @@ class Command(BaseCommand):
                 # Build prompt
                 title = project.title or ''
                 description = (project.description or '')[:500]
-                topics = project.topics or []
+                topics = list(project.topics.values_list('name', flat=True))
 
                 prompt = f"""Create a hero image for this AI/tech article. \
 The image MUST visually represent the article's topic.

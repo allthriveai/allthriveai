@@ -1,80 +1,336 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PathLibraryGrid, MobileSageBottomSheet } from '@/components/learning';
+import { InlineChatLayout } from '@/components/chat/layouts';
 import {
-  faRoute,
-  faBolt,
-  faUserGraduate,
-} from '@fortawesome/free-solid-svg-icons';
+  useStructuredPath,
+  useCompleteLearningSetup,
+  useSavedPaths,
+} from '@/hooks/useLearningPaths';
+import { useStableConversationId } from '@/hooks/useStableConversationId';
 import { useQuestTracking } from '@/hooks/useQuestTracking';
+import { useAuth } from '@/hooks/useAuth';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGraduationCap, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { Link } from 'react-router-dom';
+import type { LearningGoal } from '@/types/models';
 
-// Constants
-const SECTION_HEADING_STYLE = 'text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2';
-const SECTION_TEXT_STYLE = 'text-gray-600 dark:text-gray-400 text-sm';
+/**
+ * Smooth-looping video avatar for Sage
+ * Resets video slightly before end to avoid the skip/gap on loop
+ */
+function SageVideo({ className }: { className?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-interface LearnCardProps {
-  title: string;
-  description: string;
-  icon: typeof faRoute;
-  onClick: () => void;
-  comingSoon?: boolean;
-}
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
 
-function LearnCard({ title, description, icon, onClick, comingSoon }: LearnCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
+    const handleEnded = () => {
+      // Wait 3 seconds before restarting
+      setTimeout(() => {
+        video.currentTime = 0;
+        video.play();
+      }, 3000);
+    };
+
+    video.addEventListener('ended', handleEnded);
+    return () => video.removeEventListener('ended', handleEnded);
+  }, []);
 
   return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      aria-label={`${title}${comingSoon ? ' (Coming Soon)' : ''}`}
-      className="glass-strong p-8 hover:-translate-y-1 cursor-pointer group relative overflow-hidden w-full text-left"
-    >
-      {/* Coming Soon Badge */}
-      {comingSoon && (
-        <div className="absolute top-4 right-4 bg-primary-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg" aria-hidden="true">
-          Coming Soon
-        </div>
-      )}
+    <video
+      ref={videoRef}
+      src="/sage-learn-home.mp4"
+      autoPlay
+      muted
+      playsInline
+      className={className}
+    />
+  );
+}
 
-      {/* Icon */}
-      <div className="mb-6 flex items-center justify-center">
-        <div
-          className={`w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center transition-transform duration-300 ${
-            isHovered ? 'scale-110 rotate-3' : ''
-          }`}
-          style={{ borderRadius: 'var(--radius)' }}
-        >
-          <FontAwesomeIcon
-            icon={icon}
-            className="text-white text-3xl"
+/**
+ * Guest view for unauthenticated users
+ */
+function GuestLearnPage() {
+  return (
+    <div className="h-full overflow-y-auto">
+      {/* Hero Banner */}
+      <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/20 dark:bg-emerald-500/15 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-teal-500/10 dark:bg-teal-500/10 blur-[100px] pointer-events-none" />
+
+        <div className="relative px-4 sm:px-6 lg:px-8 h-full flex items-center">
+          <SageVideo className="w-32 h-32 rounded-full ring-2 ring-white/20 flex-shrink-0 object-cover object-[center_20%]" />
+          <div className="ml-6">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">
+                Learn
+              </span>
+            </h1>
+            <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
+              Expand your AI knowledge with personalized learning paths and Sage as your guide
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <div className="px-4 sm:px-6 lg:px-8 py-12">
+        {/* Sign Up CTA */}
+        <div className="glass-strong p-8 text-center mb-12">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <FontAwesomeIcon icon={faGraduationCap} className="text-white text-3xl" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+            Start Your Learning Journey
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-lg mx-auto">
+            Sign in to track your progress, build learning streaks, and unlock personalized recommendations.
+          </p>
+          <Link
+            to="/login?next=/learn"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+          >
+            Sign In to Learn
+            <FontAwesomeIcon icon={faArrowRight} />
+          </Link>
+        </div>
+
+        {/* Feature Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="glass-strong p-6">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Personalized Learning</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Adaptive difficulty that adjusts to your skill level and learning pace.
+            </p>
+          </div>
+          <div className="glass-strong p-6">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Spaced Repetition</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Smart review reminders help you retain knowledge longer.
+            </p>
+          </div>
+          <div className="glass-strong p-6">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Track Progress</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Build streaks, earn XP, and watch your expertise grow over time.
+            </p>
+          </div>
+        </div>
+
+        {/* Browse Quizzes Link */}
+        <div className="mt-12 text-center">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Want to try a quiz first?
+          </p>
+          <Link
+            to="/quizzes"
+            className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:underline font-medium"
+          >
+            Browse Available Quizzes
+            <FontAwesomeIcon icon={faArrowRight} className="text-sm" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Waiting for setup view - shown when user needs to tell Sage what they want to learn
+ */
+function WaitingForSetupView() {
+  return (
+    <div className="h-full flex items-center justify-center p-6">
+      <div className="text-center max-w-md">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center">
+          <img
+            src="/sage-avatar.png"
+            alt="Sage"
+            className="w-12 h-12 rounded-full"
+          />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+          Let's Get Started!
+        </h2>
+        <p className="text-slate-600 dark:text-gray-400">
+          Tell Sage what you'd like to learn. I'll create a personalized learning path just for you.
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm">
+          <FontAwesomeIcon icon={faArrowRight} />
+          <span>Start chatting with Sage</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Learning setup context for the inline chat
+ */
+interface LearningSetupContext {
+  needsSetup: boolean;
+  onSelectGoal: (goal: LearningGoal) => void;
+  onSkip: () => void;
+  isPending: boolean;
+}
+
+/**
+ * Authenticated user learning view with inline Ember chat
+ */
+function AuthenticatedLearnPage() {
+  const { data: savedPaths, isLoading: pathsLoading } = useSavedPaths();
+  const { data: pathData, isLoading: structuredLoading, refetch } = useStructuredPath();
+  const { mutate: completeSetup, isPending: isSettingUp } = useCompleteLearningSetup();
+
+  // Get stable conversation ID for the learn context
+  const conversationId = useStableConversationId({ context: 'learn' });
+
+  // Learning setup context for the inline chat
+  const [learningSetupContext, setLearningSetupContext] = useState<LearningSetupContext | null>(null);
+
+  const hasSetContext = useRef(false);
+
+  const isLoading = pathsLoading || structuredLoading;
+  const hasSavedPaths = savedPaths && savedPaths.length > 0;
+
+  // Handler for when user selects a learning goal in chat
+  const handleSelectGoal = useCallback((goal: LearningGoal) => {
+    completeSetup(goal, {
+      onSuccess: () => {
+        // Clear the learning setup context after successful setup
+        setLearningSetupContext(null);
+        refetch();
+      },
+    });
+  }, [completeSetup, refetch]);
+
+  // Handler for when user skips learning goal selection
+  const handleSkip = useCallback(() => {
+    completeSetup('exploring', {
+      onSuccess: () => {
+        setLearningSetupContext(null);
+        refetch();
+      },
+    });
+  }, [completeSetup, refetch]);
+
+  // Set up learning context when user needs to set up their path
+  useEffect(() => {
+    if (!isLoading && pathData && !pathData.hasCompletedPathSetup && !hasSavedPaths && !hasSetContext.current) {
+      hasSetContext.current = true;
+      setLearningSetupContext({
+        needsSetup: true,
+        onSelectGoal: handleSelectGoal,
+        onSkip: handleSkip,
+        isPending: isSettingUp,
+      });
+    }
+  }, [isLoading, pathData, hasSavedPaths, handleSelectGoal, handleSkip, isSettingUp]);
+
+  // Update pending state in context when it changes
+  useEffect(() => {
+    if (pathData && !pathData.hasCompletedPathSetup && !hasSavedPaths) {
+      setLearningSetupContext({
+        needsSetup: true,
+        onSelectGoal: handleSelectGoal,
+        onSkip: handleSkip,
+        isPending: isSettingUp,
+      });
+    }
+  }, [isSettingUp, pathData, hasSavedPaths, handleSelectGoal, handleSkip]);
+
+  // Trigger for "create new path" message to Sage
+  const [createPathTrigger, setCreatePathTrigger] = useState(0);
+
+  // Handle create new path - trigger message to Sage
+  const handleCreateNew = useCallback(() => {
+    setCreatePathTrigger(prev => prev + 1);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500" />
+      </div>
+    );
+  }
+
+  // Render the main content based on state
+  const renderMainContent = () => {
+    // Show cold start if no saved paths and setup not complete
+    if (!hasSavedPaths && pathData && !pathData.hasCompletedPathSetup) {
+      return <WaitingForSetupView />;
+    }
+
+    // Show the path library grid
+    return (
+      <PathLibraryGrid
+        onCreateNew={handleCreateNew}
+      />
+    );
+  };
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Hero Banner - Neon Glass Style */}
+      <header className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden flex-shrink-0" aria-label="Learn page header">
+        {/* Ambient Glow Background */}
+        <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-emerald-500/20 dark:bg-emerald-500/15 blur-[120px] pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-teal-500/10 dark:bg-teal-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
+
+        <div className="relative px-4 sm:px-6 lg:px-8 h-full flex items-center">
+          <SageVideo className="w-32 h-32 rounded-full ring-2 ring-white/20 flex-shrink-0 object-cover object-[center_20%]" />
+          <div className="ml-6">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              <span className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent">Learn</span>
+            </h1>
+            <p className="text-lg text-gray-700 dark:text-gray-300 max-w-2xl">
+              Expand your AI knowledge with personalized learning paths and Sage as your guide
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* Main content with sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main content area - flexible width */}
+        <div className="flex-1 overflow-y-auto">
+          {renderMainContent()}
+        </div>
+
+        {/* Ember inline chat panel - fixed width on right (desktop only) */}
+        <div className="w-96 flex-shrink-0 hidden lg:block">
+          <InlineChatLayout
+            conversationId={conversationId}
+            context="learn"
+            learningSetupContext={learningSetupContext}
+            createPathTrigger={createPathTrigger}
+            className="h-full"
           />
         </div>
       </div>
 
-      {/* Content */}
-      <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-        {title}
-      </h3>
-
-      <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed">
-        {description}
-      </p>
-
-      {/* Hover Effect Gradient */}
-      <div
-        className={`absolute inset-0 bg-gradient-to-br from-primary-500/5 to-primary-700/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
-        style={{ borderRadius: 'var(--radius)' }}
+      {/* Mobile: Sage bottom sheet */}
+      <MobileSageBottomSheet
+        conversationId={conversationId}
+        context="learn"
+        learningSetupContext={
+          learningSetupContext
+            ? { topic: 'AI Learning', level: 'beginner' }
+            : null
+        }
       />
-    </button>
+    </div>
   );
 }
 
+/**
+ * Main Learn Page
+ */
 export default function LearnPage() {
-  const navigate = useNavigate();
-  const [showComingSoon, setShowComingSoon] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
   // Quest tracking for page visit
   const { trackPage } = useQuestTracking();
@@ -82,118 +338,26 @@ export default function LearnPage() {
     trackPage('/learn', 'Learn');
   }, [trackPage]);
 
-  const handleComingSoon = () => {
-    setShowComingSoon(true);
-    setTimeout(() => {
-      setShowComingSoon(false);
-    }, 3000);
-  };
-
-  const learnCards = [
-    {
-      title: 'Learning Paths',
-      description: 'Follow structured learning paths to master AI concepts, tools, and best practices at your own pace.',
-      icon: faRoute,
-      onClick: handleComingSoon,
-      comingSoon: true,
-    },
-    {
-      title: 'Quizzes',
-      description: 'Test your knowledge with quick quizzes on AI frameworks, concepts, and industry best practices.',
-      icon: faBolt,
-      onClick: () => navigate('/quizzes'),
-      comingSoon: false,
-    },
-    {
-      title: 'Mentorship Program',
-      description: 'Connect with experienced AI practitioners and get personalized guidance on your learning journey.',
-      icon: faUserGraduate,
-      onClick: handleComingSoon,
-      comingSoon: true,
-    },
-  ];
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        {() => (
+          <div className="h-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500" />
+          </div>
+        )}
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       {() => (
-        <div className="h-full overflow-y-auto">
-          {/* Hero Banner - Neon Glass Style */}
-          <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Learn page header">
-            {/* Ambient Glow Background */}
-            <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
-            <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-purple-500/10 dark:bg-purple-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
-
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-purple-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-purple-400 bg-clip-text text-transparent">Learn</span>
-              </h1>
-              <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl">
-                Expand your AI knowledge with structured learning paths, interactive quizzes, and expert mentorship
-              </p>
-            </div>
-          </header>
-
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            {/* Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {learnCards.map((card) => (
-                <LearnCard
-                  key={card.title}
-                  title={card.title}
-                  description={card.description}
-                  icon={card.icon}
-                  onClick={card.onClick}
-                  comingSoon={card.comingSoon}
-                />
-              ))}
-            </div>
-
-            {/* Additional Info Section */}
-            <div className="mt-16 glass-strong p-8">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Why Learn with All Thrive AI?
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <h3 className={SECTION_HEADING_STYLE}>
-                    Practical Focus
-                  </h3>
-                  <p className={SECTION_TEXT_STYLE}>
-                    Learn skills that you can immediately apply to real-world AI projects and challenges.
-                  </p>
-                </div>
-                <div>
-                  <h3 className={SECTION_HEADING_STYLE}>
-                    Expert-Curated
-                  </h3>
-                  <p className={SECTION_TEXT_STYLE}>
-                    Content designed by AI practitioners with years of experience in the field.
-                  </p>
-                </div>
-                <div>
-                  <h3 className={SECTION_HEADING_STYLE}>
-                    Community-Driven
-                  </h3>
-                  <p className={SECTION_TEXT_STYLE}>
-                    Connect with fellow learners and grow together in a supportive environment.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Coming Soon Toast */}
-          {showComingSoon && (
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-              <div className="glass-strong px-6 py-4 shadow-glass-xl border border-white/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    Coming Soon! 🚀
-                  </p>
-                </div>
-              </div>
-            </div>
+        <div className="h-[calc(100vh-4rem)] overflow-hidden">
+          {isAuthenticated ? (
+            <AuthenticatedLearnPage />
+          ) : (
+            <GuestLearnPage />
           )}
         </div>
       )}

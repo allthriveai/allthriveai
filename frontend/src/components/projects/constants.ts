@@ -71,5 +71,6 @@ export const PROJECT_TYPE_LABELS: Record<string, string> = {
   video: 'Video',
   rss_article: 'Curated',
   battle: 'Prompt Battle',
+  game: 'Game',
   other: 'Project',
 };

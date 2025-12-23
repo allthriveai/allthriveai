@@ -35,13 +35,13 @@ function isDirectVideoUrl(url: string): boolean {
 export function VideoSection({ content }: VideoSectionProps) {
   const [embedFailed, setEmbedFailed] = useState(false);
 
-  // Support both camelCase (from API) and snake_case (from types)
+  // Extract video properties (API interceptor transforms to camelCase)
   const url = content.url;
-  const embedUrl = (content as any).embedUrl || content.embed_url;
+  const embedUrl = content.embedUrl;
   const platform = content.platform;
-  const videoId = (content as any).videoId || content.video_id;
+  const videoId = content.videoId;
   const title = content.title;
-  const thumbnail = (content as any).thumbnail || content.thumbnail;
+  const thumbnail = content.thumbnail;
 
   if (!videoId && !embedUrl && !url) {
     return null;

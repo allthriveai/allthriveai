@@ -67,8 +67,10 @@ class ToolListSerializer(serializers.ModelSerializer):
     tool_type_display = serializers.CharField(source='get_tool_type_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     pricing_model_display = serializers.CharField(source='get_pricing_model_display', read_only=True)
+    rarity_display = serializers.CharField(source='get_rarity_display', read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True, allow_null=True)
     company_slug = serializers.CharField(source='company.slug', read_only=True, allow_null=True)
+    element = serializers.CharField(read_only=True)
 
     class Meta:
         model = Tool
@@ -97,6 +99,11 @@ class ToolListSerializer(serializers.ModelSerializer):
             'view_count',
             'popularity_score',
             'taxonomy',
+            # Game/Trading Card Attributes (game_stats hidden - internal only)
+            'superpowers',
+            'rarity',
+            'rarity_display',
+            'element',
             'created_at',
             'updated_at',
         ]
@@ -108,10 +115,12 @@ class ToolDetailSerializer(serializers.ModelSerializer):
     tool_type_display = serializers.CharField(source='get_tool_type_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     pricing_model_display = serializers.CharField(source='get_pricing_model_display', read_only=True)
+    rarity_display = serializers.CharField(source='get_rarity_display', read_only=True)
     company_details = CompanyListSerializer(source='company', read_only=True)
     average_rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
     bookmark_count = serializers.SerializerMethodField()
+    element = serializers.CharField(read_only=True)
 
     class Meta:
         model = Tool
@@ -158,6 +167,12 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             'limitations',
             'alternatives',
             'whats_new',
+            # Game/Trading Card Attributes (game_stats hidden - internal only)
+            'superpowers',
+            'rarity',
+            'rarity_display',
+            'element',
+            'synergy_tools',
             # Technical
             'model_info',
             'integrations',

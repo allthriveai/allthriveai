@@ -533,6 +533,25 @@ tools:
   - date: '2025-11-15'
     title: $6.6B Valuation
     description: Series C funding values ElevenLabs at $6.6B, highlighting AI voice market growth.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Voice Cloning Mastery
+    description: Clone any voice from just a few seconds of audio
+  - title: Emotional Range
+    description: Fine-tune emotion, pace, and style for natural delivery
+  - title: Conversational AI
+    description: Real-time voice agents with sub-second latency
+  game_stats:
+    power: 9
+    speed: 8
+    versatility: 7
+    ease_of_use: 9
+    value: 8
+  rarity: epic
+  synergy_tools:
+  - runway
+  - midjourney
+  - chatgpt
 - name: Suno
   company: Suno
   tagline: Full song generation with vocals and lyrics
@@ -587,6 +606,25 @@ tools:
   - date: '2025-11-10'
     title: $2.45B Valuation
     description: Series C funding doubles valuation as AI music generation gains mainstream adoption.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Full Song Creation
+    description: Generate complete songs with vocals, instruments, and lyrics
+  - title: Genre Chameleon
+    description: Create convincing music in virtually any style
+  - title: Stems Mode
+    description: Output separate tracks for professional mixing
+  game_stats:
+    power: 8
+    speed: 7
+    versatility: 9
+    ease_of_use: 9
+    value: 9
+  rarity: rare
+  synergy_tools:
+  - elevenlabs
+  - runway
+  - capcut
 - name: Udio
   company: Udio
   tagline: Music generation with audio conditioning
@@ -641,6 +679,25 @@ tools:
   - date: '2025-11-08'
     title: Inpainting for Music
     description: Edit specific sections of generated songs without regenerating the whole track.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Audio Conditioning
+    description: Upload reference tracks to guide the generation style
+  - title: Crystal Clear Vocals
+    description: Industry-leading vocal clarity and production quality
+  - title: Extended Tracks
+    description: Generate songs up to 15 minutes long
+  game_stats:
+    power: 8
+    speed: 6
+    versatility: 8
+    ease_of_use: 8
+    value: 8
+  rarity: rare
+  synergy_tools:
+  - suno
+  - elevenlabs
+  - runway
 - name: Vapi
   company: Vapi
   tagline: Build and deploy voice AI agents in minutes
@@ -696,6 +753,25 @@ tools:
   - date: '2025-11-05'
     title: Enterprise Compliance
     description: SOC2 Type II, HIPAA, and PCI DSS compliance certifications completed.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Developer-First
+    description: Build production voice agents with any LLM and TTS provider
+  - title: Lightning Fast
+    description: Sub-500ms latency for natural real-time conversations
+  - title: Enterprise Ready
+    description: SOC2, HIPAA, PCI compliant with 99.99% uptime
+  game_stats:
+    power: 7
+    speed: 9
+    versatility: 8
+    ease_of_use: 7
+    value: 7
+  rarity: uncommon
+  synergy_tools:
+  - elevenlabs
+  - chatgpt
+  - claude
 - name: Whisper
   tagline: OpenAI's robust speech recognition model
   description: Whisper is OpenAI's automatic speech recognition system trained on 680,000 hours of multilingual
@@ -726,6 +802,25 @@ tools:
     title: Improved Multilingual Support
     description: Enhanced accuracy for low-resource languages and better handling of code-switching in
       multilingual conversations.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Human-Level Accuracy
+    description: Approaches human-level robustness in noisy conditions
+  - title: Universal Language
+    description: Transcription in 99 languages, translation to English
+  - title: Open Source
+    description: Self-host for free with full control over your data
+  game_stats:
+    power: 8
+    speed: 7
+    versatility: 9
+    ease_of_use: 6
+    value: 10
+  rarity: rare
+  synergy_tools:
+  - elevenlabs
+  - chatgpt
+  - vapi
 - name: ChatGPT
   company: OpenAI
   tagline: Text and voice chat with GPT-5
@@ -783,6 +878,25 @@ tools:
     title: GPT-5.1 with Adaptive Reasoning
     description: GPT-5.1 now decides when to think before responding, delivering more thorough answers
       on complex questions.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Ecosystem Integration
+    description: Connects to Gmail, Calendar, Dropbox and more for seamless workflows
+  - title: Multimodal Mastery
+    description: Text, voice, images, code, and file analysis in one interface
+  - title: DALL-E Built-In
+    description: Generate and edit images directly in conversation
+  game_stats:
+    power: 9
+    speed: 8
+    versatility: 10
+    ease_of_use: 10
+    value: 8
+  rarity: legendary
+  synergy_tools:
+  - dall-e
+  - cursor
+  - notion-ai
 - name: Claude
   company: Anthropic
   tagline: Chat with 1M token context and coding tools
@@ -841,6 +955,25 @@ tools:
   - date: '2025-11-18'
     title: Claude for Nonprofits Program
     description: New program provides discounted Claude access to qualifying nonprofit organizations.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Constitutional AI
+    description: Built-in safety and helpfulness training for reliable, honest responses
+  - title: Extended Context
+    description: Process up to 1M tokens - entire codebases or book-length documents
+  - title: Agentic Coding
+    description: Claude Code can autonomously refactor, debug, and ship code
+  game_stats:
+    power: 9
+    speed: 7
+    versatility: 9
+    ease_of_use: 8
+    value: 8
+  rarity: legendary
+  synergy_tools:
+  - cursor
+  - notion
+  - figma
 - name: Gemini
   company: Google
   tagline: Multimodal chat with Google integrations
@@ -896,6 +1029,25 @@ tools:
   - date: '2025-11-20'
     title: Deep Research Improvements
     description: Research mode now searches more sources and provides better synthesis of findings.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Native Multimodal
+    description: Processes text, images, audio, and video in one unified model
+  - title: Google Integration
+    description: Deep ties to Search, Workspace, and Google ecosystem
+  - title: Code Execution
+    description: Run Python directly in conversation for data analysis
+  game_stats:
+    power: 9
+    speed: 9
+    versatility: 9
+    ease_of_use: 9
+    value: 9
+  rarity: legendary
+  synergy_tools:
+  - chatgpt
+  - notion-ai
+  - google-notebooklm
 - name: Grok
   company: xAI
   tagline: Chat with 2M context and X integration
@@ -950,6 +1102,25 @@ tools:
   - date: '2025-11-15'
     title: Grok 4.20 Christmas Teaser
     description: xAI hints at major update coming December 25th with enhanced reasoning capabilities.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Massive Context
+    description: 2M token window fits entire codebases and long documents
+  - title: X Integration
+    description: Real-time access to trending topics and social data
+  - title: Unfiltered Personality
+    description: Witty, direct responses with less corporate polish
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 8
+    ease_of_use: 8
+    value: 6
+  rarity: epic
+  synergy_tools:
+  - chatgpt
+  - claude
+  - perplexity
 - name: Mistral
   company: Mistral AI
   tagline: Multilingual AI assistant with web search and canvas
@@ -1004,6 +1175,25 @@ tools:
   - date: '2025-11-08'
     title: Agents Marketplace
     description: Browse and deploy pre-built agents or create custom ones for your workflows.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: European Excellence
+    description: Superior performance on French and European languages
+  - title: Canvas Collaboration
+    description: Side-by-side document editing with AI assistance
+  - title: Open Weight Leader
+    description: Top-tier open-weight models you can self-host
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 8
+    ease_of_use: 8
+    value: 9
+  rarity: rare
+  synergy_tools:
+  - chatgpt
+  - claude
+  - hugging-face
 - name: Qwen
   tagline: Alibaba's open-weight large language model series
   description: Qwen is Alibaba Cloud's family of large language models offering chat, code generation,
@@ -1034,6 +1224,25 @@ tools:
     title: Enhanced Long Context
     description: Extended context window to 128K tokens, enabling analysis of entire codebases and long
       documents in a single prompt.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Open Weight Champion
+    description: Fully open weights available on Hugging Face for self-hosting
+  - title: Multilingual Mastery
+    description: Strong performance across 29+ languages including Chinese
+  - title: Mathematical Reasoning
+    description: Excellent at math, coding, and logical problem-solving
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 8
+    ease_of_use: 7
+    value: 10
+  rarity: rare
+  synergy_tools:
+  - hugging-face
+  - ollama
+  - langchain
 - name: Base44
   company: Base44
   tagline: Create apps at the speed of thought
@@ -1091,6 +1300,25 @@ tools:
   - date: '2024-11-15'
     title: Database Integration
     description: Automatic database schema generation and CRUD operations based on your app requirements.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Instant App Creation
+    description: Transform ideas into working apps in minutes, not days
+  - title: Full-Stack Magic
+    description: Automatic backend with auth, database, and permissions
+  - title: Zero Code Required
+    description: Build production apps without writing a single line
+  game_stats:
+    power: 7
+    speed: 10
+    versatility: 6
+    ease_of_use: 10
+    value: 8
+  rarity: uncommon
+  synergy_tools:
+  - lovable
+  - replit
+  - vercel
 - name: Claude Code
   company: Anthropic
   tagline: Terminal-based agentic coding assistant
@@ -1146,6 +1374,25 @@ tools:
   - date: '2025-11-10'
     title: VS Code and JetBrains Support
     description: Seamless integration with popular IDEs for hybrid terminal+editor workflows.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: True Autonomy
+    description: Executes multi-step tasks independently without hand-holding
+  - title: Terminal Mastery
+    description: Full command-line access for running tests, builds, and git
+  - title: MCP Extensible
+    description: Connect custom tools via Model Context Protocol
+  game_stats:
+    power: 9
+    speed: 7
+    versatility: 9
+    ease_of_use: 6
+    value: 7
+  rarity: epic
+  synergy_tools:
+  - claude
+  - cursor
+  - github-copilot
 - name: CrewAI
   company: CrewAI
   tagline: Build and orchestrate multi-agent AI workflows
@@ -1202,6 +1449,25 @@ tools:
   - date: '2025-11-05'
     title: 40K GitHub Stars
     description: CrewAI reaches 40,000 stars, becoming the most popular multi-agent framework.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Role-Playing Agents
+    description: Define agents with specific roles, goals, and backstories
+  - title: Multi-Agent Orchestration
+    description: Coordinate complex multi-agent workflows seamlessly
+  - title: LLM Agnostic
+    description: Works with any LLM provider including local models
+  game_stats:
+    power: 8
+    speed: 6
+    versatility: 9
+    ease_of_use: 7
+    value: 10
+  rarity: rare
+  synergy_tools:
+  - langchain
+  - langraph
+  - openai
 - name: Cursor
   company: Cursor
   tagline: VS Code fork with deep AI integration
@@ -1256,6 +1522,25 @@ tools:
   - date: '2025-11-10'
     title: $9.9B Valuation
     description: Series C funding values Cursor as the leading AI-native code editor.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Codebase Awareness
+    description: AI understands your entire project structure and dependencies
+  - title: Multi-file Surgery
+    description: Composer edits across multiple files from a single prompt
+  - title: VS Code DNA
+    description: Full compatibility with your existing extensions and workflow
+  game_stats:
+    power: 8
+    speed: 9
+    versatility: 7
+    ease_of_use: 9
+    value: 8
+  rarity: epic
+  synergy_tools:
+  - claude
+  - github-copilot
+  - linear
 - name: FastMCP
   tagline: The fast, Pythonic way to build MCP servers and clients
   description: Python framework for building Model Context Protocol (MCP) servers that expose data and
@@ -1286,6 +1571,25 @@ tools:
     title: Server Composition
     description: New mounting system allows combining multiple MCP servers into unified endpoints, enabling
       modular architecture for complex applications.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Pythonic Simplicity
+    description: Build MCP servers with clean decorators, no boilerplate
+  - title: Enterprise Ready
+    description: OAuth 2.1, server composition, and HTTP deployment built-in
+  - title: Protocol Expert
+    description: Handles all MCP complexity so you focus on logic
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 7
+    ease_of_use: 9
+    value: 10
+  rarity: uncommon
+  synergy_tools:
+  - claude-code
+  - claude
+  - mcp
 - name: GitHub
   company: Microsoft
   tagline: Code completion and autonomous agents in VS Code
@@ -1340,6 +1644,25 @@ tools:
   - date: '2025-11-15'
     title: Custom Agents Launch
     description: Build and share specialized coding agents for team-specific workflows.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Inline Genius
+    description: Real-time code suggestions as you type, understanding context
+  - title: Universal IDE Support
+    description: Works in VS Code, JetBrains, Vim, and more
+  - title: GitHub Ecosystem
+    description: Deep integration with PRs, issues, and Copilot Workspace
+  game_stats:
+    power: 8
+    speed: 9
+    versatility: 8
+    ease_of_use: 9
+    value: 8
+  rarity: epic
+  synergy_tools:
+  - cursor
+  - chatgpt
+  - claude
 - name: GitLab
   company: GitLab
   tagline: Complete DevSecOps platform with AI-powered Duo assistants
@@ -1395,6 +1718,25 @@ tools:
   - date: '2025-11-01'
     title: Gartner Magic Quadrant Leader
     description: Named Leader in AI Code Assistants for second consecutive year.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Complete DevSecOps
+    description: Single platform for source, CI/CD, security, and deployment
+  - title: GitLab Duo AI
+    description: AI code suggestions, chat, and review integrated throughout
+  - title: Enterprise Grade
+    description: Self-hosted option with compliance and audit features
+  game_stats:
+    power: 8
+    speed: 7
+    versatility: 9
+    ease_of_use: 7
+    value: 7
+  rarity: rare
+  synergy_tools:
+  - github-copilot
+  - cursor
+  - docker
 - name: Goose
   tagline: Open-source AI agent for engineering tasks
   description: Goose is an open-source, locally-running AI agent designed to automate engineering tasks.
@@ -1439,6 +1781,25 @@ tools:
     title: Multi-Model Backend
     description: Choose your preferred LLM provider—run Goose with Claude, GPT-4, or local models like
       Llama, giving you flexibility and control over costs and privacy.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Local First
+    description: Runs entirely on your machine, code never leaves
+  - title: Model Agnostic
+    description: Use Claude, GPT-4, or completely offline with local LLMs
+  - title: MCP Extensible
+    description: Connect to databases, APIs, and external services
+  game_stats:
+    power: 7
+    speed: 7
+    versatility: 8
+    ease_of_use: 6
+    value: 10
+  rarity: uncommon
+  synergy_tools:
+  - claude-code
+  - ollama
+  - mcp
 - name: HackerSquad
   company: HackerSquad
   tagline: Developer community platform with events and DevRel solutions
@@ -1496,6 +1857,25 @@ tools:
   - date: '2025-11-10'
     title: Community Hub 2.0
     description: Enhanced forums, study groups, and mentorship matching for better collaboration.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Hackathon Hub
+    description: Host and participate in hackathons worldwide
+  - title: DevRel Network
+    description: Strategic consulting and community management services
+  - title: Developer Toolkit
+    description: Resources, tutorials, and boilerplate code library
+  game_stats:
+    power: 5
+    speed: 6
+    versatility: 7
+    ease_of_use: 8
+    value: 9
+  rarity: common
+  synergy_tools:
+  - devpost
+  - github
+  - replit
 - name: LangChain
   company: LangChain
   tagline: 'The #1 framework for building AI agents'
@@ -1551,6 +1931,25 @@ tools:
   - date: '2025-11-08'
     title: Agent Builder Beta
     description: No-code agent creation in LangSmith with visual workflow editor.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Framework King
+    description: 100K+ GitHub stars, the most popular LLM framework
+  - title: Rich Ecosystem
+    description: 1000+ integrations with vector stores, tools, and providers
+  - title: LangSmith Observatory
+    description: Trace, debug, and evaluate agents in production
+  game_stats:
+    power: 9
+    speed: 7
+    versatility: 10
+    ease_of_use: 6
+    value: 10
+  rarity: legendary
+  synergy_tools:
+  - langraph
+  - langsmith
+  - openai
 - name: LangGraph
   company: LangChain
   tagline: Build stateful, multi-actor AI agents with full control
@@ -1607,6 +2006,25 @@ tools:
   - date: '2025-10-28'
     title: JavaScript Support
     description: LangGraph now available for TypeScript/JavaScript alongside Python.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Graph Architecture
+    description: Define agents as state machines with precise control flow
+  - title: Time Travel
+    description: Replay and inspect agent execution at any point
+  - title: Human-in-the-Loop
+    description: Pause for human approval before continuing
+  game_stats:
+    power: 8
+    speed: 6
+    versatility: 8
+    ease_of_use: 5
+    value: 10
+  rarity: rare
+  synergy_tools:
+  - langchain
+  - langsmith
+  - crewai
 - name: LangSmith
   company: LangChain
   tagline: Observability, evaluation, and deployment for AI agents
@@ -1663,6 +2081,25 @@ tools:
   - date: '2025-11-01'
     title: Self-Hosted Enterprise
     description: Run LangSmith on your Kubernetes cluster with data staying in your environment.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Agent Observatory
+    description: Full visibility into non-deterministic LLM behavior
+  - title: Prompt Lab
+    description: Test and iterate on prompts with datasets and evaluations
+  - title: Production Ready
+    description: Real-time monitoring with live dashboards and alerts
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 7
+    ease_of_use: 8
+    value: 8
+  rarity: rare
+  synergy_tools:
+  - langchain
+  - langraph
+  - openai
 - name: LlamaIndex
   company: LlamaIndex
   tagline: Data framework for LLM applications and AI agents
@@ -1720,6 +2157,25 @@ tools:
   - date: '2025-11-10'
     title: LlamaParse Tables
     description: Advanced table extraction and understanding for financial and technical documents.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: RAG Master
+    description: Advanced query engines with citation and context optimization
+  - title: Data Connectors
+    description: 160+ integrations for loading from any data source
+  - title: LlamaCloud
+    description: Managed parsing for complex documents with tables
+  game_stats:
+    power: 8
+    speed: 7
+    versatility: 9
+    ease_of_use: 6
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - langchain
+  - openai
+  - qdrant
 - name: Lovable
   company: Lovable
   tagline: Build full-stack apps through conversation with AI
@@ -1774,6 +2230,25 @@ tools:
   - date: '2025-11-10'
     title: Template Marketplace Expansion
     description: 50+ new templates added including SaaS dashboards and admin panels.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Conversational Building
+    description: Describe what you want and get working React code
+  - title: Claude Powered
+    description: Uses Anthropic's best models for code generation
+  - title: One-Click Deploy
+    description: Instant deployment with custom domain support
+  game_stats:
+    power: 7
+    speed: 9
+    versatility: 6
+    ease_of_use: 10
+    value: 8
+  rarity: rare
+  synergy_tools:
+  - base44
+  - replit
+  - vercel
 - name: Open Standard Agents
   tagline: Open specification for building AI agents
   description: Open Standard Agents (OSSA) is an open specification for building interoperable AI agents.
@@ -1829,6 +2304,25 @@ tools:
   - date: '2025-10-20'
     title: Framework Adapters
     description: Official adapters for LangChain, CrewAI, and AutoGen now available via npm.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Universal Protocol
+    description: Standard for agents to communicate across platforms
+  - title: Capability Discovery
+    description: Agents can find and advertise their abilities
+  - title: Open Standard
+    description: Vendor-neutral, community-driven specification
+  game_stats:
+    power: 5
+    speed: 5
+    versatility: 8
+    ease_of_use: 5
+    value: 10
+  rarity: uncommon
+  synergy_tools:
+  - langchain
+  - crewai
+  - mcp
 - name: OpenAGI
   company: AI Planet
   tagline: Open-source framework for building autonomous human-like agents
@@ -1886,6 +2380,25 @@ tools:
   - date: '2025-11-10'
     title: Pre-built Agent Templates
     description: Five ready-to-use agents for common use cases like writing and research.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Autonomous Planning
+    description: Agents decompose complex tasks into actionable steps
+  - title: Learning Memory
+    description: Agents improve over time from past interactions
+  - title: Multi-Agent Orchestration
+    description: Admin component coordinates multiple worker agents
+  game_stats:
+    power: 6
+    speed: 5
+    versatility: 7
+    ease_of_use: 6
+    value: 10
+  rarity: common
+  synergy_tools:
+  - crewai
+  - langchain
+  - hugging-face
 - name: OpenAI Codex
   tagline: AI-powered coding assistant by OpenAI
   description: Codex is OpenAI's AI system that translates natural language to code, powering GitHub Copilot
@@ -1914,6 +2427,25 @@ tools:
   - date: '2025-12-15'
     title: Improved context understanding
     description: Better code explanations
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Natural Language to Code
+    description: Translate plain English to working code
+  - title: Multi-Language Support
+    description: Generate code in Python, JavaScript, and 10+ languages
+  - title: GitHub Copilot Foundation
+    description: The model powering millions of developers
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 8
+    ease_of_use: 8
+    value: 7
+  rarity: rare
+  synergy_tools:
+  - github-copilot
+  - chatgpt
+  - cursor
 - name: Replit
   company: Replit
   tagline: Browser IDE with Agent for building full apps
@@ -1968,6 +2500,25 @@ tools:
   - date: '2025-11-08'
     title: Mobile App Coding
     description: Full coding capabilities now available on iOS and Android apps.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Replit Agent
+    description: Build complete full-stack apps from descriptions
+  - title: Browser-Based IDE
+    description: Code from any device with zero setup
+  - title: Instant Hosting
+    description: Deploy directly from the IDE with one click
+  game_stats:
+    power: 7
+    speed: 9
+    versatility: 8
+    ease_of_use: 10
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - lovable
+  - base44
+  - vercel
 - name: Trae
   tagline: AI-powered IDE by ByteDance
   description: AI-powered IDE by ByteDance that offers intelligent code completion, AI chat assistance,
@@ -2007,6 +2558,25 @@ tools:
     title: Multi-file Context
     description: AI assistant can now understand and reference multiple files in your project simultaneously
       for more accurate code suggestions.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Zero Cost
+    description: Full AI coding assistance completely free
+  - title: Multi-Model Backend
+    description: Choose between Claude, GPT, and other AI models
+  - title: VS Code Compatible
+    description: Familiar interface with your existing extensions
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 7
+    ease_of_use: 9
+    value: 10
+  rarity: uncommon
+  synergy_tools:
+  - cursor
+  - claude
+  - chatgpt
 - name: Warp
   tagline: AI-powered terminal for modern developers
   description: AI-powered terminal that reimagines the command line with modern features like AI command
@@ -2046,6 +2616,25 @@ tools:
     title: Team Collaboration Features
     description: Share terminal sessions in real-time with teammates, enabling pair programming and collaborative
       debugging directly in the terminal.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: AI Command Search
+    description: Describe what you want and Warp finds the command
+  - title: Modern Terminal
+    description: Blocks, text editing, and IDE-like shortcuts
+  - title: Team Workflows
+    description: Share commands and sessions with your team
+  game_stats:
+    power: 6
+    speed: 9
+    versatility: 6
+    ease_of_use: 9
+    value: 9
+  rarity: uncommon
+  synergy_tools:
+  - claude-code
+  - cursor
+  - github
 - name: 21st.dev
   tagline: Discover community-made UI components
   description: 21st.dev is a community-driven platform for discovering and sharing high-quality React
@@ -2101,6 +2690,25 @@ tools:
   - date: '2025-10-30'
     title: 10,000 Components Milestone
     description: Community library reaches 10,000 curated, production-ready components.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Component Library
+    description: 10,000+ curated React/Tailwind components ready to use
+  - title: Community Driven
+    description: Components shared by designers and developers worldwide
+  - title: Copy & Remix
+    description: One-click copy and easy customization
+  game_stats:
+    power: 5
+    speed: 9
+    versatility: 6
+    ease_of_use: 9
+    value: 10
+  rarity: common
+  synergy_tools:
+  - figma
+  - lovable
+  - vercel
 - name: Canva
   company: Canva
   tagline: Design anything, publish anywhere
@@ -2156,6 +2764,25 @@ tools:
   - date: '2025-11-08'
     title: Canva Sheets Launch
     description: New spreadsheet product with AI-powered data visualization and chart generation.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Magic Studio AI
+    description: AI-powered image generation, editing, and automation
+  - title: Template Empire
+    description: Millions of customizable templates for any occasion
+  - title: Universal Accessibility
+    description: 250M+ users creating designs with zero learning curve
+  game_stats:
+    power: 7
+    speed: 9
+    versatility: 9
+    ease_of_use: 10
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - figma
+  - midjourney
+  - dall-e
 - name: Figma
   company: Figma
   tagline: Design, prototype, and collaborate in the browser
@@ -2212,6 +2839,25 @@ tools:
   - date: '2025-11-05'
     title: Variables 2.0
     description: Advanced design tokens with modes, scoping, and improved organization for design systems.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Real-Time Collaboration
+    description: Multiple designers work simultaneously with live cursors
+  - title: Design Systems Master
+    description: Components, variants, and auto-layout for scalable design
+  - title: Dev Mode
+    description: Inspect designs and generate code snippets for developers
+  game_stats:
+    power: 9
+    speed: 8
+    versatility: 9
+    ease_of_use: 8
+    value: 8
+  rarity: legendary
+  synergy_tools:
+  - canva
+  - midjourney
+  - cursor
 - name: Chrome DevTools MCP
   tagline: AI-powered browser automation via Model Context Protocol
   description: Model Context Protocol server for Chrome DevTools. Enables AI agents to interact with Chrome
@@ -2247,6 +2893,25 @@ tools:
     title: Performance Tracing
     description: AI agents can now record and analyze performance traces, identifying bottlenecks and
       providing optimization recommendations.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: AI-Driven Testing
+    description: Let AI agents navigate apps and verify functionality
+  - title: Visual Understanding
+    description: AI takes snapshots to understand page state
+  - title: Debugging Assistance
+    description: Inspect network, console, and performance data
+  game_stats:
+    power: 6
+    speed: 8
+    versatility: 7
+    ease_of_use: 6
+    value: 10
+  rarity: uncommon
+  synergy_tools:
+  - claude-code
+  - mcp
+  - playwright
 - name: Model Context Protocol (MCP)
   tagline: Open standard for connecting AI applications to external systems
   description: MCP is an open-source protocol that standardizes how AI applications connect to data sources,
@@ -2288,6 +2953,25 @@ tools:
   - date: '2025-11-01'
     title: Official SDK Release
     description: SDKs now available for multiple programming languages
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Universal Connector
+    description: USB-C for AI - standard interface for all integrations
+  - title: Linux Foundation Backed
+    description: Donated to AAIF for open, vendor-neutral development
+  - title: 10K+ Servers
+    description: Vast ecosystem of ready-to-use MCP servers
+  game_stats:
+    power: 6
+    speed: 7
+    versatility: 10
+    ease_of_use: 6
+    value: 10
+  rarity: epic
+  synergy_tools:
+  - claude-code
+  - claude
+  - fastmcp
 - name: DALL-E
   company: OpenAI
   tagline: Image generation in ChatGPT
@@ -2342,6 +3026,25 @@ tools:
   - date: '2025-10-30'
     title: API Price Reduction
     description: Image generation API costs reduced by 30% across all resolution tiers.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: ChatGPT Integration
+    description: Prompt refinement happens automatically before generation
+  - title: Inpainting
+    description: Edit specific regions of generated images
+  - title: API Access
+    description: Programmatic generation at scale
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 7
+    ease_of_use: 9
+    value: 8
+  rarity: epic
+  synergy_tools:
+  - chatgpt
+  - midjourney
+  - canva
 - name: Ideogram
   company: Ideogram
   tagline: Text-to-image with accurate text rendering
@@ -2395,6 +3098,25 @@ tools:
   - date: '2025-11-10'
     title: API General Availability
     description: Public API now available for developers to integrate Ideogram into applications.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Text Rendering Master
+    description: Best-in-class accuracy for text in images
+  - title: Typography Control
+    description: Specify font styles and placement in prompts
+  - title: Remix Feature
+    description: Iterate on existing images with new prompts
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 6
+    ease_of_use: 8
+    value: 9
+  rarity: rare
+  synergy_tools:
+  - midjourney
+  - dall-e
+  - canva
 - name: Leonardo AI
   company: Leonardo AI
   tagline: Game and design asset generation
@@ -2449,6 +3171,25 @@ tools:
   - date: '2025-11-01'
     title: Real-Time Canvas Updates
     description: AI Canvas now streams generation progress for faster iteration workflows.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Game Asset Specialist
+    description: Fine-tuned models for characters, environments, and textures
+  - title: Character Consistency
+    description: Maintain character appearance across multiple images
+  - title: AI Canvas
+    description: Real-time editing with inpainting and outpainting
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 7
+    ease_of_use: 8
+    value: 9
+  rarity: rare
+  synergy_tools:
+  - midjourney
+  - stable-diffusion
+  - unity
 - name: Midjourney
   company: Midjourney
   tagline: Text-to-image via Discord and web
@@ -2503,6 +3244,25 @@ tools:
   - date: '2025-11-10'
     title: Web Editor Overhaul
     description: New browser-based editing tools for inpainting, outpainting, and variations.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Artistic Mastery
+    description: Unmatched aesthetic quality and artistic style interpretation
+  - title: Personalization Engine
+    description: Learns your visual preferences from 200 image rankings
+  - title: Draft Speed
+    description: Generate at 10x speed with voice prompts
+  game_stats:
+    power: 10
+    speed: 8
+    versatility: 6
+    ease_of_use: 7
+    value: 7
+  rarity: rare
+  synergy_tools:
+  - runway
+  - figma
+  - canva
 - name: Nano Banana
   tagline: Powerful AI image generation by Google
   description: Google's AI image generation and editing tool within Gemini, offering powerful text-to-image
@@ -2557,6 +3317,25 @@ tools:
   - date: '2025-10-20'
     title: Multi-Image Composition
     description: Combine multiple photos seamlessly into single compositions with intelligent blending.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Precision Controls
+    description: Lighting, camera angle, and atmosphere adjustments
+  - title: Text Integration
+    description: Accurate text for logos, posters, and comics
+  - title: Google Ecosystem
+    description: Seamless integration with Gemini and Google tools
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 7
+    ease_of_use: 9
+    value: 8
+  rarity: rare
+  synergy_tools:
+  - gemini
+  - midjourney
+  - dall-e
 - name: Stable Diffusion
   company: Stability AI
   tagline: Open-source image model for local or cloud use
@@ -2611,6 +3390,25 @@ tools:
   - date: '2025-11-05'
     title: Stability AI Restructuring
     description: Company focuses on enterprise licensing while maintaining open-source commitment.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Open Source Freedom
+    description: Run locally on your GPU, no API costs
+  - title: Community Models
+    description: Thousands of fine-tunes on Civitai and Hugging Face
+  - title: ControlNet
+    description: Precise control over pose, depth, and composition
+  game_stats:
+    power: 8
+    speed: 7
+    versatility: 10
+    ease_of_use: 5
+    value: 10
+  rarity: legendary
+  synergy_tools:
+  - comfyui
+  - hugging-face
+  - replicate
 - name: Cloudflare
   company: Cloudflare
   tagline: Global cloud platform for security, performance, and AI at the edge
@@ -2684,6 +3482,25 @@ tools:
   - date: '2025-11-01'
     title: Vectorize Vector Database
     description: Native vector database for AI applications with seamless Workers integration.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Edge Computing
+    description: Run code in milliseconds at 300+ global data centers
+  - title: Workers AI
+    description: Run AI models at the edge with low latency
+  - title: Zero Egress
+    description: R2 storage with no bandwidth costs
+  game_stats:
+    power: 9
+    speed: 10
+    versatility: 9
+    ease_of_use: 7
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - vercel
+  - aws
+  - workers
 - name: WorkOS
   company: WorkOS
   tagline: Enterprise-ready authentication and identity management
@@ -2756,6 +3573,25 @@ tools:
   - date: '2025-10-28'
     title: Python SDK 5.0
     description: Major update with async support and improved type hints.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Enterprise SSO
+    description: 70+ identity providers with drop-in integration
+  - title: Directory Sync
+    description: SCIM provisioning from enterprise directories
+  - title: Admin Portal
+    description: Self-serve configuration reduces support burden
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 6
+    ease_of_use: 9
+    value: 9
+  rarity: rare
+  synergy_tools:
+  - auth0
+  - clerk
+  - supabase
 - name: Redis
   tagline: In-memory data structure store
   description: Redis is an open-source, in-memory data structure store used as a database, cache, and
@@ -2769,6 +3605,25 @@ tools:
   has_free_tier: false
   meta_description: Redis is an open-source, in-memory data structure store used as a database, cache,
     and message broker.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Lightning Fast
+    description: In-memory data store with sub-millisecond latency
+  - title: Versatile Data Structures
+    description: Strings, hashes, lists, sets, sorted sets, and more
+  - title: Vector Search
+    description: RedisVL for AI/ML vector search applications
+  game_stats:
+    power: 8
+    speed: 10
+    versatility: 8
+    ease_of_use: 7
+    value: 9
+  rarity: rare
+  synergy_tools:
+  - redisvl
+  - qdrant
+  - postgresql
 - name: Bluefly
   tagline: Drupal experts accelerating digital growth with AI integration
   description: Digital consulting firm specializing in Drupal development, AI integration, and enterprise
@@ -2798,6 +3653,25 @@ tools:
     title: Drupal AI Early Adopter Program
     description: Launched program helping organizations integrate AI capabilities into their Drupal platforms
       ahead of the curve.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Drupal Experts
+    description: Senior specialists with Acquia leadership experience
+  - title: AI Integration
+    description: Early adopter program for cutting-edge AI in Drupal
+  - title: Enterprise Focus
+    description: Government and enterprise-grade solutions
+  game_stats:
+    power: 6
+    speed: 5
+    versatility: 5
+    ease_of_use: 6
+    value: 6
+  rarity: common
+  synergy_tools:
+  - drupal
+  - acquia
+  - wordpress
 - name: Devpost
   tagline: Where hackers come to build and ship
   description: Devpost is the home for hackathons. Participate in online and in-person hackathons, discover
@@ -2827,6 +3701,25 @@ tools:
   - date: '2024-11-15'
     title: Team Matching
     description: Improved algorithm for finding compatible teammates based on skills and interests
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Hackathon Hub
+    description: Thousands of hackathons worldwide to participate in
+  - title: Team Matching
+    description: Find compatible teammates based on skills
+  - title: Project Showcase
+    description: Portfolio of projects to discover and learn from
+  game_stats:
+    power: 4
+    speed: 6
+    versatility: 6
+    ease_of_use: 9
+    value: 10
+  rarity: common
+  synergy_tools:
+  - hackersquad
+  - github
+  - replit
 - name: Go1
   tagline: AI-powered learning curation platform
   description: AI-powered learning curation platform that helps L&D professionals build and deliver personalized
@@ -2868,6 +3761,25 @@ tools:
     title: Smart Content Retirement Alerts
     description: AI now proactively notifies admins when assigned content is being retired and automatically
       suggests suitable replacement courses.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: AI Curation
+    description: Automatically surface relevant training content
+  - title: Personalized Learning
+    description: Tailored paths for thousands of employees
+  - title: Smart Alerts
+    description: Notifies when content needs refreshing
+  game_stats:
+    power: 6
+    speed: 7
+    versatility: 5
+    ease_of_use: 8
+    value: 7
+  rarity: uncommon
+  synergy_tools:
+  - notion-ai
+  - coursera
+  - linkedin-learning
 - name: Notion AI
   company: Notion
   tagline: AI writing and search in your workspace
@@ -2922,6 +3834,25 @@ tools:
   - date: '2025-11-05'
     title: Connected Apps Integration
     description: AI now pulls context from Slack, Google Drive, and other connected services.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: AI Writing
+    description: Generate and improve content inline while writing
+  - title: Workspace Q&A
+    description: Ask questions about your entire workspace
+  - title: AI Agents 3.0
+    description: Autonomous agents for workflow automation
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 8
+    ease_of_use: 9
+    value: 8
+  rarity: epic
+  synergy_tools:
+  - chatgpt
+  - linear
+  - slack
 - name: Google NotebookLM
   tagline: AI-powered notebook assistant for research and learning
   description: NotebookLM is a personalized AI research assistant powered by Google Gemini that helps
@@ -2950,6 +3881,25 @@ tools:
   - date: '2025-12-15'
     title: Multi-source synthesis
     description: Cross-reference capabilities
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Audio Overviews
+    description: Turn notes into podcast-style discussions
+  - title: Source Grounded
+    description: Every answer cites your uploaded sources
+  - title: Research Synthesis
+    description: Cross-reference multiple documents intelligently
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 7
+    ease_of_use: 9
+    value: 10
+  rarity: rare
+  synergy_tools:
+  - perplexity
+  - chatgpt
+  - google-docs
 - name: Hugging Face
   company: Hugging Face
   tagline: Open-source model hub and ML infrastructure
@@ -3004,6 +3954,25 @@ tools:
   - date: '2025-11-08'
     title: Spaces Pro Launch
     description: Enterprise-grade Spaces with GPU access, custom domains, and SLA guarantees.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Model Hub
+    description: 1M+ open-source models for every AI task
+  - title: Transformers Library
+    description: The standard Python library for ML
+  - title: Community Ecosystem
+    description: Vibrant community sharing models and datasets
+  game_stats:
+    power: 9
+    speed: 7
+    versatility: 10
+    ease_of_use: 7
+    value: 10
+  rarity: legendary
+  synergy_tools:
+  - stable-diffusion
+  - langchain
+  - pytorch
 - name: Neo4j
   company: Neo4j
   tagline: Native graph database for knowledge graphs and AI systems
@@ -3061,6 +4030,25 @@ tools:
   - date: '2025-11-10'
     title: AuraDB Vector Index
     description: Native vector indexing in managed cloud for AI-powered semantic search.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Relationship Native
+    description: Purpose-built for connected data with index-free adjacency
+  - title: Cypher Query Language
+    description: Intuitive declarative language for graph pattern matching
+  - title: Knowledge Graph Pioneer
+    description: Industry standard for backing LLMs with structured knowledge
+  game_stats:
+    power: 9
+    speed: 8
+    versatility: 8
+    ease_of_use: 7
+    value: 8
+  rarity: legendary
+  synergy_tools:
+  - langchain
+  - llamaindex
+  - hugging-face
 - name: Perplexity
   company: Perplexity AI
   tagline: AI search with citations and focus modes
@@ -3116,6 +4104,25 @@ tools:
   - date: '2025-11-15'
     title: Samsung TV Partnership
     description: Perplexity AI now available on Samsung smart TVs for voice-activated search.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Citation Machine
+    description: Every answer backed by verifiable source links
+  - title: Focus Modes
+    description: Filter by Academic, SEC, Reddit, or custom domains
+  - title: Pro Search
+    description: Multi-step deep research for complex questions
+  game_stats:
+    power: 8
+    speed: 9
+    versatility: 8
+    ease_of_use: 10
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - google-notebooklm
+  - notion-ai
+  - claude
 - name: Qdrant
   company: Qdrant
   tagline: Open-source vector database for AI applications
@@ -3173,6 +4180,25 @@ tools:
   - date: '2025-11-10'
     title: Qdrant Cloud Inference
     description: Managed embeddings service integrated with Qdrant Cloud for simplified workflows.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Performance at Scale
+    description: Sub-100ms queries on billion-vector datasets
+  - title: ACORN Algorithm
+    description: Cutting-edge approximate nearest neighbor search
+  - title: Advanced Filtering
+    description: Rich payload filtering with full-text search
+  game_stats:
+    power: 9
+    speed: 10
+    versatility: 8
+    ease_of_use: 7
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - langchain
+  - llamaindex
+  - hugging-face
 - name: RedisVL
   company: Redis
   tagline: AI-native Python client for Redis vector search
@@ -3229,6 +4255,25 @@ tools:
   - date: '2025-11-01'
     title: SVS-VAMANA Algorithm
     description: New vector search algorithm for improved recall and performance at scale.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Semantic Caching
+    description: Cache LLM results to slash API costs dramatically
+  - title: Redis Speed
+    description: Sub-millisecond latency backed by battle-tested Redis
+  - title: Framework Agnostic
+    description: Works standalone or with LangChain/LlamaIndex
+  game_stats:
+    power: 7
+    speed: 10
+    versatility: 7
+    ease_of_use: 7
+    value: 9
+  rarity: rare
+  synergy_tools:
+  - redis
+  - langchain
+  - llamaindex
 - name: Replicate
   company: Replicate
   tagline: Run open-source models via API
@@ -3283,6 +4328,25 @@ tools:
   - date: '2025-11-02'
     title: Edge Deployments
     description: Deploy models to edge locations for sub-100ms latency in key regions.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Model Marketplace
+    description: Thousands of ready-to-use open-source models
+  - title: Pay Per Second
+    description: Only pay for compute you actually use
+  - title: Cog Packaging
+    description: Deploy custom models with simple containerization
+  game_stats:
+    power: 8
+    speed: 7
+    versatility: 10
+    ease_of_use: 9
+    value: 8
+  rarity: epic
+  synergy_tools:
+  - stable-diffusion
+  - hugging-face
+  - langchain
 - name: Senso
   company: Senso
   tagline: Enterprise visibility platform for AI answer engines
@@ -3340,6 +4404,25 @@ tools:
   - date: '2025-11-10'
     title: Publisher Network Expansion
     description: Now distributing to 50K+ publishers and direct model provider integrations.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: AI Visibility Tracking
+    description: Monitor brand citations across ChatGPT, Perplexity, Gemini
+  - title: Content Remediation
+    description: Auto-generate content to increase AI citations
+  - title: Publisher Network
+    description: Distribute to 50K+ publishers for maximum reach
+  game_stats:
+    power: 6
+    speed: 6
+    versatility: 5
+    ease_of_use: 7
+    value: 6
+  rarity: uncommon
+  synergy_tools:
+  - perplexity
+  - claude
+  - gpt-4
 - name: Weaviate
   company: Weaviate
   tagline: AI-native vector database for RAG and hybrid search
@@ -3396,6 +4479,25 @@ tools:
   - date: '2025-11-01'
     title: Weaviate Agents Launch
     description: New Query Agent, Transformation Agent, and Personalization Agent for AI workflows.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Hybrid Search
+    description: Vector + keyword search in one query
+  - title: 50+ AI Integrations
+    description: Built-in modules for all major AI providers
+  - title: Generative Search
+    description: RAG with automatic prompting built-in
+  game_stats:
+    power: 9
+    speed: 9
+    versatility: 9
+    ease_of_use: 7
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - langchain
+  - llamaindex
+  - hugging-face
 - name: CapCut
   company: CapCut
   tagline: AI-powered video editing for creators
@@ -3451,6 +4553,25 @@ tools:
   - date: '2025-11-05'
     title: Collaborative Editing
     description: Real-time team editing with shared project workspaces and version history.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Cross-Platform
+    description: Web, desktop, and mobile with cloud sync
+  - title: Auto Captions
+    description: AI speech-to-text for instant subtitles
+  - title: Template Library
+    description: Thousands of templates for social media
+  game_stats:
+    power: 7
+    speed: 8
+    versatility: 8
+    ease_of_use: 10
+    value: 10
+  rarity: rare
+  synergy_tools:
+  - runway
+  - pika
+  - canva
 - name: Luma Dream Machine
   company: Luma AI
   tagline: Fast video generation with Ray 2 model
@@ -3505,6 +4626,25 @@ tools:
   - date: '2025-11-10'
     title: API Rate Limits Increased
     description: Pro users now get 5x higher API limits for production workloads.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Physics Realism
+    description: Industry-leading realistic motion and physics
+  - title: Speed King
+    description: Generate videos in under 2 minutes
+  - title: Keyframe Control
+    description: Precise start/end frame specification
+  game_stats:
+    power: 9
+    speed: 10
+    versatility: 7
+    ease_of_use: 9
+    value: 8
+  rarity: epic
+  synergy_tools:
+  - runway
+  - pika
+  - midjourney
 - name: Pika
   company: Pika Labs
   tagline: Video generation with 3D scene control
@@ -3559,6 +4699,25 @@ tools:
   - date: '2025-11-05'
     title: Pikalabs Shorts Format
     description: Quick vertical video generation optimized for TikTok and Instagram.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Scene Ingredients
+    description: Blend multiple concepts into cohesive scenes
+  - title: Pikaffects
+    description: Add explosions, melting, and VFX to footage
+  - title: 3D Scene Control
+    description: Advanced control over camera and motion
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 8
+    ease_of_use: 9
+    value: 8
+  rarity: rare
+  synergy_tools:
+  - runway
+  - luma-dream-machine
+  - midjourney
 - name: Runway
   company: Runway
   tagline: Video generation and editing platform with Gen-4
@@ -3613,6 +4772,25 @@ tools:
   - date: '2025-11-10'
     title: Aleph Private Preview
     description: Next-gen model in testing with 2-minute continuous video generation.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Gen-4 Quality
+    description: Best-in-class human motion and consistency
+  - title: Motion Brush
+    description: Selective animation of specific areas
+  - title: Act-One
+    description: Performance capture to animated characters
+  game_stats:
+    power: 10
+    speed: 7
+    versatility: 10
+    ease_of_use: 8
+    value: 7
+  rarity: legendary
+  synergy_tools:
+  - midjourney
+  - stable-diffusion
+  - elevenlabs
 - name: Veo 3
   company: Google DeepMind
   tagline: Text-to-video with native audio and dialogue
@@ -3668,6 +4846,25 @@ tools:
   - date: '2025-11-15'
     title: AI Studio Integration
     description: Veo 3 now accessible directly in Google AI Studio for developers.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Native Audio
+    description: First model to generate synchronized audio with video
+  - title: 8K Resolution
+    description: Ultra-high-resolution output for professional use
+  - title: Physics Mastery
+    description: Realistic physics and coherent narratives
+  game_stats:
+    power: 10
+    speed: 6
+    versatility: 8
+    ease_of_use: 7
+    value: 8
+  rarity: legendary
+  synergy_tools:
+  - runway
+  - gemini
+  - google-notebooklm
 - name: Grammarly
   company: Grammarly
   tagline: Writing corrections and generative AI everywhere you type
@@ -3722,6 +4919,25 @@ tools:
   - date: '2025-10-30'
     title: Slack Integration
     description: Real-time writing assistance now works directly in Slack messages.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Universal Coverage
+    description: Works everywhere you type on the web
+  - title: Tone Detection
+    description: Understand how your writing sounds to readers
+  - title: GrammarlyGO
+    description: AI-powered rewriting and generation
+  game_stats:
+    power: 7
+    speed: 10
+    versatility: 8
+    ease_of_use: 10
+    value: 9
+  rarity: epic
+  synergy_tools:
+  - notion-ai
+  - jasper
+  - claude
 - name: Jasper
   company: Jasper
   tagline: Marketing content platform with brand voice training
@@ -3776,3 +4992,22 @@ tools:
   - date: '2025-11-05'
     title: Performance Insights
     description: AI-powered analytics show which content styles drive the best engagement.
+  # Game/Trading Card Attributes
+  superpowers:
+  - title: Brand Voice Training
+    description: AI learns your unique tone and style
+  - title: Campaign Hub
+    description: Organize all assets around marketing launches
+  - title: Template Library
+    description: Pre-built formats for every content type
+  game_stats:
+    power: 8
+    speed: 8
+    versatility: 7
+    ease_of_use: 8
+    value: 6
+  rarity: rare
+  synergy_tools:
+  - grammarly
+  - canva
+  - notion-ai

@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { ReferralCodeDisplay } from '@/components/referrals/ReferralCodeDisplay';
 import { api } from '@/services/api';
+import { getErrorMessage } from '@/utils/errors';
 
 interface ReferralCodeData {
   id: number;
@@ -63,26 +64,9 @@ export default function ReferralsPage() {
           api.get('/me/referrals/')
         ]);
 
-        // Convert snake_case to camelCase
-        const codeData = codeResponse.data;
-        setReferralCode({
-          id: codeData.id,
-          code: codeData.code,
-          referralUrl: codeData.referral_url,
-          usesCount: codeData.uses_count,
-          maxUses: codeData.max_uses,
-          isValid: codeData.is_valid,
-          createdAt: codeData.created_at,
-        });
-
-        const statsData = statsResponse.data;
-        setReferralStats({
-          totalReferrals: statsData.total_referrals,
-          pendingReferrals: statsData.pending_referrals,
-          completedReferrals: statsData.completed_referrals,
-          rewardedReferrals: statsData.rewarded_referrals,
-          totalUses: statsData.total_uses,
-        });
+        // API interceptor automatically converts snake_case → camelCase
+        setReferralCode(codeResponse.data);
+        setReferralStats(statsResponse.data);
 
         // Process referrals list - handle both array and paginated responses
         const data = referralsResponse.data;
@@ -130,10 +114,9 @@ export default function ReferralsPage() {
         isValid: updatedCode.is_valid,
         createdAt: updatedCode.created_at,
       });
-    } catch (error: any) {
-      console.error('Failed to update code:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to update code';
-      throw new Error(errorMsg);
+    } catch (error) {
+      console.error('Failed to update code:', getErrorMessage(error));
+      throw new Error(getErrorMessage(error) || 'Failed to update code');
     }
   };
 

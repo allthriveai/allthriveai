@@ -33,6 +33,7 @@ class UATCategoryViewSet(viewsets.ModelViewSet):
     queryset = UATCategory.objects.all()
     serializer_class = UATCategorySerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+    pagination_class = None  # Return all categories
 
     def get_queryset(self):
         """Filter by active status if provided."""
@@ -64,6 +65,7 @@ class UATScenarioViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated, IsAdminRole]
+    pagination_class = None  # Return all scenarios - admin interface
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -72,16 +74,12 @@ class UATScenarioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Apply filters and prefetch test runs."""
-        queryset = (
-            UATScenario.objects.select_related('category', 'created_by', 'updated_by', 'linked_task')
-            .prefetch_related(
-                Prefetch(
-                    'test_runs',
-                    queryset=UATTestRun.objects.select_related('tested_by').order_by('-date_tested', '-created_at'),
-                )
-            )
-            .annotate(
-                test_run_count=Count('test_runs'),
+        queryset = UATScenario.objects.select_related(
+            'category', 'created_by', 'updated_by', 'linked_task'
+        ).prefetch_related(
+            Prefetch(
+                'test_runs',
+                queryset=UATTestRun.objects.select_related('tested_by').order_by('-date_tested', '-created_at'),
             )
         )
 
@@ -96,6 +94,11 @@ class UATScenarioViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(models.Q(title__icontains=search) | models.Q(description__icontains=search))
 
+        # Priority filter
+        priority = self.request.query_params.get('priority')
+        if priority:
+            queryset = queryset.filter(priority=priority)
+
         # Archived filter (default: exclude archived)
         show_archived = self.request.query_params.get('archived', 'false')
         if show_archived.lower() != 'true':
@@ -108,10 +111,11 @@ class UATScenarioViewSet(viewsets.ModelViewSet):
             latest_run = UATTestRun.objects.filter(scenario=OuterRef('pk')).order_by('-date_tested', '-created_at')[:1]
 
             if latest_result == 'not_tested':
-                queryset = queryset.filter(test_run_count=0)
+                # Scenarios with no test runs
+                queryset = queryset.exclude(test_runs__isnull=False)
             else:
-                queryset = queryset.annotate(latest_result=Subquery(latest_run.values('result'))).filter(
-                    latest_result=latest_result
+                queryset = queryset.annotate(latest_result_value=Subquery(latest_run.values('result'))).filter(
+                    latest_result_value=latest_result
                 )
 
         # Sorting
@@ -269,6 +273,7 @@ class UATTestRunViewSet(viewsets.ModelViewSet):
 
     queryset = UATTestRun.objects.select_related('scenario', 'tested_by')
     permission_classes = [IsAuthenticated, IsAdminRole]
+    pagination_class = None  # Return all test runs
 
     def get_serializer_class(self):
         if self.action == 'create':

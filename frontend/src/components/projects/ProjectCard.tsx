@@ -28,9 +28,11 @@ import {
   NewspaperIcon,
   MegaphoneIcon,
   StarIcon,
+  AcademicCapIcon,
+  PlayIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid, StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { toggleProjectLike, deleteProjectById, toggleProjectPromotion, toggleProjectInShowcase } from '@/services/projects';
+import { toggleProjectLike, deleteProjectById, toggleProjectPromotion, toggleProjectInShowcase, toggleLearningEligibility, dismissProject } from '@/services/projects';
 import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
@@ -58,6 +60,7 @@ interface ProjectCardProps {
   showShowcaseButton?: boolean;  // Show the add/remove from showcase button
   priority?: boolean;  // Load image eagerly (for above-the-fold content)
   enableInlinePreview?: boolean;  // Opens tray instead of navigating (for explore feed)
+  onDismiss?: (projectId: number) => void;  // Callback when user dismisses project (removes from feed)
 }
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -69,12 +72,13 @@ const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   video: VideoCameraIcon,
   rss_article: NewspaperIcon,
   battle: TrophyIcon,
+  game: PlayIcon,
   other: DocumentTextIcon,
 };
 
 const typeLabels = PROJECT_TYPE_LABELS;
 
-export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false, priority = false, enableInlinePreview = false }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, selectionMode = false, isSelected = false, onSelect, isOwner = false, variant = 'default', onDelete, onToggleShowcase, userAvatarUrl, onCommentClick, onCardClick, isInShowcase = false, onShowcaseToggle, showShowcaseButton = false, priority = false, enableInlinePreview = false, onDismiss }: ProjectCardProps) {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const projectPreviewContext = useProjectPreviewTraySafe();
@@ -94,8 +98,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   const [isPromoting, setIsPromoting] = useState(false);
   const [inShowcase, setInShowcase] = useState(isInShowcase);
   const [isTogglingShowcase, setIsTogglingShowcase] = useState(false);
+  const [isLearningEligible, setIsLearningEligible] = useState(project.isLearningEligible ?? true);
+  const [isTogglingLearning, setIsTogglingLearning] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
-  const projectUrl = `/${project.username}/${project.slug}`;
+  // Game projects link directly to the game URL
+  const gameUrl = project.type === 'game' ? project.content?.gameUrl : null;
+  const projectUrl = gameUrl || `/${project.username}/${project.slug}`;
 
   // Check if user is admin (includes superusers via isAdminRole)
   const isAdmin = user?.isAdminRole || user?.role === 'admin';
@@ -215,6 +224,43 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       alert(errorMsg);
     } finally {
       setIsTogglingShowcase(false);
+    }
+  };
+
+  const handleLearningEligibilityClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isTogglingLearning) return;
+
+    setIsTogglingLearning(true);
+    try {
+      const result = await toggleLearningEligibility(project.id);
+      setIsLearningEligible(result.isLearningEligible);
+    } catch (error: any) {
+      console.error('Failed to toggle learning eligibility:', error);
+      const errorMsg = error?.response?.data?.error || 'Failed to update learning eligibility. Please try again.';
+      alert(errorMsg);
+    } finally {
+      setIsTogglingLearning(false);
+    }
+  };
+
+  const handleDismissClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isDismissing || !isAuthenticated) return;
+
+    setIsDismissing(true);
+    try {
+      await dismissProject(project.id, 'not_interested');
+      // Call the onDismiss callback to remove card from feed
+      if (onDismiss) {
+        onDismiss(project.id);
+      }
+    } catch (error) {
+      console.error('Failed to dismiss project:', error);
+    } finally {
+      setIsDismissing(false);
     }
   };
 
@@ -1005,6 +1051,19 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                     <TrashIcon className="w-4 h-4 text-red-400 group-hover/delete:scale-110 transition-transform drop-shadow-sm" />
                   </button>
                 )}
+
+                {/* Not Interested Button - Show for non-owners in explore feed */}
+                {isAuthenticated && !isOwner && !selectionMode && onDismiss && (
+                  <button
+                    onClick={handleDismissClick}
+                    disabled={isDismissing}
+                    className="p-1.5 rounded-full transition-all hover:scale-105 group/dismiss bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 disabled:opacity-50"
+                    aria-label="Not interested in this content"
+                    title="Not interested"
+                  >
+                    <EyeSlashIcon className="w-4 h-4 text-white/70 group-hover/dismiss:text-white group-hover/dismiss:scale-110 transition-transform drop-shadow-sm" />
+                  </button>
+                )}
               </div>
 
               {/* Right side - Tools (for regular projects) or Topics (for curated articles) */}
@@ -1162,6 +1221,17 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                         Add to Showcase
                       </>
                     )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      setShowMenu(false);
+                      handleLearningEligibilityClick(e);
+                    }}
+                    disabled={isTogglingLearning}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <AcademicCapIcon className="w-4 h-4" />
+                    {isLearningEligible ? 'Hide from Learning' : 'Show in Learning'}
                   </button>
                   <button
                     onClick={(e) => {

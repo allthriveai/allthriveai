@@ -229,25 +229,6 @@ class SideQuest(models.Model):
         ('epic', 'Epic'),
     ]
 
-    TOPIC_CHOICES = [
-        ('chatbots-conversation', 'Chatbots & Conversation'),
-        ('websites-apps', 'Websites & Apps'),
-        ('images-video', 'Images & Video'),
-        ('design-ui', 'Design (Mockups & UI)'),
-        ('video-creative-media', 'Video & Multimodal Media'),
-        ('podcasts-education', 'Podcasts & Educational Series'),
-        ('games-interactive', 'Games & Interactive Experiences'),
-        ('workflows-automation', 'Workflows & Automation'),
-        ('productivity', 'Productivity'),
-        ('developer-coding', 'Developer & Coding Projects'),
-        ('prompts-templates', 'Prompt Collections & Templates'),
-        ('thought-experiments', 'Thought Experiments & Concept Pieces'),
-        ('wellness-growth', 'Wellness & Personal Growth'),
-        ('ai-agents-multitool', 'AI Agents & Multi-Tool Systems'),
-        ('ai-models-research', 'AI Models & Research'),
-        ('data-analytics', 'Data & Analytics'),
-    ]
-
     SKILL_LEVEL_CHOICES = [
         ('beginner', 'Beginner'),  # 0-200 points in topic
         ('intermediate', 'Intermediate'),  # 201-500 points in topic
@@ -273,13 +254,15 @@ class SideQuest(models.Model):
         help_text='Quest category/pathway',
     )
 
-    # Topic-based progression (Phase 2 enhancement)
-    topic = models.CharField(
-        max_length=50,
-        choices=TOPIC_CHOICES,
+    # Topic taxonomy (proper FK relationship)
+    topic = models.ForeignKey(
+        'core.Taxonomy',
+        null=True,
         blank=True,
-        default='',
-        help_text='Specific topic this quest belongs to (empty = universal quest)',
+        on_delete=models.SET_NULL,
+        related_name='side_quests',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topic taxonomy this quest belongs to (null = universal quest)',
     )
     skill_level = models.CharField(
         max_length=20,

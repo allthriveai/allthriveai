@@ -517,9 +517,6 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
   if (!shouldRender || !project) return null;
 
-  const isVideo = isVideoProject(project);
-  const videoUrl = isVideo ? getVideoUrl(project) : null;
-  const teaserContent = extractTeaserContent(project);
   const projectUrl = `/${project.username}/${project.slug}`;
   const isBattle = isBattleProject(project);
 
@@ -826,6 +823,11 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     const displayProject = enrichedProject || project;
     const sections = displayProject.content?.sections || [];
 
+    // Compute video/teaser from displayProject (enriched when available)
+    const isDisplayVideo = isVideoProject(displayProject);
+    const displayVideoUrl = isDisplayVideo ? getVideoUrl(displayProject) : null;
+    const displayTeaserContent = extractTeaserContent(displayProject);
+
     // Extract specific sections
     const overviewSection = sections.find((s: any) => s.type === 'overview');
     const featuresSection = sections.find((s: any) => s.type === 'features');
@@ -856,17 +858,17 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                {project.title}
+                {displayProject.title}
               </h1>
               <Link
-                to={`/${project.username}`}
+                to={`/${displayProject.username}`}
                 className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
                 }}
               >
-                by @{project.username}
+                by @{displayProject.username}
               </Link>
             </div>
             <button
@@ -883,19 +885,19 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain pb-10">
           {/* Video or Featured Image */}
           <div className="p-6 md:p-4">
-            {isVideo && videoUrl ? (
+            {isDisplayVideo && displayVideoUrl ? (
               <div className="rounded-lg overflow-hidden">
                 <HeroVideo
-                  videoUrl={videoUrl}
-                  redditPermalink={project.content?.reddit?.permalink}
+                  videoUrl={displayVideoUrl}
+                  redditPermalink={displayProject.content?.reddit?.permalink}
                   autoplay
                 />
               </div>
-            ) : project.featuredImageUrl ? (
+            ) : displayProject.featuredImageUrl ? (
               <div className="relative w-full rounded-lg overflow-hidden">
                 <img
-                  src={getOptimizedImageUrl(project.featuredImageUrl, { width: 600 })}
-                  alt={project.title}
+                  src={getOptimizedImageUrl(displayProject.featuredImageUrl, { width: 600 })}
+                  alt={displayProject.title}
                   className="w-full h-auto object-cover"
                 />
               </div>
@@ -905,7 +907,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           {/* Category and Tool badges */}
           <div className="px-6 md:px-4 pb-3">
             <div className="flex flex-wrap gap-2">
-              {project.categoriesDetails?.slice(0, 3).map((category) => (
+              {displayProject.categoriesDetails?.slice(0, 3).map((category) => (
                 <span
                   key={category.id}
                   className="px-2.5 py-1 text-xs font-medium rounded-full"
@@ -917,7 +919,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                   {category.name}
                 </span>
               ))}
-              {project.toolsDetails?.slice(0, 3).map((tool) => (
+              {displayProject.toolsDetails?.slice(0, 3).map((tool) => (
                 <button
                   key={tool.id}
                   onClick={() => {
@@ -945,10 +947,10 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           )}
 
           {/* Description / Teaser */}
-          {teaserContent && (
+          {displayTeaserContent && (
             <div className="px-6 md:px-4 pb-4">
               <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-base prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-li:my-0">
-                <ReactMarkdown>{teaserContent}</ReactMarkdown>
+                <ReactMarkdown>{displayTeaserContent}</ReactMarkdown>
               </div>
             </div>
           )}
@@ -1100,10 +1102,10 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           )}
 
           {/* Tags */}
-          {project.content?.tags && project.content.tags.length > 0 && (
+          {displayProject.content?.tags && displayProject.content.tags.length > 0 && (
             <div className="px-6 md:px-4 pb-4">
               <div className="flex flex-wrap gap-1.5">
-                {(project.content.tags as string[]).slice(0, 5).map((tag, index) => (
+                {(displayProject.content.tags as string[]).slice(0, 5).map((tag, index) => (
                   <span
                     key={index}
                     className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
@@ -1213,11 +1215,11 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
       </aside>
 
       {/* Tool Tray - Opens when clicking a tool badge */}
-      {project?.toolsDetails && project.toolsDetails.length > 0 && showToolTray && (
+      {showToolTray && selectedToolSlug && (
         <ToolTray
           isOpen={showToolTray}
           onClose={() => setShowToolTray(false)}
-          toolSlug={selectedToolSlug || project.toolsDetails[0].slug}
+          toolSlug={selectedToolSlug}
         />
       )}
     </>,

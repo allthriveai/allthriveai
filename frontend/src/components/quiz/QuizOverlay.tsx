@@ -4,6 +4,7 @@ import { getQuiz, startQuiz, submitAnswer, completeQuiz } from '@/services/quiz'
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { QuizProgress } from '@/components/quiz/QuizProgress';
 import { QuizResults } from '@/components/quiz/QuizResults';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 import type { Quiz, QuizQuestion } from '@/components/quiz/types';
 
 type QuizState = 'intro' | 'taking' | 'feedback' | 'results';
@@ -17,6 +18,7 @@ interface QuizOverlayProps {
 }
 
 export function QuizOverlay({ isOpen, onClose, quizSlug, feedScrollContainerRef }: QuizOverlayProps) {
+  const pointsNotification = usePointsNotificationOptional();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -255,8 +257,18 @@ export function QuizOverlay({ isOpen, onClose, quizSlug, feedScrollContainerRef 
     if (!attemptId) return;
 
     try {
-      await completeQuiz(attemptId);
+      const response = await completeQuiz(attemptId);
       setQuizState('results');
+
+      // Show points notification if points were earned
+      if (response.pointsEarned && response.pointsEarned > 0 && pointsNotification) {
+        pointsNotification.showPointsNotification({
+          points: response.pointsEarned,
+          title: 'Quiz Complete!',
+          message: `Great job finishing "${quiz?.title || 'the quiz'}"!`,
+          activityType: 'quiz_complete',
+        });
+      }
     } catch (err) {
       console.error('Failed to complete quiz:', err);
       setQuizState('results');

@@ -91,7 +91,7 @@ export function MyBattlesTab() {
   }, [refreshBattles, viewMode]);
 
   const handleGoToBattles = useCallback(() => {
-    navigate('/battles');
+    navigate('/play/prompt-battles');
   }, [navigate]);
 
   const handleCopyInviteLink = useCallback(async (battleId: number, inviteUrl?: string) => {
@@ -116,7 +116,7 @@ export function MyBattlesTab() {
 
   const handleGoToBattle = useCallback(
     (battleId: number) => {
-      navigate(`/battles/${battleId}`);
+      navigate(`/play/prompt-battles/${battleId}`);
     },
     [navigate]
   );

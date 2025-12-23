@@ -2,7 +2,7 @@
  * MatchmakingScreen Component
  *
  * Pre-battle screen for finding opponents.
- * Two primary options: Battle Pip (AI) or Battle a Human.
+ * Two primary options: Battle Pip (AI) or Battle a Friend.
  * Human battle opens modal with SMS invite or random match options.
  */
 
@@ -41,6 +41,7 @@ interface MatchmakingScreenProps {
   onMatchWithPip: () => void;
   onFindRandomMatch: () => void;
   onLeaveQueue: () => void;
+  initialOpenHumanModal?: boolean;
 }
 
 export function MatchmakingScreen({
@@ -50,11 +51,12 @@ export function MatchmakingScreen({
   onMatchWithPip,
   onFindRandomMatch: _onFindRandomMatch,
   onLeaveQueue,
+  initialOpenHumanModal = false,
 }: MatchmakingScreenProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedMode, setSelectedMode] = useState<'ai' | 'random' | null>(null);
-  const [showHumanModal, setShowHumanModal] = useState(false);
+  const [showHumanModal, setShowHumanModal] = useState(initialOpenHumanModal);
   const [modalView, setModalView] = useState<'options' | 'sms' | 'link'>('options');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [friendName, setFriendName] = useState('');
@@ -218,7 +220,7 @@ export function MatchmakingScreen({
         setMessageCopied(false);
         // Navigate to battle page so sender can fill out their prompt
         if (generatedBattleId) {
-          navigate(`/battles/${generatedBattleId}`);
+          navigate(`/play/prompt-battles/${generatedBattleId}`);
         }
       }, 800);
     }
@@ -294,8 +296,8 @@ export function MatchmakingScreen({
               Battles
             </span>
           </h1>
-          <p className="text-gray-600 dark:text-slate-400 text-lg">
-            Battle to become a better prompt engineer
+          <p className="text-gray-600 dark:text-slate-400 text-lg max-w-md mx-auto">
+            Go head-to-head writing prompts to generate AI images. An AI judge picks the winner based on creativity, clarity, and how well your image matches the prompt challenge!
           </p>
         </motion.div>
 
@@ -401,7 +403,7 @@ export function MatchmakingScreen({
                 </div>
               </motion.button>
 
-              {/* Battle a Human */}
+              {/* Battle a Friend */}
               <motion.button
                 whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
@@ -414,7 +416,7 @@ export function MatchmakingScreen({
                 </div>
 
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-                  Battle a Human
+                  Battle a Friend
                 </h3>
 
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-5">
@@ -523,7 +525,7 @@ export function MatchmakingScreen({
                     exit={{ opacity: 0 }}
                   >
                     <div className="flex items-center justify-between mb-6">
-                      <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Battle a Human</h3>
+                      <h3 id="battle-human-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Battle a Friend</h3>
                       <button
                         onClick={resetModal}
                         className="p-1 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors"

@@ -16,8 +16,9 @@ export const ADMIN_USER = {
 
 export const TEST_PROJECT_SLUG = process.env.TEST_PROJECT_SLUG || 'e2e-test-project';
 
-// API base URL - use proxy in dev, direct in CI
-export const API_BASE_URL = 'http://localhost:8000';
+// API base URL - use relative URLs to go through Vite proxy
+// This ensures cookies are sent correctly (same origin)
+export const API_BASE_URL = '';
 
 /**
  * Wait for the React app to recognize the authenticated user
@@ -27,7 +28,7 @@ export async function waitForAuth(page: Page, timeoutMs = 10000) {
   await page.waitForFunction(
     async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/v1/auth/me/', {
+        const response = await fetch('/api/v1/auth/me/', {
           credentials: 'include'
         });
         return response.ok;
@@ -84,7 +85,7 @@ export async function loginViaAPI(page: Page) {
       // Get CSRF token
       const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
 
-      const response = await fetch('http://localhost:8000/api/v1/auth/test-login/', {
+      const response = await fetch('/api/v1/auth/test-login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ export async function loginViaAPI(page: Page) {
  */
 export async function isLoggedIn(page: Page): Promise<boolean> {
   try {
-    const response = await page.request.get('http://localhost:8000/api/v1/auth/me/');
+    const response = await page.request.get('/api/v1/auth/me/');
     return response.ok();
   } catch {
     return false;
@@ -142,7 +143,7 @@ export async function logoutViaAPI(page: Page) {
   const cookies = await page.context().cookies();
   const csrfCookie = cookies.find(c => c.name === 'csrftoken');
 
-  await page.request.post('http://localhost:8000/api/v1/auth/logout/', {
+  await page.request.post('/api/v1/auth/logout/', {
     headers: csrfCookie ? {
       'X-CSRFToken': csrfCookie.value,
     } : {},
@@ -164,7 +165,7 @@ export async function loginAsAdminViaAPI(page: Page) {
       // Get CSRF token
       const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
 
-      const response = await fetch('http://localhost:8000/api/v1/auth/test-login/', {
+      const response = await fetch('/api/v1/auth/test-login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

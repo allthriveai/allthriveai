@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useSearchStore } from '@/hooks/useGlobalSearch';
-import { XMarkIcon, ChevronDownIcon, PlusIcon, BoltIcon, MagnifyingGlassIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronDownIcon, ChatBubbleLeftRightIcon, MagnifyingGlassIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { MenuSection, MenuItem } from './menuData';
 
@@ -12,10 +12,9 @@ interface MobileMenuProps {
   onClose: () => void;
   menuSections: MenuSection[];
   onMenuClick: (menuItem: string) => void;
-  onAddProject?: () => void;
 }
 
-export function MobileMenu({ isOpen, onClose, menuSections, onAddProject }: MobileMenuProps) {
+export function MobileMenu({ isOpen, onClose, menuSections, onMenuClick }: MobileMenuProps) {
   const { user, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { openSearch } = useSearchStore();
@@ -106,34 +105,22 @@ export function MobileMenu({ isOpen, onClose, menuSections, onAddProject }: Mobi
           </button>
         </div>
 
-        {/* Action Buttons */}
+        {/* Chat Button - Opens sidebar chat (except on /home where chat is embedded) */}
         {isAuthenticated && user?.username && (
-          <div className="relative p-4 border-b border-white/20 dark:border-white/10 space-y-3">
-            {/* Prompt Battle Button */}
+          <div className="relative p-4 border-b border-white/20 dark:border-white/10">
             <button
               onClick={() => {
-                navigate('/battles');
+                onMenuClick('Chat');
                 onClose();
               }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-xl transition-all duration-300 hover:scale-[1.02] font-medium shadow-lg shadow-pink-500/30 border border-white/20"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-slate-900 rounded-xl transition-all duration-300 hover:scale-[1.02] font-medium shadow-lg shadow-cyan-500/30 border border-white/20"
+              style={{
+                background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+              }}
             >
-              <BoltIcon className="w-5 h-5" />
-              Prompt Battle
+              <ChatBubbleLeftRightIcon className="w-5 h-5" />
+              Chat with Ember
             </button>
-
-            {/* Add Project Button */}
-            {onAddProject && (
-              <button
-                onClick={() => {
-                  onAddProject();
-                  onClose();
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-400 hover:to-blue-400 text-white rounded-xl transition-all duration-300 hover:scale-[1.02] font-medium shadow-lg shadow-teal-500/30 border border-white/20"
-              >
-                <PlusIcon className="w-5 h-5" />
-                Add Project
-              </button>
-            )}
           </div>
         )}
 

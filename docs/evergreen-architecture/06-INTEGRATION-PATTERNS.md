@@ -1,6 +1,6 @@
 # Integration Patterns
 
-**Source of Truth** | **Last Updated**: 2025-11-29
+**Source of Truth** | **Last Updated**: 2025-12-20
 
 This document defines integration patterns for AllThrive AI, including GitHub, YouTube, and generic integration architectures for importing external content.
 
@@ -584,6 +584,44 @@ class YouTubeService:
 
 ---
 
+### YouTube Feed Agents
+
+**Purpose**: Automated agents that continuously sync content from YouTube channels.
+
+**Management Command**: `make create-youtube-agent`
+
+**Usage**:
+```bash
+# Basic usage (required params)
+make create-youtube-agent \
+  CHANNEL_URL="https://www.youtube.com/@ChannelName" \
+  SOURCE_NAME="Channel Name"
+
+# With optional social links and avatar
+make create-youtube-agent \
+  CHANNEL_URL="https://www.youtube.com/@AIDailyBrief" \
+  SOURCE_NAME="AI Daily Brief" \
+  AVATAR="https://example.com/avatar.jpg" \
+  WEBSITE="https://aidailybrief.com" \
+  TWITTER="https://twitter.com/aidailybrief" \
+  INSTAGRAM="https://instagram.com/aidailybrief"
+```
+
+**Optional Parameters**: `AVATAR`, `WEBSITE`, `TWITTER`, `INSTAGRAM`, `LINKEDIN`, `GITHUB`
+
+**Agent Behavior**:
+- Creates an `Agent` user with the channel name
+- Automatically syncs new videos as projects
+- Videos appear in the explore feed under the agent's profile
+- Social links displayed on agent profile page
+
+**Use Cases**:
+- Curating AI influencer content
+- Aggregating educational channels
+- Building topic-specific content feeds
+
+---
+
 ## Generic Integration Pattern
 
 ### Integration Registry
@@ -922,6 +960,6 @@ For each new integration:
 
 ---
 
-**Version**: 1.0  
-**Status**: Stable  
+**Version**: 1.1
+**Status**: Stable
 **Review Cadence**: Quarterly

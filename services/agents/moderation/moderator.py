@@ -3,10 +3,13 @@ Content moderation service using OpenAI's Moderation API and custom AI logic.
 """
 
 import logging
+import time
 from typing import Any
 
 from openai import APIConnectionError, APIError, APITimeoutError, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from core.ai_usage.tracker import AIUsageTracker
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +45,14 @@ class ContentModerator:
         retry=retry_if_exception_type((APIConnectionError, APITimeoutError, RateLimitError)),
         reraise=True,
     )
-    def moderate(self, content: str, context: str = '') -> dict[str, Any]:
+    def moderate(self, content: str, context: str = '', user=None) -> dict[str, Any]:
         """
         Moderate content using OpenAI's Moderation API.
 
         Args:
             content: The text content to moderate
             context: Optional context about the content source
+            user: Optional user for usage tracking
 
         Returns:
             Dictionary with moderation results
@@ -76,8 +80,29 @@ class ContentModerator:
 
         try:
             # Use OpenAI's Moderation API
+            start_time = time.time()
             response = self.client.moderations.create(input=content)
+            latency_ms = int((time.time() - start_time) * 1000)
             result = response.results[0]
+
+            # Track usage (moderation API is free but we track for visibility)
+            if user:
+                try:
+                    # Estimate tokens from input (moderation has no output tokens)
+                    estimated_input_tokens = len(content) // 4
+                    AIUsageTracker.track_usage(
+                        user=user,
+                        feature='content_moderation',
+                        provider='openai',
+                        model='text-moderation-latest',
+                        input_tokens=estimated_input_tokens,
+                        output_tokens=0,
+                        latency_ms=latency_ms,
+                        status='success',
+                        request_metadata={'context': context},
+                    )
+                except Exception as tracking_error:
+                    logger.warning(f'Failed to track moderation usage: {tracking_error}')
 
             # Check if content is flagged
             is_flagged = result.flagged

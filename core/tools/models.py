@@ -3,6 +3,7 @@ from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.utils.text import slugify
 
+from core.taxonomy.mixins import WeaviateSyncMixin
 from core.taxonomy.models import Taxonomy
 
 
@@ -64,10 +65,13 @@ class Company(models.Model):
         return self.tools.filter(is_active=True).count()
 
 
-class Tool(models.Model):
+class Tool(WeaviateSyncMixin, models.Model):
     """
     Comprehensive model for AI tools and technologies in the directory.
     Supports both AI tools (ChatGPT, Claude) and technologies (React, Python).
+
+    Inherits from:
+        WeaviateSyncMixin: Provides weaviate_uuid and last_indexed_at for vector search
     """
 
     class ToolType(models.TextChoices):
@@ -103,6 +107,21 @@ class Tool(models.Model):
         PAY_PER_USE = 'pay_per_use', 'Pay Per Use'
         ENTERPRISE = 'enterprise', 'Enterprise Only'
         OPEN_SOURCE = 'open_source', 'Open Source'
+
+    class RarityTier(models.TextChoices):
+        COMMON = 'common', 'Common'
+        UNCOMMON = 'uncommon', 'Uncommon'
+        RARE = 'rare', 'Rare'
+        EPIC = 'epic', 'Epic'
+        LEGENDARY = 'legendary', 'Legendary'
+
+    class GameElement(models.TextChoices):
+        CREATIVE = 'creative', 'Creative'
+        ANALYTICAL = 'analytical', 'Analytical'
+        GENERATIVE = 'generative', 'Generative'
+        PRODUCTIVE = 'productive', 'Productive'
+        INFRASTRUCTURE = 'infrastructure', 'Infrastructure'
+        OTHER = 'other', 'Other'
 
     # Basic Information
     name = models.CharField(max_length=200, unique=True, db_index=True)
@@ -169,6 +188,31 @@ class Tool(models.Model):
     usage_tips = models.JSONField(default=list, blank=True, help_text='Practical tips for using the tool effectively')
     best_practices = models.JSONField(default=list, blank=True, help_text='Best practices and recommendations')
     limitations = models.JSONField(default=list, blank=True, help_text='Known limitations or considerations')
+
+    # Game/Trading Card Attributes
+    superpowers = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Array of tool strengths: [{title: str, description: str}]',
+    )
+    game_stats = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Numerical stats for game mechanics: {power, speed, versatility, ease_of_use, value} (1-10 scale)',
+    )
+    rarity = models.CharField(
+        max_length=20,
+        choices=RarityTier.choices,
+        default=RarityTier.COMMON,
+        db_index=True,
+        help_text='Tool rarity for game collection mechanics',
+    )
+    synergy_tools = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of tool slugs that combo well with this tool',
+    )
+
     alternatives = models.JSONField(default=list, blank=True, help_text='List of alternative tool slugs')
     whats_new = models.JSONField(
         default=list,
@@ -270,6 +314,34 @@ class Tool(models.Model):
         """Increment view count when tool page is visited."""
         self.view_count += 1
         self.save(update_fields=['view_count'])
+
+    @property
+    def element(self) -> str:
+        """Map category to game element type for trading card mechanics."""
+        ELEMENT_MAP = {
+            # Creative element
+            'image': 'creative',
+            'video': 'creative',
+            'audio': 'creative',
+            'design': 'creative',
+            # Analytical element
+            'data': 'analytical',
+            'research': 'analytical',
+            'code': 'analytical',
+            'testing': 'analytical',
+            # Generative element
+            'writing': 'generative',
+            'chat': 'generative',
+            # Productive element
+            'productivity': 'productive',
+            # Infrastructure element
+            'database': 'infrastructure',
+            'cloud': 'infrastructure',
+            'infrastructure': 'infrastructure',
+            'language': 'infrastructure',
+            'framework': 'infrastructure',
+        }
+        return ELEMENT_MAP.get(self.category, 'other')
 
 
 class ToolReview(models.Model):

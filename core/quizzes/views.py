@@ -2,7 +2,7 @@ import logging
 
 import bleach
 from django.db import transaction
-from django.db.models import Avg, F, Q
+from django.db.models import Avg, Count, Exists, F, OuterRef, Q, Subquery
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -37,8 +37,42 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = (
-            Quiz.objects.filter(is_published=True).select_related('created_by').prefetch_related('tools', 'categories')
+            Quiz.objects.filter(is_published=True)
+            .select_related(
+                'created_by',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+            )
+            .prefetch_related('tools', 'categories')
         )
+
+        # Add user-specific annotations to prevent N+1 queries in serializer
+        if self.request.user.is_authenticated:
+            user = self.request.user
+            completed_attempts = QuizAttempt.objects.filter(
+                quiz=OuterRef('pk'),
+                user=user,
+                completed_at__isnull=False,
+            )
+            queryset = queryset.annotate(
+                _user_has_attempted=Exists(completed_attempts),
+                _user_attempt_count=Count(
+                    'attempts',
+                    filter=Q(attempts__user=user, attempts__completed_at__isnull=False),
+                ),
+                _user_best_score=Subquery(
+                    completed_attempts.annotate(pct=F('score') * 100.0 / F('total_questions'))
+                    .order_by('-pct')
+                    .values('pct')[:1]
+                ),
+                _user_latest_score=Subquery(
+                    completed_attempts.annotate(pct=F('score') * 100.0 / F('total_questions'))
+                    .order_by('-completed_at')
+                    .values('pct')[:1]
+                ),
+            )
 
         # Filter by tools (OR logic - match quizzes with ANY of the selected tools)
         tools_list = self.request.query_params.getlist('tools')
@@ -92,11 +126,6 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
             except (ValueError, IndexError):
                 pass  # Invalid topics, ignore
 
-        # Filter by legacy topic field (kept for backward compatibility)
-        topic = self.request.query_params.get('topic')
-        if topic:
-            queryset = queryset.filter(topic__iexact=topic)
-
         # Filter by difficulty
         difficulty = self.request.query_params.get('difficulty')
         if difficulty:
@@ -105,9 +134,7 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
         # Search by title or description
         search = self.request.query_params.get('search')
         if search:
-            queryset = queryset.filter(
-                Q(title__icontains=search) | Q(description__icontains=search) | Q(topic__icontains=search)
-            )
+            queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search))
 
         return queryset
 
@@ -360,19 +387,22 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         average_percentage = (avg_score['avg_score'] / avg_score['avg_total'] * 100) if avg_score['avg_total'] else 0
 
         # Topic breakdown - single query with annotation instead of N+1 loop
+        # Now uses topics M2M field instead of deprecated topic field
         topic_aggregates = (
-            attempts.values('quiz__topic')
+            attempts.values('quiz__topics__name')
             .annotate(
                 topic_count=Count('id'),
                 topic_avg_score=Avg('score'),
                 topic_avg_total=Avg('total_questions'),
             )
-            .order_by('quiz__topic')
+            .order_by('quiz__topics__name')
         )
 
         topic_stats = {}
         for row in topic_aggregates:
-            topic = row['quiz__topic']
+            topic = row['quiz__topics__name']
+            if topic is None:
+                topic = 'General'  # Default for quizzes without topics
             if row['topic_avg_total'] and row['topic_avg_total'] > 0:
                 topic_percentage = row['topic_avg_score'] / row['topic_avg_total'] * 100
             else:

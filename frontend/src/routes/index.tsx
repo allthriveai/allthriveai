@@ -1,83 +1,158 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+
+// Loading component for lazy-loaded routes
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-slate-400 text-sm">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 // Redirect component that preserves query parameters
 function RedirectWithQuery({ to }: { to: string }) {
   const location = useLocation();
   return <Navigate to={`${to}${location.search}`} replace />;
 }
+
+// Redirect component for battle routes - preserves battleId
+function BattleRedirect() {
+  const { battleId } = useParams();
+  const location = useLocation();
+  return <Navigate to={`/play/prompt-battles/${battleId}${location.search}`} replace />;
+}
+
 import { ProtectedRoute, setGuestBattleId, clearGuestBattleId, getGuestBattleId } from './ProtectedRoute';
 
 // Re-export guest helpers for use elsewhere
 export { setGuestBattleId, clearGuestBattleId, getGuestBattleId };
+
+// =============================================================================
+// Lazy-loaded page components for code splitting
+// Critical pages (landing, auth) are loaded immediately for fast initial load
+// =============================================================================
+
+// Critical path - load immediately
 import LandingPage from '@/pages/LandingPage';
-import AboutPage from '@/pages/AboutPage';
 import AuthPage from '@/pages/AuthPage';
-import ProfilePage from '@/pages/ProfilePage';
-import ProjectDetailPage from '@/pages/ProjectDetailPage';
-import AccountSettingsPage from '@/pages/AccountSettingsPage';
-import ActivitySettingsPage from '@/pages/ActivitySettingsPage';
-import BattlesSettingsPage from '@/pages/BattlesSettingsPage';
-import IntegrationsSettingsPage from '@/pages/settings/IntegrationsSettingsPage';
-import PersonalizationSettingsPage from '@/pages/settings/PersonalizationSettingsPage';
-import NotificationsSettingsPage from '@/pages/settings/NotificationsSettingsPage';
-import BillingSettingsPage from '@/pages/settings/BillingSettingsPage';
-import CreatorSettingsPage from '@/pages/settings/CreatorSettingsPage';
-import PrivacySettingsPage from '@/pages/settings/PrivacySettingsPage';
-import ReferralsPage from '@/pages/settings/ReferralsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
-import StyleGuidePage from '@/pages/StyleGuidePage';
-import NeonGlassStyleguide from '@/pages/NeonGlassStyleguide';
-import QuizListPage from '@/pages/quizzes/QuizListPage';
-import QuizPage from '@/pages/quizzes/QuizPage';
-import LearnPage from '@/pages/LearnPage';
-import ToolDirectoryPage from '@/pages/ToolDirectoryPage';
-import ToolDetailPage from '@/pages/ToolDetailPage';
-import { ExplorePage } from '@/pages/ExplorePage';
-import { BattlesLobbyPage, BattlePage, BattleInvitePage } from '@/pages/battles';
-import { ChallengePage } from '@/pages/challenges';
-import ThriveCirclePage from '@/pages/ThriveCirclePage';
-import SideQuestsPage from '@/pages/SideQuestsPage';
-import EthicsDefenderGame from '@/pages/games/EthicsDefenderGame';
-import PricingPage from '@/pages/PricingPage';
-import CheckoutPage from '@/pages/CheckoutPage';
-import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
-import PerksPage from '@/pages/PerksPage';
-import MarketplacePage from '@/pages/MarketplacePage';
-import OnboardingPage from '@/pages/OnboardingPage';
-import VendorDashboardPage from '@/pages/VendorDashboardPage';
-import AdminAnalyticsPage from '@/pages/AdminAnalyticsPage';
-import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
-import AdminPromptChallengePromptsPage from '@/pages/admin/PromptChallengePromptsPage';
-import AdminImpersonatePage from '@/pages/admin/ImpersonatePage';
-import AdminCircleManagementPage from '@/pages/admin/CircleManagementPage';
-import AdminTasksPage from '@/pages/admin/TasksPage';
-import AdminUATScenariosPage from '@/pages/admin/UATScenariosPage';
-import ExtensionAuthPage from '@/pages/ExtensionAuthPage';
-import ExtensionPage from '@/pages/ExtensionPage';
-import PitchDeckPage from '@/pages/PitchDeckPage';
-import PromoPage from '@/pages/PromoPage';
-import PromoVideoPage from '@/pages/PromoVideoPage';
-import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
-import TermsOfServicePage from '@/pages/TermsOfServicePage';
+
+// Core pages - lazy loaded
+const EmberHomePage = lazy(() => import('@/pages/EmberHomePage'));
+const AboutPage = lazy(() => import('@/pages/AboutPage'));
+const TeamPage = lazy(() => import('@/pages/TeamPage'));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const ProjectDetailPage = lazy(() => import('@/pages/ProjectDetailPage'));
+
+// Settings pages - lazy loaded (rarely accessed)
+const AccountSettingsPage = lazy(() => import('@/pages/AccountSettingsPage'));
+const ActivitySettingsPage = lazy(() => import('@/pages/ActivitySettingsPage'));
+const BattlesSettingsPage = lazy(() => import('@/pages/BattlesSettingsPage'));
+const IntegrationsSettingsPage = lazy(() => import('@/pages/settings/IntegrationsSettingsPage'));
+const PersonalizationSettingsPage = lazy(() => import('@/pages/settings/PersonalizationSettingsPage'));
+const NotificationsSettingsPage = lazy(() => import('@/pages/settings/NotificationsSettingsPage'));
+const BillingSettingsPage = lazy(() => import('@/pages/settings/BillingSettingsPage'));
+const CreatorSettingsPage = lazy(() => import('@/pages/settings/CreatorSettingsPage'));
+const PrivacySettingsPage = lazy(() => import('@/pages/settings/PrivacySettingsPage'));
+const ReferralsPage = lazy(() => import('@/pages/settings/ReferralsPage'));
+
+// Feature pages - lazy loaded
+const NeonGlassStyleguide = lazy(() => import('@/pages/NeonGlassStyleguide'));
+const QuizListPage = lazy(() => import('@/pages/quizzes/QuizListPage'));
+const QuizPage = lazy(() => import('@/pages/quizzes/QuizPage'));
+const LearnPage = lazy(() => import('@/pages/LearnPage'));
+const LearningPathDetailPage = lazy(() => import('@/pages/LearningPathDetailPage'));
+const ToolDirectoryPage = lazy(() => import('@/pages/ToolDirectoryPage'));
+const ToolDetailPage = lazy(() => import('@/pages/ToolDetailPage'));
+const ExplorePage = lazy(() => import('@/pages/ExplorePage').then((m) => ({ default: m.ExplorePage })));
+const ThriveCirclePage = lazy(() => import('@/pages/ThriveCirclePage'));
+const GamesPage = lazy(() => import('@/pages/GamesPage'));
+const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
+
+// Community pages - lazy loaded
+const LoungePage = lazy(() => import('@/pages/community/LoungePage'));
+
+// Battle pages - lazy loaded
+const BattlesLobbyPage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattlesLobbyPage })));
+const BattlePage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattlePage })));
+const BattleInvitePage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattleInvitePage })));
+const ChallengePage = lazy(() => import('@/pages/challenges').then((m) => ({ default: m.ChallengePage })));
+
+// Games - lazy loaded
+const EthicsDefenderGame = lazy(() => import('@/pages/games/EthicsDefenderGame'));
+const ContextSnakeGame = lazy(() => import('@/pages/games/ContextSnakeGame'));
+
+// Commerce pages - lazy loaded
+const PricingPage = lazy(() => import('@/pages/PricingPage'));
+const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
+const CheckoutSuccessPage = lazy(() => import('@/pages/CheckoutSuccessPage'));
+const PerksPage = lazy(() => import('@/pages/PerksPage'));
+const MarketplacePage = lazy(() => import('@/pages/MarketplacePage'));
+
+// Admin pages - lazy loaded (admin only)
+const VendorDashboardPage = lazy(() => import('@/pages/VendorDashboardPage'));
+const AdminInvitationsPage = lazy(() => import('@/pages/admin/InvitationsPage'));
+const AdminPromptChallengePromptsPage = lazy(() => import('@/pages/admin/PromptChallengePromptsPage'));
+const AdminImpersonatePage = lazy(() => import('@/pages/admin/ImpersonatePage'));
+const AdminCircleManagementPage = lazy(() => import('@/pages/admin/CircleManagementPage'));
+const AdminTasksPage = lazy(() => import('@/pages/admin/TasksPage'));
+const AdminUATScenariosPage = lazy(() => import('@/pages/admin/UATScenariosPage'));
+const AdminEmberFlowsPage = lazy(() => import('@/pages/admin/EmberFlowsPage'));
+const AdminLessonsPage = lazy(() => import('@/pages/admin/LessonsPage'));
+
+// Analytics pages - lazy loaded (admin only)
+const AnalyticsIndexPage = lazy(() => import('@/pages/admin/analytics/index'));
+const AnalyticsOverviewPage = lazy(() => import('@/pages/admin/analytics/OverviewPage'));
+const AnalyticsUsersPage = lazy(() => import('@/pages/admin/analytics/UsersPage'));
+const AnalyticsBattlesPage = lazy(() => import('@/pages/admin/analytics/BattlesPage'));
+const AnalyticsAIUsagePage = lazy(() => import('@/pages/admin/analytics/AIUsagePage'));
+const AnalyticsContentPage = lazy(() => import('@/pages/admin/analytics/ContentPage'));
+const AnalyticsEngagementPage = lazy(() => import('@/pages/admin/analytics/EngagementPage'));
+const AnalyticsOnboardingPage = lazy(() => import('@/pages/admin/analytics/OnboardingPage'));
+const AnalyticsRevenuePage = lazy(() => import('@/pages/admin/analytics/RevenuePage'));
+
+// Extension pages - lazy loaded
+const ExtensionAuthPage = lazy(() => import('@/pages/ExtensionAuthPage'));
+const ExtensionPage = lazy(() => import('@/pages/ExtensionPage'));
+
+// Marketing/promo pages - lazy loaded
+const PitchDeckPage = lazy(() => import('@/pages/PitchDeckPage'));
+const PromoPage = lazy(() => import('@/pages/PromoPage'));
+const PromoVideoPage = lazy(() => import('@/pages/PromoVideoPage'));
+
+// Legal pages - lazy loaded
+const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('@/pages/TermsOfServicePage'));
 
 export function AppRoutes() {
   return (
+    <Suspense fallback={<PageLoader />}>
     <Routes>
-      {/* Landing page - public, redirects authenticated users to /explore */}
+      {/* Landing page - public, redirects authenticated users to /home */}
       <Route path="/" element={<LandingPage />} />
-      {/* About page - public route */}
-      <Route path="/about" element={<AboutPage />} />
-      <Route path="/about-us" element={<AboutPage />} />
+
+      {/* Home - Ember chat-first experience for authenticated users */}
       <Route
-        path="/styleguide"
+        path="/home"
         element={
           <ProtectedRoute>
-            <StyleGuidePage />
+            <EmberHomePage />
           </ProtectedRoute>
         }
       />
+
+      {/* About page - public route */}
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/about-us" element={<AboutPage />} />
+
+      {/* Team page - public route */}
+      <Route path="/team" element={<TeamPage />} />
       <Route
-        path="/styleguide-neon"
+        path="/styleguide"
         element={
           <ProtectedRoute>
             <NeonGlassStyleguide />
@@ -91,6 +166,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <LearnPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Learning path detail with username - must come before /:username/:projectSlug */}
+      <Route
+        path="/:username/learn/:slug"
+        element={
+          <ProtectedRoute>
+            <LearningPathDetailPage />
           </ProtectedRoute>
         }
       />
@@ -170,9 +255,9 @@ export function AppRoutes() {
         }
       />
 
-      {/* Battles - new matchmaking UI */}
+      {/* Prompt Battles - primary routes under /play */}
       <Route
-        path="/battles"
+        path="/play/prompt-battles"
         element={
           <ProtectedRoute>
             <BattlesLobbyPage />
@@ -180,22 +265,27 @@ export function AppRoutes() {
         }
       />
       {/* Battle detail page - public for completed battles, requires auth for active */}
-      <Route path="/battles/:battleId" element={<BattlePage />} />
+      <Route path="/play/prompt-battles/:battleId" element={<BattlePage />} />
       {/* Battle invitation link (from SMS) - public so users can see invitation before login */}
       <Route path="/battle/invite/:token" element={<BattleInvitePage />} />
 
-      {/* Play routes - legacy, redirects to new battles */}
+      {/* Legacy /battles routes - redirect to /play/prompt-battles */}
+      <Route
+        path="/battles"
+        element={<Navigate to="/play/prompt-battles" replace />}
+      />
+      <Route
+        path="/battles/:battleId"
+        element={<BattleRedirect />}
+      />
+      {/* Legacy /play/prompt-battle (singular) routes */}
       <Route
         path="/play/prompt-battle"
-        element={<Navigate to="/battles" replace />}
+        element={<Navigate to="/play/prompt-battles" replace />}
       />
       <Route
         path="/play/prompt-battle/:battleId"
-        element={
-          <ProtectedRoute>
-            <BattlePage />
-          </ProtectedRoute>
-        }
+        element={<BattleRedirect />}
       />
 
       {/* Weekly Challenges */}
@@ -231,6 +321,24 @@ export function AppRoutes() {
         }
       />
 
+      {/* The Lounge (Community Forums) - protected */}
+      <Route
+        path="/lounge"
+        element={
+          <ProtectedRoute>
+            <LoungePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/lounge/:roomId"
+        element={
+          <ProtectedRoute>
+            <LoungePage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Ember's Onboarding - protected */}
       <Route
         path="/onboarding"
@@ -261,16 +369,86 @@ export function AppRoutes() {
       />
 
       {/* Admin Dashboard - protected, admins only */}
+      {/* Analytics Index - redirects to overview */}
       <Route
         path="/admin/analytics"
         element={
           <ProtectedRoute>
-            <AdminAnalyticsPage />
+            <AnalyticsIndexPage />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/admin/invitations"
+        path="/admin/analytics/overview"
+        element={
+          <ProtectedRoute>
+            <AnalyticsOverviewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/users"
+        element={
+          <ProtectedRoute>
+            <AnalyticsUsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/battles"
+        element={
+          <ProtectedRoute>
+            <AnalyticsBattlesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/ai"
+        element={
+          <ProtectedRoute>
+            <AnalyticsAIUsagePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/content"
+        element={
+          <ProtectedRoute>
+            <AnalyticsContentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/engagement"
+        element={
+          <ProtectedRoute>
+            <AnalyticsEngagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/onboarding"
+        element={
+          <ProtectedRoute>
+            <AnalyticsOnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics/revenue"
+        element={
+          <ProtectedRoute>
+            <AnalyticsRevenuePage />
+          </ProtectedRoute>
+        }
+      />
+      {/* User Management - nested routes */}
+      <Route
+        path="/admin/users"
+        element={<Navigate to="/admin/users/invitations" replace />}
+      />
+      <Route
+        path="/admin/users/invitations"
         element={
           <ProtectedRoute>
             <AdminInvitationsPage />
@@ -278,15 +456,7 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/admin/prompt-challenge-prompts"
-        element={
-          <ProtectedRoute>
-            <AdminPromptChallengePromptsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/impersonate"
+        path="/admin/users/impersonate"
         element={
           <ProtectedRoute>
             <AdminImpersonatePage />
@@ -294,10 +464,31 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/admin/circles"
+        path="/admin/users/circles"
         element={
           <ProtectedRoute>
             <AdminCircleManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Legacy redirects for old user management paths */}
+      <Route
+        path="/admin/invitations"
+        element={<Navigate to="/admin/users/invitations" replace />}
+      />
+      <Route
+        path="/admin/impersonate"
+        element={<Navigate to="/admin/users/impersonate" replace />}
+      />
+      <Route
+        path="/admin/circles"
+        element={<Navigate to="/admin/users/circles" replace />}
+      />
+      <Route
+        path="/admin/prompt-challenge-prompts"
+        element={
+          <ProtectedRoute>
+            <AdminPromptChallengePromptsPage />
           </ProtectedRoute>
         }
       />
@@ -317,15 +508,36 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
-      {/* Side Quests - protected */}
       <Route
-        path="/play/side-quests"
+        path="/admin/ember-flows"
         element={
           <ProtectedRoute>
-            <SideQuestsPage />
+            <AdminEmberFlowsPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/admin/lessons"
+        element={
+          <ProtectedRoute>
+            <AdminLessonsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Games - protected */}
+      <Route
+        path="/play/games"
+        element={
+          <ProtectedRoute>
+            <GamesPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Legacy side-quests route - redirect to /play/games */}
+      <Route
+        path="/play/side-quests"
+        element={<Navigate to="/play/games" replace />}
       />
 
       {/* Ethics Defender Game - protected */}
@@ -334,6 +546,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <EthicsDefenderGame />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Context Snake Game - protected */}
+      <Route
+        path="/play/context-snake"
+        element={
+          <ProtectedRoute>
+            <ContextSnakeGame />
           </ProtectedRoute>
         }
       />
@@ -470,5 +692,6 @@ export function AppRoutes() {
       {/* 404 catch-all */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
   );
 }

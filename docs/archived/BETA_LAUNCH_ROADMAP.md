@@ -4,7 +4,7 @@
 **Target:** Friends & Family Beta
 **Timeline:** 2-4 weeks
 **Core Value:** Build your AI portfolio
-**Primary Users:** Close friends (AI creators + content creators)
+**Primary Users:** Close friends (AI curious + content creators)
 
 ---
 

@@ -98,6 +98,8 @@ function isProjectMode(props: EditableBlocksContainerProps): props is ProjectMod
 // ============================================================================
 
 const BLOCK_TYPES = [
+  { type: 'columns', label: '2 Columns', icon: ViewColumnsIcon, columnCount: 2 },
+  { type: 'columns', label: '3 Columns', icon: Squares2X2Icon, columnCount: 3 },
   { type: 'text', label: 'Text', icon: DocumentTextIcon, style: 'body' },
   { type: 'text', label: 'Heading', icon: DocumentTextIcon, style: 'heading' },
   { type: 'text', label: 'Quote', icon: DocumentTextIcon, style: 'quote' },
@@ -105,8 +107,6 @@ const BLOCK_TYPES = [
   { type: 'video', label: 'Video', icon: FilmIcon },
   { type: 'mermaid', label: 'Diagram', icon: ChartBarIcon },
   { type: 'icon_card', label: 'Icon Card', icon: StarIcon },
-  { type: 'columns', label: '2 Columns', icon: ViewColumnsIcon, columnCount: 2 },
-  { type: 'columns', label: '3 Columns', icon: Squares2X2Icon, columnCount: 3 },
 ] as const;
 
 // ============================================================================

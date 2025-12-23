@@ -263,3 +263,66 @@ export async function deletePersonalizationData(): Promise<PersonalizationDelete
   const response = await api.delete('/me/personalization/delete/');
   return response.data;
 }
+
+/**
+ * Skill level for learning content personalization
+ */
+export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
+
+/**
+ * Taxonomy preferences for user profile
+ */
+export interface TaxonomyPreferences {
+  // Read-only nested objects
+  personality: Taxonomy | null;
+  learningStyles: Taxonomy[];
+  roles: Taxonomy[];
+  goals: Taxonomy[];
+  interests: Taxonomy[];
+  industries: Taxonomy[];
+  // Skill level (from LearnerProfile)
+  skillLevel: SkillLevel | null;
+}
+
+/**
+ * Taxonomy preferences update payload (accepts IDs)
+ */
+export interface TaxonomyPreferencesUpdate {
+  personalityId?: number | null;
+  learningStyleIds?: number[];
+  roleIds?: number[];
+  goalIds?: number[];
+  interestIds?: number[];
+  industryIds?: number[];
+  skillLevel?: SkillLevel | null;
+}
+
+/**
+ * Get user's taxonomy preferences
+ */
+export async function getTaxonomyPreferences(): Promise<TaxonomyPreferences> {
+  const response = await api.get('/me/personalization/taxonomy/');
+  return response.data;
+}
+
+/**
+ * Update user's taxonomy preferences
+ */
+export async function updateTaxonomyPreferences(
+  preferences: TaxonomyPreferencesUpdate
+): Promise<TaxonomyPreferences> {
+  const response = await api.patch('/me/personalization/taxonomy/', preferences);
+  return response.data;
+}
+
+/**
+ * Get taxonomies filtered by type
+ */
+export async function getTaxonomiesByType(taxonomyType: string): Promise<Taxonomy[]> {
+  const response = await api.get(`/taxonomies/?taxonomy_type=${taxonomyType}`);
+  // Handle paginated response
+  if (response.data.results) {
+    return response.data.results;
+  }
+  return response.data;
+}

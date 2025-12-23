@@ -15,6 +15,7 @@ from langchain.tools import tool
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from core.projects.topic_utils import set_project_topics
 from services.projects import ProjectService
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ def _detect_url_domain_type(url: str) -> str:
             return 'gitlab'
         elif domain in ('youtube.com', 'youtu.be'):
             return 'youtube'
-        elif domain in ('figma.com',):
+        elif domain in ('figma.com',) or domain.endswith('.figma.site'):
             return 'figma'
         else:
             return 'generic'
@@ -51,6 +52,8 @@ def _detect_url_domain_type(url: str) -> str:
 class CreateProjectInput(BaseModel):
     """Input for create_project tool."""
 
+    model_config = {'extra': 'allow'}
+
     title: str = Field(description='The title/name of the project')
     project_type: str = Field(description='Type of project: github_repo, image_collection, prompt, or other')
     description: str = Field(default='', description='Description of the project (optional)')
@@ -61,6 +64,7 @@ class CreateProjectInput(BaseModel):
     topics: list[str] = Field(default_factory=list, description='Topics/tags for the project')
     stars: int = Field(default=0, description='GitHub star count (for display)')
     forks: int = Field(default=0, description='GitHub fork count (for display)')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class FetchGitHubMetadataInput(BaseModel):
@@ -78,39 +82,50 @@ class ExtractURLInfoInput(BaseModel):
 class ImportGitHubProjectInput(BaseModel):
     """Input for import_github_project tool."""
 
+    model_config = {'extra': 'allow'}
+
     url: str = Field(description='GitHub repository URL (e.g., https://github.com/user/repo)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private (hidden from public)')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private (hidden from public)')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class CreateProductInput(BaseModel):
     """Input for create_product tool."""
+
+    model_config = {'extra': 'allow'}
 
     title: str = Field(description='The title/name of the product')
     product_type: str = Field(description='Type of product: course, prompt_pack, template, or ebook')
     description: str = Field(default='', description='Description of the product (optional)')
     price: float = Field(default=0.0, description='Price in USD (0 for free)')
     source_url: str = Field(default='', description='Source URL if imported from YouTube/external')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class ScrapeWebpageInput(BaseModel):
     """Input for scrape_webpage_for_project tool."""
 
+    model_config = {'extra': 'allow'}
+
     url: str = Field(description='The URL of the webpage to scrape (e.g., https://example.com/project)')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class ImportVideoProjectInput(BaseModel):
     """Input for import_video_project tool."""
+
+    model_config = {'extra': 'allow'}
 
     video_url: str = Field(description='The S3/MinIO URL of the uploaded video file')
     filename: str = Field(description='Original filename of the video (e.g., "my-tutorial.mp4")')
@@ -118,7 +133,8 @@ class ImportVideoProjectInput(BaseModel):
     is_owned: bool = Field(default=True, description='True if user created the video, False if clipping')
     tool_hint: str = Field(default='', description='Tool mentioned by user (e.g., "Runway", "Midjourney", "Pika")')
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class CreateMediaProjectInput(BaseModel):
@@ -132,6 +148,8 @@ class CreateMediaProjectInput(BaseModel):
 
     CRITICAL: If file_url is present, it's ALWAYS an import, NEVER generation.
     """
+
+    model_config = {'extra': 'allow'}
 
     # For GENERATION (Gemini) - user wants to create new content
     generate_prompt: str | None = Field(
@@ -163,10 +181,13 @@ class CreateMediaProjectInput(BaseModel):
         description='Video URL from YouTube, Vimeo, or Loom to import as a project',
     )
 
-    # Common fields - required for all scenarios
+    # Common fields
     title: str | None = Field(
         default=None,
-        description=('Title for the project. ' 'If None, tool returns needs_user_input=True asking for title.'),
+        description=(
+            'Title for the project. OPTIONAL for images/gifs - AI will auto-generate a creative title from the image. '
+            'Required for videos. If user explicitly provides a title, use it.'
+        ),
     )
     tool_hint: str | None = Field(
         default=None,
@@ -177,12 +198,24 @@ class CreateMediaProjectInput(BaseModel):
         ),
     )
 
+    is_owned: bool = Field(
+        default=True,
+        description=(
+            'Whether the user created/owns this content (True) or is clipping something cool they found (False). '
+            'IMPORTANT: Ask the user before assuming ownership! '
+            'True = "my project", False = "something cool I found"'
+        ),
+    )
     is_showcase: bool = Field(default=True, description='Whether to add to showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark as private')
+    is_private: bool = Field(default=False, description='Whether to mark as private')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class ImportFromURLInput(BaseModel):
     """Input for import_from_url unified tool."""
+
+    # Allow extra fields for runtime state injection
+    model_config = {'extra': 'allow'}
 
     url: str = Field(description='Any URL to import (GitHub, YouTube, Figma, or any webpage)')
     is_owned: bool | None = Field(
@@ -194,7 +227,7 @@ class ImportFromURLInput(BaseModel):
         ),
     )
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
     force_clip: bool = Field(
         default=False,
         description=(
@@ -202,10 +235,15 @@ class ImportFromURLInput(BaseModel):
             'Use when user explicitly chooses to clip instead of connecting GitHub.'
         ),
     )
+    # State is injected at runtime by the agent, not provided by the LLM
+    # Note: This field is required for runtime injection to work with tool.invoke()
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class RegenerateArchitectureDiagramInput(BaseModel):
     """Input for regenerate_architecture_diagram tool."""
+
+    model_config = {'extra': 'allow'}
 
     project_id: int = Field(description='The ID of the project to update')
     architecture_description: str = Field(
@@ -214,10 +252,13 @@ class RegenerateArchitectureDiagramInput(BaseModel):
             'Should describe the main components and how they connect to each other.'
         )
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class CreateProjectFromScreenshotInput(BaseModel):
     """Input for create_project_from_screenshot tool - fallback when URL scraping fails."""
+
+    model_config = {'extra': 'allow'}
 
     screenshot_url: str = Field(description='The S3/MinIO URL of the uploaded screenshot image')
     screenshot_filename: str = Field(description='Original filename of the screenshot (e.g., "screenshot.png")')
@@ -226,11 +267,12 @@ class CreateProjectFromScreenshotInput(BaseModel):
         default='', description='Optional title for the project (extracted from screenshot if not provided)'
     )
     is_showcase: bool = Field(default=True, description='Whether to add the project to the showcase tab')
-    is_private: bool = Field(default=True, description='Whether to mark the project as private')
+    is_private: bool = Field(default=False, description='Whether to mark the project as private')
     is_owned: bool = Field(
         default=True,
         description='Whether the user owns/created this project (True) or is clipping external content (False)',
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 # Tools
@@ -308,11 +350,10 @@ def create_project(
         logger.error(f'ProjectService.create_project failed: {error}')
         return {'success': False, 'error': error}
 
-    # Update project with topics if provided
+    # Update project with topics if provided (using M2M helper)
     if topics and project:
         try:
-            project.topics = topics[:10]  # Limit to 10 topics
-            project.save(update_fields=['topics'])
+            set_project_topics(project, topics[:10])  # Limit to 10 topics
             logger.info(f'Added topics to project: {topics[:10]}')
         except Exception as e:
             logger.warning(f'Failed to add topics: {e}')
@@ -449,7 +490,7 @@ def extract_url_info(text: str) -> dict:
 def import_github_project(
     url: str,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
@@ -767,7 +808,7 @@ def create_product(
 def scrape_webpage_for_project(
     url: str,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:
@@ -835,8 +876,8 @@ def scrape_webpage_for_project(
     logger.info(f'Scraping webpage for project: {url} (user: {user.username})')
 
     try:
-        # Scrape the webpage using AI extraction
-        extracted = scrape_url_for_project(url)
+        # Scrape the webpage using AI extraction (pass user_id for Figma screenshot S3 upload)
+        extracted = scrape_url_for_project(url, user_id=user.id)
 
         # Get raw text content for deeper analysis
         try:
@@ -957,7 +998,7 @@ def import_video_project(
     is_owned: bool = True,
     tool_hint: str = '',
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     state: dict | None = None,
 ) -> dict:
     """
@@ -1124,8 +1165,9 @@ def create_media_project(
     video_url: str | None = None,
     title: str | None = None,
     tool_hint: str | None = None,
+    is_owned: bool = True,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     state: dict | None = None,
 ) -> dict:
     """
@@ -1134,7 +1176,9 @@ def create_media_project(
     ROUTING LOGIC:
     1. If file_url is present → IMPORT FLOW (NEVER generation)
        - User uploaded an image, video, or gif
-       - Ask for title and tool if missing
+       - Only tool_hint required - AI auto-generates title for ALL media types!
+       - For images/gifs: AI vision analyzes and generates creative titles
+       - For videos: AI generates titles from filename + user context
        - Create project with uploaded file
 
     2. If video_url is present → VIDEO URL IMPORT FLOW
@@ -1146,6 +1190,11 @@ def create_media_project(
        - Generate image, then create project
 
     CRITICAL: file_url takes priority - if present, it's ALWAYS an import.
+
+    AI AUTO-GENERATION (for images/gifs):
+    - Title: AI vision analyzes the image and creates a creative, catchy title
+    - Description, topics, categories: All auto-generated from image content
+    - User only needs to provide: ownership (is_owned) and tool used (tool_hint)
 
     Returns:
         - If missing required info: {success: False, needs_user_input: True, missing: [...]}
@@ -1179,24 +1228,18 @@ def create_media_project(
 
         media_type = _detect_media_type(filename or '')
 
-        # Check if we need user input (title required for all imports)
-        if not title:
-            missing = ['title']
-            if not tool_hint and media_type in ('image', 'gif'):
-                missing.append('tool_hint')
-
+        # Check if we need user input
+        # For ALL media types: only require tool_hint - AI will generate title automatically
+        # Videos can also have AI-generated titles from filename + user context
+        if not tool_hint:
             return {
                 'success': False,
                 'needs_user_input': True,
-                'missing': missing,
+                'missing': ['tool_hint'],
                 'media_type': media_type,
                 'file_url': file_url,
                 'filename': filename,
-                'message': (
-                    "What's the title for this project? " 'And what tool did you use to create it?'
-                    if 'tool_hint' in missing
-                    else 'What would you like to call this project?'
-                ),
+                'message': 'What tool did you use to create this? (e.g., Runway, Midjourney, DALL-E, Photoshop)',
             }
 
         # For videos, use the existing video import logic
@@ -1207,6 +1250,7 @@ def create_media_project(
                 filename=filename or 'video.mp4',
                 title=title,
                 tool_hint=tool_hint,
+                is_owned=is_owned,
                 is_showcase=is_showcase,
                 is_private=is_private,
                 user=user,
@@ -1218,6 +1262,7 @@ def create_media_project(
             filename=filename or 'image.png',
             title=title,
             tool_hint=tool_hint,
+            is_owned=is_owned,
             is_showcase=is_showcase,
             is_private=is_private,
             user=user,
@@ -1242,11 +1287,10 @@ def create_media_project(
             )
 
         # For Vimeo/Loom, use generic scraper
-        # Assume user owns their own Vimeo/Loom videos (usually personal uploads)
         return _handle_generic_import(
             url=video_url,
             user=user,
-            is_owned=True,
+            is_owned=is_owned,
             is_showcase=is_showcase,
             is_private=is_private,
         )
@@ -1293,6 +1337,7 @@ def _create_video_project_internal(
     filename: str,
     title: str,
     tool_hint: str | None,
+    is_owned: bool,
     is_showcase: bool,
     is_private: bool,
     user,
@@ -1302,7 +1347,7 @@ def _create_video_project_internal(
     from core.integrations.video.ai_analyzer import analyze_video_for_template
     from core.projects.models import Project
 
-    logger.info(f'Creating video project: {title} from {filename}')
+    logger.info(f'Creating video project: {title} from {filename} (is_owned={is_owned})')
 
     # Determine file type
     file_extension = filename.lower().split('.')[-1] if '.' in filename else 'mp4'
@@ -1363,12 +1408,15 @@ def _create_video_project_internal(
         },
     }
 
+    # Use CLIPPED type if user didn't create this (clipping external content)
+    project_type = Project.ProjectType.VIDEO if is_owned else Project.ProjectType.CLIPPED
+
     # Create project
     project = Project.objects.create(
         user=user,
         title=title or analysis.get('title', filename),
         description=analysis.get('description', ''),
-        type=Project.ProjectType.VIDEO,
+        type=project_type,
         featured_image_url='',
         content=content,
         is_showcased=is_showcase,
@@ -1378,44 +1426,82 @@ def _create_video_project_internal(
 
     apply_ai_metadata(project, analysis, content=content)
 
+    action_word = 'created' if is_owned else 'clipped'
     return {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
         'url': f'/{user.username}/{project.slug}',
-        'message': f"Video project '{project.title}' created successfully!",
+        'message': f"Video project '{project.title}' {action_word} successfully!",
     }
 
 
 def _create_image_project_internal(
     image_url: str,
     filename: str,
-    title: str,
+    title: str | None,
     tool_hint: str | None,
+    is_owned: bool,
     is_showcase: bool,
     is_private: bool,
     user,
 ) -> dict:
-    """Internal helper to create an image project."""
+    """Internal helper to create an image project with AI-generated content.
+
+    Note: title is optional - if not provided, AI will generate one from the image.
+    """
     from core.integrations.github.helpers import apply_ai_metadata
+    from core.integrations.image.ai_analyzer import analyze_image_for_template
     from core.projects.models import Project
 
-    logger.info(f'Creating image project: {title} from {filename}')
+    logger.info(f'Creating image project from {filename} (title={title}, is_owned={is_owned})')
 
-    # Build content with image
+    # Run AI analysis on the image to generate rich content (including title)
+    try:
+        logger.info(f'Running AI analysis for image: {filename}')
+        analysis = analyze_image_for_template(
+            image_url=image_url,
+            filename=filename,
+            title=title or '',  # Pass empty string if no title - AI will generate one
+            tool_hint=tool_hint or '',
+            user=user,
+        )
+    except Exception as e:
+        logger.warning(f'Image analysis failed for {filename}: {e}')
+        analysis = {
+            'templateVersion': 2,
+            'title': '',
+            'description': '',
+            'sections': [],
+            'category_ids': [1],
+            'topics': ['ai-art'],
+            'tool_names': [tool_hint] if tool_hint else [],
+        }
+
+    # Use provided title, or AI-generated title, or fallback to filename
+    final_title = title or analysis.get('title') or _generate_title_from_filename(filename)
+    logger.info(
+        f'Using title: {final_title} (user provided: {bool(title)}, AI generated: {bool(analysis.get("title"))})'
+    )
+
+    # Build content with image and AI-generated sections
     content = {
         'templateVersion': 2,
-        'sections': [],
+        'sections': analysis.get('sections', []),
         'heroDisplayMode': 'image',
     }
+
+    # Use CLIPPED type if user didn't create this (clipping external content)
+    # IMAGE_COLLECTION is used for image-based projects
+    project_type = Project.ProjectType.IMAGE_COLLECTION if is_owned else Project.ProjectType.CLIPPED
 
     # Create project with the uploaded image as featured image
     project = Project.objects.create(
         user=user,
-        title=title,
-        description='',
-        type=Project.ProjectType.IMAGE,
+        title=final_title,
+        description=analysis.get('description', ''),
+        type=project_type,
         featured_image_url=image_url,
         content=content,
         is_showcased=is_showcase,
@@ -1423,19 +1509,30 @@ def _create_image_project_internal(
         tools_order=[],
     )
 
-    # Apply tool if provided
-    if tool_hint:
-        analysis = {'tool_names': [tool_hint]}
-        apply_ai_metadata(project, analysis, content=content)
+    # Apply AI-suggested categories, topics, and tools
+    apply_ai_metadata(project, analysis, content=content)
 
+    action_word = 'created' if is_owned else 'clipped'
     return {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
         'url': f'/{user.username}/{project.slug}',
-        'message': f"Image project '{project.title}' created successfully!",
+        'message': f"Image project '{project.title}' {action_word} successfully!",
     }
+
+
+def _generate_title_from_filename(filename: str) -> str:
+    """Generate a human-readable title from a filename."""
+    import re
+
+    # Remove extension
+    name = re.sub(r'\.[^.]+$', '', filename)
+    # Replace underscores and hyphens with spaces
+    name = re.sub(r'[-_]+', ' ', name)
+    # Title case
+    return name.title() if name else 'Untitled Project'
 
 
 def _generate_and_create_project(
@@ -1488,19 +1585,29 @@ def _handle_github_import(
     from core.integrations.github.helpers import get_user_github_token, parse_github_url
     from core.integrations.github.service import GitHubService
 
+    logger.info(f'[GitHub Import] Starting import for URL: {url}')
+    logger.info(
+        f'[GitHub Import] User: {user.id} ({user.username}), '
+        f'showcase={is_showcase}, private={is_private}, force_clip={force_clip}'
+    )
+
     # Parse the GitHub URL
     try:
         owner, repo = parse_github_url(url)
+        logger.info(f'[GitHub Import] Parsed URL: owner={owner}, repo={repo}')
     except ValueError as e:
+        logger.error(f'[GitHub Import] Failed to parse URL {url}: {e}')
         return {'success': False, 'error': str(e)}
 
     # Check if user has GitHub connected
+    logger.info(f'[GitHub Import] Checking GitHub connection for user {user.id}')
     token = get_user_github_token(user)
     if not token:
+        logger.warning(f'[GitHub Import] No GitHub token found for user {user.id}')
         # No GitHub connected - ask user what they want to do
         if force_clip:
             # User chose to clip without connecting GitHub
-            logger.info(f'User chose to clip {owner}/{repo} without GitHub connection')
+            logger.info(f'[GitHub Import] User chose to clip {owner}/{repo} without GitHub connection')
             result = _handle_generic_import(
                 url=url,
                 user=user,
@@ -1515,10 +1622,11 @@ def _handle_github_import(
                     "I've added this repository to your clippings! "
                     'You can connect GitHub anytime in Settings to import your own repos with full AI analysis.'
                 )
+            logger.info(f'[GitHub Import] Force clip result: {result}')
             return result
 
         # Return a prompt for the user to connect GitHub or clip
-        logger.info(f'No GitHub token for {owner}/{repo}, asking user to connect or clip')
+        logger.info(f'[GitHub Import] No token for {owner}/{repo}, asking user to connect or clip')
         return {
             'success': False,
             'needs_github_connection': True,
@@ -1534,16 +1642,19 @@ def _handle_github_import(
         }
 
     # Check if user owns the repo
+    logger.info(f'[GitHub Import] Token found for user {user.id}, length: {len(token)}')
+    logger.info(f'[GitHub Import] Verifying repo access for {owner}/{repo}')
     github_service = GitHubService(token)
     try:
         is_owner = github_service.verify_repo_access_sync(owner, repo)
+        logger.info(f'[GitHub Import] Access verification result: is_owner={is_owner}')
     except Exception as e:
-        logger.warning(f'Failed to verify repo access for {owner}/{repo}: {e}')
+        logger.error(f'[GitHub Import] Failed to verify repo access for {owner}/{repo}: {e}', exc_info=True)
         is_owner = False
 
     if not is_owner:
         # User doesn't own this repo - auto-clip
-        logger.info(f'User does not own {owner}/{repo}, auto-clipping')
+        logger.info(f'[GitHub Import] User {user.id} does not own {owner}/{repo}, auto-clipping')
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1558,10 +1669,11 @@ def _handle_github_import(
                 "Looks like you don't own this repository, so I've added it to your clippings! "
                 'You can find it in your Clipped tab.'
             )
+        logger.info(f'[GitHub Import] Auto-clip result: {result}')
         return result
 
     # User owns the repo - do full import
-    logger.info(f'User owns {owner}/{repo}, performing full GitHub import')
+    logger.info(f'[GitHub Import] User {user.id} owns {owner}/{repo}, performing full GitHub import')
     return _full_github_import(
         url=url,
         owner=owner,
@@ -1590,11 +1702,16 @@ def _full_github_import(
     from core.integrations.github.service import GitHubService
     from core.projects.models import Project
 
+    logger.info(f'[GitHub Full Import] Starting full import for {owner}/{repo}')
+    logger.info(f'[GitHub Full Import] User: {user.id} ({user.username})')
+
     try:
+        logger.info(f'[GitHub Full Import] Fetching repository info for {owner}/{repo}')
         github_service = GitHubService(token)
         repo_files = github_service.get_repository_info_sync(owner, repo)
+        logger.info(f'[GitHub Full Import] Successfully fetched repo info, keys: {list(repo_files.keys())}')
     except Exception as e:
-        logger.error(f'Failed to fetch GitHub repo {owner}/{repo}: {e}')
+        logger.error(f'[GitHub Full Import] Failed to fetch GitHub repo {owner}/{repo}: {e}', exc_info=True)
         # Fall back to generic import on GitHub API failure
         return _handle_generic_import(
             url=url,
@@ -1606,17 +1723,21 @@ def _full_github_import(
         )
 
     # Normalize GitHub output into the schema the AI analyzer expects
+    logger.info(f'[GitHub Full Import] Normalizing GitHub data for {owner}/{repo}')
     repo_summary = normalize_github_repo_data(owner, repo, url, repo_files)
+    desc_len = len(repo_summary.get('description', ''))
+    logger.info(f'[GitHub Full Import] Normalized: name={repo_summary.get("name")}, desc_len={desc_len}')
 
     # Run AI analysis with error handling
     try:
-        logger.info(f'Running template-based AI analysis for {owner}/{repo}')
+        logger.info(f'[GitHub Full Import] Running template-based AI analysis for {owner}/{repo}')
         analysis = analyze_github_repo_for_template(
             repo_data=repo_summary,
             readme_content=repo_files.get('readme', ''),
         )
+        logger.info(f'[GitHub Full Import] AI analysis completed, sections count: {len(analysis.get("sections", []))}')
     except Exception as e:
-        logger.warning(f'AI analysis failed for {owner}/{repo}, using basic metadata: {e}')
+        logger.warning(f'[GitHub Full Import] AI analysis failed for {owner}/{repo}, using basic metadata: {e}')
         # Use basic metadata without AI analysis
         analysis = {
             'templateVersion': 2,
@@ -1652,9 +1773,10 @@ def _full_github_import(
             tools_order=[],
         )
 
+        logger.info(f'[GitHub Full Import] Applying AI metadata to project {project.id}')
         apply_ai_metadata(project, analysis, content=content)
 
-        logger.info(f'Successfully imported {owner}/{repo} as project {project.id}')
+        logger.info(f'[GitHub Full Import] Successfully imported {owner}/{repo} as project {project.id}')
 
         return {
             'success': True,
@@ -1665,7 +1787,7 @@ def _full_github_import(
             'project_type': 'github_repo',
         }
     except Exception as e:
-        logger.exception(f'Failed to create project for {owner}/{repo}: {e}')
+        logger.exception(f'[GitHub Full Import] Failed to create project for {owner}/{repo}: {e}')
         return {'success': False, 'error': f'Failed to create project: {str(e)}'}
 
 
@@ -1683,8 +1805,10 @@ def _handle_youtube_import(
     """
     # TODO: Implement YouTube Data API integration
     # For now, use generic scraper which handles YouTube well
-    logger.info(f'Handling YouTube import: {url}')
-    return _handle_generic_import(
+    logger.info(f'[YouTube Import] Starting import for URL: {url}')
+    logger.info(f'[YouTube Import] User: {user.id} ({user.username}), showcase={is_showcase}, private={is_private}')
+
+    result = _handle_generic_import(
         url=url,
         user=user,
         is_owned=False,  # YouTube videos are always clips unless user owns channel
@@ -1692,6 +1816,163 @@ def _handle_youtube_import(
         is_private=is_private,
         state=state,
     )
+    if result.get('success'):
+        logger.info(f'[YouTube Import] Successfully imported project {result.get("project_id")}')
+    else:
+        logger.warning(f'[YouTube Import] Failed to import: {result.get("error")}')
+    return result
+
+
+def _full_gitlab_import(
+    url: str,
+    namespace: str,
+    project_name: str,
+    user,
+    gitlab_service,
+    is_showcase: bool,
+    is_private: bool,
+    state: dict,
+) -> dict:
+    """
+    Perform full GitLab import with AI analysis for projects user owns.
+
+    This fetches the README, file tree, dependencies, and tech stack from the
+    GitLab API and runs AI analysis to create a rich project page.
+    """
+    from core.integrations.github.ai_analyzer import analyze_github_repo_for_template
+    from core.integrations.github.helpers import apply_ai_metadata
+    from core.integrations.gitlab.helpers import match_or_create_technology, normalize_gitlab_project_data
+    from core.projects.models import Project
+
+    logger.info(f'[GitLab Full Import] Starting full import for {namespace}/{project_name}')
+    logger.info(f'[GitLab Full Import] User: {user.id} ({user.username})')
+
+    try:
+        # Fetch repository info via GitLab API
+        logger.info(f'[GitLab Full Import] Fetching repository info for {namespace}/{project_name}')
+        repo_info = gitlab_service.get_repository_info_sync(namespace, project_name)
+        logger.info(f'[GitLab Full Import] Successfully fetched repo info, keys: {list(repo_info.keys())}')
+    except Exception as e:
+        logger.error(f'[GitLab Full Import] Failed to fetch GitLab repo {namespace}/{project_name}: {e}', exc_info=True)
+        # Fall back to generic import on GitLab API failure
+        logger.info('[GitLab Full Import] Falling back to generic import')
+        return _handle_generic_import(
+            url=url,
+            user=user,
+            is_owned=True,
+            is_showcase=is_showcase,
+            is_private=is_private,
+            state=state,
+        )
+
+    # Extract components from repo_info
+    project_data = repo_info.get('project_data', {})
+    readme = repo_info.get('readme', '')
+    tech_stack = repo_info.get('tech_stack', {})
+
+    # Normalize GitLab output into the schema the AI analyzer expects
+    logger.info(f'[GitLab Full Import] Normalizing GitLab data for {namespace}/{project_name}')
+    base_url = 'https://gitlab.com'  # Default, could be extracted from URL for self-hosted
+    repo_summary = normalize_gitlab_project_data(
+        base_url=base_url,
+        namespace=namespace,
+        project=project_name,
+        url=url,
+        project_data=project_data,
+        repo_files=repo_info,
+    )
+    logger.info(
+        f'[GitLab Full Import] Normalized data: name={repo_summary.get("name")}, '
+        f'description length={len(repo_summary.get("description", ""))}'
+    )
+
+    # Run AI analysis with error handling
+    try:
+        logger.info(f'[GitLab Full Import] Running template-based AI analysis for {namespace}/{project_name}')
+        analysis = analyze_github_repo_for_template(
+            repo_data=repo_summary,
+            readme_content=readme,
+        )
+        logger.info(f'[GitLab Full Import] AI analysis completed, sections count: {len(analysis.get("sections", []))}')
+    except Exception as e:
+        logger.warning(
+            f'[GitLab Full Import] AI analysis failed for {namespace}/{project_name}, using basic metadata: {e}'
+        )
+        # Use basic metadata without AI analysis
+        analysis = {
+            'templateVersion': 2,
+            'sections': [],
+            'description': repo_summary.get('description', ''),
+        }
+
+    # Get hero image - use GitLab's project avatar or generate one
+    hero_image = analysis.get('hero_image', '')
+    if not hero_image:
+        # GitLab doesn't have opengraph images like GitHub, use project avatar if available
+        avatar_url = project_data.get('avatar_url', '')
+        if avatar_url:
+            hero_image = avatar_url
+        else:
+            # Generate a placeholder or use a generic GitLab image
+            hero_image = f'https://gitlab.com/uploads/-/system/project/avatar/{project_data.get("id", "")}/avatar.png'
+
+    # Build content
+    content = {
+        'templateVersion': analysis.get('templateVersion', 2),
+        'sections': analysis.get('sections', []),
+        'gitlab': repo_summary,
+        'tech_stack': tech_stack,
+    }
+
+    try:
+        # Create project
+        logger.info(f'[GitLab Full Import] Creating project for {namespace}/{project_name}')
+        project = Project.objects.create(
+            user=user,
+            title=repo_summary.get('name', project_name),
+            description=analysis.get('description') or repo_summary.get('description', ''),
+            type=Project.ProjectType.GITLAB_PROJECT,
+            external_url=url,
+            featured_image_url=hero_image,
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+            tools_order=[],
+        )
+
+        # Apply AI metadata (tags, tools, etc.)
+        logger.info(f'[GitLab Full Import] Applying AI metadata to project {project.id}')
+        apply_ai_metadata(project, analysis, content=content)
+
+        # Also tag technologies from tech_stack
+        if tech_stack:
+            logger.info('[GitLab Full Import] Tagging technologies from tech_stack')
+            for lang_name in tech_stack.get('languages', {}).keys():
+                tool = match_or_create_technology(lang_name)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+            for framework in tech_stack.get('frameworks', []):
+                tool = match_or_create_technology(framework)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+            for tool_name in tech_stack.get('tools', []):
+                tool = match_or_create_technology(tool_name)
+                if tool and tool not in project.tools.all():
+                    project.tools.add(tool)
+
+        logger.info(f'[GitLab Full Import] Successfully imported {namespace}/{project_name} as project {project.id}')
+
+        return {
+            'success': True,
+            'project_id': project.id,
+            'slug': project.slug,
+            'title': project.title,
+            'url': f'/{user.username}/{project.slug}',
+            'project_type': 'gitlab_repo',
+        }
+    except Exception as e:
+        logger.exception(f'[GitLab Full Import] Failed to create project for {namespace}/{project_name}: {e}')
+        return {'success': False, 'error': f'Failed to create project: {str(e)}'}
 
 
 def _handle_gitlab_import(
@@ -1709,22 +1990,31 @@ def _handle_gitlab_import(
     - If user doesn't own project: auto-clip
     - If user owns project: imports as owned project
     """
+    logger.info(f'[GitLab Import] Starting import for URL: {url}')
+    logger.info(f'[GitLab Import] User: {user.id} ({user.username}), showcase={is_showcase}, private={is_private}')
+
     # Parse the GitLab URL to get namespace/project
     try:
         parsed = urlparse(url)
         path_parts = parsed.path.strip('/').split('/')
         if len(path_parts) < 2:
+            logger.error(f'[GitLab Import] Invalid URL format - not enough path parts: {path_parts}')
             return {'success': False, 'error': 'Invalid GitLab URL format'}
         namespace = '/'.join(path_parts[:-1])
         project_name = path_parts[-1]
+        logger.info(f'[GitLab Import] Parsed URL: namespace={namespace}, project={project_name}')
     except Exception as e:
+        logger.error(f'[GitLab Import] Failed to parse URL {url}: {e}')
         return {'success': False, 'error': f'Invalid GitLab URL: {str(e)}'}
 
     # Try to import GitLab service - if not available, fall back to generic import
     try:
         from core.integrations.gitlab.service import GitLabService
-    except ImportError:
-        logger.info(f'GitLab service not available, using generic import for {namespace}/{project_name}')
+
+        logger.info('[GitLab Import] GitLabService imported successfully')
+    except ImportError as e:
+        logger.warning(f'[GitLab Import] GitLabService not available: {e}')
+        logger.info(f'[GitLab Import] Falling back to generic import for {namespace}/{project_name}')
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1735,13 +2025,17 @@ def _handle_gitlab_import(
         )
         if result.get('success'):
             result['message'] = 'Successfully imported this GitLab project!'
+        logger.info(f'[GitLab Import] Generic import result: {result}')
         return result
 
     # Check if user has GitLab connected
+    logger.info(f'[GitLab Import] Checking GitLab connection for user {user.id}')
     gitlab_service = GitLabService.for_user(user)
     if not gitlab_service:
         # No GitLab connected - auto-fallback to clipping
-        logger.info(f'No GitLab token, auto-clipping {namespace}/{project_name}')
+        logger.warning(
+            f'[GitLab Import] No GitLab service for user {user.id}, auto-clipping {namespace}/{project_name}'
+        )
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1756,18 +2050,23 @@ def _handle_gitlab_import(
                 "I noticed you don't have GitLab connected, so I've added this to your clippings! "
                 'Connect GitLab to import your own projects with full analysis.'
             )
+        logger.info(f'[GitLab Import] Auto-clip result: {result}')
         return result
 
     # Check if user owns the project
+    logger.info(f'[GitLab Import] Verifying project access for {namespace}/{project_name}')
     try:
         is_owner = gitlab_service.verify_project_access_sync(namespace, project_name)
+        logger.info(f'[GitLab Import] Access verification result: is_owner={is_owner}')
     except Exception as e:
-        logger.warning(f'Failed to verify GitLab project access for {namespace}/{project_name}: {e}')
+        logger.error(
+            f'[GitLab Import] Failed to verify project access for {namespace}/{project_name}: {e}', exc_info=True
+        )
         is_owner = False
 
     if not is_owner:
         # User doesn't own this project - auto-clip
-        logger.info(f'User does not own {namespace}/{project_name}, auto-clipping')
+        logger.info(f'[GitLab Import] User {user.id} does not own {namespace}/{project_name}, auto-clipping')
         result = _handle_generic_import(
             url=url,
             user=user,
@@ -1782,21 +2081,21 @@ def _handle_gitlab_import(
                 "Looks like you don't own this GitLab project, so I've added it to your clippings! "
                 'You can find it in your Clipped tab.'
             )
+        logger.info(f'[GitLab Import] Non-owner import result: {result}')
         return result
 
-    # User owns the project - import as owned
-    logger.info(f'User owns {namespace}/{project_name}, importing as owned project')
-    result = _handle_generic_import(
+    # User owns the project - do full import with GitLab API
+    logger.info(f'[GitLab Import] User {user.id} owns {namespace}/{project_name}, performing full GitLab import')
+    return _full_gitlab_import(
         url=url,
+        namespace=namespace,
+        project_name=project_name,
         user=user,
-        is_owned=True,
+        gitlab_service=gitlab_service,
         is_showcase=is_showcase,
         is_private=is_private,
         state=state,
     )
-    if result.get('success'):
-        result['message'] = 'Successfully imported your GitLab project!'
-    return result
 
 
 def _handle_figma_import(
@@ -1811,8 +2110,15 @@ def _handle_figma_import(
 
     Figma links are always imported as owned designs since users only share
     their own Figma files. Uses generic scraper for metadata extraction.
+
+    Default category is "Design" (ID 3) for all Figma imports.
     """
-    logger.info(f'Handling Figma import: {url}')
+    from core.projects.models import Project
+    from core.taxonomy.models import Taxonomy
+
+    logger.info(f'[Figma Import] Starting import for URL: {url}')
+    logger.info(f'[Figma Import] User: {user.id} ({user.username}), showcase={is_showcase}, private={is_private}')
+
     result = _handle_generic_import(
         url=url,
         user=user,
@@ -1823,6 +2129,57 @@ def _handle_figma_import(
     )
     if result.get('success'):
         result['message'] = 'Successfully imported your Figma design!'
+        logger.info(f'[Figma Import] Successfully imported project {result.get("project_id")}')
+
+        # Ensure Figma imports have ONLY "Design" category
+        # Clear any AI-assigned categories and set Design as the sole category
+        project_id = result.get('project_id')
+        if project_id:
+            try:
+                project = Project.objects.get(id=project_id)
+                try:
+                    # Look up by name pattern rather than hardcoded ID
+                    design_category = Taxonomy.objects.get(
+                        name__icontains='Design',
+                        taxonomy_type='category',
+                        is_active=True,
+                    )
+                    # Clear all existing categories and set only Design
+                    project.categories.clear()
+                    project.categories.add(design_category)
+                    logger.info(
+                        f'[Figma Import] Set Design category (ID {design_category.id}) for project {project_id}'
+                    )
+                except Taxonomy.DoesNotExist:
+                    logger.warning('[Figma Import] Design category not found')
+                except Taxonomy.MultipleObjectsReturned:
+                    # If multiple, get the most specific one
+                    design_category = Taxonomy.objects.filter(
+                        name__icontains='Design',
+                        taxonomy_type='category',
+                        is_active=True,
+                    ).first()
+                    if design_category:
+                        project.categories.clear()
+                        project.categories.add(design_category)
+                        logger.info(
+                            f'[Figma Import] Set Design category (ID {design_category.id}) for project {project_id}'
+                        )
+
+                # Also add Figma as a "Built With" tool
+                try:
+                    from core.projects.models import Tool
+
+                    figma_tool = Tool.objects.get(name__iexact='Figma')
+                    project.tools.add(figma_tool)
+                    logger.info(f'[Figma Import] Added Figma tool for project {project_id}')
+                except Tool.DoesNotExist:
+                    logger.warning('[Figma Import] Figma tool not found')
+
+            except Project.DoesNotExist:
+                logger.warning(f'[Figma Import] Project {project_id} not found when setting category')
+    else:
+        logger.warning(f'[Figma Import] Failed to import: {result.get("error")}')
     return result
 
 
@@ -1852,17 +2209,23 @@ def _handle_generic_import(
 
     # If ownership not specified, ask user
     if is_owned is None:
+        logger.info(f'[Generic Import] Ownership not specified for {url}, requesting confirmation')
         return {
             'success': False,
             'needs_ownership_confirmation': True,
             'message': 'Is this your own project, or are you clipping something you found?',
         }
 
-    logger.info(f'Scraping webpage for project: {url} (user: {user.username}, is_owned: {is_owned})')
+    logger.info(f'[Generic Import] Starting import for URL: {url}')
+    logger.info(f'[Generic Import] User: {user.id} ({user.username}), is_owned={is_owned}')
 
     try:
         # Scrape the webpage (already fetches HTML and extracts text internally)
-        extracted = scrape_url_for_project(url)
+        # Pass user_id for Figma screenshot S3 upload
+        logger.info(f'[Generic Import] Scraping webpage: {url}')
+        extracted = scrape_url_for_project(url, user_id=user.id)
+        desc_len = len(extracted.description or '')
+        logger.info(f'[Generic Import] Scraped: title="{extracted.title}", desc_len={desc_len}')
 
         # Build extracted data dict for template analysis
         # Note: scrape_url_for_project already does AI extraction, so we use its
@@ -1884,13 +2247,16 @@ def _handle_generic_import(
         # Run template analysis to generate sections
         # Pass empty text_content since scrape_url_for_project already extracted
         # the relevant info via AI - no need to double-fetch the URL
+        logger.info(f'[Generic Import] Running template analysis for {url}')
         analysis = analyze_webpage_for_template(
             extracted_data=extracted_dict,
             text_content='',  # Skip double-fetch - extracted data is sufficient
             user=user,
         )
+        logger.info(f'[Generic Import] Template analysis complete, sections count: {len(analysis.get("sections", []))}')
 
         hero_image = analysis.get('hero_image') or extracted.image_url or ''
+        logger.info(f'[Generic Import] Hero image: {hero_image[:100] if hero_image else "None"}...')
 
         # Build content
         content = {
@@ -1907,8 +2273,28 @@ def _handle_generic_import(
 
         # Determine project type
         project_type = Project.ProjectType.OTHER if is_owned else Project.ProjectType.CLIPPED
+        logger.info(f'[Generic Import] Project type: {project_type}')
+
+        # Check if a project with this URL already exists for this user
+        existing_project = Project.objects.filter(user=user, external_url=url).first()
+        if existing_project:
+            logger.info(f'[Generic Import] Found existing project {existing_project.id} for URL {url}')
+            return {
+                'success': True,
+                'project_id': existing_project.id,
+                'slug': existing_project.slug,
+                'title': existing_project.title,
+                'url': f'/{user.username}/{existing_project.slug}',
+                'project_type': 'existing',
+                'already_imported': True,
+                'message': (
+                    f'This project was already imported! '
+                    f'You can find it at /{user.username}/{existing_project.slug}'
+                ),
+            }
 
         # Create project
+        logger.info(f'[Generic Import] Creating project for {url}')
         project = Project.objects.create(
             user=user,
             title=extracted.title or 'Imported Project',
@@ -1922,9 +2308,10 @@ def _handle_generic_import(
             tools_order=[],
         )
 
+        logger.info(f'[Generic Import] Applying AI metadata to project {project.id}')
         apply_ai_metadata(project, analysis, content=content)
 
-        logger.info(f'Successfully imported {url} as project {project.id}')
+        logger.info(f'[Generic Import] Successfully imported {url} as project {project.id}')
 
         return {
             'success': True,
@@ -1936,7 +2323,7 @@ def _handle_generic_import(
         }
 
     except URLScraperError as e:
-        logger.error(f'Failed to scrape URL {url}: {e}')
+        logger.error(f'[Generic Import] URL scraper error for {url}: {e}')
         return {
             'success': False,
             'error': f'Could not import from URL: {str(e)}',
@@ -1949,7 +2336,7 @@ def _handle_generic_import(
             ),
         }
     except Exception as e:
-        logger.exception(f'Unexpected error importing from URL {url}: {e}')
+        logger.exception(f'[Generic Import] Unexpected error importing from URL {url}: {e}')
         return {'success': False, 'error': f'Failed to create project: {str(e)}'}
 
 
@@ -1961,7 +2348,7 @@ def import_from_url(
     url: str,
     is_owned: bool | None = None,
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     force_clip: bool = False,
     state: dict | None = None,
 ) -> dict:
@@ -1992,15 +2379,22 @@ def import_from_url(
 
     User = get_user_model()
 
+    # Debug logging for import_from_url
+    logger.info(f'import_from_url called with url={url}, state={state}')
+
     # Validate state / user context
     if not state or 'user_id' not in state:
+        logger.warning(f'import_from_url: state validation failed - state={state}')
         return {'success': False, 'error': 'User not authenticated'}
 
     user_id = state['user_id']
+    logger.info(f'import_from_url: Looking up user_id={user_id}')
 
     try:
         user = User.objects.get(id=user_id)
+        logger.info(f'import_from_url: Found user {user.username}')
     except User.DoesNotExist:
+        logger.warning(f'import_from_url: User {user_id} not found in database')
         return {'success': False, 'error': 'User not found'}
 
     # NOTE: We intentionally don't cache project creation results.
@@ -2045,15 +2439,25 @@ def import_from_url(
             state=state,
         )
     else:
-        # Generic handler - needs ownership info for non-auto-detectable domains
+        # Generic handler - default to owned if not specified
+        # (most users sharing URLs are sharing their own projects)
+        logger.info(f'[Import Tool] Routing {url} to generic handler (domain_type={domain_type})')
         result = _handle_generic_import(
             url=url,
             user=user,
-            is_owned=is_owned,
+            is_owned=is_owned if is_owned is not None else True,
             is_showcase=is_showcase,
             is_private=is_private,
             state=state,
         )
+
+    # Log final result
+    if result.get('success'):
+        logger.info(f'[Import Tool] Successfully imported {url} as project {result.get("project_id")}')
+    elif result.get('needs_github_connection') or result.get('needs_ownership_confirmation'):
+        logger.info(f'[Import Tool] Import pending user confirmation for {url}')
+    else:
+        logger.warning(f'[Import Tool] Failed to import {url}: {result.get("error")}')
 
     return result
 
@@ -2252,7 +2656,7 @@ def create_project_from_screenshot(
     original_url: str = '',
     title: str = '',
     is_showcase: bool = True,
-    is_private: bool = True,
+    is_private: bool = False,
     is_owned: bool = True,
     state: dict | None = None,
 ) -> dict:

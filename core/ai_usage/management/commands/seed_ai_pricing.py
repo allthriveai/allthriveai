@@ -82,12 +82,6 @@ AI_PRICING_DATA = [
         'output_price_per_million': Decimal('5.00'),
     },
     {
-        'provider': 'google',
-        'model': 'gemini-3-pro-image-preview',
-        'input_price_per_million': Decimal('1.25'),
-        'output_price_per_million': Decimal('5.00'),
-    },
-    {
         'provider': 'gemini',
         'model': 'gemini-1.5-pro',
         'input_price_per_million': Decimal('1.25'),
@@ -98,6 +92,26 @@ AI_PRICING_DATA = [
         'model': 'gemini-1.5-flash',
         'input_price_per_million': Decimal('0.075'),
         'output_price_per_million': Decimal('0.30'),
+    },
+    # Gemini 2.0 Flash - https://ai.google.dev/pricing
+    {
+        'provider': 'gemini',
+        'model': 'gemini-2.0-flash',
+        'input_price_per_million': Decimal('0.10'),
+        'output_price_per_million': Decimal('0.40'),
+    },
+    {
+        'provider': 'gemini',
+        'model': 'gemini-2.0-flash-exp',
+        'input_price_per_million': Decimal('0.10'),
+        'output_price_per_million': Decimal('0.40'),
+    },
+    # OpenAI Moderation API (free but track for visibility)
+    {
+        'provider': 'openai',
+        'model': 'text-moderation-latest',
+        'input_price_per_million': Decimal('0.00'),
+        'output_price_per_million': Decimal('0.00'),
     },
 ]
 

@@ -9,8 +9,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
+import { api } from '@/services/api';
 
-export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize';
+// Legacy IDs for backwards compatibility, new IDs for avatar-focused onboarding
+export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize' | 'play' | 'learn';
 
 interface EmberOnboardingState {
   hasSeenModal: boolean;
@@ -20,6 +23,14 @@ interface EmberOnboardingState {
 }
 
 const STORAGE_KEY = 'ember_onboarding';
+
+// Dev mode: Force onboarding to always show for testing
+// Set to true to always show onboarding, false for normal behavior
+const DEV_FORCE_ONBOARDING = import.meta.env.DEV && false;
+
+if (DEV_FORCE_ONBOARDING) {
+  console.log('[EmberOnboarding] DEV MODE: Forcing onboarding to always show');
+}
 
 const defaultState: EmberOnboardingState = {
   hasSeenModal: false,
@@ -55,8 +66,12 @@ function saveState(userId: number | string, state: EmberOnboardingState): void {
 export function useEmberOnboarding() {
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
+  const pointsNotification = usePointsNotificationOptional();
   const [state, setState] = useState<EmberOnboardingState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
+  // Legacy state kept for backwards compatibility (consumers may still use these)
+  const [showPointsOverlay, setShowPointsOverlay] = useState(false);
+  const [pointsAwarded, setPointsAwarded] = useState(0);
 
   // Check if user is on a battle invite page - skip onboarding for these users
   // so they can accept the battle challenge without interruption
@@ -68,7 +83,8 @@ export function useEmberOnboarding() {
   const publicPages = ['/', '/about', '/tools', '/login', '/signup', '/privacy', '/terms'];
   const isOnPublicPage = publicPages.includes(location.pathname) ||
     location.pathname.startsWith('/@') || // Profile pages
-    location.pathname.startsWith('/battles/') || // Battle share pages
+    location.pathname.startsWith('/play/prompt-battles/') || // Battle share pages
+    location.pathname.startsWith('/battles/') || // Legacy battle share pages
     location.pathname.startsWith('/styleguide');
 
   // Load state when user changes
@@ -94,14 +110,17 @@ export function useEmberOnboarding() {
   // Guest users are temporary accounts created for battle invitations - they shouldn't see onboarding
   // Battle invite pages should go straight to accepting the challenge without interruption
   // Public pages (landing, about, etc.) shouldn't show onboarding even if user has inherited auth cookies
-  const shouldShowModal =
-    isAuthenticated &&
-    isLoaded &&
-    !state.hasSeenModal &&
-    !state.isDismissed &&
-    !user?.isGuest &&
-    !isOnBattleInvitePage &&
-    !isOnPublicPage;
+  //
+  // In dev mode with DEV_FORCE_ONBOARDING=true, always show onboarding for testing
+  const shouldShowModal = DEV_FORCE_ONBOARDING
+    ? isAuthenticated && isLoaded && !user?.isGuest && !isOnBattleInvitePage && !isOnPublicPage
+    : isAuthenticated &&
+      isLoaded &&
+      !state.hasSeenModal &&
+      !state.isDismissed &&
+      !user?.isGuest &&
+      !isOnBattleInvitePage &&
+      !isOnPublicPage;
 
   // Should show the banner (has seen modal, hasn't dismissed, hasn't completed all 4 adventures)
   // Also skip for guest users, battle invite pages, and public pages
@@ -142,14 +161,40 @@ export function useEmberOnboarding() {
     setState((prev) => ({ ...prev, isDismissed: true, hasSeenModal: true }));
   }, []);
 
-  // Award welcome points (only once)
-  const awardWelcomePoints = useCallback(() => {
-    setState((prev) => {
-      if (prev.welcomePointsAwarded) return prev;
-      // TODO: Call API to actually award points
-      return { ...prev, welcomePointsAwarded: true };
-    });
-  }, []);
+  // Award welcome points (only once) - calls API and shows global notification
+  const awardWelcomePoints = useCallback(async () => {
+    // Skip if already awarded locally
+    if (state.welcomePointsAwarded) return;
+
+    try {
+      const response = await api.post<{
+        awarded?: boolean;
+        alreadyAwarded?: boolean;
+        points: number;
+        totalPoints?: number;
+      }>('/me/thrive-circle/welcome-points/');
+
+      const data = response.data;
+      if (data.awarded) {
+        // Update legacy state for backwards compatibility
+        setPointsAwarded(data.points);
+        setShowPointsOverlay(true);
+
+        // Show global points notification via context
+        if (pointsNotification) {
+          pointsNotification.showPointsNotification({
+            points: data.points,
+            title: 'Welcome Bonus!',
+            message: "You've earned your first points!",
+            activityType: 'welcome',
+          });
+        }
+      }
+      setState((prev) => ({ ...prev, welcomePointsAwarded: true }));
+    } catch (error) {
+      console.error('[EmberOnboarding] Failed to award welcome points:', error);
+    }
+  }, [state.welcomePointsAwarded, pointsNotification]);
 
   // Reset onboarding (for testing)
   const resetOnboarding = useCallback(() => {
@@ -179,6 +224,11 @@ export function useEmberOnboarding() {
     shouldShowModal,
     shouldShowBanner,
     allAdventuresComplete,
+
+    // Points overlay state
+    showPointsOverlay,
+    setShowPointsOverlay,
+    pointsAwarded,
 
     // Actions
     markModalSeen,

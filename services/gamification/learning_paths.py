@@ -115,14 +115,13 @@ class LearningPathService:
 
     def _count_quizzes_for_topic(self, topic: str) -> int:
         """Count available quizzes for a topic."""
-        # Check both topic field and topics array
-        return (
-            Quiz.objects.filter(is_published=True).filter(Q(topic__iexact=topic) | Q(topics__contains=[topic])).count()
-        )
+        # Check topics M2M field by name
+        return Quiz.objects.filter(is_published=True, topics__name__iexact=topic).distinct().count()
 
     def _count_sidequests_for_topic(self, topic: str) -> int:
         """Count available side quests for a topic."""
-        return SideQuest.objects.filter(topic=topic, is_active=True).count()
+        # topic is now a FK to Taxonomy, so filter by topic__slug
+        return SideQuest.objects.filter(topic__slug=topic, is_active=True).count()
 
     @transaction.atomic
     def update_path_on_quiz_completion(self, user, topic: str, quiz_attempt: QuizAttempt) -> UserLearningPath:
@@ -139,8 +138,8 @@ class LearningPathService:
             QuizAttempt.objects.filter(
                 user=user,
                 completed_at__isnull=False,
+                quiz__topics__name__iexact=topic,
             )
-            .filter(Q(quiz__topic__iexact=topic) | Q(quiz__topics__contains=[topic]))
             .values('quiz')
             .distinct()
             .count()
@@ -172,7 +171,7 @@ class LearningPathService:
 
         # Update path
         path.side_quests_completed = UserSideQuest.objects.filter(
-            user=user, is_completed=True, side_quest__topic=topic
+            user=user, is_completed=True, side_quest__topic__slug=topic
         ).count()
 
         path.topic_points += points
@@ -224,8 +223,8 @@ class LearningPathService:
             QuizAttempt.objects.filter(
                 user=user,
                 completed_at__isnull=False,
+                quiz__topics__name__iexact=topic,
             )
-            .filter(Q(quiz__topic__iexact=topic) | Q(quiz__topics__contains=[topic]))
             .select_related('quiz')
             .order_by('-completed_at')
         )
@@ -234,22 +233,21 @@ class LearningPathService:
 
         # Get available quizzes (not yet taken)
         available_quizzes = (
-            Quiz.objects.filter(is_published=True)
-            .filter(Q(topic__iexact=topic) | Q(topics__contains=[topic]))
+            Quiz.objects.filter(is_published=True, topics__name__iexact=topic)
             .exclude(id__in=completed_quiz_ids)
             .order_by('difficulty', 'title')
         )
 
         # Get completed side quests
         completed_sidequests = (
-            UserSideQuest.objects.filter(user=user, is_completed=True, side_quest__topic=topic)
+            UserSideQuest.objects.filter(user=user, is_completed=True, side_quest__topic__slug=topic)
             .select_related('side_quest')
             .order_by('-completed_at')
         )
 
         # Get active (in-progress) side quests
         active_sidequests = (
-            UserSideQuest.objects.filter(user=user, is_completed=False, side_quest__topic=topic)
+            UserSideQuest.objects.filter(user=user, is_completed=False, side_quest__topic__slug=topic)
             .select_related('side_quest')
             .order_by('-updated_at')
         )
@@ -312,7 +310,7 @@ class LearningPathService:
 
         # Priority 4: Suggest a new side quest
         available_sidequest = (
-            SideQuest.objects.filter(topic=topic, is_active=True)
+            SideQuest.objects.filter(topic__slug=topic, is_active=True)
             .exclude(id__in=UserSideQuest.objects.filter(user=path.user).values('side_quest_id'))
             .first()
         )
@@ -336,20 +334,22 @@ class LearningPathService:
         2. Topics they haven't started yet
         3. Available content in each topic
         """
-        # Get existing path topics
-        existing_topics = set(UserLearningPath.objects.filter(user=user).values_list('topic', flat=True))
+        from core.taxonomy.models import Taxonomy
 
-        # Get all valid topics
-        all_topics = [choice[0] for choice in UserLearningPath.TOPIC_CHOICES]
+        # Get existing path topics (now FK to Taxonomy)
+        existing_topic_ids = set(UserLearningPath.objects.filter(user=user).values_list('topic_id', flat=True))
+
+        # Get all valid topics from Taxonomy
+        all_topics = Taxonomy.objects.filter(taxonomy_type='topic', is_active=True).order_by('name')
 
         # Score topics by available content
         recommendations = []
         for topic in all_topics:
-            if topic in existing_topics:
+            if topic.id in existing_topic_ids:
                 continue
 
-            quiz_count = self._count_quizzes_for_topic(topic)
-            sidequest_count = self._count_sidequests_for_topic(topic)
+            quiz_count = self._count_quizzes_for_topic(topic.slug)
+            sidequest_count = self._count_sidequests_for_topic(topic.slug)
 
             # Only recommend topics with content
             if quiz_count == 0 and sidequest_count == 0:
@@ -360,8 +360,8 @@ class LearningPathService:
 
             recommendations.append(
                 {
-                    'topic': topic,
-                    'topic_display': UserLearningPath.get_topic_display_name(topic),
+                    'topic': topic.slug,
+                    'topic_display': topic.name,
                     'quiz_count': quiz_count,
                     'sidequest_count': sidequest_count,
                     'score': score,

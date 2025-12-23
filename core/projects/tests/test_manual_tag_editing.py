@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 from core.integrations.reddit_models import RedditCommunityAgent, RedditThread
 from core.projects.models import Project
+from core.projects.topic_utils import get_project_topic_names, set_project_topics
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
 from services.integrations.reddit.sync import RedditSyncService
@@ -79,8 +80,9 @@ def reddit_project(agent_user, reddit_agent):
         type=Project.ProjectType.REDDIT_THREAD,
         external_url='https://reddit.com/r/chatgpt/comments/123abc/test',
         is_showcased=True,
-        topics=['chatgpt', 'ai'],
     )
+    # Set topics using M2M helper
+    set_project_topics(project, ['chatgpt', 'ai'])
 
     RedditThread.objects.create(
         project=project,
@@ -125,8 +127,9 @@ class TestManualTagEditing:
         # Verify tags were updated
         assert test_tool in reddit_project.tools.all()
         assert test_category in reddit_project.categories.all()
-        assert 'new_topic' in reddit_project.topics
-        assert 'another_topic' in reddit_project.topics
+        topic_names = get_project_topic_names(reddit_project)
+        assert 'New_Topic' in topic_names or 'new_topic' in [t.lower() for t in topic_names]
+        assert 'Another_Topic' in topic_names or 'another_topic' in [t.lower() for t in topic_names]
 
         # Verify flag was set
         assert reddit_project.tags_manually_edited is True
@@ -149,13 +152,14 @@ class TestManualTagEditing:
         # Verify tags were NOT updated
         reddit_project.refresh_from_db()
         assert reddit_project.tags_manually_edited is False
-        assert 'hacked' not in reddit_project.topics
+        topic_names = get_project_topic_names(reddit_project)
+        assert 'hacked' not in topic_names and 'Hacked' not in topic_names
 
     def test_manually_edited_tags_persist_through_resync(self, reddit_agent, reddit_project, test_tool):
         """Test that manually edited tags are not overwritten during resync."""
         # Manually set tags and flag
         reddit_project.tools.add(test_tool)
-        reddit_project.topics = ['manual_topic']
+        set_project_topics(reddit_project, ['manual_topic'])
         reddit_project.tags_manually_edited = True
         reddit_project.save()
 
@@ -207,7 +211,8 @@ class TestManualTagEditing:
 
             # Verify manual tags were preserved
             assert test_tool in reddit_project.tools.all()
-            assert 'manual_topic' in reddit_project.topics
+            topic_names = get_project_topic_names(reddit_project)
+            assert 'Manual_Topic' in topic_names or 'manual_topic' in [t.lower() for t in topic_names]
             assert reddit_project.tags_manually_edited is True
         finally:
             RedditSyncService.fetch_post_metrics = original_fetch
@@ -239,7 +244,7 @@ class TestManualTagEditing:
 
         # Verify project has no tags initially
         assert not project.tools.exists()
-        assert not project.topics
+        assert not project.topics.exists()
 
         # Simulate resync with _update_thread
         post_data = {

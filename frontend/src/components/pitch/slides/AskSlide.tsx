@@ -6,16 +6,16 @@ const memberTypes = [
   {
     icon: UserGroupIcon,
     title: 'Community Pillars',
-    description: 'Shape the culture and values of our growing AI creator community',
+    description: 'Shape the culture and values of our growing AI curious community',
   },
   {
     icon: AcademicCapIcon,
     title: 'Mentors',
-    description: 'Guide the next generation of AI creators through challenges and growth',
+    description: 'Guide the next generation of the AI curious through challenges and growth',
   },
   {
     icon: SparklesIcon,
-    title: 'Early Creators',
+    title: 'Early Members',
     description: 'Be among the first to build your portfolio and establish your reputation',
   },
 ];
@@ -35,7 +35,7 @@ export function AskSlide() {
             Join as a <GradientText>Founding Member</GradientText>
           </h2>
           <p className="text-xl text-gray-400">
-            We're looking for passionate AI creators to help build something special
+            We're looking for passionate AI curious people to help build something special
           </p>
         </motion.div>
 

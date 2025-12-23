@@ -18,8 +18,10 @@ from .serializers import (
     FollowerSerializer,
     PersonalizationSettingsSerializer,
     ProfileSectionsSerializer,
+    TeamMemberSerializer,
     UserFollowSerializer,
     UserProfileWithSectionsSerializer,
+    UserTaxonomyPreferencesSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,12 +38,13 @@ class UserPagination(PageNumberPagination):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def explore_users(request):
-    """Explore user profiles with pagination.
+    """Explore user profiles with pagination and search.
 
     Query parameters:
     - page: page number (default: 1)
     - page_size: results per page (default: 20, max: 100)
     - include_all: if 'true', include users without projects (default: false)
+    - search: search query to filter by username, name, bio, or tagline
 
     Returns paginated list of users sorted by:
     1. Number of projects (descending)
@@ -50,6 +53,7 @@ def explore_users(request):
     from core.users.models import UserRole
 
     include_all = request.GET.get('include_all', 'false').lower() == 'true'
+    search_query = request.GET.get('search', '').strip()
 
     # Prefetch projects with their tools to avoid N+1 queries
     projects_prefetch = Prefetch(
@@ -85,6 +89,16 @@ def explore_users(request):
             is_guest=True  # Don't show guest users in explore
         )
     )
+
+    # Apply search filter if provided
+    if search_query:
+        queryset = queryset.filter(
+            Q(username__icontains=search_query)
+            | Q(first_name__icontains=search_query)
+            | Q(last_name__icontains=search_query)
+            | Q(bio__icontains=search_query)
+            | Q(tagline__icontains=search_query)
+        )
 
     # Annotate with project count
     queryset = queryset.annotate(
@@ -149,6 +163,58 @@ def explore_users(request):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
+def list_team_members(request):
+    """Get the All Thrive team (AI agents).
+
+    Returns team members grouped by type:
+    - core: Core team members (Ember, Pip, Sage, Haven) - the AI personas
+    - contributor: Expert contributors (RSS/YouTube curators)
+
+    Query parameters:
+    - type: Filter by team type ('core' or 'contributor')
+    """
+    from core.users.models import UserRole
+
+    team_type = request.GET.get('type', None)
+
+    # Core team usernames (AI personas with distinct personalities)
+    core_team_usernames = ['ember', 'pip', 'sage', 'haven']
+
+    # Get all agent users
+    queryset = User.objects.filter(
+        is_active=True,
+        role=UserRole.AGENT,
+    ).order_by('username')
+
+    # Filter by team type if specified
+    if team_type == 'core':
+        queryset = queryset.filter(username__in=core_team_usernames)
+    elif team_type == 'contributor':
+        queryset = queryset.exclude(username__in=core_team_usernames)
+
+    serializer = TeamMemberSerializer(queryset, many=True, context={'request': request})
+
+    # Group results by team type for frontend convenience
+    core_team = []
+    contributors = []
+
+    for member in serializer.data:
+        if member.get('team_type') == 'core':
+            core_team.append(member)
+        else:
+            contributors.append(member)
+
+    return Response(
+        {
+            'core_team': core_team,
+            'contributors': contributors,
+            'total_count': len(serializer.data),
+        }
+    )
+
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def onboarding_progress(request):
     """Get user's quest progress for Ember's Quest Board.
@@ -162,6 +228,7 @@ def onboarding_progress(request):
     # Import models for checking completion
     from allauth.socialaccount.models import SocialAccount
 
+    from core.avatars.models import UserAvatar
     from core.projects.models import Project, ProjectComment, ProjectLike
     from core.quizzes.models import QuizAttempt
     from core.referrals.models import Referral
@@ -187,7 +254,25 @@ def onboarding_progress(request):
         }
     )
 
-    # 2. Set up personalization
+    # 2. Create your AI avatar (Personalize path - teaches prompt engineering)
+    has_ai_avatar = UserAvatar.objects.filter(
+        user=user, creation_mode__in=['scratch', 'template', 'make_me'], deleted_at__isnull=True
+    ).exists()
+    checklist.append(
+        {
+            'id': 'create_avatar',
+            'title': 'Create your AI avatar',
+            'description': 'Design a unique avatar using AI prompts.',
+            'completed': has_ai_avatar,
+            'link': '/onboarding/avatar',
+            'points': 50,
+            'category': 'personalize',
+            'icon': 'user-circle',
+            'achievement': 'prompt_engineer',  # Links to Prompt Engineer achievement
+        }
+    )
+
+    # 3. Set up personalization
     # Check if user has customized any personalization settings (not just defaults)
     has_personalization = PersonalizationSettings.objects.filter(user=user).exists()
     personalization_complete = has_personalization
@@ -199,12 +284,12 @@ def onboarding_progress(request):
             'completed': personalization_complete,
             'link': '/account/settings/personalization',
             'points': 25,
-            'category': 'getting_started',
+            'category': 'personalize',
             'icon': 'sparkles',
         }
     )
 
-    # 3. Take a quiz
+    # 4. Take a quiz (Learn path)
     has_taken_quiz = QuizAttempt.objects.filter(user=user).exists()
     checklist.append(
         {
@@ -214,7 +299,7 @@ def onboarding_progress(request):
             'completed': has_taken_quiz,
             'link': '/quizzes',
             'points': 50,
-            'category': 'getting_started',
+            'category': 'learn',
             'icon': 'academic-cap',
         }
     )
@@ -380,11 +465,14 @@ def onboarding_progress(request):
     earned_points = sum(item['points'] for item in checklist if item['completed'])
 
     # Group by category for the UI
+    # New structure: Personalize (avatar), Play (battles), Learn (quizzes)
     categories = {
         'getting_started': {'title': 'Getting Started', 'icon': 'rocket', 'items': []},
+        'personalize': {'title': 'Personalize', 'icon': 'user-circle', 'items': []},
         'create': {'title': 'Create & Share', 'icon': 'sparkles', 'items': []},
         'engage': {'title': 'Engage', 'icon': 'heart', 'items': []},
-        'play': {'title': 'Play & Compete', 'icon': 'bolt', 'items': []},
+        'play': {'title': 'Play', 'icon': 'bolt', 'items': []},
+        'learn': {'title': 'Learn', 'icon': 'academic-cap', 'items': []},
         'connect': {'title': 'Connect & Grow', 'icon': 'users', 'items': []},
         'explore': {'title': 'Explore', 'icon': 'compass', 'items': []},
     }
@@ -1012,3 +1100,100 @@ def track_onboarding_path(request):
             'already_set': True,
         }
     )
+
+
+# ============================================================================
+# TAXONOMY PREFERENCES API
+# ============================================================================
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def taxonomy_preferences(request):
+    """Get or update user's taxonomy preferences.
+
+    GET: Returns current taxonomy preferences (personality, roles, goals, etc.)
+    PATCH: Updates taxonomy preferences (partial update)
+
+    These are EXPLICIT preferences set by the user during onboarding.
+    For INFERRED preferences from behavior, see UserTag endpoints.
+
+    PATCH body accepts:
+    - personality_id: int (single taxonomy ID)
+    - learning_style_ids: list[int] (array of taxonomy IDs)
+    - role_ids: list[int]
+    - goal_ids: list[int]
+    - interest_ids: list[int]
+    - industry_ids: list[int]
+
+    Returns nested taxonomy objects for all fields.
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        # Prefetch M2M relationships for efficiency
+        user = (
+            User.objects.prefetch_related(
+                'learning_styles',
+                'roles',
+                'goals',
+                'interests',
+                'industries',
+            )
+            .select_related('personality')
+            .get(pk=user.pk)
+        )
+
+        serializer = UserTaxonomyPreferencesSerializer(user)
+
+        StructuredLogger.log_service_operation(
+            service_name='TaxonomyPreferences',
+            operation='get',
+            success=True,
+            metadata={'user_id': user.id},
+            logger_instance=logger,
+        )
+
+        return Response(serializer.data)
+
+    elif request.method == 'PATCH':
+        serializer = UserTaxonomyPreferencesSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+
+            # Refetch with prefetch for response
+            user = (
+                User.objects.prefetch_related(
+                    'learning_styles',
+                    'roles',
+                    'goals',
+                    'interests',
+                    'industries',
+                )
+                .select_related('personality')
+                .get(pk=user.pk)
+            )
+
+            response_serializer = UserTaxonomyPreferencesSerializer(user)
+
+            StructuredLogger.log_service_operation(
+                service_name='TaxonomyPreferences',
+                operation='update',
+                success=True,
+                metadata={
+                    'user_id': user.id,
+                    'updated_fields': list(request.data.keys()),
+                },
+                logger_instance=logger,
+            )
+
+            return Response(response_serializer.data)
+
+        StructuredLogger.log_service_operation(
+            service_name='TaxonomyPreferences',
+            operation='update',
+            success=False,
+            metadata={'user_id': user.id, 'errors': serializer.errors},
+            logger_instance=logger,
+        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

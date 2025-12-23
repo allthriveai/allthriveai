@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # Request configuration
 REQUEST_TIMEOUT = 15
-PLAYWRIGHT_TIMEOUT = 30000  # 30 seconds for JS rendering
+PLAYWRIGHT_TIMEOUT = 60000  # 60 seconds for JS rendering (increased for Figma/heavy pages)
 MAX_CONTENT_LENGTH = 500_000  # 500KB max HTML
 
 # =============================================================================
@@ -966,6 +966,194 @@ def extract_metadata(soup: BeautifulSoup, url: str) -> dict:
     return metadata
 
 
+def _is_figma_url(url: str) -> bool:
+    """Check if URL is a Figma page."""
+    parsed = urlparse(url)
+    return 'figma.com' in parsed.netloc or parsed.netloc.endswith('.figma.site')
+
+
+def _extract_figma_thumbnail(soup: BeautifulSoup, url: str) -> str | None:
+    """Extract high-quality thumbnail from Figma pages.
+
+    Figma pages have thumbnails hosted on s3-alpha.figma.com/thumbnails/
+    which are much better quality than the standard og:image.
+
+    Also checks for image sources in img tags and srcsets for higher resolution.
+
+    Args:
+        soup: BeautifulSoup parsed HTML
+        url: Original Figma URL
+
+    Returns:
+        High-quality thumbnail URL if found, None otherwise
+    """
+    # Figma thumbnail patterns - prioritize high-quality sources
+    figma_thumbnail_patterns = [
+        's3-alpha.figma.com/thumbnails/',
+        's3-alpha-sig.figma.com/thumbnails/',
+        'figma-alpha-api.s3',
+        's3.amazonaws.com/figma',
+    ]
+
+    # First, look for high-res thumbnails in img tags and their srcsets
+    for img in soup.find_all('img'):
+        # Check srcset for higher resolution versions
+        srcset = img.get('srcset', '')
+        if srcset:
+            # Parse srcset to find highest resolution
+            for part in srcset.split(','):
+                part = part.strip()
+                if any(pattern in part for pattern in figma_thumbnail_patterns):
+                    # Extract URL (before the size descriptor like "2x" or "1024w")
+                    img_url = part.split()[0] if part.split() else part
+                    if img_url.startswith('http'):
+                        logger.info(f'Found Figma thumbnail in srcset: {img_url[:100]}...')
+                        return img_url
+
+        # Check regular src
+        src = img.get('src') or img.get('data-src') or ''
+        if any(pattern in src for pattern in figma_thumbnail_patterns):
+            if src.startswith('http'):
+                logger.info(f'Found Figma thumbnail in img src: {src[:100]}...')
+                return src
+
+    # Check for thumbnail in background-image styles (sometimes used in Figma)
+    for elem in soup.find_all(style=True):
+        style = elem.get('style', '')
+        if 'background-image' in style:
+            # Extract URL from background-image: url(...)
+            match = re.search(r'url\(["\']?(https?://[^"\')\s]+)["\']?\)', style)
+            if match:
+                bg_url = match.group(1)
+                if any(pattern in bg_url for pattern in figma_thumbnail_patterns):
+                    logger.info(f'Found Figma thumbnail in background-image: {bg_url[:100]}...')
+                    return bg_url
+
+    # Check all links and scripts for thumbnail URLs
+    # Sometimes Figma embeds thumbnail URLs in JSON data
+    for script in soup.find_all('script'):
+        script_text = script.string or ''
+        for pattern in figma_thumbnail_patterns:
+            if pattern in script_text:
+                # Try to extract the full URL
+                match = re.search(rf'(https?://[^"\'\\s]*{re.escape(pattern)}[^"\'\\s]*)', script_text)
+                if match:
+                    thumb_url = match.group(1)
+                    # Clean up any escaped characters
+                    thumb_url = thumb_url.replace('\\/', '/')
+                    logger.info(f'Found Figma thumbnail in script: {thumb_url[:100]}...')
+                    return thumb_url
+
+    # Check meta tags for Figma-specific thumbnails
+    for meta in soup.find_all('meta'):
+        content = meta.get('content', '')
+        if any(pattern in content for pattern in figma_thumbnail_patterns):
+            logger.info(f'Found Figma thumbnail in meta: {content[:100]}...')
+            return content
+
+    return None
+
+
+def capture_figma_screenshot(url: str, user_id: int | None = None) -> str | None:
+    """Capture a high-resolution screenshot of a Figma page and upload to S3.
+
+    Figma's thumbnail URLs are temporary signed URLs that expire, causing 404 errors.
+    This function captures a full-page screenshot using Playwright and uploads it
+    to our S3 storage for a persistent, high-quality featured image.
+
+    Args:
+        url: Figma URL to capture
+        user_id: User ID for organizing the screenshot in S3 (optional)
+
+    Returns:
+        Persistent S3 URL for the screenshot, or None if capture fails
+    """
+    logger.info(f'[Figma Screenshot] Starting capture for URL: {url}, user_id={user_id}')
+
+    try:
+        from playwright.sync_api import sync_playwright
+
+        logger.info('[Figma Screenshot] Playwright import successful')
+    except ImportError as e:
+        logger.warning(f'[Figma Screenshot] Playwright not installed: {e}')
+        return None
+
+    try:
+        logger.info('[Figma Screenshot] Initializing Playwright...')
+        with sync_playwright() as p:
+            logger.info('[Figma Screenshot] Launching Chromium browser...')
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-dev-shm-usage',
+                    '--no-sandbox',
+                    '--window-size=1920,1080',
+                ],
+            )
+            logger.info('[Figma Screenshot] Browser launched successfully')
+
+            context = browser.new_context(
+                viewport={'width': 1920, 'height': 1080},
+                device_scale_factor=2,
+            )
+            logger.info('[Figma Screenshot] Browser context created')
+
+            page = context.new_page()
+
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+            """)
+
+            logger.info(f'[Figma Screenshot] Navigating to {url}...')
+            page.goto(url, timeout=PLAYWRIGHT_TIMEOUT, wait_until='networkidle')
+            logger.info('[Figma Screenshot] Page loaded, waiting for content...')
+
+            page.wait_for_timeout(3000)
+
+            page.evaluate('window.scrollBy(0, 100)')
+            page.wait_for_timeout(500)
+            page.evaluate('window.scrollTo(0, 0)')
+            page.wait_for_timeout(500)
+
+            logger.info('[Figma Screenshot] Taking screenshot...')
+            screenshot_bytes = page.screenshot(
+                type='png',
+                full_page=False,
+                clip={'x': 0, 'y': 0, 'width': 1920, 'height': 1080},
+            )
+            logger.info(f'[Figma Screenshot] Screenshot captured, size: {len(screenshot_bytes)} bytes')
+
+            browser.close()
+            logger.info('[Figma Screenshot] Browser closed')
+
+            from services.integrations.storage import get_storage_service
+
+            logger.info('[Figma Screenshot] Uploading to S3...')
+            storage = get_storage_service()
+            s3_url, error = storage.upload_file(
+                file_data=screenshot_bytes,
+                filename='figma-screenshot.png',
+                content_type='image/png',
+                user_id=user_id,
+                folder='figma-screenshots',
+                is_public=True,
+            )
+
+            if error:
+                logger.error(f'[Figma Screenshot] S3 upload failed: {error}')
+                return None
+
+            logger.info(f'[Figma Screenshot] Successfully uploaded to S3: {s3_url}')
+            return s3_url
+
+    except Exception as e:
+        logger.error(f'[Figma Screenshot] Failed to capture: {e}', exc_info=True)
+        return None
+
+
 def _check_youtube_embeddable(video_id: str) -> bool:
     """Check if a YouTube video allows embedding elsewhere.
 
@@ -1547,12 +1735,15 @@ def _fetch_reddit_post(url: str) -> ExtractedProjectData:
         raise ContentExtractionError(f'Failed to parse Reddit post data: {str(e)}') from e
 
 
-def scrape_url_for_project(url: str, force_javascript: bool = False) -> ExtractedProjectData:
+def scrape_url_for_project(
+    url: str, force_javascript: bool = False, user_id: int | None = None
+) -> ExtractedProjectData:
     """Main entry point: scrape a URL and extract project data.
 
     Args:
         url: URL to scrape
         force_javascript: If True, use Playwright for JS rendering even for static-looking pages
+        user_id: User ID for organizing uploaded assets in S3 (optional, used for Figma screenshots)
 
     Returns:
         ExtractedProjectData with all extracted information
@@ -1582,6 +1773,20 @@ def scrape_url_for_project(url: str, force_javascript: bool = False) -> Extracte
 
     # Extract metadata from tags
     metadata = extract_metadata(soup, url)
+
+    # For Figma URLs, capture a persistent screenshot (Figma thumbnails expire)
+    if _is_figma_url(url):
+        # Capture a high-res screenshot and upload to S3 for persistent storage
+        s3_screenshot = capture_figma_screenshot(url, user_id=user_id)
+        if s3_screenshot:
+            logger.info(f'Using S3-hosted Figma screenshot: {s3_screenshot}')
+            metadata['image_url'] = s3_screenshot
+        else:
+            # Fallback to extracting the temporary thumbnail
+            figma_thumbnail = _extract_figma_thumbnail(soup, url)
+            if figma_thumbnail:
+                logger.info(f'Using Figma-specific thumbnail (temporary): {figma_thumbnail[:100]}...')
+                metadata['image_url'] = figma_thumbnail
 
     # Extract images from page (for gallery)
     images = extract_images(soup, url)

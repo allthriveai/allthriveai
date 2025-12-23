@@ -1,16 +1,22 @@
 import uuid
 
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
+from core.taxonomy.mixins import ContentMetadataMixin, WeaviateSyncMixin
 from core.taxonomy.models import Taxonomy
 from core.tools.models import Tool
 
 
-class Quiz(models.Model):
-    """A collection of quiz questions on a specific topic"""
+class Quiz(WeaviateSyncMixin, ContentMetadataMixin, models.Model):
+    """A collection of quiz questions on a specific topic.
 
+    Inherits from:
+        WeaviateSyncMixin: Provides weaviate_uuid and last_indexed_at for vector search
+        ContentMetadataMixin: Provides content_type_taxonomy, time_investment, etc.
+    """
+
+    # DEPRECATED: Use difficulty_taxonomy from ContentMetadataMixin instead
     DIFFICULTY_CHOICES = [
         ('beginner', 'Beginner'),
         ('intermediate', 'Intermediate'),
@@ -23,8 +29,13 @@ class Quiz(models.Model):
         max_length=200, unique=True, null=True, blank=True, help_text='URL-friendly version of title'
     )
     description = models.TextField()
-    topic = models.CharField(max_length=100)  # Kept for backward compatibility
-    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
+    # DEPRECATED: Use difficulty_taxonomy from ContentMetadataMixin instead
+    difficulty = models.CharField(
+        max_length=20,
+        choices=DIFFICULTY_CHOICES,
+        default='beginner',
+        help_text='DEPRECATED: Use difficulty_taxonomy instead',
+    )
     estimated_time = models.IntegerField(help_text='Estimated time in minutes')
     thumbnail_url = models.URLField(blank=True, null=True)
     is_published = models.BooleanField(default=False)
@@ -40,12 +51,13 @@ class Quiz(models.Model):
         limit_choices_to={'taxonomy_type': 'category', 'is_active': True},
         help_text='Categories that organize this quiz (from predefined Taxonomy)',
     )
-    # User-generated topics (free-form tags)
-    topics = ArrayField(
-        models.CharField(max_length=50),
+    # Topic taxonomies (proper FK relationships)
+    topics = models.ManyToManyField(
+        Taxonomy,
         blank=True,
-        default=list,
-        help_text='Topic tags for this quiz',
+        related_name='topic_quizzes',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topic taxonomies for this quiz',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -56,7 +68,6 @@ class Quiz(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['slug']),
-            models.Index(fields=['topic', 'difficulty']),
             models.Index(fields=['is_published', '-created_at']),
         ]
 

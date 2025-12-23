@@ -70,9 +70,18 @@ else:
     print('⚠️  GitHub OAuth: No credentials in environment')
 "
 
-echo "🎯 Creating initial data..."
-python manage.py create_pip || echo "⚠️  create_pip command not found or failed"
-python manage.py seed_categories || echo "⚠️  seed_categories command not found or failed"
+echo "🎯 Seeding initial data (idempotent - creates only if not exists)..."
+python manage.py seed_topics || echo "⚠️  seed_topics failed"
+python manage.py seed_taxonomies || echo "⚠️  seed_taxonomies failed"
+python manage.py seed_categories || echo "⚠️  seed_categories failed"
+python manage.py seed_tools || echo "⚠️  seed_tools failed"
+python manage.py seed_quizzes || echo "⚠️  seed_quizzes failed"
+python manage.py seed_battle_prompts || echo "⚠️  seed_battle_prompts failed"
+python manage.py seed_billing || echo "⚠️  seed_billing failed"
+python manage.py seed_credit_packs || echo "⚠️  seed_credit_packs failed"
+python manage.py seed_ai_pricing || echo "⚠️  seed_ai_pricing failed"
+python manage.py seed_achievements || echo "⚠️  seed_achievements failed"
+python manage.py create_pip || echo "⚠️  create_pip failed"
 
 echo "🌐 Starting Django server..."
 if [ "$DEBUG" = "True" ] || [ "$DEBUG" = "true" ]; then

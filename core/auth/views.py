@@ -8,7 +8,6 @@ from django.conf import settings
 from django.core.cache import cache
 from django.shortcuts import redirect
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
@@ -137,9 +136,12 @@ def login_view(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow anyone to logout
-@csrf_exempt
 def logout_view(request):
-    """Logout user and clear cookies."""
+    """Logout user and clear cookies.
+
+    Note: CSRF protection is enabled for POST requests.
+    Frontend should include CSRF token in request headers.
+    """
     from services.auth import clear_auth_cookies
 
     response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)

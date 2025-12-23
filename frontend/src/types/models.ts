@@ -4,7 +4,7 @@ import type { TopicSlug } from '@/config/topics';
 export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'agent' | 'vendor';
 
 // Thrive Circle tier names
-export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation';
+export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation' | 'team';
 
 // User model
 export interface User {
@@ -33,6 +33,8 @@ export interface User {
   playgroundIsPublic?: boolean;
   isProfilePublic?: boolean;
   allowLlmTraining?: boolean;
+  gamificationIsPublic?: boolean;
+  allowSimilarityMatching?: boolean;
   createdAt: string;
   lastLogin?: string;
   level?: number;
@@ -54,6 +56,8 @@ export interface User {
   isGuest?: boolean;
   // Admin role (includes superusers)
   isAdminRole?: boolean;
+  // Avatar tracking
+  aiAvatarsCreated?: number;
 }
 
 // Authentication state
@@ -109,7 +113,7 @@ export const StorageKeys = {
 } as const;
 
 // Project types
-export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'video' | 'battle' | 'rss_article' | 'clipped' | 'other';
+export type ProjectType = 'github_repo' | 'figma_design' | 'image_collection' | 'prompt' | 'reddit_thread' | 'video' | 'battle' | 'rss_article' | 'clipped' | 'game' | 'other';
 
 // Project redirect
 export interface ProjectRedirect {
@@ -133,6 +137,7 @@ export interface Project {
   isArchived: boolean; // Soft delete - hidden from all views
   isPromoted?: boolean; // Admin promoted - appears at top of explore feeds
   promotedAt?: string; // When this project was promoted
+  isLearningEligible?: boolean; // Whether this project appears in learning content
   bannerUrl?: string; // Banner/cover image
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -142,8 +147,18 @@ export interface Project {
   categoriesDetails?: Taxonomy[]; // Full category taxonomy objects
   hideCategories?: boolean; // If true, categories are hidden from public display
   topics?: string[]; // User-generated topics (free-form, moderated)
+  topicsDetails?: Taxonomy[]; // Full topic taxonomy objects
   tags?: string[]; // Tags for the project
   tagsManuallyEdited?: boolean; // If true, tags were manually edited by admin and won't be auto-updated
+  // Content metadata taxonomy fields (AI-generated or manual)
+  contentTypeTaxonomy?: number; // Content type taxonomy ID
+  contentTypeDetails?: Taxonomy; // Full content type taxonomy object
+  timeInvestment?: number; // Time investment taxonomy ID
+  timeInvestmentDetails?: Taxonomy; // Full time investment taxonomy object
+  difficultyTaxonomy?: number; // Difficulty taxonomy ID
+  difficultyDetails?: Taxonomy; // Full difficulty taxonomy object
+  pricingTaxonomy?: number; // Pricing taxonomy ID
+  pricingDetails?: Taxonomy; // Full pricing taxonomy object
   viewCount?: number; // Number of views
   likesCount?: number; // Number of likes
   heartCount: number;
@@ -269,6 +284,12 @@ export interface ProjectContent {
   };
   // TL;DR section styling
   tldrBgColor?: string;
+  // Game teaser fields (for game type projects)
+  gameUrl?: string; // URL to the game (e.g., /play/context-snake)
+  gameId?: string; // Game ID from games config
+  difficulty?: string; // Game difficulty level
+  learningOutcomes?: string[]; // What users will learn
+  topicTags?: string[]; // Topic tags for the game
 }
 
 // Base block interface
@@ -599,7 +620,6 @@ export interface WeeklyGoal {
   isCompleted: boolean;
   completedAt: string | null;
   pointsReward: number;
-  xpReward?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -857,7 +877,82 @@ export interface UserSideQuest {
 }
 
 // Learning Path Types
-export type LearningPathSkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'master';
+export type LearningPathSkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
+// Learner Profile Types
+export type LearningStyle = 'visual' | 'reading' | 'interactive' | 'video';
+export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
+export type SessionLength = 'short' | 'medium' | 'long';
+export type MasteryLevel = 'unknown' | 'aware' | 'learning' | 'practicing' | 'proficient' | 'expert';
+
+export interface LearnerProfile {
+  preferredLearningStyle: LearningStyle;
+  currentDifficultyLevel: DifficultyLevel;
+  preferredSessionLength: SessionLength;
+  allowProactiveSuggestions: boolean;
+  proactiveCooldownMinutes: number;
+  learningStreakDays: number;
+  longestStreakDays: number;
+  totalLessonsCompleted: number;
+  totalConceptsCompleted: number;
+  totalLearningMinutes: number;
+  totalQuizzesCompleted: number;
+  lastLearningActivity: string | null;
+}
+
+export interface Concept {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  topic: string;
+  toolName: string | null;
+  toolSlug: string | null;
+  baseDifficulty: DifficultyLevel;
+  estimatedMinutes: number;
+  keywords: string[];
+}
+
+export interface UserConceptMastery {
+  id: number;
+  concept: Concept;
+  masteryLevel: MasteryLevel;
+  masteryScore: number;
+  timesPracticed: number;
+  timesCorrect: number;
+  timesIncorrect: number;
+  accuracyPercentage: number;
+  consecutiveCorrect: number;
+  lastPracticed: string | null;
+  nextReviewAt: string | null;
+}
+
+export interface LearningStats {
+  totalEvents: number;
+  totalXp: number;
+  eventsByType: Record<string, number>;
+  periodDays: number;
+}
+
+export interface DueReview {
+  concept: string;
+  conceptSlug: string;
+  topic: string;
+  masteryLevel: MasteryLevel;
+  daysOverdue: number;
+  lastPracticed: string | null;
+}
+
+export interface KnowledgeGap {
+  concept: string;
+  conceptSlug: string;
+  topic: string;
+  masteryLevel: MasteryLevel;
+  masteryScore: number;
+  timesPracticed: number;
+  accuracyPercentage: number;
+  suggestion: string;
+}
 
 export interface UserLearningPath {
   id: number;
@@ -946,6 +1041,51 @@ export interface TopicRecommendation {
 export interface LearningPathTopic {
   slug: TopicSlug;
   name: string;
+}
+
+// Structured Learning Path Types
+export type LearningGoal = 'build_projects' | 'understand_concepts' | 'career' | 'exploring';
+export type ConceptStatus = 'locked' | 'available' | 'in_progress' | 'completed';
+
+export interface ConceptNode {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  status: ConceptStatus;
+  masteryScore: number;
+  hasQuiz: boolean;
+  estimatedMinutes: number;
+}
+
+export interface TopicSection {
+  slug: string;
+  name: string;
+  description: string;
+  progress: number;
+  conceptCount: number;
+  completedCount: number;
+  concepts: ConceptNode[];
+}
+
+export interface CurrentFocus {
+  concept: ConceptNode | null;
+  topicSlug: string;
+  topicName: string;
+}
+
+export interface StructuredPath {
+  hasCompletedPathSetup: boolean;
+  learningGoal: LearningGoal | null;
+  currentFocus: CurrentFocus;
+  overallProgress: number;
+  totalConcepts: number;
+  completedConcepts: number;
+  topics: TopicSection[];
+}
+
+export interface LearningSetupRequest {
+  learningGoal: LearningGoal;
 }
 
 // Re-export section types from sections.ts for convenience

@@ -181,7 +181,7 @@ export function BattlePage() {
           if (err.response?.status === 403) {
             if (!user) {
               // Redirect to login for in-progress battles
-              navigate(`/auth?beta=THRIVE&next=${encodeURIComponent(`/battles/${battleId}`)}`);
+              navigate(`/auth?beta=THRIVE&next=${encodeURIComponent(`/play/prompt-battles/${battleId}`)}`);
               return;
             }
             // User is authenticated, try authenticated endpoint
@@ -372,7 +372,7 @@ export function BattlePage() {
 
   // Handle play again
   const handlePlayAgain = useCallback(() => {
-    navigate('/battles');
+    navigate('/play/prompt-battles');
   }, [navigate]);
 
   // Handle go home
@@ -441,7 +441,7 @@ export function BattlePage() {
   }, [battleId, handleError]);
 
   // Navigation helper
-  const goToBattles = useCallback(() => navigate('/battles'), [navigate]);
+  const goToBattles = useCallback(() => navigate('/play/prompt-battles'), [navigate]);
 
   // Loading state - Invalid battle ID
   if (!battleId) {

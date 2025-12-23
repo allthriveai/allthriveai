@@ -3,9 +3,18 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { SettingsLayout } from '@/components/layouts/SettingsLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { updateProfile, deactivateAccount, deleteAccount } from '@/services/auth';
+import {
+  getPersonalizationSettings,
+  updatePersonalizationSettings,
+  resetPersonalizationSettings,
+  exportPersonalizationData,
+  deletePersonalizationData,
+  type PersonalizationSettings,
+} from '@/services/personalization';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTriangleExclamation, faUserSlash, faTrash, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faTriangleExclamation, faUserSlash, faTrash, faSpinner, faDownload, faShieldHalved, faRotateLeft, faTrophy, faUsers } from '@fortawesome/free-solid-svg-icons';
+import { getErrorMessage } from '@/utils/errors';
 
 export default function PrivacySettingsPage() {
   const { user, refreshUser, logout: authLogout } = useAuth();
@@ -13,7 +22,21 @@ export default function PrivacySettingsPage() {
   const [playgroundIsPublic, setPlaygroundIsPublic] = useState(user?.playgroundIsPublic ?? true);
   const [isProfilePublic, setIsProfilePublic] = useState(user?.isProfilePublic ?? true);
   const [allowLlmTraining, setAllowLlmTraining] = useState(user?.allowLlmTraining ?? false);
+  const [gamificationIsPublic, setGamificationIsPublic] = useState(user?.gamificationIsPublic ?? true);
+  const [allowSimilarityMatching, setAllowSimilarityMatching] = useState(user?.allowSimilarityMatching ?? true);
   const [saving, setSaving] = useState(false);
+  const [resettingSettings, setResettingSettings] = useState(false);
+
+  // Personalization settings
+  const [personalizationSettings, setPersonalizationSettings] = useState<PersonalizationSettings | null>(null);
+  const [personalizationLoading, setPersonalizationLoading] = useState(true);
+  const [personalizationSaving, setPersonalizationSaving] = useState(false);
+
+  // Data management
+  const [exportingData, setExportingData] = useState(false);
+  const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
+  const [deletingData, setDeletingData] = useState(false);
+  const [dataActionError, setDataActionError] = useState<string | null>(null);
 
   // Account action modals
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -27,8 +50,25 @@ export default function PrivacySettingsPage() {
       setPlaygroundIsPublic(user.playgroundIsPublic ?? true);
       setIsProfilePublic(user.isProfilePublic ?? true);
       setAllowLlmTraining(user.allowLlmTraining ?? false);
+      setGamificationIsPublic(user.gamificationIsPublic ?? true);
+      setAllowSimilarityMatching(user.allowSimilarityMatching ?? true);
     }
   }, [user]);
+
+  // Fetch personalization settings
+  useEffect(() => {
+    async function fetchPersonalizationSettings() {
+      try {
+        const settings = await getPersonalizationSettings();
+        setPersonalizationSettings(settings);
+      } catch (error) {
+        console.error('Failed to fetch personalization settings:', error);
+      } finally {
+        setPersonalizationLoading(false);
+      }
+    }
+    fetchPersonalizationSettings();
+  }, []);
 
   const handleTogglePlayground = async (value: boolean) => {
     try {
@@ -78,6 +118,135 @@ export default function PrivacySettingsPage() {
     }
   };
 
+  const handleToggleGamificationPublic = async (value: boolean) => {
+    try {
+      setSaving(true);
+      setGamificationIsPublic(value);
+      await updateProfile({ gamificationIsPublic: value });
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to update gamification visibility:', error);
+      // Revert on error
+      setGamificationIsPublic(!value);
+      alert('Failed to update gamification visibility. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleSimilarityMatching = async (value: boolean) => {
+    try {
+      setSaving(true);
+      setAllowSimilarityMatching(value);
+      await updateProfile({ allowSimilarityMatching: value });
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to update similarity matching setting:', error);
+      // Revert on error
+      setAllowSimilarityMatching(!value);
+      alert('Failed to update similarity matching setting. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle personalization setting toggle
+  const handlePersonalizationToggle = async (
+    key: keyof PersonalizationSettings,
+    value: boolean
+  ) => {
+    if (!personalizationSettings) return;
+
+    const previousValue = personalizationSettings[key];
+    try {
+      setPersonalizationSaving(true);
+      setPersonalizationSettings({ ...personalizationSettings, [key]: value });
+      await updatePersonalizationSettings({ [key]: value });
+    } catch (error) {
+      console.error(`Failed to update ${key}:`, error);
+      // Revert on error
+      setPersonalizationSettings({ ...personalizationSettings, [key]: previousValue });
+      alert('Failed to update setting. Please try again.');
+    } finally {
+      setPersonalizationSaving(false);
+    }
+  };
+
+  // Reset personalization settings to defaults
+  const handleResetSettings = async () => {
+    try {
+      setResettingSettings(true);
+      setDataActionError(null);
+      const result = await resetPersonalizationSettings();
+      setPersonalizationSettings(result.settings);
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+      setDataActionError('Failed to reset settings. Please try again.');
+    } finally {
+      setResettingSettings(false);
+    }
+  };
+
+  // Export personalization data
+  const handleExportData = async () => {
+    try {
+      setExportingData(true);
+      setDataActionError(null);
+      const data = await exportPersonalizationData();
+
+      // Download as JSON file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `allthrive-personalization-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      setDataActionError('Failed to export data. Please try again.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  // Delete personalization data
+  const handleDeletePersonalizationData = async () => {
+    try {
+      setDeletingData(true);
+      setDataActionError(null);
+      await deletePersonalizationData();
+
+      // Reset local state
+      setPersonalizationSettings({
+        useTopicSelections: true,
+        learnFromViews: true,
+        learnFromLikes: true,
+        considerSkillLevel: true,
+        factorContentDifficulty: true,
+        useSocialSignals: true,
+        discoveryBalance: 50,
+        allowTimeTracking: true,
+        allowScrollTracking: true,
+        excitedFeatures: [],
+        desiredIntegrations: [],
+        desiredIntegrationsOther: '',
+        createdAt: '',
+        updatedAt: '',
+      });
+
+      setShowDeleteDataModal(false);
+      alert('Personalization data has been deleted successfully.');
+    } catch (error) {
+      console.error('Failed to delete personalization data:', error);
+      setDataActionError('Failed to delete data. Please try again.');
+    } finally {
+      setDeletingData(false);
+    }
+  };
+
   const handleDeactivateAccount = async () => {
     try {
       setAccountActionLoading(true);
@@ -93,9 +262,9 @@ export default function PrivacySettingsPage() {
           }
         });
       }
-    } catch (error: any) {
-      console.error('Failed to deactivate account:', error);
-      setAccountActionError(error?.error || 'Failed to deactivate account. Please try again.');
+    } catch (error) {
+      console.error('Failed to deactivate account:', getErrorMessage(error));
+      setAccountActionError(getErrorMessage(error) || 'Failed to deactivate account. Please try again.');
     } finally {
       setAccountActionLoading(false);
     }
@@ -121,9 +290,9 @@ export default function PrivacySettingsPage() {
           }
         });
       }
-    } catch (error: any) {
-      console.error('Failed to delete account:', error);
-      setAccountActionError(error?.error || 'Failed to delete account. Please try again.');
+    } catch (error) {
+      console.error('Failed to delete account:', getErrorMessage(error));
+      setAccountActionError(getErrorMessage(error) || 'Failed to delete account. Please try again.');
     } finally {
       setAccountActionLoading(false);
     }
@@ -197,6 +366,33 @@ export default function PrivacySettingsPage() {
                     </label>
                   </div>
                 </div>
+
+                {/* Gamification Public Toggle */}
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <FontAwesomeIcon icon={faTrophy} className="text-amber-500" />
+                        <h3 className="font-medium text-slate-900 dark:text-slate-100">
+                          Public Achievements
+                        </h3>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Display your achievements, level, and Thrive Circle tier on your public profile.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={gamificationIsPublic}
+                        onChange={(e) => handleToggleGamificationPublic(e.target.checked)}
+                        disabled={saving}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -230,6 +426,227 @@ export default function PrivacySettingsPage() {
                     <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
+              </div>
+            </div>
+
+            {/* Personalization & Recommendations Section */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <FontAwesomeIcon icon={faShieldHalved} className="text-primary-600 dark:text-primary-400" />
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Personalization & Recommendations
+                </h2>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Control how AllThrive learns from your activity to personalize recommendations. These settings also affect what Ember knows about you.
+              </p>
+
+              {personalizationLoading ? (
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-center">
+                    <FontAwesomeIcon icon={faSpinner} spin className="text-primary-600 mr-2" />
+                    <span className="text-slate-600 dark:text-slate-400">Loading settings...</span>
+                  </div>
+                </div>
+              ) : personalizationSettings ? (
+                <div className="space-y-4">
+                  {/* Learning Signals */}
+                  <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                    <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-4">Learning Signals</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Use my topic selections</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Use your manually selected interests for recommendations</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.useTopicSelections} onChange={(e) => handlePersonalizationToggle('useTopicSelections', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Learn from my views</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Improve recommendations based on projects you view</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.learnFromViews} onChange={(e) => handlePersonalizationToggle('learnFromViews', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Learn from my likes</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Improve recommendations based on projects you like</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.learnFromLikes} onChange={(e) => handlePersonalizationToggle('learnFromLikes', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Use social signals</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Consider who you follow and engage with for recommendations</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.useSocialSignals} onChange={(e) => handlePersonalizationToggle('useSocialSignals', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Skill & Difficulty */}
+                  <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                    <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-4">Skill Level Matching</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Match to my skill level</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Recommend content appropriate for your experience level</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.considerSkillLevel} onChange={(e) => handlePersonalizationToggle('considerSkillLevel', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Consider content difficulty</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Factor in how challenging content is when making recommendations</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.factorContentDifficulty} onChange={(e) => handlePersonalizationToggle('factorContentDifficulty', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tracking Controls */}
+                  <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                    <h3 className="font-medium text-slate-900 dark:text-slate-100 mb-4">Engagement Tracking</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Track time on pages</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Use time spent on content to understand your interests better</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.allowTimeTracking} onChange={(e) => handlePersonalizationToggle('allowTimeTracking', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 pr-4">
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Track scroll depth</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Use how far you scroll to understand engagement</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={personalizationSettings.allowScrollTracking} onChange={(e) => handlePersonalizationToggle('allowScrollTracking', e.target.checked)} disabled={personalizationSaving} className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collaborative Filtering */}
+                  <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 mb-4">
+                      <FontAwesomeIcon icon={faUsers} className="text-primary-600 dark:text-primary-400" />
+                      <h3 className="font-medium text-slate-900 dark:text-slate-100">Collaborative Filtering</h3>
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 pr-4">
+                        <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Allow similarity matching</h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                          Enable recommendations based on users with similar interests. When enabled, your anonymous activity patterns help improve recommendations for you and others.
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                          Disabling this means your recommendations will only use your own activity and selected topics.
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked={allowSimilarityMatching} onChange={(e) => handleToggleSimilarityMatching(e.target.checked)} disabled={saving} className="sr-only peer" />
+                        <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Reset to Defaults */}
+                  <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 pr-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FontAwesomeIcon icon={faRotateLeft} className="text-slate-500" />
+                          <h3 className="font-medium text-slate-900 dark:text-slate-100">Reset to Defaults</h3>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Reset all personalization settings to their default values. This will enable all learning signals and tracking options.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleResetSettings}
+                        disabled={resettingSettings || personalizationSaving}
+                        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors flex-shrink-0 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {resettingSettings && <FontAwesomeIcon icon={faSpinner} spin />}
+                        {resettingSettings ? 'Resetting...' : 'Reset'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                  <p className="text-slate-600 dark:text-slate-400">Unable to load personalization settings. Please refresh the page.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Data Management Section */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Your Data</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Export or delete your personalization data. This includes your tags, interactions, and recommendation preferences.</p>
+
+              <div className="space-y-4">
+                {/* Export Data */}
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FontAwesomeIcon icon={faDownload} className="text-primary-600 dark:text-primary-400" />
+                        <h3 className="font-medium text-slate-900 dark:text-slate-100">Export Personalization Data</h3>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Download a copy of all your personalization data including tags, interests, and interaction history.</p>
+                    </div>
+                    <button onClick={handleExportData} disabled={exportingData} className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 flex items-center gap-2">
+                      {exportingData && <FontAwesomeIcon icon={faSpinner} spin />}
+                      {exportingData ? 'Exporting...' : 'Export'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Delete Personalization Data */}
+                <div className="bg-white dark:bg-gray-800 rounded p-6 border border-orange-200 dark:border-orange-900/30">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FontAwesomeIcon icon={faTrash} className="text-orange-600 dark:text-orange-400" />
+                        <h3 className="font-medium text-slate-900 dark:text-slate-100">Delete Personalization Data</h3>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Remove all personalization data including tags, interaction history, and learned preferences.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">This will reset Ember's knowledge about you. Your account and projects remain unaffected.</p>
+                    </div>
+                    <button onClick={() => setShowDeleteDataModal(true)} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex-shrink-0">Delete Data</button>
+                  </div>
+                </div>
+
+                {dataActionError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400">{dataActionError}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -313,9 +730,11 @@ export default function PrivacySettingsPage() {
                     <strong>Privacy Settings Guide:</strong>
                   </p>
                   <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 list-disc list-inside">
-                    <li><strong>Public Profile:</strong> Controls visibility to search engines. Disable for complete privacy.</li>
-                    <li><strong>Public Playground:</strong> Controls who can view your Playground projects.</li>
-                    <li><strong>AI Model Training:</strong> Opt-out by default. Enable to help improve AI models like ChatGPT and Claude.</li>
+                    <li><strong>Profile Visibility:</strong> Control what appears publicly on your profile, including achievements and projects.</li>
+                    <li><strong>Personalization:</strong> Control how AllThrive learns from your activity. These settings also affect what Ember knows about you.</li>
+                    <li><strong>Similarity Matching:</strong> When disabled, recommendations use only your activity - not patterns from similar users.</li>
+                    <li><strong>AI Training:</strong> Opt-out by default. Enable to help improve external AI models.</li>
+                    <li><strong>Your Data:</strong> Export your data anytime or delete personalization data to reset Ember's knowledge.</li>
                   </ul>
                 </div>
               </div>
@@ -448,6 +867,63 @@ export default function PrivacySettingsPage() {
                 >
                   {accountActionLoading && <FontAwesomeIcon icon={faSpinner} spin />}
                   {accountActionLoading ? 'Deleting...' : 'Delete Permanently'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Personalization Data Modal */}
+        {showDeleteDataModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 border border-orange-500/20">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faTrash} className="text-2xl text-orange-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                    Delete Personalization Data?
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                    This will permanently delete:
+                  </p>
+                  <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside mb-4">
+                    <li>All your interest tags</li>
+                    <li>Interaction history (views, likes)</li>
+                    <li>Learned preferences</li>
+                    <li>Ember's knowledge about you</li>
+                  </ul>
+                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                    Your account, projects, and profile remain unaffected.
+                  </p>
+                </div>
+              </div>
+
+              {dataActionError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-sm text-red-600 dark:text-red-400">{dataActionError}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowDeleteDataModal(false);
+                    setDataActionError(null);
+                  }}
+                  disabled={deletingData}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeletePersonalizationData}
+                  disabled={deletingData}
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deletingData && <FontAwesomeIcon icon={faSpinner} spin />}
+                  {deletingData ? 'Deleting...' : 'Delete Data'}
                 </button>
               </div>
             </div>

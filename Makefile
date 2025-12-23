@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db create-youtube-agent
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db anonymize-users create-youtube-agent regenerate-battle-images regenerate-user-images
 
 help:
 	@echo "Available commands:"
@@ -38,9 +38,13 @@ help:
 	@echo "  make createsuperuser - Create Django superuser"
 	@echo ""
 	@echo "Data Management:"
-	@echo "  make create-pip      - Create Pip bot user (if doesn't exist)"
+	@echo "  make seed-core-team  - Seed All Thrive Core Team (Ember, Pip, Sage, Haven)"
+	@echo "  make recreate-core-team - Recreate Core Team with latest data"
+	@echo "  make create-pip      - Create Pip bot user only (if doesn't exist)"
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
 	@echo "  make seed-quizzes    - Seed initial quiz data"
+	@echo "  make seed-concepts   - Seed learning concepts for AI education"
+	@echo "  make seed-ai-pricing - Seed AI provider pricing for cost tracking"
 	@echo "  make seed-battle-prompts - Seed battle prompts for prompt battles"
 	@echo "  make seed-test-users - Create test users for admin impersonation"
 	@echo "  make seed-test-users-clean - Recreate test users (delete old ones first)"
@@ -55,6 +59,8 @@ help:
 	@echo "  make aws-load-uat-scenarios - Load UAT scenarios on AWS production"
 	@echo "  make refresh-tool-news - Refresh What's New for tools (TOOL=slug, LIMIT=n, DRY_RUN=1)"
 	@echo "  make create-youtube-agent - Create YouTube feed agent (CHANNEL_URL, SOURCE_NAME required)"
+	@echo "  make regenerate-battle-images - Regenerate battle images (USER=username, DRY_RUN=1)"
+	@echo "  make regenerate-user-images - Regenerate user article hero images (USER=username, STYLE=dark_academia)"
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
@@ -115,7 +121,14 @@ help:
 	@echo "  make aws-seed-all    - Seed all initial data on AWS"
 	@echo "  make sync-user-projects USERNAME=... - Export local user projects to S3"
 	@echo "  make aws-import-user-projects USERNAME=... - Import user projects on AWS from S3"
-	@echo "  make pull-prod-db    - Pull production database to local (ENVIRONMENT=production|staging)"
+	@echo "  make pull-prod-db    - Pull production database to local (anonymizes user PII)"
+	@echo "  make anonymize-users - Anonymize user PII in local database (for prod data safety)"
+	@echo ""
+	@echo "AWS Weaviate (Vector Search):"
+	@echo "  make aws-weaviate-setup - Create Weaviate collections on AWS (idempotent)"
+	@echo "  make aws-weaviate-check - Check Weaviate connection status on AWS"
+	@echo "  make aws-weaviate-reindex - Reindex all projects in Weaviate on AWS"
+	@echo "  make aws-weaviate-reindex-all - Reindex all content (projects, users, quizzes, tools) on AWS"
 	@echo ""
 	@echo "Django:"
 	@echo "  make collectstatic   - Collect static files"
@@ -211,6 +224,14 @@ recreate-pip:
 	@echo "Recreating Pip with latest data..."
 	docker-compose exec web python manage.py create_pip --recreate
 
+seed-core-team:
+	@echo "Seeding All Thrive Core Team (Ember, Pip, Sage, Haven)..."
+	docker-compose exec web python manage.py seed_core_team
+
+recreate-core-team:
+	@echo "Recreating All Thrive Core Team..."
+	docker-compose exec web python manage.py seed_core_team --recreate
+
 # Create a YouTube feed agent
 # Usage: make create-youtube-agent CHANNEL_URL="https://www.youtube.com/@ChannelName" SOURCE_NAME="Channel Name"
 # Optional: AVATAR="https://..." WEBSITE="https://..." TWITTER="https://..." INSTAGRAM="https://..." LINKEDIN="https://..." GITHUB="https://..."
@@ -237,6 +258,14 @@ seed-quizzes:
 	@echo "Seeding quizzes..."
 	docker-compose exec web python manage.py seed_quizzes
 
+seed-concepts:
+	@echo "Seeding learning concepts..."
+	docker-compose exec web python manage.py seed_concepts
+
+seed-ai-pricing:
+	@echo "Seeding AI provider pricing..."
+	docker-compose exec web python manage.py seed_ai_pricing
+
 seed-battle-prompts:
 	@echo "Seeding battle prompts..."
 	docker-compose exec web python manage.py seed_battle_prompts
@@ -259,10 +288,13 @@ seed-all:
 	docker-compose exec web python manage.py seed_categories
 	docker-compose exec web python manage.py seed_tools
 	docker-compose exec web python manage.py seed_quizzes
+	docker-compose exec web python manage.py seed_concepts
 	docker-compose exec web python manage.py seed_battle_prompts
 	docker-compose exec web python manage.py seed_billing
+	docker-compose exec web python manage.py seed_credit_packs
 	docker-compose exec web python manage.py seed_ai_pricing
-	docker-compose exec web python manage.py create_pip
+	docker-compose exec web python manage.py seed_achievements
+	docker-compose exec web python manage.py seed_core_team
 	docker-compose exec web python manage.py create_test_users --count=10
 	@echo "✓ All data seeded successfully!"
 
@@ -276,7 +308,7 @@ endif
 
 export-tools:
 	@echo "Exporting tools to YAML..."
-	docker-compose exec web python manage.py export_tools
+	docker-compose exec -T web python manage.py export_tools
 
 refresh-tool-news:
 	@echo "Refreshing tool news..."
@@ -288,18 +320,34 @@ else
 	docker-compose exec -T web python manage.py refresh_tool_news $(if $(DRY_RUN),--dry-run,)
 endif
 
+# Image regeneration commands
+regenerate-battle-images:
+	@echo "Regenerating battle images from saved prompts..."
+ifdef USER
+	docker-compose exec -T web python manage.py regenerate_battle_images --user $(USER) $(if $(DRY_RUN),--dry-run,) $(if $(LIMIT),--limit $(LIMIT),)
+else
+	docker-compose exec -T web python manage.py regenerate_battle_images $(if $(DRY_RUN),--dry-run,) $(if $(LIMIT),--limit $(LIMIT),)
+endif
+
+regenerate-user-images:
+ifndef USER
+	$(error USER is required. Usage: make regenerate-user-images USER=username [STYLE=dark_academia] [DRY_RUN=1])
+endif
+	@echo "Regenerating article hero images for $(USER)..."
+	docker-compose exec -T web python manage.py regenerate_user_images $(USER) $(if $(STYLE),--style $(STYLE),) $(if $(DRY_RUN),--dry-run,)
+
 load-tools:
 	@echo "Loading tools from YAML..."
-	docker-compose exec web python manage.py seed_tools
+	docker-compose exec -T web python manage.py seed_tools
 
 # Task YAML commands
 export-tasks:
 	@echo "Exporting tasks to YAML..."
-	docker-compose exec web python manage.py export_tasks
+	docker-compose exec -T web python manage.py export_tasks
 
 load-tasks:
 	@echo "Loading tasks from YAML..."
-	docker-compose exec web python manage.py seed_tasks
+	docker-compose exec -T web python manage.py seed_tasks
 
 # UAT Scenarios YAML commands
 export-uat-scenarios:
@@ -917,6 +965,7 @@ aws-seed-test-users:
 	@make aws-run-command CMD="create_test_users --count=10"
 
 # Seed all data on AWS (run after initial deployment)
+# Note: This matches the seed commands in .github/workflows/deploy-aws.yml
 aws-seed-all:
 	@echo "Seeding all data on AWS..."
 	@make aws-run-command CMD="seed_topics"
@@ -924,11 +973,14 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_categories"
 	@make aws-run-command CMD="seed_tools"
 	@make aws-run-command CMD="seed_quizzes"
+	@make aws-run-command CMD="seed_concepts"
 	@make aws-run-command CMD="seed_battle_prompts"
 	@make aws-run-command CMD="seed_billing"
+	@make aws-run-command CMD="seed_credit_packs"
 	@make aws-run-command CMD="seed_ai_pricing"
-	@make aws-run-command CMD="create_pip"
-	@make aws-run-command CMD="create_test_users --count=10"
+	@make aws-run-command CMD="seed_achievements"
+	@make aws-run-command CMD="seed_core_team"
+	@make aws-run-command CMD="seed_ai_daily_brief_agent"
 	@echo "✓ All data seeded on AWS!"
 
 # Sync user projects from local to AWS production
@@ -956,6 +1008,13 @@ aws-import-user-projects:
 	@echo "Importing projects for $(USERNAME) on AWS..."
 	@make aws-run-command CMD="sync_user_projects_to_prod --username $(USERNAME) --import"
 
+# Setup Weaviate collections on AWS (idempotent - creates if missing)
+# Usage: make aws-weaviate-setup ENVIRONMENT=production
+aws-weaviate-setup:
+	@echo "Setting up Weaviate collections on AWS..."
+	@echo "This creates collections if they don't exist (idempotent)."
+	@make aws-run-command CMD="setup_weaviate"
+
 # Reindex all projects in Weaviate on AWS
 # Usage: make aws-weaviate-reindex ENVIRONMENT=production
 aws-weaviate-reindex:
@@ -981,3 +1040,13 @@ pull-prod-db:
 	@echo "⚠️  WARNING: This will REPLACE your local database with production data!"
 	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Cancelled." && exit 1)
 	@ENVIRONMENT=$${ENVIRONMENT:-production} ./scripts/pull-prod-db.sh
+
+# Anonymize user PII in local database (for prod data safety)
+# Usage: make anonymize-users [PRESERVE_USERNAME=myuser]
+anonymize-users:
+	@echo "Anonymizing user PII in local database..."
+ifdef PRESERVE_USERNAME
+	docker-compose exec web python manage.py anonymize_users --confirm --preserve-staff --preserve-agents --preserve-username=$(PRESERVE_USERNAME)
+else
+	docker-compose exec web python manage.py anonymize_users --confirm --preserve-staff --preserve-agents
+endif

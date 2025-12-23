@@ -50,6 +50,23 @@ class User(AbstractUser):
     tagline = models.CharField(max_length=150, blank=True, help_text='Short headline or professional title')
     location = models.CharField(max_length=100, blank=True, help_text='City, state/country or "Remote"')
     pronouns = models.CharField(max_length=50, blank=True, help_text='e.g. she/her, he/him, they/them')
+
+    # Agent personality fields (only used for role='agent')
+    personality_prompt = models.TextField(
+        blank=True,
+        help_text='System prompt defining the agent personality for LLM interactions',
+    )
+    signature_phrases = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of characteristic phrases this agent uses',
+    )
+    agent_interests = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Topics this agent is interested in (for agents only)',
+    )
+
     current_status = models.CharField(
         max_length=200, blank=True, help_text="Current availability or what you're working on"
     )
@@ -101,7 +118,8 @@ class User(AbstractUser):
         ('blossom', 'Blossom'),
         ('bloom', 'Bloom'),
         ('evergreen', 'Evergreen'),
-        ('curation', 'Curation'),  # Special tier for AI agents - no points
+        ('curation', 'Curation'),  # Special tier for RSS/YouTube AI agents - no points
+        ('team', 'All Thrive Team'),  # Core Team agents (Ember, Pip, Sage, Haven) - no points
     ]
 
     TIER_THRESHOLDS = {
@@ -160,6 +178,9 @@ class User(AbstractUser):
     lifetime_comments_posted = models.IntegerField(default=0, help_text='Total comments posted')
     lifetime_battles_participated = models.IntegerField(default=0, help_text='Total battles participated in')
     lifetime_battles_won = models.IntegerField(default=0, help_text='Total battles won')
+    ai_avatars_created = models.IntegerField(
+        default=0, help_text='Total AI avatars created (for Prompt Engineer achievement)'
+    )
 
     # Achievement tracking
     total_achievements_unlocked = models.IntegerField(default=0, help_text='Total achievements unlocked')
@@ -234,18 +255,77 @@ class User(AbstractUser):
         ('battle_pip', 'Prompt Battle'),
         ('add_project', 'Add Your First Project'),
         ('explore', 'Explore'),
+        ('personalize', 'Personalize'),
     ]
     onboarding_path = models.CharField(
         max_length=20,
         blank=True,
         choices=ONBOARDING_PATH_CHOICES,
         db_index=True,
-        help_text='Path selected during onboarding (Prompt Battle, Add Project, or Explore)',
+        help_text='Path selected during onboarding (Battle, Project, Explore, or Personalize)',
     )
     onboarding_completed_at = models.DateTimeField(
         null=True,
         blank=True,
         help_text='When the user completed onboarding by selecting a path',
+    )
+
+    # ============================================================================
+    # TAXONOMY FIELDS - User Preferences for Personalization
+    # ============================================================================
+    # These are EXPLICIT preferences set by the user during onboarding.
+    # For INFERRED preferences from behavior, see UserTag in core/taxonomy/models.py
+
+    # Single-select (FK)
+    personality = models.ForeignKey(
+        'core.Taxonomy',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users_with_personality',
+        limit_choices_to={'taxonomy_type': 'personality', 'is_active': True},
+        help_text='MBTI personality type (e.g., INTJ, ENFP)',
+    )
+
+    # Multi-select (M2M)
+    learning_styles = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_learning_style',
+        limit_choices_to={'taxonomy_type': 'learning_style', 'is_active': True},
+        help_text='Preferred learning styles (visual, hands-on, etc.)',
+    )
+
+    roles = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_role',
+        limit_choices_to={'taxonomy_type': 'role', 'is_active': True},
+        help_text='Professional roles (developer, designer, marketer, etc.)',
+    )
+
+    goals = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_goal',
+        limit_choices_to={'taxonomy_type': 'goal', 'is_active': True},
+        help_text='User goals (learn new skills, start a business, etc.)',
+    )
+
+    interests = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_with_interest',
+        limit_choices_to={'taxonomy_type': 'interest', 'is_active': True},
+        help_text='Interest areas (AI & ML, design, automation, etc.)',
+    )
+
+    industries = models.ManyToManyField(
+        'core.Taxonomy',
+        blank=True,
+        related_name='users_in_industry',
+        limit_choices_to={'taxonomy_type': 'industry', 'is_active': True},
+        help_text='Industry verticals (healthcare, finance, etc.)',
     )
 
     class Meta:
@@ -442,10 +522,10 @@ class User(AbstractUser):
         Example:
             user.add_points(25, 'project_create', 'Created: My First Project')
         """
-        # Skip point awards for curation tier users (AI agents)
-        if self.tier == 'curation':
+        # Skip point awards for AI agent tiers (curation = RSS/YouTube, team = Core Team)
+        if self.tier in ('curation', 'team'):
             logger.debug(
-                f'Skipping points for curation tier user {self.username}',
+                f'Skipping points for {self.tier} tier user {self.username}',
                 extra={'user_id': self.id, 'activity_type': activity_type},
             )
             return self.total_points

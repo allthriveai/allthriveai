@@ -1,6 +1,6 @@
 # Core Features
 
-**Source of Truth** | **Last Updated**: 2025-12-01
+**Source of Truth** | **Last Updated**: 2025-12-20
 
 This document defines the core features of AllThrive AI. These features represent the fundamental value proposition and should remain stable across iterations.
 
@@ -226,35 +226,49 @@ AllThrive AI
 
 ## 5. AI Agents & Automation
 
-### 5.1 Intelligent Chat Panel (Unified AI Agent)
-**Purpose**: AI-powered assistant for project creation, management, and user support.
+### 5.1 Ember - Unified AI Agent
+**Purpose**: AI-powered assistant for discovery, learning, project management, and personalization.
 
 **Capabilities**:
-- Project ideation and creation guidance
+- Project ideation, creation, and management
+- Content discovery and search
+- Learning context and personalized recommendations
 - Structured data extraction from conversations
 - Markdown and Mermaid diagram generation
 - Tool and technology recommendations
 - Import assistance (GitHub, YouTube)
+- Image generation via Nano Banana (Gemini 2.0 Flash)
 - Welcome/onboarding flow for new users
-- Context-aware responses based on user journey
-- ChatGPT-style menu with integration options
+- Context-aware responses with learner profile injection
 
-**Architecture**: LangGraph multi-agent system with WebSocket streaming
+**Architecture**: Single unified LangGraph agent with 31 specialized tools
 
-**Key Components**: 
+**Tool Categories (31 total)**:
+| Category | Tools | Purpose |
+|----------|-------|---------|
+| Discovery | 9 | Search, recommendations, content exploration |
+| Learning | 3 | Context retrieval (LearnerContextService injects at start) |
+| Project | 9 | CRUD operations, import, diagram generation |
+| Orchestration | 7 | Internal routing, delegation, search coordination |
+| Profile | 3 | User preferences and personalization |
+
+**Key Components**:
 - `IntelligentChatPanel` (frontend)
-- `ChatConsumer` (WebSocket handler)
-- `process_chat_message_task` (Celery task)
-- `project_agent` (LangGraph agent)
+- `UnifiedChatConsumer` (WebSocket handler)
+- `ember_agent` (LangGraph agent in `services/agents/ember/`)
+- `LearnerContextService` (injects learner context at conversation start)
 
-**Communication**: WebSocket (real-time streaming with markdown rendering)
+**AI Providers**:
+- **Chat**: OpenAI gpt-4o-mini (default)
+- **Image Generation**: Google Gemini 2.0 Flash (Nano Banana feature)
 
-**Recent Enhancements**:
-- Unified chat interface replacing separate RightChatPanel
-- Welcome mode for new user onboarding
-- Improved agent conversation flow
-- Better integration menu UX
-- Enhanced markdown and diagram support
+**Communication**: WebSocket with two-step token authentication
+
+**Key Features**:
+- Learner context automatically injected at conversation start
+- State injection provides user context to all tools
+- Streaming responses with real-time markdown rendering
+- Unified chat interface with integration menu
 
 ---
 
@@ -298,8 +312,14 @@ AllThrive AI
 - Metadata extraction
 - Thumbnail generation
 - Playlist support
+- **YouTube Feed Agents**: Automated content sync from YouTube channels
 
-**Key Models**: `YouTubeVideo`, `VideoMetadata`
+**YouTube Feed Agent** (via `make create-youtube-agent`):
+- Creates automated agents that sync videos from YouTube channels
+- Configurable with social links and avatar
+- Auto-imports new videos as projects
+
+**Key Models**: `YouTubeVideo`, `VideoMetadata`, `Agent`
 
 **API**: YouTube Data API v3
 
@@ -409,6 +429,6 @@ What AllThrive AI is **NOT**:
 
 ---
 
-**Version**: 1.0  
-**Status**: Stable  
+**Version**: 1.1
+**Status**: Stable
 **Review Cadence**: Quarterly

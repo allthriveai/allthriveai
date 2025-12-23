@@ -255,11 +255,13 @@ export function ChallengeReadyScreen({
           </motion.div>
 
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Your Challenge is Ready!
+            {hideShareOptions ? "You've Been Challenged to a Prompt Battle!" : 'Your Challenge is Ready!'}
           </h1>
 
-          <p className="text-slate-400">
-            Start writing your prompt while your friend joins
+          <p className="text-slate-400 max-w-sm mx-auto">
+            {hideShareOptions
+              ? "How are your prompt engineering skills? Write your best image generation prompt for the challenge below. You have 3 minutes once you start. An AI judge will compare the generated images and pick the winner!"
+              : 'Start writing your prompt while your friend joins'}
           </p>
         </div>
 

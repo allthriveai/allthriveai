@@ -182,7 +182,13 @@ if ! docker-compose ps db 2>/dev/null | grep -q "Up"; then
     exit 1
 fi
 
-# Drop and recreate the database
+# Stop services that use the database to avoid "database in use" error
+echo "Stopping backend services..."
+docker-compose stop web celery celery-beat 2>/dev/null || true
+sleep 2
+
+# Terminate any remaining connections and drop/recreate the database
+docker-compose exec -T db psql -U ${POSTGRES_USER:-allthrive} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${POSTGRES_DB:-allthrive_ai}' AND pid <> pg_backend_pid();" 2>/dev/null || true
 docker-compose exec -T db psql -U ${POSTGRES_USER:-allthrive} -d postgres -c "DROP DATABASE IF EXISTS ${POSTGRES_DB:-allthrive_ai};"
 docker-compose exec -T db psql -U ${POSTGRES_USER:-allthrive} -d postgres -c "CREATE DATABASE ${POSTGRES_DB:-allthrive_ai};"
 
@@ -196,10 +202,50 @@ docker-compose exec -T web python manage.py migrate --noinput
 # Clean up local dump file
 rm -f "${LOCAL_DUMP}"
 
+# Load configuration for preserved usernames
+CONFIG_FILE=".pull-prod-db.conf"
+PRESERVE_USERNAMES=""
+
+if [ -f "${CONFIG_FILE}" ]; then
+    source "${CONFIG_FILE}"
+fi
+
+# Prompt for username to preserve if not configured
+if [ -z "${PRESERVE_USERNAMES}" ]; then
+    echo ""
+    read -p "Enter your username to preserve (for OAuth login), or press Enter to skip: " USERNAME_INPUT
+    if [ -n "${USERNAME_INPUT}" ]; then
+        PRESERVE_USERNAMES="${USERNAME_INPUT}"
+        echo "PRESERVE_USERNAMES=\"${USERNAME_INPUT}\"" > "${CONFIG_FILE}"
+        echo "Saved to ${CONFIG_FILE} for future runs."
+    fi
+fi
+
+# Anonymize user data for local development
+echo ""
+echo "Anonymizing user data for local development..."
+
+ANONYMIZE_ARGS="--confirm --preserve-staff --preserve-agents"
+if [ -n "${PRESERVE_USERNAMES}" ]; then
+    # Support multiple usernames separated by comma
+    IFS=',' read -ra USERNAMES <<< "${PRESERVE_USERNAMES}"
+    for username in "${USERNAMES[@]}"; do
+        ANONYMIZE_ARGS="${ANONYMIZE_ARGS} --preserve-username=${username}"
+    done
+fi
+
+docker-compose exec -T web python manage.py anonymize_users ${ANONYMIZE_ARGS}
+
+# Restart all services
+echo ""
+echo "Restarting services..."
+docker-compose start celery celery-beat 2>/dev/null || true
+
 echo ""
 echo "=== Database Pull Complete ==="
 echo ""
 echo "Your local database now contains ${ENVIRONMENT} data."
+echo "User PII has been anonymized (except preserved accounts)."
 echo ""
 echo "IMPORTANT: Remember to restart your services:"
 echo "  make restart"

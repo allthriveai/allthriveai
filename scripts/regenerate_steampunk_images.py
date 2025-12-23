@@ -47,7 +47,7 @@ def main():
 
         title = project.title or ''
         description = (project.description or '')[:500]
-        topics = project.topics or []
+        topics = list(project.topics.values_list('name', flat=True))
         topics_str = ', '.join(topics[:5]) if topics else ''
 
         prompt = f"""Create a hero image for this AI/tech article. \

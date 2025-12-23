@@ -6,15 +6,14 @@ from core.ai_usage import views as admin_analytics_views
 
 from .achievements.views import AchievementViewSet, get_user_achievements
 from .agents.auth_chat_views import auth_chat_finalize, auth_chat_state, auth_chat_stream
-from .agents.profile_views import (
-    profile_generate_auto,
-    profile_generate_from_linkedin,
-    profile_generate_sources,
-    profile_generate_stream,
-    profile_preview_sections,
-)
 from .agents.project_chat_views import project_chat_stream_v2
-from .agents.views import ConversationViewSet, CreateProjectFromImageView, MessageViewSet, detect_intent
+from .agents.views import (
+    ConversationViewSet,
+    CreateProjectFromImageView,
+    MessageViewSet,
+    clear_conversation,
+    detect_intent,
+)
 from .auth.impersonation import (
     impersonation_status,
     list_impersonatable_users,
@@ -40,6 +39,7 @@ from .auth.views import (
     username_profile_view,
 )
 from .auth.views_token import generate_ws_connection_token
+from .avatars.views import AvatarGenerationSessionViewSet, UserAvatarViewSet
 from .battles.views import (
     BattleInvitationViewSet,
     PromptBattleViewSet,
@@ -151,10 +151,12 @@ from .users.views import (
     get_profile_sections,
     list_followers,
     list_following,
+    list_team_members,
     onboarding_progress,
     personalization_settings,
     reset_personalization_settings,
     reset_profile_sections,
+    taxonomy_preferences,
     toggle_follow,
     toggle_project_in_showcase,
     track_onboarding_path,
@@ -183,6 +185,8 @@ me_router.register(r'side-quests', SideQuestViewSet, basename='me-side-quests')
 me_router.register(r'quest-categories', QuestCategoryViewSet, basename='me-quest-categories')
 me_router.register(r'achievements', AchievementViewSet, basename='me-achievements')
 me_router.register(r'circles', CircleViewSet, basename='me-circles')
+me_router.register(r'avatars', UserAvatarViewSet, basename='me-avatars')
+me_router.register(r'avatar-sessions', AvatarGenerationSessionViewSet, basename='me-avatar-sessions')
 
 # Taxonomy router (public but auth-required)
 taxonomy_router = DefaultRouter()
@@ -285,6 +289,7 @@ urlpatterns = [
     path('projects/track-clicks/', track_batch_clicks, name='track_batch_clicks'),
     path('search/semantic/', semantic_search, name='semantic_search'),
     path('users/explore/', explore_users, name='explore_users'),
+    path('team/', list_team_members, name='list_team_members'),
     # Invitation request (public, rate-limited)
     path('invitations/request/', request_invitation, name='request_invitation'),
     # Public user endpoints
@@ -341,15 +346,10 @@ urlpatterns = [
     path('auth/chat/finalize/', auth_chat_finalize, name='auth_chat_finalize'),
     # Project chat endpoint
     path('project/chat/stream/', project_chat_stream_v2, name='project_chat_stream'),
-    # Profile generation agent endpoints
-    path('profile/generate/stream/', profile_generate_stream, name='profile_generate_stream'),
-    path('profile/generate/auto/', profile_generate_auto, name='profile_generate_auto'),
-    path('profile/generate/preview/', profile_preview_sections, name='profile_preview_sections'),
-    path('profile/generate/sources/', profile_generate_sources, name='profile_generate_sources'),
-    path('profile/generate/from-linkedin/', profile_generate_from_linkedin, name='profile_generate_from_linkedin'),
     # Agent endpoints
     path('agents/detect-intent/', detect_intent, name='detect_intent'),
     path('agents/create-project-from-image/', CreateProjectFromImageView.as_view(), name='create_project_from_image'),
+    path('agents/clear-conversation/', clear_conversation, name='clear_conversation'),
     # User-scoped /me endpoints
     path('me/profile/', UserProfileView.as_view(), name='me_profile'),
     path('me/activity/', user_activity, name='user_activity'),
@@ -358,6 +358,7 @@ urlpatterns = [
     path('me/personalization/status/', personalization_status, name='personalization_status'),
     path('me/personalization/settings/', personalization_settings, name='personalization_settings'),
     path('me/personalization/settings/reset/', reset_personalization_settings, name='reset_personalization_settings'),
+    path('me/personalization/taxonomy/', taxonomy_preferences, name='taxonomy_preferences'),
     path('me/personalization/export/', export_personalization_data, name='export_personalization_data'),
     path('me/personalization/delete/', delete_personalization_data, name='delete_personalization_data'),
     path('me/onboarding-progress/', onboarding_progress, name='onboarding_progress'),
@@ -492,6 +493,10 @@ urlpatterns = [
     path('admin/tasks/', include('core.tasks.urls')),
     # UAT scenarios tracker
     path('admin/uat-scenarios/', include('core.uat_scenarios.urls')),
+    # Educational games
+    path('games/', include('core.games.urls')),
+    # Community messaging (forums, DMs, circle chat)
+    path('community/', include('core.community.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

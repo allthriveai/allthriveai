@@ -56,9 +56,10 @@ def get_user_figma_token(user) -> str | None:
     """
     Get Figma access token for a user.
 
-    Checks SocialConnection model for stored OAuth token.
+    Checks SocialConnection model first, then falls back to django-allauth's SocialToken.
     """
     try:
+        # First, try our custom SocialConnection model
         connection = SocialConnection.objects.filter(
             user=user,
             provider=SocialProvider.FIGMA,
@@ -70,10 +71,29 @@ def get_user_figma_token(user) -> str | None:
             if connection.is_token_expired():
                 logger.warning(f'Figma token expired for user {user.id}')
                 # TODO: Implement token refresh if Figma supports it
-                return None
+            else:
+                logger.info(f'Found Figma token in SocialConnection for user {user.id}')
+                return connection.access_token
 
-            return connection.access_token
+        # Fallback: Check django-allauth's SocialToken model
+        try:
+            from allauth.socialaccount.models import SocialAccount, SocialToken
 
+            social_account = SocialAccount.objects.filter(
+                user=user,
+                provider='figma',
+            ).first()
+
+            if social_account:
+                token = SocialToken.objects.filter(account=social_account).first()
+                if token and token.token:
+                    logger.info(f'Found Figma token in allauth SocialToken for user {user.id}')
+                    return token.token
+
+        except Exception as e:
+            logger.warning(f'Error checking allauth SocialToken: {e}')
+
+        logger.warning(f'No Figma token found for user {user.id}')
         return None
     except Exception as e:
         logger.error(f'Error getting Figma token for user {user.id}: {e}')

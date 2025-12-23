@@ -135,14 +135,14 @@ def check_low_token_balances_task(self):
 
         # Also check for users at zero balance WHO HAVE PURCHASED TOKENS BEFORE
         # This excludes free tier users who never bought tokens
-        # Also excludes curation bots (tier='curation')
+        # Also excludes AI agents (tier='curation' or tier='team')
         zero_balance_users = (
             UserTokenBalance.objects.filter(
                 balance__lte=0,
                 total_purchased__gt=0,  # Only users who have purchased tokens
             )
             .exclude(
-                user__tier='curation',  # Exclude curation bots
+                user__tier__in=['curation', 'team'],  # Exclude AI agents
             )
             .select_related('user')
         )

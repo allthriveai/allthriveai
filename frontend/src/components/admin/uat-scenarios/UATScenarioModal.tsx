@@ -8,8 +8,10 @@ import type {
   UATScenarioAssignee,
   CreateUATScenarioPayload,
   UpdateUATScenarioPayload,
+  Priority,
 } from '@/types/uatScenarios';
-import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, EyeIcon, PencilIcon } from '@heroicons/react/24/outline';
+import ReactMarkdown from 'react-markdown';
 
 interface UATScenarioModalProps {
   scenario: UATScenario | null;
@@ -23,6 +25,14 @@ interface UATScenarioModalProps {
 
 // Color options for categories
 const colorOptions = ['blue', 'green', 'purple', 'red', 'orange', 'yellow', 'slate'];
+
+// Priority options
+const priorityOptions: { value: Priority; label: string }[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
 
 export function UATScenarioModal({
   scenario,
@@ -41,12 +51,16 @@ export function UATScenarioModal({
   const [title, setTitle] = useState(scenario?.title || '');
   const [description, setDescription] = useState(scenario?.description || '');
   const [categoryId, setCategoryId] = useState<number | ''>(scenario?.category || '');
+  const [priority, setPriority] = useState<Priority>(scenario?.priority || 'medium');
 
   // New category creation
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState('blue');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+  // Description preview mode
+  const [showPreview, setShowPreview] = useState(false);
 
   // Validation
   const [errors, setErrors] = useState<{ title?: string }>({});
@@ -73,6 +87,7 @@ export function UATScenarioModal({
       title: title.trim(),
       description: description.trim(),
       category: categoryId || null,
+      priority,
     };
 
     await onSave(data);
@@ -166,16 +181,56 @@ export function UATScenarioModal({
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Description (Expected Behavior)
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the expected behavior and test steps..."
-                rows={6}
-                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30 resize-none"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Description (Expected Behavior)
+                </label>
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview(false)}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      !showPreview
+                        ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    <PencilIcon className="w-3 h-3" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview(true)}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      showPreview
+                        ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    <EyeIcon className="w-3 h-3" />
+                    Preview
+                  </button>
+                </div>
+              </div>
+              {!showPreview ? (
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe the expected behavior and test steps... (Markdown supported)"
+                  rows={8}
+                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30 resize-none font-mono text-sm"
+                />
+              ) : (
+                <div className="min-h-[200px] px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-auto">
+                  {description ? (
+                    <div className="prose prose-sm dark:prose-invert prose-headings:text-base prose-headings:font-semibold prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 max-w-none text-slate-700 dark:text-slate-300">
+                      <ReactMarkdown>{description}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 dark:text-slate-500 italic text-sm">No description yet</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Category */}
@@ -269,6 +324,24 @@ export function UATScenarioModal({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Priority */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                Priority
+              </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as Priority)}
+                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30"
+              >
+                {priorityOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Test History Info for Editing */}

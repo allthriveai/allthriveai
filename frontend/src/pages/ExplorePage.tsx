@@ -184,8 +184,8 @@ export function ExplorePage() {
     error: profilesError,
     refetch: refetchProfiles,
   } = useInfiniteQuery({
-    queryKey: ['exploreProfiles'],
-    queryFn: ({ pageParam = 1 }) => exploreProfiles(pageParam, 30),
+    queryKey: ['exploreProfiles', searchQuery],
+    queryFn: ({ pageParam = 1 }) => exploreProfiles(pageParam, 30, true, searchQuery || undefined),
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.next ? allPages.length + 1 : undefined;
     },
@@ -472,18 +472,18 @@ export function ExplorePage() {
 
         return (
         <div className="px-4 sm:px-6 lg:px-8 py-8">
-            {/* Header */}
-            <div className="mb-6">
+            {/* Header - constrained width */}
+            <div className="max-w-7xl mx-auto mb-6">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Explore
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Discover amazing projects and creators
+                Discover amazing projects and members
               </p>
             </div>
 
-            {/* Combined Glass Card with Tabs and Search */}
-            <div className="glass-subtle rounded border border-gray-200 dark:border-gray-700 p-6 mb-6 relative z-20">
+            {/* Combined Glass Card with Tabs and Search - constrained width */}
+            <div className="max-w-7xl mx-auto glass-subtle rounded border border-gray-200 dark:border-gray-700 p-6 mb-6 relative z-20">
               {/* Tab Navigation */}
               <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
 

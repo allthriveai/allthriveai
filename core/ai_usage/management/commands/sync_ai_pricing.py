@@ -112,16 +112,16 @@ class Command(BaseCommand):
                 'output_price_per_million': Decimal('24.00'),
                 'notes': 'Claude 2.0 - Previous generation',
             },
-            # Google Models (if you use them)
+            # Gemini Models (if you use them)
             {
-                'provider': 'google',
+                'provider': 'gemini',
                 'model': 'gemini-pro',
                 'input_price_per_million': Decimal('0.50'),
                 'output_price_per_million': Decimal('1.50'),
                 'notes': 'Gemini Pro - Multimodal model',
             },
             {
-                'provider': 'google',
+                'provider': 'gemini',
                 'model': 'gemini-ultra',
                 'input_price_per_million': Decimal('10.00'),
                 'output_price_per_million': Decimal('30.00'),

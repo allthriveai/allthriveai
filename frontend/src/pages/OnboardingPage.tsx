@@ -202,7 +202,7 @@ export default function OnboardingPage() {
       <DashboardLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
-            <FontAwesomeIcon icon={faDragon} className="text-4xl text-orange-500 mb-4" />
+            <FontAwesomeIcon icon={faDragon} className="text-4xl text-cyan-500 mb-4" />
             <p className="text-rose-400 mb-4">{error || 'Something went wrong'}</p>
             <button
               onClick={() => window.location.reload()}

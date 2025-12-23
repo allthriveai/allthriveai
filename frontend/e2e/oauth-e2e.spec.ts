@@ -166,7 +166,7 @@ test.describe('OAuth Endpoint Smoke Tests (No credentials required)', () => {
   });
 
   test('LinkedIn OAuth endpoint redirects correctly', async ({ page }) => {
-    await page.goto(`${API_URL}/accounts/linkedin_oauth2/login/`, {
+    await page.goto(`${API_URL}/accounts/oidc/linkedin/login/`, {
       waitUntil: 'commit',
     });
 

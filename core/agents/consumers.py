@@ -16,6 +16,8 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
 
+# Import avatar task for avatar generation requests
+from core.avatars.tasks import process_avatar_generation_task
 from core.projects.models import Project
 
 from .metrics import MetricsCollector
@@ -41,6 +43,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
         self.user = self.scope.get('user')
         self.group_name = f'chat_{self.conversation_id}'
+        self._rate_limiter = RateLimiter()
 
         # Validate origin to prevent CSRF attacks
         headers = dict(self.scope.get('headers', []))
@@ -70,6 +73,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
             logger.warning(f'Unauthenticated WebSocket connection attempt for conversation {self.conversation_id}')
             await self.close(code=4001)
+            return
+
+        # Check connection rate limit (prevent rapid reconnection attacks)
+        is_allowed, retry_after = self._rate_limiter.check_connection_rate_limit(self.user.id)
+        if not is_allowed:
+            logger.warning(f'WebSocket connection rate limit exceeded for user {self.user.id}')
+            await self.close(code=4029)  # Too many requests
+            return
+
+        # Check concurrent connection limit
+        is_allowed, error_msg = self._rate_limiter.check_websocket_connection_limit(self.user.id)
+        if not is_allowed:
+            logger.warning(f'WebSocket connection limit exceeded for user {self.user.id}: {error_msg}')
+            await self.close(code=4029)  # Too many requests
             return
 
         # Validate conversation access authorization
@@ -107,6 +124,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        # Track connection for concurrent connection limiting
+        self._rate_limiter.increment_websocket_connection(self.user.id)
+
         logger.info(f'WebSocket connected: user={self.user.id}, conversation={self.conversation_id}')
 
         # Send connection confirmation
@@ -121,6 +141,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
+        # Decrement connection count for rate limiting
+        if hasattr(self, '_rate_limiter') and hasattr(self, 'user') and self.user and self.user.is_authenticated:
+            self._rate_limiter.decrement_websocket_connection(self.user.id)
+
         logger.info(f'WebSocket disconnected: user={getattr(self.user, "id", "unknown")}, code={close_code}')
 
     async def receive(self, text_data: str):
@@ -130,6 +154,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         Queues message to Celery for async processing.
         """
         try:
+            # Validate message size before parsing
+            is_valid, size_error = self._rate_limiter.validate_message_size(text_data)
+            if not is_valid:
+                await self.send_error(size_error)
+                return
+
             data = json.loads(text_data)
 
             # Handle heartbeat ping
@@ -144,7 +174,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 return
 
             # Rate limiting check
-            rate_limiter = RateLimiter()
+            rate_limiter = self._rate_limiter
             is_allowed, retry_after = rate_limiter.check_message_rate_limit(self.user.id)
             if not is_allowed:
                 minutes = retry_after // 60
@@ -152,23 +182,55 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send_error(f'Rate limit exceeded. Try again in {minutes} minutes.')
                 return
 
-            # Queue message for async processing via Celery
-            # Circuit breaker is checked in the Celery task
-            task = process_chat_message_task.delay(
-                conversation_id=self.conversation_id,
-                message=message,
-                user_id=self.user.id,
-                channel_name=self.group_name,  # Redis group name for broadcasting
-            )
+            # Check if this is an avatar generation request
+            if self.conversation_id.startswith('avatar-'):
+                # Handle avatar generation via dedicated task
+                session_id = data.get('session_id')
+                reference_image_url = data.get('reference_image_url')
 
-            # Send task queued confirmation
-            await self.send(
-                text_data=json.dumps(
-                    {'event': 'task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                # Debug logging
+                logger.info(f'Avatar WS message: session_id={session_id}, reference_image_url={reference_image_url}')
+
+                if not session_id:
+                    await self.send_error('session_id is required for avatar generation')
+                    return
+
+                task = process_avatar_generation_task.delay(
+                    session_id=session_id,
+                    prompt=message,
+                    user_id=self.user.id,
+                    channel_name=self.group_name,
+                    reference_image_url=reference_image_url,
                 )
-            )
 
-            logger.debug(f'Message queued: task_id={task.id}, user={self.user.id}')
+                await self.send(
+                    text_data=json.dumps(
+                        {'event': 'avatar_task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                    )
+                )
+                logger.debug(f'Avatar generation queued: task_id={task.id}, session_id={session_id}')
+            else:
+                # Queue message for async processing via Celery
+                # Circuit breaker is checked in the Celery task
+                # Optional image_url for multimodal messages (e.g., LinkedIn screenshot for profile)
+                image_url = data.get('image_url')
+
+                task = process_chat_message_task.delay(
+                    conversation_id=self.conversation_id,
+                    message=message,
+                    user_id=self.user.id,
+                    channel_name=self.group_name,  # Redis group name for broadcasting
+                    image_url=image_url,
+                )
+
+                # Send task queued confirmation
+                await self.send(
+                    text_data=json.dumps(
+                        {'event': 'task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                    )
+                )
+
+                logger.debug(f'Message queued: task_id={task.id}, user={self.user.id}')
 
         except json.JSONDecodeError:
             await self.send_error('Invalid message format. Please try again.')

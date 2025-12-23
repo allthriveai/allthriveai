@@ -6,6 +6,7 @@ Works in CI/CD with GitHub Actions
 """
 
 import pytest
+from django.conf import settings
 from django.core.cache import cache
 
 from core.agents.circuit_breaker import (
@@ -228,6 +229,7 @@ class TestValidationPipeline:
         assert is_valid is False
         assert 'suspicious' in error.lower()
 
+    @pytest.mark.skipif(settings.DEBUG, reason='Rate limiting disabled in DEBUG mode')
     def test_checks_rate_limit(self):
         user_id = 99999
         for i in range(50):

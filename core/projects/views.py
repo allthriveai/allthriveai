@@ -3,6 +3,7 @@ import time
 
 from django.conf import settings
 from django.core.cache import cache
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, Throttled
@@ -16,8 +17,9 @@ from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, P
 from core.users.models import User
 
 from .constants import MIN_RESPONSE_TIME_SECONDS
-from .models import Project, ProjectLike
+from .models import Project, ProjectDismissal, ProjectLike
 from .serializers import ProjectCardSerializer, ProjectSerializer
+from .topic_utils import get_project_topic_names, set_project_topics
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +117,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Only return projects for the current user
             queryset = Project.objects.filter(user=self.request.user)
 
-        # Optimize with select_related for user and prefetch_related for tools to prevent N+1 queries
+        # Optimize with select_related for user and taxonomy FKs, prefetch_related for M2M to prevent N+1 queries
         return (
-            queryset.select_related('user').prefetch_related('tools', 'likes', 'reddit_thread').order_by('-created_at')
+            queryset.select_related(
+                'user',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+            )
+            .prefetch_related('tools', 'likes', 'reddit_thread')
+            .order_by('-created_at')
         )
 
     def create(self, request, *args, **kwargs):
@@ -236,6 +246,66 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return Response(response_data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'], url_path='dismiss')
+    def dismiss(self, request, pk=None):
+        """Dismiss a project from the user's recommendations.
+
+        Creates or updates a ProjectDismissal record for this user/project.
+        The personalization engine uses these to filter and down-weight content.
+
+        Payload:
+            reason (optional): One of 'not_interested', 'seen_before',
+                              'wrong_topic', 'too_basic', 'too_advanced'
+                              Defaults to 'not_interested'
+
+        Returns:
+            {"status": "dismissed", "reason": "not_interested"}
+        """
+        project = self.get_object()
+        user = request.user
+
+        # Get reason from request, default to 'not_interested'
+        reason = request.data.get('reason', 'not_interested')
+        valid_reasons = [choice[0] for choice in ProjectDismissal.DismissalReason.choices]
+        if reason not in valid_reasons:
+            reason = 'not_interested'
+
+        # Create or update the dismissal record
+        dismissal, created = ProjectDismissal.objects.update_or_create(
+            user=user,
+            project=project,
+            defaults={'reason': reason},
+        )
+
+        logger.info(
+            f'Project dismissed: user={user.username} project={project.id} ' f'reason={reason} created={created}'
+        )
+
+        return Response(
+            {'status': 'dismissed', 'reason': reason},
+            status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['delete'], url_path='dismiss')
+    def undismiss(self, request, pk=None):
+        """Remove a project dismissal (show project in recommendations again).
+
+        Returns:
+            {"status": "undismissed"} or 404 if not dismissed
+        """
+        project = self.get_object()
+        user = request.user
+
+        deleted, _ = ProjectDismissal.objects.filter(user=user, project=project).delete()
+
+        if deleted:
+            return Response({'status': 'undismissed'}, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Project was not dismissed'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
     def perform_update(self, serializer):
         """Called when updating a project."""
         serializer.save()
@@ -293,8 +363,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def _invalidate_user_cache(self, user):
         """Invalidate cached project lists for a user."""
         username_lower = user.username.lower()
-        cache.delete(f'projects:v2:{username_lower}:own')
-        cache.delete(f'projects:v2:{username_lower}:public')
+        # Must match the cache key version in public_user_projects (v4)
+        cache.delete(f'projects:v4:{username_lower}:own')
+        cache.delete(f'projects:v4:{username_lower}:public')
         logger.debug(f'Invalidated project cache for user {user.username}')
 
     @action(detail=True, methods=['patch'], url_path='update-tags')
@@ -358,7 +429,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 )
             # Validate and clean topics
             cleaned_topics = [str(t).strip().lower()[:50] for t in topics if t]
-            project.topics = cleaned_topics[:15]  # Limit to 15 topics
+            set_project_topics(project, cleaned_topics[:15])  # Limit to 15 topics
 
         # Mark as manually edited
         project.tags_manually_edited = True
@@ -462,7 +533,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Validate visual style
             if visual_style not in VALID_VISUAL_STYLES:
                 visual_style = 'cyberpunk'
-            new_image_url = self._regenerate_project_image(project, visual_style)
+            new_image_url = self._regenerate_project_image(project, visual_style, user=request.user)
             if new_image_url:
                 project.featured_image_url = new_image_url
                 updated = True
@@ -488,22 +559,26 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(project)
         return Response(serializer.data)
 
-    def _regenerate_project_image(self, project, visual_style: str = 'cyberpunk') -> str | None:
+    def _regenerate_project_image(self, project, visual_style: str = 'cyberpunk', user=None) -> str | None:
         """Regenerate featured image for a project using Gemini.
 
         Args:
             project: The project to regenerate image for
             visual_style: Visual style for the image (e.g., 'cyberpunk', 'dark_academia')
+            user: User making the request (for usage tracking)
 
         Returns:
             New image URL or None if generation fails
         """
+        import time
+
+        from core.ai_usage.tracker import AIUsageTracker
         from services.ai.provider import AIProvider
         from services.integrations.rss.sync import VISUAL_STYLE_PROMPTS
         from services.integrations.storage.storage_service import get_storage_service
 
         try:
-            ai = AIProvider(provider='gemini')
+            ai = AIProvider(provider='gemini', user_id=user.id if user else None)
 
             # Get style prompt
             style_prompt = VISUAL_STYLE_PROMPTS.get(visual_style, VISUAL_STYLE_PROMPTS['cyberpunk'])
@@ -511,7 +586,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Build prompt based on project content
             title = project.title or ''
             description = (project.description or '')[:500]
-            topics = project.topics or []
+            topics = get_project_topic_names(project)
 
             prompt = (
                 f"""Create a hero image for this AI/tech article. """
@@ -538,7 +613,35 @@ CRITICAL REQUIREMENTS:
             )
 
             # Generate image
+            start_time = time.time()
             image_bytes, mime_type, _text = ai.generate_image(prompt=prompt, timeout=120)
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            # Track AI usage
+            if user:
+                try:
+                    from django.conf import settings
+
+                    gemini_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-2.0-flash')
+                    # Estimate tokens from prompt (image gen doesn't return token counts)
+                    estimated_input_tokens = len(prompt) // 4
+                    AIUsageTracker.track_usage(
+                        user=user,
+                        feature='project_image_regeneration',
+                        provider='gemini',
+                        model=gemini_model,
+                        input_tokens=estimated_input_tokens,
+                        output_tokens=0,
+                        latency_ms=latency_ms,
+                        status='success' if image_bytes else 'error',
+                        request_metadata={
+                            'project_id': project.id,
+                            'visual_style': visual_style,
+                            'image_size_bytes': len(image_bytes) if image_bytes else 0,
+                        },
+                    )
+                except Exception as tracking_error:
+                    logger.warning(f'Failed to track image regeneration usage: {tracking_error}')
 
             if not image_bytes:
                 logger.warning(f'No image generated for project: {project.id}')
@@ -611,10 +714,12 @@ CRITICAL REQUIREMENTS:
             if project.type == Project.ProjectType.REDDIT_THREAD and hasattr(project, 'reddit_thread'):
                 self._record_reddit_thread_deletion(project, request.user)
 
-        deleted_count, _ = queryset.delete()
+        # Count projects before delete (delete() returns total including cascade-deleted related objects)
+        project_count = queryset.count()
+        queryset.delete()
 
         # Invalidate cache for all affected users
-        if deleted_count > 0:
+        if project_count > 0:
             from core.users.models import User
 
             for user_id in affected_users:
@@ -625,7 +730,7 @@ CRITICAL REQUIREMENTS:
                     pass
 
         return Response(
-            {'deleted_count': deleted_count, 'message': f'Successfully deleted {deleted_count} project(s)'},
+            {'deleted_count': project_count, 'message': f'Successfully deleted {project_count} project(s)'},
             status=status.HTTP_200_OK,
         )
 
@@ -648,7 +753,13 @@ def get_project_by_slug(request, username, slug):
     # Try to find the project
     try:
         project = (
-            Project.objects.select_related('user')
+            Project.objects.select_related(
+                'user',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+            )
             .prefetch_related('tools', 'likes', 'reddit_thread')
             .get(user=user, slug=slug)
         )
@@ -728,7 +839,13 @@ def public_user_projects(request, username):
             from django.db.models.functions import Coalesce
 
             showcase_projects = (
-                Project.objects.select_related('user')
+                Project.objects.select_related(
+                    'user',
+                    'content_type_taxonomy',
+                    'time_investment',
+                    'difficulty_taxonomy',
+                    'pricing_taxonomy',
+                )
                 .filter(user=user, is_showcased=True, is_archived=False)
                 .annotate(
                     sort_date=Coalesce('youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at')
@@ -737,7 +854,13 @@ def public_user_projects(request, username):
             )
         else:
             showcase_projects = (
-                Project.objects.select_related('user')
+                Project.objects.select_related(
+                    'user',
+                    'content_type_taxonomy',
+                    'time_investment',
+                    'difficulty_taxonomy',
+                    'pricing_taxonomy',
+                )
                 .filter(user=user, is_showcased=True, is_archived=False)
                 .order_by('-created_at')
             )
@@ -749,7 +872,13 @@ def public_user_projects(request, username):
                 from django.db.models.functions import Coalesce
 
                 playground_projects = (
-                    Project.objects.select_related('user')
+                    Project.objects.select_related(
+                        'user',
+                        'content_type_taxonomy',
+                        'time_investment',
+                        'difficulty_taxonomy',
+                        'pricing_taxonomy',
+                    )
                     .filter(user=user, is_archived=False)
                     .exclude(type=Project.ProjectType.CLIPPED)
                     .annotate(
@@ -761,7 +890,13 @@ def public_user_projects(request, username):
                 )
             else:
                 playground_projects = (
-                    Project.objects.select_related('user')
+                    Project.objects.select_related(
+                        'user',
+                        'content_type_taxonomy',
+                        'time_investment',
+                        'difficulty_taxonomy',
+                        'pricing_taxonomy',
+                    )
                     .filter(user=user, is_archived=False)
                     .exclude(type=Project.ProjectType.CLIPPED)
                     .order_by('-created_at')
@@ -784,7 +919,13 @@ def public_user_projects(request, username):
                     from django.db.models.functions import Coalesce
 
                     playground_projects = (
-                        Project.objects.select_related('user')
+                        Project.objects.select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .filter(user=user, is_archived=False)
                         .exclude(type=Project.ProjectType.CLIPPED)
                         .annotate(
@@ -796,7 +937,13 @@ def public_user_projects(request, username):
                     )
                 else:
                     playground_projects = (
-                        Project.objects.select_related('user')
+                        Project.objects.select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .filter(user=user, is_archived=False)
                         .exclude(type=Project.ProjectType.CLIPPED)
                         .order_by('-created_at')
@@ -863,7 +1010,13 @@ def user_liked_projects(request, username):
             is_private=False,
             is_archived=False,
         )
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'likes')
         .order_by('-likes__created_at')
         .distinct()[:MAX_LIKED_PROJECTS]
@@ -912,7 +1065,13 @@ def user_clipped_projects(request, username):
             is_private=False,
             is_archived=False,
         )
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'likes')
     )
 
@@ -924,7 +1083,13 @@ def user_clipped_projects(request, username):
             is_private=False,
             is_archived=False,
         )
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'likes')
     )
 
@@ -935,22 +1100,66 @@ def user_clipped_projects(request, username):
     return Response({'results': serializer.data})
 
 
+@extend_schema(
+    summary='Explore projects',
+    description='Explore public projects with filtering, search, and pagination.',
+    parameters=[
+        OpenApiParameter(
+            name='tab',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description="Filter tab: 'for-you', 'trending', 'new', 'news', or 'all'",
+            enum=['for-you', 'trending', 'new', 'news', 'all'],
+            default='all',
+        ),
+        OpenApiParameter(
+            name='search',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Text search query',
+        ),
+        OpenApiParameter(
+            name='tools',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Comma-separated tool IDs to filter by',
+        ),
+        OpenApiParameter(
+            name='topics',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Comma-separated topic slugs to filter by',
+        ),
+        OpenApiParameter(
+            name='sort',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description='Sort order',
+            enum=['newest', 'trending', 'popular', 'random'],
+            default='newest',
+        ),
+        OpenApiParameter(
+            name='page',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description='Page number',
+            default=1,
+        ),
+        OpenApiParameter(
+            name='page_size',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description='Results per page (max 100)',
+            default=30,
+        ),
+    ],
+    responses={200: ProjectCardSerializer(many=True)},
+    tags=['projects'],
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def explore_projects(request):
-    """Explore projects with filtering, search, and pagination.
-
-    Query parameters:
-    - tab: 'for-you' | 'trending' | 'new' | 'news' | 'all' (default: 'all')
-    - search: text search query
-    - tools: comma-separated tool IDs
-    - topics: comma-separated topic slugs
-    - sort: 'newest' | 'trending' | 'popular' | 'random' (default: 'newest')
-    - page: page number (default: 1)
-    - page_size: results per page (default: 30, max: 100)
-
-    Returns paginated list of all public projects (not private, not archived) regardless of showcase status.
-    """
+    """Explore projects with filtering, search, and pagination."""
     import logging
 
     from django.contrib.postgres.search import TrigramWordSimilarity
@@ -976,7 +1185,13 @@ def explore_projects(request):
 
     queryset = (
         Project.objects.filter(is_private=False, is_archived=False)
-        .select_related('user')
+        .select_related(
+            'user',
+            'content_type_taxonomy',
+            'time_investment',
+            'difficulty_taxonomy',
+            'pricing_taxonomy',
+        )
         .prefetch_related('tools', 'categories')
     )
 
@@ -1005,7 +1220,8 @@ def explore_projects(request):
     if search_query:
         # First try exact/contains match for best performance on exact queries
         # Search title, description, user info, categories, tools, and topics
-        exact_match = queryset.filter(
+        # Note: topics is a ManyToManyField to Taxonomy, so use topics__name__icontains
+        combined_match = queryset.filter(
             Q(title__icontains=search_query)
             | Q(description__icontains=search_query)
             | Q(user__username__icontains=search_query)
@@ -1013,15 +1229,8 @@ def explore_projects(request):
             | Q(user__last_name__icontains=search_query)
             | Q(categories__name__icontains=search_query)
             | Q(tools__name__icontains=search_query)
+            | Q(topics__name__icontains=search_query)
         ).distinct()
-
-        # Also check topics (stored as ArrayField of strings)
-        # Use case-insensitive contains on array elements
-        # Must use .distinct() to match exact_match for union compatibility
-        topics_match = queryset.filter(topics__icontains=search_query.lower()).distinct()
-
-        # Combine both querysets
-        combined_match = (exact_match | topics_match).distinct()
 
         if combined_match.exists():
             # Use exact match if found
@@ -1422,7 +1631,14 @@ def semantic_search(request):
     types_to_search = [t for t in requested_types if t in valid_types]
 
     limit = int(request.data.get('limit', 1000))  # High default to return all relevant results
-    alpha = float(request.data.get('alpha', 0.7))
+    # Default alpha favors keyword matching (title, tools, categories, topics)
+    # over pure semantic similarity since we have a robust tagging system
+    # alpha=0.3 means 30% vector similarity, 70% keyword matching
+    alpha = float(request.data.get('alpha', 0.3))
+
+    # Minimum score threshold for hybrid search results
+    # This filters out weak matches that don't have sufficient relevance
+    MIN_SCORE_THRESHOLD = 0.3
 
     results = {
         'projects': [],
@@ -1468,10 +1684,28 @@ def semantic_search(request):
                         alpha=alpha,
                         limit=limit,
                     )
-                    project_ids = [r.get('project_id') for r in weaviate_results if r.get('project_id')]
+                    # Filter by score threshold to remove weak semantic matches
+                    # Score is in _additional.score from Weaviate hybrid search
+                    filtered_results = []
+                    for r in weaviate_results:
+                        score = r.get('_additional', {}).get('score', 0)
+                        try:
+                            score = float(score) if score else 0
+                        except (ValueError, TypeError):
+                            score = 0
+                        if score >= MIN_SCORE_THRESHOLD:
+                            filtered_results.append(r)
+
+                    project_ids = [r.get('project_id') for r in filtered_results if r.get('project_id')]
                     projects = (
                         Project.objects.filter(id__in=project_ids)
-                        .select_related('user')
+                        .select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .prefetch_related('tools', 'categories', 'likes')
                     )
                     project_map = {p.id: p for p in projects}
@@ -1489,7 +1723,13 @@ def semantic_search(request):
                             | Q(user__first_name__icontains=query)
                             | Q(user__last_name__icontains=query)
                         )
-                        .select_related('user')
+                        .select_related(
+                            'user',
+                            'content_type_taxonomy',
+                            'time_investment',
+                            'difficulty_taxonomy',
+                            'pricing_taxonomy',
+                        )
                         .prefetch_related('tools', 'categories', 'likes')
                         .distinct()  # Required due to M2M joins
                         .order_by('-created_at')[:limit]

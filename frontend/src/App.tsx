@@ -7,6 +7,7 @@ import { SubscribeModalProvider } from '@/components/billing';
 import { BattleNotificationProvider } from '@/components/battles/BattleNotificationProvider';
 import { AsyncBattleProvider } from '@/contexts/AsyncBattleContext';
 import { EmberOnboardingProvider } from '@/components/onboarding';
+import { MessagesTrayProvider } from '@/context/MessagesTrayContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AppRoutes } from '@/routes';
 import { Sentry } from '@/utils/sentry';
@@ -69,9 +70,11 @@ function App() {
                       <AsyncBattleProvider>
                         <EmberOnboardingProvider>
                           <QuestCompletionProvider>
-                            <MainLayout>
-                              <AppRoutes />
-                            </MainLayout>
+                            <MessagesTrayProvider>
+                              <MainLayout>
+                                <AppRoutes />
+                              </MainLayout>
+                            </MessagesTrayProvider>
                           </QuestCompletionProvider>
                         </EmberOnboardingProvider>
                       </AsyncBattleProvider>

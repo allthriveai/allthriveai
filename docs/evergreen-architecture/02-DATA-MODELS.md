@@ -1,6 +1,6 @@
 # Data Models
 
-**Source of Truth** | **Last Updated**: 2025-12-01
+**Source of Truth** | **Last Updated**: 2025-12-20
 
 This document defines the core data models for AllThrive AI, their relationships, and schema design principles.
 
@@ -451,19 +451,120 @@ max_attendees: int (nullable)
 
 ---
 
-### Battle (`battles.Battle`)
+### Prompt Battles System (`battles.*`)
 
-**Purpose**: Competitive prompt battles (future feature).
+**Purpose**: Real-time competitive prompt engineering battles.
+
+**Location**: `core/battles/models.py`
+
+#### PromptChallengePrompt
+
+**Purpose**: Curated library of battle prompts (pre-written challenges).
 
 ```python
-title: str
-theme: str
-participants: ManyToMany(User)
-start_time: datetime
-end_time: datetime
-voting_end_time: datetime
-status: enum  # upcoming, active, voting, completed
-prize_pool: decimal
+prompt_text: text              # The full challenge shown to participants
+category: ForeignKey(Taxonomy) # Category (Dreamscape, Movie Poster, etc.)
+difficulty: enum               # easy, medium, hard
+is_active: bool                # Available for selection
+weight: float                  # Selection probability (higher = more likely)
+times_used: int                # Usage tracking for analytics
+created_at: datetime
+updated_at: datetime
+```
+
+**Key Design**: Pre-written prompts replace the legacy template system. Each prompt is hand-crafted and ready for immediate use.
+
+---
+
+#### PromptBattle
+
+**Purpose**: Core battle record tracking competition between two users.
+
+```python
+challenger: ForeignKey(User)           # User who initiated
+opponent: ForeignKey(User, nullable)   # Opponent (nullable for invites)
+prompt: ForeignKey(PromptChallengePrompt)  # Selected prompt
+challenge_text: text                   # Copied prompt for permanence
+status: enum                           # pending, active, completed, expired, cancelled
+phase: enum                            # waiting, countdown, active, generating, judging, reveal, complete
+battle_type: enum                      # text_prompt, image_prompt, mixed
+battle_mode: enum                      # sync (real-time), async (turn-based), hybrid
+duration_minutes: int                  # Battle duration
+match_source: enum                     # direct, random, ai_opponent, invitation
+winner: ForeignKey(User, nullable)     # Set after judging
+tool: ForeignKey(Tool)                 # AI tool used (e.g., Nano Banana)
+hidden_by: ManyToMany(User)            # Users who hid this battle
+```
+
+**Battle Phases**:
+- Sync: `waiting → countdown → active → generating → judging → reveal → complete`
+- Async: `waiting → challenger_turn → opponent_turn → generating → judging → reveal → complete`
+
+---
+
+#### BattleSubmission
+
+**Purpose**: User's prompt submission for a battle.
+
+```python
+battle: ForeignKey(PromptBattle)
+user: ForeignKey(User)
+prompt_text: text                 # User's crafted prompt
+submission_type: enum             # text or image
+generated_output_url: url         # Generated image URL
+generated_output_text: text       # Generated text output
+score: float                      # AI-evaluated score (0-100)
+criteria_scores: json             # Breakdown by judging criteria
+evaluation_feedback: text         # AI feedback on prompt quality
+```
+
+**Constraint**: One submission per user per battle (unique_together).
+
+---
+
+#### BattleInvitation
+
+**Purpose**: Track battle invitations including SMS invites.
+
+```python
+sender: ForeignKey(User)
+recipient: ForeignKey(User, nullable)  # Platform user
+recipient_phone: str                   # Phone for SMS invites (E.164)
+invitation_type: enum                  # platform, sms, random
+invite_token: str                      # Unique token for links
+status: enum                           # pending, accepted, declined, expired
+expires_at: datetime                   # 24-hour expiration
+```
+
+---
+
+#### BattleVote
+
+**Purpose**: Scoring record from AI judge or community votes.
+
+```python
+battle: ForeignKey(PromptBattle)
+submission: ForeignKey(BattleSubmission)
+voter: ForeignKey(User, nullable)  # Null for AI judge
+vote_source: enum                  # ai, community, panel
+score: float                       # Score (0-100)
+criteria_scores: json              # Per-criteria breakdown
+feedback: text                     # Explanation of scoring
+weight: float                      # Vote weight for aggregation
+```
+
+---
+
+#### BattleMatchmakingQueue
+
+**Purpose**: Queue for random matchmaking.
+
+```python
+user: OneToOneField(User)
+preferred_category: ForeignKey(Taxonomy, nullable)
+match_type: enum                   # random or ai
+queued_at: datetime
+expires_at: datetime
 ```
 
 ---
@@ -488,6 +589,8 @@ prize_pool: decimal
 | Project ↔ Tool | Project.tools | Standard M:N |
 | Project ↔ Taxonomy | Project.categories | Standard M:N |
 | User ↔ User | Follow | Asymmetric follow relationship |
+| User ↔ PromptBattle | PromptBattle | Challenger/opponent relationships |
+| PromptBattle ↔ User | hidden_by | Users who hid specific battles |
 
 ---
 
@@ -692,6 +795,6 @@ Project.objects.prefetch_related('tools', 'categories')
 
 ---
 
-**Version**: 1.0  
-**Status**: Stable  
+**Version**: 1.1
+**Status**: Stable
 **Review Cadence**: Quarterly

@@ -16,7 +16,7 @@ const problems = [
   {
     icon: UserGroupIcon,
     title: 'Walled Garden Communities',
-    description: 'Every AI tool builds its own locked-in community. Creators are siloed by platform instead of united by craft.',
+    description: 'Every AI tool builds its own locked-in community. Members are siloed by platform instead of united by craft.',
   },
 ];
 
@@ -35,7 +35,7 @@ export function ProblemSlide() {
             The <GradientText>Problem</GradientText>
           </h2>
           <p className="text-xl text-gray-400">
-            AI creators are everywhere, but nowhere
+            The AI curious are everywhere, but nowhere
           </p>
         </motion.div>
 

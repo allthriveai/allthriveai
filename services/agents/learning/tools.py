@@ -1,479 +1,527 @@
 """
-LangChain tools for learning tutor agent.
+Learning tools for Ember agent.
 
-Provides learning progress, quiz hints, concept explanations, and recommendations.
+Tools for creating learning paths and updating learner profiles.
+
+NOTE: find_learning_content has been consolidated into find_content.py
+in the discovery module. This file only contains path/profile tools.
+
+Tools:
+1. create_learning_path - Generate rich structured curriculum
+2. update_learner_profile - Save preferences/interests/skills
+
+Member context (profile, stats, progress, suggestions, personalization)
+is injected at conversation start via MemberContextService - no tool call needed.
 """
 
 import logging
 
+from django.utils import timezone
 from langchain.tools import tool
 from pydantic import BaseModel, Field
+
+from .components import ContentFinder
 
 logger = logging.getLogger(__name__)
 
 
-# Tool Input Schemas
-class GetLearningProgressInput(BaseModel):
-    """Input for get_learning_progress tool."""
-
-    topic: str = Field(default='', description='Optional topic to filter by (e.g., "ai-agents-multitool")')
+# =============================================================================
+# Tool 1: create_learning_path
+# =============================================================================
 
 
-class GetQuizHintInput(BaseModel):
-    """Input for get_quiz_hint tool."""
+class CreateLearningPathInput(BaseModel):
+    """Input for create_learning_path tool."""
 
-    quiz_id: str = Field(default='', description='Quiz UUID or slug')
-    question_number: int = Field(default=1, description='Question number (1-indexed)')
-    question_text: str = Field(default='', description='The question text if quiz_id not known')
+    model_config = {'extra': 'allow'}
 
-
-class ExplainConceptInput(BaseModel):
-    """Input for explain_concept tool."""
-
-    concept: str = Field(description='The concept or topic to explain')
-    skill_level: str = Field(default='beginner', description='User skill level: beginner, intermediate, or advanced')
-
-
-class SuggestNextActivityInput(BaseModel):
-    """Input for suggest_next_activity tool."""
-
-    topic: str = Field(default='', description='Optional topic preference')
-
-
-class GetQuizDetailsInput(BaseModel):
-    """Input for get_quiz_details tool."""
-
-    quiz_id: str = Field(default='', description='Quiz UUID')
-    quiz_slug: str = Field(default='', description='Quiz slug (URL-friendly name)')
-    quiz_title: str = Field(default='', description='Quiz title to search for')
+    query: str = Field(
+        description='Topic for the learning path (e.g., "ai-architecture", "langchain", "rag")',
+    )
+    difficulty: str = Field(
+        default='',
+        description='Difficulty level: "beginner", "intermediate", "advanced" (or auto from profile)',
+    )
+    time_commitment: str = Field(
+        default='',
+        description='Time commitment: "quick" (< 1 hr), "short" (1-2 hrs), "medium" (2-4 hrs), "deep-dive" (4+ hrs)',
+    )
+    replace_existing: bool = Field(
+        default=False,
+        description='If True, replace an existing learning path for this topic instead of creating a duplicate',
+    )
+    state: dict | None = Field(
+        default=None,
+        description='Internal - injected by agent with user context and member_context',
+    )
 
 
-@tool(args_schema=GetLearningProgressInput)
-def get_learning_progress(
-    topic: str = '',
+@tool(args_schema=CreateLearningPathInput)
+def create_learning_path(
+    query: str,
+    difficulty: str = '',
+    time_commitment: str = '',
+    replace_existing: bool = False,
     state: dict | None = None,
 ) -> dict:
     """
-    Get the user's learning progress across topics.
+    Generate a structured learning path for a topic.
 
-    Use this when the user asks about their progress, skill level, or learning journey.
+    Use this when the user wants:
+    - A structured curriculum to follow
+    - A personalized learning journey
+    - Step-by-step guidance on mastering a topic
+
+    Creates a curriculum mixing videos, articles, quizzes, games, code repos,
+    and AI-generated lessons when curated content is unavailable.
+    The path is personalized based on user's learning style and difficulty level.
+    The path is saved to the user's profile and can be accessed at the returned URL.
+
+    IMPORTANT: This tool checks the CURRENT database state for existing paths.
+    Users can delete paths via the UI, so NEVER assume a path still exists based on
+    conversation history. ALWAYS call this tool to verify current state.
+
+    If an existing learning path for this topic exists, ask the user
+    if they want to replace it before calling with replace_existing=True.
 
     Examples:
-    - "How am I doing?"
-    - "What's my progress in AI agents?"
-    - "Show me my learning stats"
-
-    Returns learning paths with skill levels, points, and progress.
+    - "Create a learning path for RAG"
+    - "I want to master AI architecture"
+    - "Give me a beginner path for LangChain"
     """
-    from core.learning_paths.models import UserLearningPath
+    logger.info(
+        'create_learning_path called',
+        extra={'query': query, 'difficulty': difficulty, 'user_id': state.get('user_id') if state else None},
+    )
 
-    logger.info(f'get_learning_progress called: topic={topic}, state={state}')
+    user_id = state.get('user_id') if state else None
+    username = state.get('username') if state else None
+    member_context = state.get('member_context') if state else None
+
+    if not user_id or not username:
+        return {'success': False, 'error': 'You need to be logged in to create a learning path.'}
+
+    try:
+        from django.utils.text import slugify
+
+        from core.learning_paths.models import LearnerProfile, SavedLearningPath
+        from core.learning_paths.tasks import generate_learning_path_cover
+
+        from .lesson_generator import AILessonGenerator
+
+        # Check for existing learning path with the same topic
+        base_slug = slugify(query)
+        existing_path = SavedLearningPath.objects.filter(
+            user_id=user_id,
+            slug=base_slug,
+            is_archived=False,
+        ).first()
+
+        if existing_path and not replace_existing:
+            # Return a prompt to ask the user if they want to replace
+            return {
+                'success': False,
+                'existing_path_found': True,
+                'existing_path': {
+                    'slug': existing_path.slug,
+                    'title': existing_path.title,
+                    'url': f'/{username}/learn/{existing_path.slug}',
+                    'created_at': existing_path.created_at.isoformat(),
+                    'curriculum_count': len(existing_path.path_data.get('curriculum', []))
+                    if existing_path.path_data
+                    else 0,
+                },
+                'message': (
+                    f'You already have a learning path for "{query}" at /{username}/learn/{existing_path.slug}. '
+                    f'Would you like me to replace it with a fresh one, or would you prefer to keep it?'
+                ),
+            }
+
+        # Get user's difficulty preference from profile or member context
+        actual_difficulty = difficulty
+        if not actual_difficulty and member_context:
+            actual_difficulty = member_context.get('learning', {}).get('difficulty_level', 'beginner')
+        if not actual_difficulty:
+            actual_difficulty = 'beginner'
+
+        # Find existing content for the path
+        content_result = ContentFinder.find(
+            query=query,
+            content_type='',  # Get all types
+            limit=10,
+            user_id=user_id,
+            member_context=member_context,
+        )
+
+        # Generate curriculum with AI lessons to fill gaps
+        # This uses the AILessonGenerator which:
+        # 1. Adds existing curated content (videos, articles, quizzes, etc.)
+        # 2. Supplements with AI-generated lessons when content is sparse
+        # 3. Logs content gaps to ContentGap model for strategic development
+        # 4. Personalizes AI lessons based on member_context (learning style, difficulty)
+        curriculum = AILessonGenerator.generate_curriculum(
+            topic=query,
+            member_context=member_context,
+            existing_content=content_result,
+            user_id=user_id,
+        )
+
+        # Apply time commitment limits
+        if time_commitment == 'quick':
+            curriculum = curriculum[:3]
+        elif time_commitment == 'short':
+            curriculum = curriculum[:5]
+        elif time_commitment == 'medium':
+            curriculum = curriculum[:8]
+
+        # Renumber curriculum after any truncation
+        for i, item in enumerate(curriculum):
+            item['order'] = i + 1
+
+        # Calculate estimated time from curriculum items
+        estimated_minutes = sum(item.get('estimated_minutes', 15) for item in curriculum)
+        estimated_hours = round(estimated_minutes / 60, 1)
+
+        # Generate path title and slug
+        path_title = f"{query.replace('-', ' ').title()} Learning Path"
+        # base_slug already defined above when checking for existing path
+
+        # Handle replace_existing: archive old path and reuse slug
+        if replace_existing and existing_path:
+            existing_path.is_archived = True
+            existing_path.save(update_fields=['is_archived', 'updated_at'])
+            path_slug = base_slug  # Reuse the same slug
+            logger.info(f'Archived existing path {existing_path.id} for replacement')
+        else:
+            # Create unique slug for this user (only if not replacing)
+            existing_slugs = set(
+                SavedLearningPath.objects.filter(
+                    user_id=user_id,
+                    slug__startswith=base_slug,
+                    is_archived=False,
+                ).values_list('slug', flat=True)
+            )
+            path_slug = base_slug
+            counter = 1
+            while path_slug in existing_slugs:
+                path_slug = f'{base_slug}-{counter}'
+                counter += 1
+
+        # Get tools and topics covered
+        tools_covered = [content_result['tool']['slug']] if content_result.get('tool') else []
+        topics_covered = [query]
+
+        # Count AI-generated vs curated content
+        ai_lesson_count = sum(1 for item in curriculum if item.get('generated'))
+        curated_count = len(curriculum) - ai_lesson_count
+
+        # Build path_data for SavedLearningPath
+        path_data = {
+            'curriculum': curriculum,
+            'tools_covered': tools_covered,
+            'topics_covered': topics_covered,
+            'ai_lesson_count': ai_lesson_count,
+            'curated_count': curated_count,
+        }
+
+        # Create SavedLearningPath (this is the new multi-path model)
+        saved_path = SavedLearningPath.objects.create(
+            user_id=user_id,
+            slug=path_slug,
+            title=path_title,
+            path_data=path_data,
+            difficulty=actual_difficulty,
+            estimated_hours=estimated_hours,
+            is_active=False,  # Don't auto-activate, let user choose
+        )
+
+        # Activate this path (deactivates others)
+        saved_path.activate()
+
+        # Trigger async cover image generation
+        generate_learning_path_cover.delay(saved_path.id, user_id)
+
+        # Also update LearnerProfile for backwards compatibility
+        profile, _ = LearnerProfile.objects.get_or_create(user_id=user_id)
+        profile.generated_path = {
+            'id': str(saved_path.id),
+            'slug': path_slug,
+            'title': path_title,
+            'curriculum': curriculum,
+            'tools_covered': tools_covered,
+            'topics_covered': topics_covered,
+            'difficulty': actual_difficulty,
+            'estimated_hours': estimated_hours,
+            'ai_lesson_count': ai_lesson_count,
+            'curated_count': curated_count,
+        }
+        profile.current_focus_topic = query
+        profile.save(update_fields=['generated_path', 'current_focus_topic', 'updated_at'])
+
+        # Invalidate member context cache
+        from services.agents.context import MemberContextService
+
+        MemberContextService.invalidate_cache(user_id)
+
+        logger.info(
+            f'Learning path created: {len(curriculum)} items ({curated_count} curated, {ai_lesson_count} AI-generated)',
+            extra={
+                'query': query,
+                'user_id': user_id,
+                'saved_path_id': saved_path.id,
+                'curriculum_count': len(curriculum),
+                'ai_lesson_count': ai_lesson_count,
+                'curated_count': curated_count,
+                'difficulty': actual_difficulty,
+            },
+        )
+
+        return {
+            'success': True,
+            'path': {
+                'id': str(saved_path.id),
+                'slug': path_slug,
+                'title': path_title,
+                'description': f"A structured path to learn {query.replace('-', ' ')}",
+                'url': f'/{username}/learn/{path_slug}',
+                'estimated_time': f'{estimated_hours} hours',
+                'difficulty': actual_difficulty,
+            },
+            'curriculum': curriculum,
+            'curriculum_count': len(curriculum),
+            'ai_lesson_count': ai_lesson_count,
+            'curated_count': curated_count,
+            'tools_covered': tools_covered,
+            'topics_covered': topics_covered,
+            'message': (
+                f'Created a {actual_difficulty} learning path with {len(curriculum)} items '
+                f'({curated_count} curated, {ai_lesson_count} personalized lessons). '
+                f'Access it at /{username}/learn/{path_slug}'
+            ),
+        }
+
+    except Exception as e:
+        logger.error('create_learning_path error', extra={'query': query, 'error': str(e)}, exc_info=True)
+        return {'success': False, 'error': str(e)}
+
+
+# =============================================================================
+# Tool 2: update_learner_profile
+# =============================================================================
+
+
+class UpdateLearnerProfileInput(BaseModel):
+    """Input for update_learner_profile tool."""
+
+    model_config = {'extra': 'allow'}
+
+    preferences: dict = Field(
+        default_factory=dict,
+        description=(
+            'Preferences to update: ' '{"learning_style": "video", "difficulty": "intermediate", "session_length": 15}'
+        ),
+    )
+    interests: list[str] = Field(
+        default_factory=list,
+        description='Interests to add: ["langchain", "rag", "ai-agents"]',
+    )
+    skills: dict = Field(
+        default_factory=dict,
+        description='Skills to update: {"prompt-engineering": "advanced", "rag": "beginner"}',
+    )
+    notes: str = Field(
+        default='',
+        description='Free-form observation about the learner',
+    )
+    state: dict | None = Field(
+        default=None,
+        description='Internal - injected by agent with user context',
+    )
+
+
+@tool(args_schema=UpdateLearnerProfileInput)
+def update_learner_profile(
+    preferences: dict | None = None,
+    interests: list[str] | None = None,
+    skills: dict | None = None,
+    notes: str = '',
+    state: dict | None = None,
+) -> dict:
+    """
+    Save learner preferences, interests, and skills discovered during conversation.
+
+    Use this when:
+    - User expresses a learning preference ("I prefer videos", "I learn better hands-on")
+    - User shows interest in a topic ("I'm interested in RAG", "I want to learn about agents")
+    - Ember infers user skill level ("You seem advanced at prompt engineering")
+    - Ember observes something worth remembering about the learner
+
+    This updates the user's profile for future personalization.
+
+    Examples:
+    - User says "I prefer videos" -> preferences={"learning_style": "video"}
+    - User interested in RAG -> interests=["rag"]
+    - User shows expertise -> skills={"ai-agents": "advanced"}
+    """
+    logger.info(
+        'update_learner_profile called',
+        extra={
+            'preferences': preferences,
+            'interests': interests,
+            'skills': skills,
+            'user_id': state.get('user_id') if state else None,
+        },
+    )
 
     user_id = state.get('user_id') if state else None
     if not user_id:
         return {'success': False, 'error': 'User not authenticated'}
 
+    preferences = preferences or {}
+    interests = interests or []
+    skills = skills or {}
+
     try:
-        queryset = UserLearningPath.objects.filter(user_id=user_id)
+        from core.learning_paths.models import LearnerProfile, UserSkillProficiency
+        from core.taxonomy.models import Taxonomy
 
-        if topic:
-            queryset = queryset.filter(topic__icontains=topic)
+        profile, created = LearnerProfile.objects.get_or_create(user_id=user_id)
+        updated_fields = []
 
-        paths = list(queryset.order_by('-last_activity_at')[:10])
-
-        if not paths:
-            return {
-                'success': True,
-                'count': 0,
-                'paths': [],
-                'message': "You haven't started any learning paths yet! Try taking a quiz to begin your journey.",
-            }
-
-        path_data = []
-        for path in paths:
-            path_data.append(
-                {
-                    'topic': path.topic,
-                    'topic_display': path.get_topic_display(),
-                    'skill_level': path.current_skill_level,
-                    'skill_level_display': path.get_current_skill_level_display(),
-                    'progress_percentage': path.progress_percentage,
-                    'quizzes_completed': path.quizzes_completed,
-                    'quizzes_total': path.quizzes_total,
-                    'side_quests_completed': path.side_quests_completed,
-                    'side_quests_total': path.side_quests_total,
-                    'topic_points': path.topic_points,
-                    'points_to_next_level': path.points_to_next_level,
-                    'next_skill_level': path.next_skill_level,
+        # Update preferences
+        if preferences:
+            if 'learning_style' in preferences:
+                valid_styles = ['visual', 'hands_on', 'conceptual', 'mixed']
+                style = preferences['learning_style'].lower().replace('-', '_').replace(' ', '_')
+                # Map common variations
+                style_map = {
+                    'video': 'visual',
+                    'videos': 'visual',
+                    'watch': 'visual',
+                    'reading': 'conceptual',
+                    'read': 'conceptual',
+                    'articles': 'conceptual',
+                    'hands_on': 'hands_on',
+                    'hands-on': 'hands_on',
+                    'practice': 'hands_on',
+                    'doing': 'hands_on',
+                    'code': 'hands_on',
                 }
-            )
+                style = style_map.get(style, style)
+                if style in valid_styles:
+                    profile.preferred_learning_style = style
+                    updated_fields.append('preferences.learning_style')
 
-        # Calculate totals
-        total_points = sum(p['topic_points'] for p in path_data)
-        total_quizzes = sum(p['quizzes_completed'] for p in path_data)
+            if 'difficulty' in preferences:
+                valid_difficulties = ['beginner', 'intermediate', 'advanced']
+                diff = preferences['difficulty'].lower()
+                if diff in valid_difficulties:
+                    profile.current_difficulty_level = diff
+                    updated_fields.append('preferences.difficulty')
 
-        return {
-            'success': True,
-            'count': len(path_data),
-            'total_points': total_points,
-            'total_quizzes_completed': total_quizzes,
-            'paths': path_data,
-            'message': f'You have {len(path_data)} active learning path(s) with {total_points} total points!',
-        }
-
-    except Exception as e:
-        logger.error(f'get_learning_progress error: {e}', exc_info=True)
-        return {'success': False, 'error': str(e)}
-
-
-@tool(args_schema=GetQuizHintInput)
-def get_quiz_hint(
-    quiz_id: str = '',
-    question_number: int = 1,
-    question_text: str = '',
-    state: dict | None = None,
-) -> dict:
-    """
-    Get a hint for a quiz question WITHOUT revealing the answer.
-
-    Use this when users are stuck on a quiz question and need guidance.
-
-    Examples:
-    - "I need help with question 3"
-    - "Can you give me a hint?"
-    - "I'm stuck on this question about LangGraph"
-
-    Returns a hint that guides without giving away the answer.
-    """
-    from core.quizzes.models import Quiz, QuizQuestion
-
-    logger.info(f'get_quiz_hint called: quiz_id={quiz_id}, question_number={question_number}')
-
-    try:
-        question = None
-
-        # Try to find by quiz_id and question number
-        if quiz_id:
-            try:
-                quiz = Quiz.objects.get(id=quiz_id)
-                question = quiz.questions.filter(order=question_number - 1).first()
-            except (Quiz.DoesNotExist, ValueError):
-                # Try as slug
+            if 'session_length' in preferences:
                 try:
-                    quiz = Quiz.objects.get(slug=quiz_id)
-                    question = quiz.questions.filter(order=question_number - 1).first()
-                except Quiz.DoesNotExist:
+                    length = int(preferences['session_length'])
+                    if 1 <= length <= 120:
+                        profile.preferred_session_length = length
+                        updated_fields.append('preferences.session_length')
+                except (ValueError, TypeError):
                     pass
 
-        # If still no question and we have question text, search for it
-        if not question and question_text:
-            question = QuizQuestion.objects.filter(question__icontains=question_text[:100]).first()
+            if 'learning_goal' in preferences:
+                valid_goals = ['build_projects', 'understand_concepts', 'career', 'exploring']
+                goal = preferences['learning_goal'].lower().replace('-', '_').replace(' ', '_')
+                if goal in valid_goals:
+                    profile.learning_goal = goal
+                    updated_fields.append('preferences.learning_goal')
 
-        if not question:
-            return {
-                'success': False,
-                'error': "I couldn't find that question. Can you tell me which quiz you're working on?",
+        # Update interests (add to existing)
+        if interests:
+            existing_interests = profile.generated_path.get('interests', []) if profile.generated_path else []
+            new_interests = list(set(existing_interests + interests))[:20]  # Cap at 20
+            if not profile.generated_path:
+                profile.generated_path = {}
+            profile.generated_path['interests'] = new_interests
+            updated_fields.append('interests')
+
+        # Update skills
+        if skills:
+            proficiency_map = {
+                'none': 'none',
+                'beginner': 'beginner',
+                'intermediate': 'intermediate',
+                'advanced': 'advanced',
+                'expert': 'expert',
             }
-
-        # Get the hint - use the stored hint if available, otherwise generate guidance
-        hint = question.hint
-        if not hint:
-            # Generate a generic hint based on question type
-            if question.type == 'true_false':
-                hint = (
-                    'Think carefully about whether this statement is always true, '
-                    'or if there are exceptions that would make it false.'
-                )
-            elif question.type == 'multiple_choice':
-                hint = (
-                    'Try to eliminate options that you know are incorrect. '
-                    'Look for keywords in the question that might point to the right answer.'
-                )
-            else:
-                hint = 'Break down the question into smaller parts. What do you already know about this topic?'
-
-        return {
-            'success': True,
-            'quiz_title': question.quiz.title,
-            'question_number': question.order + 1,
-            'question_preview': question.question[:100] + '...' if len(question.question) > 100 else question.question,
-            'hint': hint,
-            'question_type': question.type,
-            'message': "Here's a hint to help you think through this question!",
-        }
-
-    except Exception as e:
-        logger.error(f'get_quiz_hint error: {e}', exc_info=True)
-        return {'success': False, 'error': str(e)}
-
-
-@tool(args_schema=ExplainConceptInput)
-def explain_concept(
-    concept: str,
-    skill_level: str = 'beginner',
-    state: dict | None = None,
-) -> dict:
-    """
-    Explain a concept or topic at the user's skill level.
-
-    Use this when users want to understand a topic better or are confused about something.
-
-    Examples:
-    - "Explain LangGraph to me"
-    - "What are AI agents?"
-    - "I don't understand chain of thought"
-
-    Returns context about the concept to help the LLM explain it.
-    """
-    from core.quizzes.models import Quiz
-
-    logger.info(f'explain_concept called: concept={concept}, skill_level={skill_level}')
-
-    try:
-        # Search for related quizzes and questions to gather context
-        related_quizzes = list(
-            Quiz.objects.filter(
-                is_published=True,
-            )
-            .filter(
-                models.Q(title__icontains=concept)
-                | models.Q(description__icontains=concept)
-                | models.Q(topic__icontains=concept)
-            )
-            .prefetch_related('questions')[:3]
-        )
-
-        # Gather explanations from related questions
-        explanations = []
-        for quiz in related_quizzes:
-            for q in quiz.questions.all()[:2]:
-                if q.explanation:
-                    explanations.append(
-                        {
-                            'quiz': quiz.title,
-                            'question': q.question[:100],
-                            'explanation': q.explanation,
-                        }
+            for skill_slug, level in skills.items():
+                level_normalized = proficiency_map.get(level.lower(), 'beginner')
+                # Try to find skill in taxonomy
+                skill_taxonomy = Taxonomy.objects.filter(
+                    slug=skill_slug,
+                    taxonomy_type='skill',
+                    is_active=True,
+                ).first()
+                if skill_taxonomy:
+                    UserSkillProficiency.objects.update_or_create(
+                        user_id=user_id,
+                        skill=skill_taxonomy,
+                        defaults={
+                            'proficiency_level': level_normalized,
+                            'is_self_assessed': False,  # Inferred by Ember
+                        },
                     )
+                    updated_fields.append(f'skills.{skill_slug}')
 
-        # Difficulty guidance based on skill level
-        guidance = {
-            'beginner': 'Explain using simple terms, analogies, and real-world examples. Avoid jargon.',
-            'intermediate': 'You can use some technical terms but explain them. Include practical examples.',
-            'advanced': 'You can be more technical. Focus on nuances and edge cases.',
-        }.get(skill_level, 'Explain clearly and concisely.')
-
-        return {
-            'success': True,
-            'concept': concept,
-            'skill_level': skill_level,
-            'explanation_guidance': guidance,
-            'related_explanations': explanations[:3],
-            'related_quizzes': [
-                {'title': q.title, 'slug': q.slug, 'difficulty': q.difficulty} for q in related_quizzes
-            ],
-            'message': f"I found some context about '{concept}' to help explain it!",
-        }
-
-    except Exception as e:
-        logger.error(f'explain_concept error: {e}', exc_info=True)
-        return {'success': False, 'error': str(e)}
-
-
-# Need to import models for Q lookups
-from django.db import models  # noqa: E402
-
-
-@tool(args_schema=SuggestNextActivityInput)
-def suggest_next_activity(
-    topic: str = '',
-    state: dict | None = None,
-) -> dict:
-    """
-    Suggest the next quiz or learning activity for the user.
-
-    Use this when users ask what to do next or want recommendations.
-
-    Examples:
-    - "What should I learn next?"
-    - "Recommend a quiz for me"
-    - "What's a good next step?"
-
-    Returns personalized recommendations based on progress.
-    """
-    from core.learning_paths.models import UserLearningPath
-    from core.quizzes.models import Quiz, QuizAttempt
-
-    logger.info(f'suggest_next_activity called: topic={topic}, state={state}')
-
-    user_id = state.get('user_id') if state else None
-    if not user_id:
-        return {'success': False, 'error': 'User not authenticated'}
-
-    try:
-        # Get user's learning paths to understand their level
-        paths = list(UserLearningPath.objects.filter(user_id=user_id).order_by('-last_activity_at')[:5])
-
-        # Get quizzes user has already attempted
-        attempted_quiz_ids = list(
-            QuizAttempt.objects.filter(user_id=user_id).values_list('quiz_id', flat=True).distinct()
-        )
-
-        # Find recommended quizzes
-        queryset = Quiz.objects.filter(is_published=True).exclude(id__in=attempted_quiz_ids)
-
-        # Filter by topic if specified
-        if topic:
-            queryset = queryset.filter(
-                models.Q(topic__icontains=topic)
-                | models.Q(title__icontains=topic)
-                | models.Q(description__icontains=topic)
-            )
-
-        # Determine recommended difficulty based on user's level
-        if paths:
-            # Get the most common skill level
-            skill_levels = [p.current_skill_level for p in paths]
-            if 'advanced' in skill_levels or 'master' in skill_levels:
-                preferred_difficulty = 'advanced'
-            elif 'intermediate' in skill_levels:
-                preferred_difficulty = 'intermediate'
-            else:
-                preferred_difficulty = 'beginner'
-        else:
-            preferred_difficulty = 'beginner'
-
-        # Prioritize quizzes at user's level
-        recommended = list(queryset.filter(difficulty=preferred_difficulty)[:3])
-
-        # If not enough, add from other difficulties
-        if len(recommended) < 3:
-            other_quizzes = list(queryset.exclude(difficulty=preferred_difficulty)[: 3 - len(recommended)])
-            recommended.extend(other_quizzes)
-
-        if not recommended:
-            # User has done all quizzes or there are none
-            return {
-                'success': True,
-                'recommendations': [],
-                'message': "You've completed all available quizzes in this area! Check back soon for new content. 🎉",
-            }
-
-        quiz_data = []
-        for quiz in recommended:
-            quiz_data.append(
+        # Add notes if provided
+        if notes:
+            # Store notes in generated_path metadata
+            if not profile.generated_path:
+                profile.generated_path = {}
+            existing_notes = profile.generated_path.get('ember_notes', [])
+            existing_notes.append(
                 {
-                    'id': str(quiz.id),
-                    'title': quiz.title,
-                    'slug': quiz.slug,
-                    'description': quiz.description[:150] + '...' if len(quiz.description) > 150 else quiz.description,
-                    'difficulty': quiz.difficulty,
-                    'estimated_time': quiz.estimated_time,
-                    'question_count': quiz.question_count,
-                    'url': f'/quizzes/{quiz.slug}' if quiz.slug else f'/quizzes/{quiz.id}',
+                    'note': notes,
+                    'timestamp': timezone.now().isoformat(),
                 }
             )
+            profile.generated_path['ember_notes'] = existing_notes[-10:]  # Keep last 10
+            updated_fields.append('notes')
+
+        # Save profile
+        profile.save()
+
+        # Invalidate member context cache
+        from services.agents.context import MemberContextService
+
+        MemberContextService.invalidate_cache(user_id)
 
         return {
             'success': True,
-            'user_skill_level': preferred_difficulty,
-            'recommendations': quiz_data,
-            'message': f'Based on your {preferred_difficulty} level, here are some great next steps!',
+            'updated_fields': updated_fields,
+            'message': f'Updated {len(updated_fields)} field(s) in your learning profile.'
+            if updated_fields
+            else 'No changes made.',
         }
 
     except Exception as e:
-        logger.error(f'suggest_next_activity error: {e}', exc_info=True)
+        logger.error('update_learner_profile error', extra={'error': str(e)}, exc_info=True)
         return {'success': False, 'error': str(e)}
 
 
-@tool(args_schema=GetQuizDetailsInput)
-def get_quiz_details(
-    quiz_id: str = '',
-    quiz_slug: str = '',
-    quiz_title: str = '',
-    state: dict | None = None,
-) -> dict:
-    """
-    Get detailed information about a specific quiz.
+# =============================================================================
+# Tool Registry
+# =============================================================================
 
-    Use this when users want to know more about a quiz before starting.
+# Tools that need state injection (user_id, username, session_id, member_context)
+TOOLS_NEEDING_STATE = {
+    'create_learning_path',
+    'update_learner_profile',
+}
 
-    Examples:
-    - "Tell me about the AI Agents quiz"
-    - "What's in the LangGraph basics quiz?"
-    - "How hard is this quiz?"
-
-    Returns quiz details including difficulty, time, and topics covered.
-    """
-    from core.quizzes.models import Quiz
-
-    logger.info(f'get_quiz_details called: id={quiz_id}, slug={quiz_slug}, title={quiz_title}')
-
-    try:
-        quiz = None
-
-        # Try to find by ID
-        if quiz_id:
-            try:
-                quiz = Quiz.objects.prefetch_related('questions', 'tools', 'categories').get(id=quiz_id)
-            except (Quiz.DoesNotExist, ValueError):
-                pass
-
-        # Try by slug
-        if not quiz and quiz_slug:
-            try:
-                quiz = Quiz.objects.prefetch_related('questions', 'tools', 'categories').get(slug=quiz_slug)
-            except Quiz.DoesNotExist:
-                pass
-
-        # Try by title search
-        if not quiz and quiz_title:
-            quiz = (
-                Quiz.objects.filter(title__icontains=quiz_title, is_published=True)
-                .prefetch_related('questions', 'tools', 'categories')
-                .first()
-            )
-
-        if not quiz:
-            return {
-                'success': False,
-                'error': "I couldn't find that quiz. Can you tell me more about which quiz you're looking for?",
-            }
-
-        return {
-            'success': True,
-            'quiz': {
-                'id': str(quiz.id),
-                'title': quiz.title,
-                'slug': quiz.slug,
-                'description': quiz.description,
-                'difficulty': quiz.difficulty,
-                'difficulty_display': quiz.get_difficulty_display(),
-                'estimated_time': quiz.estimated_time,
-                'question_count': quiz.question_count,
-                'topic': quiz.topic,
-                'tools': [t.name for t in quiz.tools.all()],
-                'categories': [c.name for c in quiz.categories.all()],
-                'url': f'/quizzes/{quiz.slug}' if quiz.slug else f'/quizzes/{quiz.id}',
-            },
-            'message': f"Here are the details for '{quiz.title}'!",
-        }
-
-    except Exception as e:
-        logger.error(f'get_quiz_details error: {e}', exc_info=True)
-        return {'success': False, 'error': str(e)}
-
-
-# Tools that need state injection (for user context)
-TOOLS_NEEDING_STATE = {'get_learning_progress', 'suggest_next_activity'}
-
-# All learning tools
+# All learning tools (find_learning_content moved to find_content.py)
 LEARNING_TOOLS = [
-    get_learning_progress,
-    get_quiz_hint,
-    explain_concept,
-    suggest_next_activity,
-    get_quiz_details,
+    create_learning_path,
+    update_learner_profile,
 ]
 
 # Tool lookup by name

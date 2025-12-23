@@ -41,6 +41,9 @@ body:not(.impersonating) {
     --neon-bright: #4ADEE7;
     --neon-green: #4ade80;
     --neon-pink: #FB37FF;
+    --neon-sage: #34d399;  /* Learning/Sage theme - emerald-400 */
+    --neon-sage-light: #6ee7b7;  /* emerald-300 */
+    --neon-sage-dark: #10b981;  /* emerald-500 */
 
     /* Primary Gradient - Cyan to Green */
     --gradient-primary: linear-gradient(135deg, #22d3ee, #4ade80);
@@ -303,6 +306,14 @@ body:not(.impersonating) {
   .light .glass-subtle:hover {
     border-color: rgba(14, 165, 233, 0.25);
     box-shadow: 0 4px 20px rgba(14, 165, 233, 0.1);
+  }
+
+  /* Glass style for chat messages - no hover effects (reserve for links) */
+  .glass-message {
+    @apply backdrop-blur-md;
+    border-radius: var(--radius);
+    background-color: var(--glass-fill-subtle);
+    border: 1px solid var(--glass-border-subtle);
   }
 
   .glass-strong {
@@ -1559,5 +1570,450 @@ body:not(.impersonating) {
 
   .light .reddit-prose sup {
     color: var(--neon-cyan);
+  }
+}
+
+/* =============================================================================
+   LEARNING PROSE - Enhanced Typography for AI-Generated Learning Content
+   ============================================================================= */
+
+@layer components {
+  .learning-prose {
+    @apply text-base leading-relaxed;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 1.0625rem; /* 17px - slightly larger than base */
+    line-height: 1.75;
+  }
+
+  /* Paragraphs - Generous spacing for readability */
+  .learning-prose p {
+    @apply mb-5;
+    line-height: 1.8;
+  }
+
+  .learning-prose p:last-child {
+    @apply mb-0;
+  }
+
+  /* Headers - Clear hierarchy with cyan accent */
+  .learning-prose h1,
+  .learning-prose h2,
+  .learning-prose h3,
+  .learning-prose h4,
+  .learning-prose h5,
+  .learning-prose h6 {
+    @apply font-bold tracking-tight text-white;
+    margin-top: 1.75em;
+    margin-bottom: 0.75em;
+  }
+
+  .learning-prose h1 {
+    @apply text-2xl;
+    color: var(--neon-teal);
+  }
+
+  .learning-prose h2 {
+    @apply text-xl;
+    color: var(--neon-teal);
+  }
+
+  .learning-prose h3 {
+    @apply text-lg font-semibold;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .learning-prose h4 {
+    @apply text-base font-semibold;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .learning-prose h1:first-child,
+  .learning-prose h2:first-child,
+  .learning-prose h3:first-child,
+  .learning-prose h4:first-child {
+    margin-top: 0;
+  }
+
+  /* Lists - Styled bullet points */
+  .learning-prose ul,
+  .learning-prose ol {
+    @apply my-5 pl-0 space-y-3;
+  }
+
+  .learning-prose ul {
+    list-style-type: none;
+  }
+
+  .learning-prose ul li {
+    @apply relative pl-7;
+    line-height: 1.7;
+  }
+
+  .learning-prose ul li::before {
+    content: '';
+    @apply absolute left-0 top-[0.6em] w-2 h-2 rounded-full;
+    background: linear-gradient(135deg, var(--neon-sage), var(--neon-sage-dark));
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.4);
+  }
+
+  /* Nested list styling */
+  .learning-prose ul ul li::before {
+    @apply w-1.5 h-1.5;
+    background: var(--neon-sage);
+    opacity: 0.7;
+  }
+
+  .learning-prose ol {
+    list-style-type: none;
+    counter-reset: learning-counter;
+  }
+
+  .learning-prose ol li {
+    @apply relative pl-8;
+    counter-increment: learning-counter;
+    line-height: 1.7;
+  }
+
+  .learning-prose ol li::before {
+    content: counter(learning-counter);
+    @apply absolute left-0 top-0 w-6 h-6 flex items-center justify-center text-sm font-bold rounded-full;
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(16, 185, 129, 0.15));
+    color: var(--neon-sage);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+  }
+
+  /* Nested lists */
+  .learning-prose li ul,
+  .learning-prose li ol {
+    @apply mt-3 mb-0;
+  }
+
+  /* Blockquotes - Important callouts */
+  .learning-prose blockquote {
+    @apply relative my-6 py-4 px-5;
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(16, 185, 129, 0.05));
+    border-left: 3px solid var(--neon-sage);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .learning-prose blockquote p {
+    @apply mb-0 italic;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Links */
+  .learning-prose a {
+    @apply font-medium transition-all duration-200;
+    color: var(--neon-sage);
+    text-decoration: underline;
+    text-decoration-color: rgba(52, 211, 153, 0.4);
+    text-underline-offset: 3px;
+  }
+
+  .learning-prose a:hover {
+    text-decoration-color: var(--neon-sage);
+    text-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
+  }
+
+  /* Inline code */
+  .learning-prose code:not(pre code) {
+    @apply px-2 py-1 text-sm font-mono;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius);
+    color: var(--neon-bright);
+  }
+
+  /* Code blocks */
+  .learning-prose pre {
+    @apply my-6 p-5 overflow-x-auto text-sm font-mono;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius);
+  }
+
+  .learning-prose pre code {
+    @apply p-0 bg-transparent border-0;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Bold & Italic */
+  .learning-prose strong {
+    @apply font-bold;
+    color: white;
+  }
+
+  .learning-prose em {
+    @apply italic;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  /* Horizontal rules */
+  .learning-prose hr {
+    @apply my-8 border-0 h-px;
+    background: linear-gradient(to right, transparent, rgba(34, 211, 238, 0.3), transparent);
+  }
+
+  /* Tables */
+  .learning-prose table {
+    @apply w-full my-6 text-sm;
+    border-collapse: collapse;
+  }
+
+  .learning-prose th {
+    @apply px-4 py-3 text-left font-semibold;
+    background-color: rgba(34, 211, 238, 0.1);
+    border-bottom: 2px solid rgba(34, 211, 238, 0.2);
+    color: var(--neon-teal);
+  }
+
+  .learning-prose td {
+    @apply px-4 py-3;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .learning-prose tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Images */
+  .learning-prose img {
+    @apply rounded-lg my-6 max-w-full h-auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Light mode adjustments for Learning prose */
+@layer components {
+  .light .learning-prose {
+    color: rgba(15, 23, 42, 0.9);
+    font-size: 1.0625rem;
+  }
+
+  .light .learning-prose h1,
+  .light .learning-prose h2 {
+    color: var(--neon-cyan);
+  }
+
+  .light .learning-prose h3,
+  .light .learning-prose h4,
+  .light .learning-prose h5,
+  .light .learning-prose h6 {
+    color: #0f172a;
+  }
+
+  .light .learning-prose ul li::before {
+    background: linear-gradient(135deg, var(--neon-sage), #059669);
+    box-shadow: 0 0 4px rgba(16, 185, 129, 0.3);
+  }
+
+  .light .learning-prose ol li::before {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--neon-sage-dark);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .light .learning-prose blockquote {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(5, 150, 105, 0.04));
+    border-left-color: var(--neon-sage-dark);
+  }
+
+  .light .learning-prose blockquote p {
+    color: rgba(15, 23, 42, 0.85);
+  }
+
+  .light .learning-prose a {
+    color: var(--neon-sage-dark);
+    text-decoration-color: rgba(16, 185, 129, 0.4);
+  }
+
+  .light .learning-prose a:hover {
+    text-decoration-color: var(--neon-sage-dark);
+  }
+
+  .light .learning-prose code:not(pre code) {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #059669;
+  }
+
+  .light .learning-prose pre {
+    background-color: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .light .learning-prose pre code {
+    color: #0f172a;
+  }
+
+  .light .learning-prose strong {
+    color: #0f172a;
+  }
+
+  .light .learning-prose em {
+    color: rgba(15, 23, 42, 0.95);
+  }
+
+  .light .learning-prose hr {
+    background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.3), transparent);
+  }
+
+  .light .learning-prose th {
+    background-color: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: var(--neon-sage-dark);
+  }
+
+  .light .learning-prose td {
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .light .learning-prose img {
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* =============================================================================
+   EMBER HIGHLIGHT STYLES - Site Orchestration UI Highlights
+   ============================================================================= */
+
+@layer components {
+  /* Ember's fire colors */
+  :root {
+    --ember-orange: #f97316;
+    --ember-amber: #fbbf24;
+    --ember-red: #ef4444;
+    --ember-glow: rgba(249, 115, 22, 0.6);
+    --ember-glow-strong: rgba(249, 115, 22, 0.8);
+  }
+
+  /* Pulse animation - Good for buttons and CTAs */
+  .ember-highlight-pulse {
+    position: relative;
+    z-index: 1000;
+    animation: ember-pulse 1.5s ease-in-out infinite;
+    outline: 3px solid var(--ember-orange) !important;
+    outline-offset: 4px;
+  }
+
+  @keyframes ember-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 var(--ember-glow),
+                  0 0 20px var(--ember-glow);
+    }
+    50% {
+      box-shadow: 0 0 0 15px rgba(249, 115, 22, 0),
+                  0 0 30px var(--ember-glow-strong);
+    }
+  }
+
+  /* Glow effect - Good for areas/sections */
+  .ember-highlight-glow {
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 0 0 3px var(--ember-orange),
+                0 0 20px var(--ember-glow),
+                0 0 40px rgba(249, 115, 22, 0.3) !important;
+    transition: box-shadow 0.3s ease;
+  }
+
+  /* Spotlight effect - Darkens everything except the element */
+  .ember-spotlight-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 999;
+    pointer-events: none;
+    animation: ember-fade-in 0.3s ease-out;
+  }
+
+  .ember-highlight-spotlight {
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 0 0 4px var(--ember-orange),
+                0 0 30px var(--ember-glow-strong),
+                0 0 60px var(--ember-glow) !important;
+  }
+
+  @keyframes ember-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Arrow pointer - Bouncing arrow above element */
+  .ember-highlight-arrow {
+    position: relative;
+    z-index: 1000;
+    outline: 2px solid var(--ember-orange) !important;
+    outline-offset: 4px;
+  }
+
+  .ember-highlight-arrow::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 16px solid var(--ember-orange);
+    animation: ember-bounce 0.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px var(--ember-glow));
+  }
+
+  .ember-highlight-arrow::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 24px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 20px;
+    background: linear-gradient(180deg, transparent, var(--ember-orange));
+    border-radius: 4px;
+    animation: ember-bounce 0.8s ease-in-out infinite;
+  }
+
+  @keyframes ember-bounce {
+    0%, 100% {
+      transform: translateX(-50%) translateY(0);
+    }
+    50% {
+      transform: translateX(-50%) translateY(-10px);
+    }
+  }
+
+  /* Light mode adjustments */
+  .light .ember-highlight-pulse {
+    outline-color: var(--ember-orange);
+  }
+
+  .light .ember-highlight-glow {
+    box-shadow: 0 0 0 3px var(--ember-orange),
+                0 0 15px rgba(249, 115, 22, 0.4),
+                0 0 30px rgba(249, 115, 22, 0.2) !important;
+  }
+
+  .light .ember-spotlight-overlay {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .light .ember-highlight-spotlight {
+    box-shadow: 0 0 0 4px var(--ember-orange),
+                0 0 25px rgba(249, 115, 22, 0.5),
+                0 0 50px rgba(249, 115, 22, 0.3) !important;
   }
 }

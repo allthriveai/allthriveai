@@ -137,6 +137,7 @@ export function ChatInterface({
   onFileSelectRef,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -144,6 +145,7 @@ export function ChatInterface({
   const [fileError, setFileError] = useState<string | null>(null);
   const dragCounterRef = useRef(0);
   const [thinkingIndex, setThinkingIndex] = useState(0);
+  const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
 
   // Clear file error after 5 seconds
   useEffect(() => {
@@ -191,12 +193,39 @@ export function ChatInterface({
     return { valid, errors };
   };
 
-  // Auto-scroll to bottom only when there are messages
+  // Check if user is near the bottom of the chat
+  const isNearBottom = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    const threshold = 100; // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  };
+
+  // Handle scroll to track if user has scrolled up
+  const handleScroll = () => {
+    setUserHasScrolledUp(!isNearBottom());
+  };
+
+  // Auto-scroll to bottom only when user hasn't scrolled up
+  useEffect(() => {
+    if (messages.length > 0 && !userHasScrolledUp) {
+      // Use a gentler scroll that keeps content visible
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [messages, userHasScrolledUp]);
+
+  // Reset scroll state when user sends a new message
   useEffect(() => {
     if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.sender === 'user') {
+        setUserHasScrolledUp(false);
+      }
     }
-  }, [messages]);
+  }, [messages.length]);
 
   // Auto-focus input when opened
   useEffect(() => {
@@ -436,7 +465,12 @@ export function ChatInterface({
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 overscroll-contain touch-pan-y"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {/* Custom content replaces entire messages area */}
           {customContent ? (
             customContent

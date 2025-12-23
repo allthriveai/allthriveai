@@ -9,7 +9,7 @@ import type { SearchOptions, SearchResponse, SearchResults } from '@/types/searc
 
 const DEFAULT_SEARCH_OPTIONS: Partial<SearchOptions> = {
   types: ['projects', 'tools', 'quizzes', 'users'],
-  alpha: 0.7, // Hybrid search: 70% vector, 30% keyword
+  alpha: 0.3, // Hybrid search: 30% vector, 70% keyword - favors our robust tagging system
   // No limit - uses backend default (1000) to return all relevant results
 };
 

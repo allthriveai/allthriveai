@@ -177,10 +177,12 @@ export default function AuthPage() {
   const [isValidatingReferral, setIsValidatingReferral] = useState(false);
 
   // Beta access code state
+  // Dev bypass: set VITE_DEV_BYPASS_BETA=true in .env.local to skip beta gate
+  const DEV_BYPASS_BETA = import.meta.env.VITE_DEV_BYPASS_BETA === 'true';
   const VALID_BETA_CODES = ['THRIVE'];
   const [betaCode, setBetaCode] = useState('');
   const [betaCodeError, setBetaCodeError] = useState('');
-  const [isBetaUnlocked, setIsBetaUnlocked] = useState(false);
+  const [isBetaUnlocked, setIsBetaUnlocked] = useState(DEV_BYPASS_BETA);
 
   // Check for beta code in URL params (auto-unlock for battle invites)
   useEffect(() => {
@@ -266,7 +268,7 @@ export default function AuthPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && user?.username) {
-      navigate('/explore');
+      navigate('/home');
     }
   }, [isAuthenticated, user?.username, navigate]);
 
@@ -396,13 +398,13 @@ export default function AuthPage() {
               className="text-lg text-slate-200 mb-3"
               variants={motionVariants}
             >
-              Join our community of AI creators. Showcase your projects, learn from others, and level up your skills through gamified challenges.
+              Join our AI curious community. Showcase your projects, learn from others, and level up your skills through gamified challenges.
             </motion.p>
             <motion.p
               className="text-slate-400 text-sm"
               variants={motionVariants}
             >
-              Join thousands of creators exploring AI.
+              Join thousands of members exploring AI.
             </motion.p>
           </motion.div>
 

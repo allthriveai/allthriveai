@@ -26,10 +26,13 @@ import {
   faGlobe,
   faUserPlus,
   faSpinner,
+  faEnvelope,
+  faPenToSquare,
 } from '@fortawesome/free-solid-svg-icons';
 import type { User } from '@/types/models';
 import type { ProfileTemplate } from '@/types/profileSections';
 import { PROFILE_TEMPLATES } from '@/types/profileSections';
+import { InlineEditableTitle, InlineEditableText } from '@/components/projects/shared/InlineEditable';
 
 interface ProfileHeaderProps {
   user: User | null;
@@ -42,6 +45,8 @@ interface ProfileHeaderProps {
   onFollowToggle: () => void;
   onShowFollowers: () => void;
   onShowFollowing: () => void;
+  onMessage?: () => void;
+  isMessageLoading?: boolean;
   isEditing?: boolean;
   onExitEdit?: () => void;
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
@@ -49,6 +54,10 @@ interface ProfileHeaderProps {
   onTemplateChange?: (template: ProfileTemplate) => void;
   onAvatarChange?: (fileOrUrl: string | File) => void;
   isAvatarUploading?: boolean;
+  // Inline editing handlers
+  onNameChange?: (name: string) => Promise<void>;
+  onTaglineChange?: (tagline: string) => Promise<void>;
+  onEditSocialLinks?: () => void;
 }
 
 // Helper to convert tier code to display name
@@ -60,6 +69,7 @@ function getTierDisplay(tier?: string): string {
     bloom: 'Bloom',
     evergreen: 'Evergreen',
     curation: 'Curation',
+    team: 'All Thrive Team',
   };
   return tierMap[tier || ''] || 'Seedling';
 }
@@ -75,6 +85,8 @@ export function ProfileHeader({
   onFollowToggle,
   onShowFollowers,
   onShowFollowing,
+  onMessage,
+  isMessageLoading,
   isEditing,
   onExitEdit,
   saveStatus = 'idle',
@@ -82,13 +94,16 @@ export function ProfileHeader({
   onTemplateChange,
   onAvatarChange,
   isAvatarUploading,
+  onNameChange,
+  onTaglineChange,
+  onEditSocialLinks,
 }: ProfileHeaderProps) {
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle avatar file selection
+  // Handle avatar file selection - works anytime for owners (not just edit mode)
   const handleAvatarClick = () => {
-    if (isEditing && onAvatarChange && fileInputRef.current) {
+    if (isOwnProfile && onAvatarChange && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
@@ -144,7 +159,7 @@ export function ProfileHeader({
       <div className="absolute top-1/2 left-0 w-[300px] h-[200px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[80px] pointer-events-none" />
 
       {/* Profile Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
         <div className="relative pb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-6">
             {/* Avatar */}
@@ -158,105 +173,86 @@ export function ProfileHeader({
                 className="hidden"
                 aria-label="Upload profile picture"
               />
-              {/* Avatar display - different styles for editing vs viewing */}
-              {isEditing && onAvatarChange ? (
-                // Edit mode: Match ImageUpload component style (dashed border circle)
-                <div
-                  onClick={handleAvatarClick}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Upload image - click or drag and drop"
-                  aria-disabled={isAvatarUploading}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      handleAvatarClick();
-                    }
+              {/* Avatar display - always clickable for owners with hover effect */}
+              <div
+                onClick={isOwnProfile && onAvatarChange ? handleAvatarClick : undefined}
+                role={isOwnProfile && onAvatarChange ? 'button' : undefined}
+                tabIndex={isOwnProfile && onAvatarChange ? 0 : undefined}
+                aria-label={isOwnProfile && onAvatarChange ? 'Upload image - click to change' : undefined}
+                aria-disabled={isAvatarUploading}
+                onKeyDown={isOwnProfile && onAvatarChange ? (e) => {
+                  if ((e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleAvatarClick();
+                  }
+                } : undefined}
+                className={`
+                  relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800
+                  ${isOwnProfile && onAvatarChange ? 'cursor-pointer group' : ''}
+                  ${isAvatarUploading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              >
+                <img
+                  src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
+                  alt={user?.fullName || user?.username || 'Profile'}
+                  className="w-full h-full object-cover"
+                  style={{
+                    objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
                   }}
-                  className={`
-                    relative w-32 h-32 rounded-full border-4 border-dashed
-                    flex flex-col items-center justify-center cursor-pointer
-                    transition-all duration-200
-                    focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-                    ${user?.avatarUrl
-                      ? 'border-transparent overflow-hidden group'
-                      : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500 bg-slate-50 dark:bg-slate-800/50'
-                    }
-                    ${isAvatarUploading ? 'opacity-50 cursor-not-allowed' : ''}
-                  `}
-                >
-                  {user?.avatarUrl ? (
-                    // Has avatar - show image with hover overlay
-                    <>
-                      <img
-                        src={user.avatarUrl}
-                        alt={user?.fullName || user?.username || 'Profile'}
-                        className="w-full h-full object-cover"
-                        style={{
-                          objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                        {isAvatarUploading ? (
-                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
-                        ) : (
-                          <>
-                            <PhotoIcon className="w-10 h-10 text-white mb-1" />
-                            <span className="text-xs text-white text-center px-2">Click to change</span>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    // No avatar - show upload prompt (matches ImageUpload style)
-                    isAvatarUploading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500" />
-                        <span className="sr-only">Uploading...</span>
-                      </>
+                />
+                {/* Hover overlay for owners */}
+                {isOwnProfile && onAvatarChange && (
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isAvatarUploading ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
                     ) : (
                       <>
-                        <PhotoIcon className="w-10 h-10 text-slate-400 dark:text-slate-500 mb-1" />
-                        <span className="text-xs text-slate-500 dark:text-slate-400 text-center px-2">
-                          Click or drag
-                        </span>
+                        <PhotoIcon className="w-10 h-10 text-white mb-1" />
+                        <span className="text-xs text-white text-center px-2">Click to change</span>
                       </>
-                    )
-                  )}
-                </div>
-              ) : (
-                // View mode: Standard avatar display
-                <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-xl ring-4 ring-white dark:ring-gray-900 shadow-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                  <img
-                    src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=random&size=150`}
-                    alt={user?.fullName || user?.username || 'Profile'}
-                    className="w-full h-full object-cover"
-                    style={{
-                      objectPosition: `${(user?.avatarFocalX ?? 0.5) * 100}% ${(user?.avatarFocalY ?? 0.5) * 100}%`,
-                    }}
-                  />
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0 pt-2 sm:pt-0 sm:pb-2">
-              {/* Name & Username */}
+              {/* Name - Inline Editable for owners */}
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
-                  {user?.fullName || user?.username || 'User'}
-                </h1>
+                {onNameChange ? (
+                  <InlineEditableTitle
+                    value={user?.fullName || ''}
+                    isEditable={isOwnProfile}
+                    onChange={onNameChange}
+                    placeholder="Add your name"
+                    className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white"
+                    as="h1"
+                  />
+                ) : (
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
+                    {user?.fullName || user?.username || 'User'}
+                  </h1>
+                )}
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
                 @{user?.username}
               </p>
 
-              {/* Tagline */}
-              {user?.tagline && (
+              {/* Tagline - Inline Editable for owners */}
+              {onTaglineChange ? (
+                <InlineEditableText
+                  value={user?.tagline || ''}
+                  isEditable={isOwnProfile}
+                  onChange={onTaglineChange}
+                  placeholder="Add a tagline about yourself"
+                  className="text-gray-700 dark:text-gray-300 text-sm mb-3"
+                />
+              ) : user?.tagline ? (
                 <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-2">
                   {user.tagline}
                 </p>
-              )}
+              ) : null}
 
               {/* Meta Info */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
@@ -336,6 +332,24 @@ export function ProfileHeader({
                   )}
                 </button>
               )}
+
+              {/* Message Button */}
+              {!isOwnProfile && isAuthenticated && onMessage && (
+                <button
+                  onClick={onMessage}
+                  disabled={isMessageLoading}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                >
+                  {isMessageLoading ? (
+                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4" />
+                      Message
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -357,7 +371,16 @@ export function ProfileHeader({
                 <span className="font-bold text-gray-900 dark:text-white">{followingCount}</span>
                 <span className="text-gray-500 dark:text-gray-400 ml-1">Following</span>
               </button>
-              {user?.totalPoints !== undefined && user.tier !== 'curation' && (
+              {user?.tier === 'team' ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="px-3 py-1 text-xs font-bold bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-500 dark:text-orange-400 rounded-full border border-orange-500/40 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    All Thrive Team
+                  </span>
+                </div>
+              ) : user?.totalPoints !== undefined && user.tier !== 'curation' && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-bold text-gray-900 dark:text-white">{user.totalPoints.toLocaleString()}</span>
                   <span className="text-gray-500 dark:text-gray-400">Points</span>
@@ -369,7 +392,7 @@ export function ProfileHeader({
             </div>
 
             {/* Social Links */}
-            {socialLinks.length > 0 && (
+            {(socialLinks.length > 0 || (isOwnProfile && onEditSocialLinks)) && (
               <div className="flex items-center gap-2">
                 {socialLinks.map((link, i) => (
                   <a
@@ -383,6 +406,15 @@ export function ProfileHeader({
                     <FontAwesomeIcon icon={link.icon} className="w-4 h-4" />
                   </a>
                 ))}
+                {isOwnProfile && onEditSocialLinks && (
+                  <button
+                    onClick={onEditSocialLinks}
+                    className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-primary-500 hover:text-white transition-colors"
+                    title="Edit social links"
+                  >
+                    <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -38,13 +38,22 @@ class Taxonomy(models.Model):
     """Unified taxonomy for the system.
 
     Taxonomy supports multiple types:
-    - 'tool'     -> represents a Tool entry (1:1 with core.tools.Tool) - structured
-    - 'category' -> represents a predefined category for filtering projects - structured
-    - 'topic'    -> free-flowing topics that AI/quizzes/curation agents can add dynamically
-    - 'goal'     -> user goals (e.g., "Learn New Skills", "Start a Business")
-    - 'industry' -> industry verticals (e.g., "Healthcare", "Finance")
-    - 'interest' -> user interests (e.g., "AI & Machine Learning", "Design")
-    - 'skill'    -> technical skills (e.g., "Python", "React")
+    - 'tool'            -> represents a Tool entry (1:1 with core.tools.Tool) - structured
+    - 'category'        -> represents a predefined category for filtering projects - structured
+    - 'topic'           -> free-flowing topics that AI/quizzes/curation agents can add dynamically
+    - 'goal'            -> user goals (e.g., "Learn New Skills", "Start a Business")
+    - 'industry'        -> industry verticals (e.g., "Healthcare", "Finance")
+    - 'interest'        -> user interests (e.g., "AI & Machine Learning", "Design")
+    - 'skill'           -> technical skills (e.g., "Python", "React") - supports hierarchy via parent
+    - 'modality'        -> learning modalities (e.g., "Video", "Microlearning", "Games")
+    - 'outcome'         -> learning outcomes (e.g., "Build a RAG pipeline")
+    - 'content_type'    -> unified content types (e.g., "article", "video", "course")
+    - 'time_investment' -> time to consume/build (e.g., "quick", "deep-dive")
+    - 'difficulty'      -> content difficulty level (e.g., "beginner", "advanced")
+    - 'pricing'         -> pricing tier (e.g., "free", "paid", "freemium")
+    - 'personality'     -> personality types (e.g., MBTI types like "INTJ", "ENFP")
+    - 'learning_style'  -> how users learn best (e.g., "visual", "hands-on", "reading")
+    - 'role'            -> job function/audience (e.g., "developer", "marketer", "non-technical") - multi-select
     """
 
     class TaxonomyType(models.TextChoices):
@@ -55,13 +64,32 @@ class Taxonomy(models.Model):
         INDUSTRY = 'industry', 'Industry'
         INTEREST = 'interest', 'Interest'
         SKILL = 'skill', 'Skill'
+        MODALITY = 'modality', 'Learning Modality'
+        OUTCOME = 'outcome', 'Learning Outcome'
+        CONTENT_TYPE = 'content_type', 'Content Type'
+        TIME_INVESTMENT = 'time_investment', 'Time Investment'
+        DIFFICULTY = 'difficulty', 'Difficulty'
+        PRICING = 'pricing', 'Pricing'
+        PERSONALITY = 'personality', 'Personality Type'
+        LEARNING_STYLE = 'learning_style', 'Learning Style'
+        ROLE = 'role', 'Role'
 
     taxonomy_type = models.CharField(
-        max_length=10, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True
+        max_length=20, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True
+    )
+
+    # Parent for hierarchical taxonomies (e.g., skill hierarchy)
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='children',
+        help_text='Parent taxonomy for hierarchical structures (e.g., ML -> Neural Networks)',
     )
 
     # Common fields
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, unique=True, blank=True, help_text='URL-friendly identifier')
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True, help_text='Whether this taxonomy is available for selection')
@@ -91,7 +119,14 @@ class Taxonomy(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            # Ensure uniqueness for slug, especially if name might not be unique across taxonomy types
+            base_slug = slugify(self.name)
+            unique_slug = base_slug
+            num = 1
+            while Taxonomy.objects.filter(slug=unique_slug).exists():
+                unique_slug = f'{base_slug}-{num}'
+                num += 1
+            self.slug = unique_slug
         super().save(*args, **kwargs)
 
 

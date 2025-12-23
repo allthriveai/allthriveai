@@ -48,7 +48,7 @@ export function AsyncBattleCard({ battle }: AsyncBattleCardProps) {
     const result = await startTurn(battle.id);
     if (result.success) {
       // Navigate to battle page to submit prompt
-      navigate(`/battles/${battle.id}`);
+      navigate(`/play/prompt-battles/${battle.id}`);
       // Don't reset isStarting - component will unmount on navigation
       return;
     }
@@ -56,7 +56,7 @@ export function AsyncBattleCard({ battle }: AsyncBattleCardProps) {
   }, [startTurn, battle.id, navigate]);
 
   const handleViewBattle = useCallback(() => {
-    navigate(`/battles/${battle.id}`);
+    navigate(`/play/prompt-battles/${battle.id}`);
   }, [navigate, battle.id]);
 
   const statusConfig: Record<string, { label: string; bgClass: string; textClass: string }> = {

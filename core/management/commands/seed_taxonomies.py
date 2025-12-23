@@ -41,7 +41,7 @@ class Command(BaseCommand):
             },
             {'name': 'Music', 'category': 'interest', 'description': 'Music production, composition, and performance'},
             {'name': 'Entrepreneurship', 'category': 'interest', 'description': 'Starting and growing businesses'},
-            # Skills
+            # Skills - Programming
             {'name': 'Python', 'category': 'skill', 'description': 'Python programming language'},
             {'name': 'JavaScript', 'category': 'skill', 'description': 'JavaScript and TypeScript programming'},
             {'name': 'React', 'category': 'skill', 'description': 'React framework for building user interfaces'},
@@ -53,6 +53,32 @@ class Command(BaseCommand):
                 'name': 'Project Management',
                 'category': 'skill',
                 'description': 'Planning, organizing, and managing projects',
+            },
+            # Skills - AI Fundamentals (from games & learning)
+            {
+                'name': 'Context Windows',
+                'category': 'skill',
+                'description': 'Understanding how LLMs process and manage context length and token limits',
+            },
+            {
+                'name': 'Token Management',
+                'category': 'skill',
+                'description': 'Managing tokens effectively in AI model interactions',
+            },
+            {
+                'name': 'AI Ethics',
+                'category': 'skill',
+                'description': 'Understanding bias, fairness, privacy, and responsible AI practices',
+            },
+            {
+                'name': 'Prompt Engineering',
+                'category': 'skill',
+                'description': 'Crafting effective prompts to get desired outputs from AI models',
+            },
+            {
+                'name': 'LLM Fundamentals',
+                'category': 'skill',
+                'description': 'Core concepts of large language models and how they process information',
             },
             # Goals
             {'name': 'Build a Portfolio', 'category': 'goal', 'description': 'Create and showcase professional work'},

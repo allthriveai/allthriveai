@@ -7,9 +7,11 @@ Provides tools for:
 - Finding similar projects
 - Getting trending projects
 - Explaining project details
+
+Note: All chat now routes through the unified Ember agent.
+The tools are imported and used by Ember.
 """
 
-from .agent import stream_discovery_response
 from .tools import DISCOVERY_TOOLS
 
-__all__ = ['stream_discovery_response', 'DISCOVERY_TOOLS']
+__all__ = ['DISCOVERY_TOOLS']

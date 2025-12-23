@@ -310,6 +310,15 @@ def upload_file(request):
         # Read file data
         file_data = uploaded_file.read()
 
+        # Extract text from PDFs for AI processing (e.g., resume parsing)
+        extracted_text = None
+        if content_type == 'application/pdf':
+            from .pdf_extractor import extract_text_from_pdf
+
+            extracted_text = extract_text_from_pdf(file_data, max_pages=10, max_chars=15000)
+            if extracted_text:
+                logger.info(f'Extracted {len(extracted_text)} characters from PDF: {safe_filename}')
+
         # Upload to MinIO with sanitized filename
         storage = get_storage_service()
         url, error = storage.upload_file(
@@ -328,17 +337,20 @@ def upload_file(request):
         if not is_public:
             url = storage.get_presigned_url(url, expires_seconds=7200)  # 2 hours
 
-        return Response(
-            {
-                'url': url,
-                'filename': safe_filename,
-                'original_filename': uploaded_file.name,
-                'file_type': content_type,
-                'file_size': uploaded_file.size,
-                'is_public': is_public,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+        response_data = {
+            'url': url,
+            'filename': safe_filename,
+            'original_filename': uploaded_file.name,
+            'file_type': content_type,
+            'file_size': uploaded_file.size,
+            'is_public': is_public,
+        }
+
+        # Include extracted text for PDFs (used by AI for resume parsing)
+        if extracted_text:
+            response_data['extracted_text'] = extracted_text
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         logger.error(f'Error uploading file: {e}', exc_info=True)

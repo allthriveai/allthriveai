@@ -8,7 +8,6 @@ from .models import Taxonomy, UserInteraction, UserTag
 from .serializers import (
     TaxonomySerializer,
     UserInteractionSerializer,
-    UserPersonalizationSerializer,
     UserTagCreateSerializer,
     UserTagSerializer,
 )
@@ -197,8 +196,7 @@ def user_personalization_overview(request):
         'total_interactions': total_interactions,
     }
 
-    serializer = UserPersonalizationSerializer(data)
-    return Response(serializer.data)
+    return Response(data)
 
 
 @api_view(['POST'])

@@ -153,13 +153,9 @@ function TechBadge({ tech, isEditing, onUpdate, onDelete }: TechBadgeProps) {
     );
   }
 
-  return (
-    <a
-      href={tech.url || `https://www.google.com/search?q=${encodeURIComponent(tech.name)}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-center gap-2.5 px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-500/50 dark:hover:border-primary-500/50 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
-    >
+  // Common wrapper for badge content
+  const badgeContent = (
+    <>
       {iconUrl ? (
         <img
           src={iconUrl}
@@ -184,7 +180,51 @@ function TechBadge({ tech, isEditing, onUpdate, onDelete }: TechBadgeProps) {
           {tech.version}
         </span>
       )}
-    </a>
+    </>
+  );
+
+  // If tech has a URL, render as a link; otherwise render as a non-clickable badge
+  if (tech.url) {
+    return (
+      <a
+        href={tech.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-center gap-2.5 px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-500/50 dark:hover:border-primary-500/50 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+      >
+        {badgeContent}
+      </a>
+    );
+  }
+
+  // Non-clickable badge when no URL is provided (no hover effects)
+  return (
+    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+      {iconUrl ? (
+        <img
+          src={iconUrl}
+          alt={tech.name}
+          className="w-5 h-5 object-contain"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      ) : (
+        <div className="w-5 h-5 rounded bg-gradient-to-br from-primary-500/20 to-secondary-500/20 flex items-center justify-center">
+          <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
+            {tech.name.charAt(0).toUpperCase()}
+          </span>
+        </div>
+      )}
+      <span className="font-medium text-gray-900 dark:text-white">
+        {tech.name}
+      </span>
+      {tech.version && (
+        <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+          {tech.version}
+        </span>
+      )}
+    </div>
   );
 }
 

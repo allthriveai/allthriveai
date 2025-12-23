@@ -46,7 +46,7 @@ const buildProgress = [
   { label: 'Gamified Learning', status: 'done', description: 'XP, levels, achievements' },
   { label: 'AI Chat Onboarding', status: 'done', description: 'Conversational profile setup' },
   { label: 'Creator Marketplace', status: 'coming', description: 'Sell courses, templates & digital products' },
-  { label: 'Community & Private Chat', status: 'coming', description: 'Connect with other creators' },
+  { label: 'Community & Private Chat', status: 'coming', description: 'Connect with other members' },
 ];
 
 const roadmap = [

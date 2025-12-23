@@ -13,6 +13,7 @@ import {
   getProviderColor,
   type SocialProvider,
 } from '@/services/socialApi';
+import { getErrorMessage } from '@/utils/errors';
 
 export default function SocialSettingsPage() {
   const { user, refreshUser } = useAuth();
@@ -152,9 +153,9 @@ export default function SocialSettingsPage() {
         setTimeout(() => setSuccessMessage(''), 5000);
         await loadGithubSyncStatus();
       }
-    } catch (error: any) {
-      console.error('Failed to sync GitHub:', error);
-      setErrorMessage(error.response?.data?.error || 'Failed to sync repositories. Please try again.');
+    } catch (error) {
+      console.error('Failed to sync GitHub:', getErrorMessage(error));
+      setErrorMessage(getErrorMessage(error) || 'Failed to sync repositories. Please try again.');
     } finally {
       setSyncingGithub(false);
     }

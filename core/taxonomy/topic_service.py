@@ -221,7 +221,7 @@ def update_topic_project_count(slug: str) -> int:
     # Count projects with this topic (case-insensitive)
     # Topics are stored as an ArrayField of strings
     count = Project.objects.filter(
-        topics__icontains=slug,
+        topics__name__icontains=slug,
         is_archived=False,
     ).count()
 
@@ -235,11 +235,11 @@ def update_topic_project_count(slug: str) -> int:
         if variation != slug:
             count += (
                 Project.objects.filter(
-                    topics__icontains=variation,
+                    topics__name__icontains=variation,
                     is_archived=False,
                 )
                 .exclude(
-                    topics__icontains=slug  # Don't double-count
+                    topics__name__icontains=slug  # Don't double-count
                 )
                 .count()
             )
@@ -273,7 +273,7 @@ def get_related_projects(slug: str, limit: int = 10):
     # Build query for any matching topic
     query = Q()
     for term in search_terms:
-        query |= Q(topics__icontains=term)
+        query |= Q(topics__name__icontains=term)
 
     return (
         Project.objects.filter(query, is_archived=False, is_private=False)

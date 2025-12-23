@@ -450,13 +450,13 @@ function FeaturedBattleCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                navigate('/battles');
+                navigate('/play/prompt-battles');
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   e.stopPropagation();
-                  navigate('/battles');
+                  navigate('/play/prompt-battles');
                 }
               }}
               className="px-2 py-0.5 text-xs bg-gradient-to-r from-cyan-500/20 to-violet-500/20 text-cyan-400 rounded border border-cyan-500/30 hover:from-cyan-500/30 hover:to-violet-500/30 hover:text-cyan-300 transition-colors cursor-pointer"
@@ -500,7 +500,14 @@ export function FeaturedProjectsSection({
       // Handle both showcase/playground structure and flat array
       let projectList: Project[] = [];
       if (data.showcase || data.playground) {
-        projectList = [...(data.showcase || []), ...(data.playground || [])];
+        // Combine and deduplicate by ID (projects can be in both showcase and playground)
+        const combined = [...(data.showcase || []), ...(data.playground || [])];
+        const seen = new Set<number>();
+        projectList = combined.filter((p: Project) => {
+          if (seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
       } else if (Array.isArray(data.results)) {
         projectList = data.results;
       } else if (Array.isArray(data)) {
@@ -530,7 +537,14 @@ export function FeaturedProjectsSection({
         // Handle both showcase/playground structure and flat array
         let allProjects: Project[] = [];
         if (data.showcase || data.playground) {
-          allProjects = [...(data.showcase || []), ...(data.playground || [])];
+          // Combine and deduplicate by ID (projects can be in both showcase and playground)
+          const combined = [...(data.showcase || []), ...(data.playground || [])];
+          const seen = new Set<number>();
+          allProjects = combined.filter((p: Project) => {
+            if (seen.has(p.id)) return false;
+            seen.add(p.id);
+            return true;
+          });
         } else if (Array.isArray(data.results)) {
           allProjects = data.results;
         } else if (Array.isArray(data)) {
@@ -624,7 +638,7 @@ export function FeaturedProjectsSection({
   const restProjects = projects.slice(1);
 
   return (
-    <div className="py-6">
+    <div className="py-6 w-full">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
           Featured Projects

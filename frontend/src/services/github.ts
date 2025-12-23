@@ -1,6 +1,7 @@
 import { api } from './api';
 import type { ApiResponse } from '@/types/api';
 import type { Project } from '@/types/models';
+import { logError } from '@/utils/errorHandler';
 
 /**
  * Enhanced error with additional context for imports
@@ -61,9 +62,10 @@ export async function fetchGitHubRepos(): Promise<GitHubRepository[]> {
     }>>('/github/repos/');
 
     // Check if needs installation (returned as 200 with needsInstallation flag)
+    // Note: API response is auto-transformed to camelCase by api.ts interceptor
     const data = response.data as any;
-    if (data.needsInstallation || data.needs_installation) {
-      const installUrl = data.installUrl || data.install_url || 'https://github.com/apps/all-thrive-ai/installations/new';
+    if (data.needsInstallation) {
+      const installUrl = data.installUrl || 'https://github.com/apps/all-thrive-ai/installations/new';
       throw new GitHubInstallationNeededError(
         data.error || 'Please install the All Thrive AI app on your GitHub repositories.',
         installUrl
@@ -78,7 +80,7 @@ export async function fetchGitHubRepos(): Promise<GitHubRepository[]> {
       throw error;
     }
 
-    console.error('Failed to fetch GitHub repos:', error);
+    logError('github.fetchGitHubRepos', error);
 
     // Handle specific error cases
     if (error.response?.status === 401) {
@@ -102,7 +104,7 @@ export async function getGitHubAppInstallUrl(): Promise<string> {
     const response = await api.get<ApiResponse<{ installUrl: string; appSlug: string }>>('/github/app/install-url/');
     return response.data.data?.installUrl || 'https://github.com/apps/all-thrive-ai/installations/new';
   } catch (error) {
-    console.error('Failed to get GitHub App install URL:', error);
+    logError('github.getGitHubAppInstallUrl', error);
     return 'https://github.com/apps/all-thrive-ai/installations/new';
   }
 }
@@ -116,7 +118,7 @@ export async function checkGitHubConnection(): Promise<boolean> {
     const data = response.data.data || response.data;
     return data?.connected ?? false;
   } catch (error) {
-    console.error('Failed to check GitHub connection:', error);
+    logError('github.checkGitHubConnection', error);
     return false;
   }
 }
@@ -233,7 +235,7 @@ export async function importGitHubRepoAsync(
     };
 
   } catch (error: unknown) {
-    console.error('Failed to import GitHub repo (async):', error);
+    logError('github.importGitHubRepoAsync', error);
 
     // If error is already an ImportError, re-throw it
     if (error instanceof ImportError) {

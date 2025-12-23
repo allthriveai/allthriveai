@@ -5,6 +5,7 @@ import sys
 
 from rest_framework import serializers
 
+from core.taxonomy.serializers import TaxonomySerializer
 from core.users.models import User
 
 from .models import (
@@ -226,7 +227,8 @@ class SideQuestSerializer(serializers.ModelSerializer):
 
     quest_type_display = serializers.CharField(source='get_quest_type_display', read_only=True)
     difficulty_display = serializers.CharField(source='get_difficulty_display', read_only=True)
-    topic_display = serializers.CharField(source='get_topic_display', read_only=True, allow_null=True)
+    topic_display = serializers.SerializerMethodField()
+    topic_data = TaxonomySerializer(source='topic', read_only=True)
     skill_level_display = serializers.CharField(source='get_skill_level_display', read_only=True, allow_null=True)
     is_available = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
@@ -248,6 +250,7 @@ class SideQuestSerializer(serializers.ModelSerializer):
             'category_slug',
             'topic',
             'topic_display',
+            'topic_data',
             'skill_level',
             'skill_level_display',
             'requirements',
@@ -270,6 +273,10 @@ class SideQuestSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_topic_display(self, obj):
+        """Get topic display name from taxonomy FK."""
+        return obj.topic.name if obj.topic else None
 
     def get_is_available(self, obj):
         """Check if quest is currently available."""
@@ -448,7 +455,7 @@ class CircleDetailSerializer(CircleSerializer):
         other_count = member_count - 1
 
         return (
-            f'You and {other_count} other creators are all at the {tier_display} level. '
+            f'You and {other_count} other members are all at the {tier_display} level. '
             f'We put you together so you can learn from each other, share wins, and grow at a similar pace.'
         )
 

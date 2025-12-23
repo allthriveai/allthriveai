@@ -148,7 +148,7 @@ export class RouterAgent extends BaseAgent {
    */
   async handleMessage(_userMessage: string, _context?: ChatContext): Promise<string> {
     // RouterAgent doesn't handle messages directly
-    // It's used by IntelligentChatPanel to determine mode
+    // It's used by the chat system to determine mode
     return 'RouterAgent is for mode detection only. Use mode-specific agents for handling messages.';
   }
 

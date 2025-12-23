@@ -20,7 +20,7 @@ export function AboutContent() {
       {/* Hero Statement */}
       <div className="glass-card neon-border p-5">
         <p className="text-lg font-bold text-white leading-relaxed">
-          All Thrive is a community where AI-curious creators{' '}
+          All Thrive is a community where AI-curious members{' '}
           <span className="text-cyan-bright">explore</span>,{' '}
           <span className="text-pink-accent">build</span>, and{' '}
           <span className="text-emerald-400">grow</span> together.

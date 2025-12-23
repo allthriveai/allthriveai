@@ -31,14 +31,27 @@ BETA_MODE = config('BETA_MODE', default=False, cast=bool)
 # Usage is ALWAYS tracked regardless of this setting for analytics purposes
 CREDIT_PACK_ENFORCEMENT_ENABLED = config('CREDIT_PACK_ENFORCEMENT_ENABLED', default=False, cast=bool)
 
+# Unified Ember Agent: Routes EmberHomePage conversations to single agent with all tools
+# When True: Conversations starting with 'ember-' use unified Ember agent (no supervisor routing)
+# When False: Uses multi-agent orchestrator with supervisor routing (default)
+USE_UNIFIED_EMBER = config('USE_UNIFIED_EMBER', default=True, cast=bool)
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
 # AWS ECS/ALB health checks use container private IPs (10.x.x.x) in the Host header.
 # We handle this with HealthCheckMiddleware which bypasses ALLOWED_HOSTS for health paths.
-# Additionally, allow wildcard for ECS environments where needed.
+# For ECS environments, we add specific allowed patterns instead of wildcard for security.
 if config('ECS_ALLOW_ALL_HOSTS', default=False, cast=bool):
-    # In ECS behind ALB, ALB handles host validation. Container can accept all hosts.
-    ALLOWED_HOSTS = ['*']
+    # In ECS behind ALB, add ALB health check IPs and known domains
+    # SECURITY: Never use ['*'] - it allows host header injection attacks
+    # Instead, explicitly list allowed hosts including internal IPs for health checks
+    ECS_ADDITIONAL_HOSTS = config(
+        'ECS_ADDITIONAL_HOSTS',
+        default='',
+        cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
+    )
+    # Add ECS-specific hosts (10.x.x.x handled by HealthCheckMiddleware)
+    ALLOWED_HOSTS = ALLOWED_HOSTS + ECS_ADDITIONAL_HOSTS
 
 # Health check paths that bypass ALLOWED_HOSTS validation
 HEALTH_CHECK_PATHS = ['/api/v1/health/', '/health/', '/healthz/', '/ready/']
@@ -70,6 +83,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'drf_spectacular',  # OpenAPI schema generation
     'corsheaders',
     'csp',
     'core',  # Must come before allauth to ensure User model is available
@@ -93,6 +107,9 @@ INSTALLED_APPS = [
     'core.engagement',  # Engagement tracking for personalization
     'core.tasks',  # Admin task tracker for team coordination
     'core.uat_scenarios',  # UAT scenario tracking for QA
+    'core.avatars',  # AI-generated user avatars
+    'core.games',  # Educational mini-games
+    'core.community',  # Community messaging (forums, DMs, circle chat)
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -322,9 +339,44 @@ REST_FRAMEWORK = {
         'authenticated_projects': '500/hour',
         'quiz_start': '10/hour',
         'quiz_answer': '100/minute',
+        # Feedback endpoints
+        'feedback': '30/hour',
+        'feedback_read': '120/hour',
     },
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# OpenAPI Schema Settings (drf-spectacular)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'AllThrive AI API',
+    'DESCRIPTION': 'API for AllThrive AI platform - AI-powered learning and project portfolio',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY': [{'bearerAuth': []}],
+    'COMPONENT_SPLIT_REQUEST': True,
+    # Better serializer introspection
+    'SCHEMA_PATH_PREFIX': r'/api/v1/',
+    'SCHEMA_PATH_PREFIX_TRIM': True,
+    # Enable request/response body detection
+    'POSTPROCESSING_HOOKS': [],
+    # Generate pagination parameters
+    'PAGINATION_COMPONENT': True,
+    # Generate filter parameters from django-filter
+    'PREPROCESSING_HOOKS': ['drf_spectacular.hooks.preprocess_exclude_path_format'],
+    # Component settings
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    },
+    # Enable deep inspection of serializers
+    'COMPONENT_NO_READ_ONLY_REQUIRED': True,
 }
 
 # AI API Keys
@@ -332,6 +384,14 @@ OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 OPENAI_BASE_URL = config('OPENAI_BASE_URL', default='')  # For AI gateway (OpenRouter, etc.)
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
+
+# Azure OpenAI Configuration
+AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
+AZURE_OPENAI_ENDPOINT = config(
+    'AZURE_OPENAI_ENDPOINT', default='https://go1-presales-resource.cognitiveservices.azure.com/'
+)
+AZURE_OPENAI_API_VERSION = config('AZURE_OPENAI_API_VERSION', default='2025-01-01-preview')
+AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4.1')
 
 # Stripe Payment Configuration
 STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='')
@@ -413,24 +473,44 @@ DEFAULT_AI_PROVIDER = config('DEFAULT_AI_PROVIDER', default=FALLBACK_AI_PROVIDER
 # - reasoning: Complex multi-step tasks, no temperature support
 # - image: Image generation (always uses Gemini)
 # - vision: Image understanding/analysis
+# - tagging: Bulk content tagging (cheapest model for high volume)
+# - tagging_premium: High-quality tagging for important/featured content
 AI_MODELS = {
     'openai': {
         'default': config('OPENAI_MODEL_DEFAULT', default='gpt-4o-mini'),
         'reasoning': config('OPENAI_MODEL_REASONING', default='gpt-5-mini-2025-08-07'),
+        'tagging': config('OPENAI_MODEL_TAGGING', default='gpt-3.5-turbo'),
+        'tagging_premium': config('OPENAI_MODEL_TAGGING_PREMIUM', default='gpt-4o-mini'),
+    },
+    'azure': {
+        'default': AZURE_OPENAI_DEPLOYMENT_NAME,
+        'reasoning': config('AZURE_OPENAI_REASONING_DEPLOYMENT', default=AZURE_OPENAI_DEPLOYMENT_NAME),
+        'tagging': config('AZURE_OPENAI_TAGGING_DEPLOYMENT', default=AZURE_OPENAI_DEPLOYMENT_NAME),
+        'tagging_premium': config('AZURE_OPENAI_TAGGING_PREMIUM_DEPLOYMENT', default=AZURE_OPENAI_DEPLOYMENT_NAME),
     },
     'anthropic': {
         'default': config('ANTHROPIC_MODEL_DEFAULT', default='claude-3-5-haiku-20241022'),
         'reasoning': config('ANTHROPIC_MODEL_REASONING', default='claude-sonnet-4-20250514'),
+        'tagging': config('ANTHROPIC_MODEL_TAGGING', default='claude-3-5-haiku-20241022'),
+        'tagging_premium': config('ANTHROPIC_MODEL_TAGGING_PREMIUM', default='claude-3-5-haiku-20241022'),
     },
     'gemini': {
         'default': config('GEMINI_MODEL_DEFAULT', default='gemini-2.0-flash'),
         'image': config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview'),
         'vision': config('GEMINI_MODEL_VISION', default='gemini-2.0-flash'),
+        'tagging': config('GEMINI_MODEL_TAGGING', default='gemini-2.0-flash'),
+        'tagging_premium': config('GEMINI_MODEL_TAGGING_PREMIUM', default='gemini-2.0-flash'),
     },
 }
 
 # Legacy setting - kept for backwards compatibility, maps to AI_MODELS['openai']['default']
 DEFAULT_OPENAI_MODEL = AI_MODELS['openai']['default']
+
+# Image Analysis Provider Configuration
+# Primary provider for analyzing uploaded images (gemini, openai, anthropic)
+IMAGE_ANALYSIS_PROVIDER = config('IMAGE_ANALYSIS_PROVIDER', default='gemini')
+# Fallback provider if primary fails (set to same as primary to disable fallback)
+IMAGE_ANALYSIS_FALLBACK_PROVIDER = config('IMAGE_ANALYSIS_FALLBACK_PROVIDER', default='openai')
 
 # LangSmith Configuration (AI Gateway Observability)
 LANGSMITH_API_KEY = config('LANGSMITH_API_KEY', default='')
@@ -776,6 +856,21 @@ MINIO_BUCKET_NAME = config('MINIO_BUCKET_NAME', default='allthrive-media')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'  # Fallback for local development without MinIO
 
+# File upload security limits
+# These protect against denial-of-service attacks via large uploads
+DATA_UPLOAD_MAX_MEMORY_SIZE = config(
+    'DATA_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int
+)  # 10MB max for in-memory upload
+FILE_UPLOAD_MAX_MEMORY_SIZE = config(
+    'FILE_UPLOAD_MAX_MEMORY_SIZE', default=10 * 1024 * 1024, cast=int
+)  # 10MB before temp file is used
+DATA_UPLOAD_MAX_NUMBER_FILES = config('DATA_UPLOAD_MAX_NUMBER_FILES', default=20, cast=int)  # Max files per request
+DATA_UPLOAD_MAX_NUMBER_FIELDS = config('DATA_UPLOAD_MAX_NUMBER_FIELDS', default=1000, cast=int)  # Max form fields
+
+# Maximum allowed file size for user uploads (enforced in views)
+MAX_UPLOAD_SIZE_MB = config('MAX_UPLOAD_SIZE_MB', default=25, cast=int)  # 25MB max file size
+MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024  # In bytes
+
 # Custom User Model (points to users subdomain where User is defined)
 AUTH_USER_MODEL = 'users.User'
 
@@ -845,13 +940,22 @@ SOCIALACCOUNT_PROVIDERS = {
             'email',
         ],
         'AUTH_PARAMS': {
-            'access_type': 'online',
+            'access_type': 'online',  # No refresh token needed for basic sign-in
         },
     },
     'github': {
+        # Note: GitHub Apps get repo access through App installation, not OAuth scopes.
+        # Only user-related scopes are valid for GitHub App user authorization.
         'SCOPE': [
             'user',
             'user:email',
+            'read:user',  # Read user profile data
+        ],
+    },
+    'figma': {
+        'SCOPE': [
+            'file_content:read',  # Read file contents (nodes, editor type)
+            'file_metadata:read',  # Read file metadata (name, last modified, etc.)
         ],
     },
     # LinkedIn uses OpenID Connect (the old linkedin_oauth2 provider is deprecated)
@@ -926,13 +1030,16 @@ CSRF_TRUSTED_ORIGINS = config(
 # SECURITY NOTE: 'unsafe-inline' for styles is required for many CSS-in-JS libraries.
 # To remove it, migrate to nonce-based CSP or external stylesheets.
 # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP#inline_styles
+# CDN sources for API documentation (Swagger UI, ReDoc)
+_API_DOCS_CDN = ('https://cdn.jsdelivr.net',)
+
 if DEBUG:
-    _CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")
-    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+    _CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'") + _API_DOCS_CDN
+    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'") + _API_DOCS_CDN
 else:
-    _CSP_SCRIPT_SRC = ("'self'",)
+    _CSP_SCRIPT_SRC = ("'self'",) + _API_DOCS_CDN
     # TODO: Remove 'unsafe-inline' for styles once CSS-in-JS is refactored to use nonces
-    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+    _CSP_STYLE_SRC = ("'self'", "'unsafe-inline'") + _API_DOCS_CDN
 
 CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {

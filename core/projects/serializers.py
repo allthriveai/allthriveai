@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from core.taxonomy.models import Taxonomy
 from core.taxonomy.serializers import TaxonomySerializer
 from core.tools.serializers import ToolIconSerializer, ToolListSerializer
 
@@ -29,6 +30,34 @@ class ProjectSerializer(serializers.ModelSerializer):
     is_promoted = serializers.SerializerMethodField()  # Computed based on expiration
     tools_details = serializers.SerializerMethodField()  # Custom ordering based on tools_order
     categories_details = serializers.SerializerMethodField()
+    topics_details = serializers.SerializerMethodField()  # Taxonomy topic details
+    # Content metadata taxonomy fields - read-only nested representation
+    content_type_details = serializers.SerializerMethodField()
+    time_investment_details = serializers.SerializerMethodField()
+    difficulty_details = serializers.SerializerMethodField()
+    pricing_details = serializers.SerializerMethodField()
+
+    # Write validation for taxonomy FK fields - accept IDs with type validation
+    content_type_taxonomy = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='content_type', is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    time_investment = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='time_investment', is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    difficulty_taxonomy = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='difficulty', is_active=True),
+        required=False,
+        allow_null=True,
+    )
+    pricing_taxonomy = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='pricing', is_active=True),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Project
@@ -55,6 +84,17 @@ class ProjectSerializer(serializers.ModelSerializer):
             'categories_details',
             'hide_categories',
             'topics',
+            'topics_details',
+            # Content metadata taxonomy fields
+            'content_type_taxonomy',
+            'content_type_details',
+            'time_investment',
+            'time_investment_details',
+            'difficulty_taxonomy',
+            'difficulty_details',
+            'pricing_taxonomy',
+            'pricing_details',
+            'ai_tag_metadata',
             'heart_count',
             'is_liked_by_user',
             'content',
@@ -70,6 +110,11 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_liked_by_user',
             'tools_details',
             'categories_details',
+            'topics_details',
+            'content_type_details',
+            'time_investment_details',
+            'difficulty_details',
+            'pricing_details',
             'is_promoted',
             'promoted_at',
             'created_at',
@@ -261,6 +306,35 @@ class ProjectSerializer(serializers.ModelSerializer):
         categories = obj.categories.order_by('name')
         return TaxonomySerializer(categories, many=True).data
 
+    def get_topics_details(self, obj):
+        """Get topic taxonomies ordered by name."""
+        topics = obj.topics.order_by('name')
+        return TaxonomySerializer(topics, many=True).data
+
+    def get_content_type_details(self, obj):
+        """Get content type taxonomy details."""
+        if obj.content_type_taxonomy:
+            return TaxonomySerializer(obj.content_type_taxonomy).data
+        return None
+
+    def get_time_investment_details(self, obj):
+        """Get time investment taxonomy details."""
+        if obj.time_investment:
+            return TaxonomySerializer(obj.time_investment).data
+        return None
+
+    def get_difficulty_details(self, obj):
+        """Get difficulty taxonomy details."""
+        if obj.difficulty_taxonomy:
+            return TaxonomySerializer(obj.difficulty_taxonomy).data
+        return None
+
+    def get_pricing_details(self, obj):
+        """Get pricing taxonomy details."""
+        if obj.pricing_taxonomy:
+            return TaxonomySerializer(obj.pricing_taxonomy).data
+        return None
+
     def get_is_promoted(self, obj):
         """Check if the project is currently promoted (not expired).
 
@@ -342,6 +416,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             'external_url': 'externalUrl',
             'tools_details': 'toolsDetails',
             'categories_details': 'categoriesDetails',
+            'topics_details': 'topicsDetails',
+            'content_type_taxonomy': 'contentTypeTaxonomy',
+            'content_type_details': 'contentTypeDetails',
+            'time_investment': 'timeInvestment',
+            'time_investment_details': 'timeInvestmentDetails',
+            'difficulty_taxonomy': 'difficultyTaxonomy',
+            'difficulty_details': 'difficultyDetails',
+            'pricing_taxonomy': 'pricingTaxonomy',
+            'pricing_details': 'pricingDetails',
+            'ai_tag_metadata': 'aiTagMetadata',
             'user_tags': 'userTags',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
@@ -406,6 +490,15 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     tools_details = serializers.SerializerMethodField()
     # Categories details for displaying category badges (needed for rss_article cards)
     categories_details = serializers.SerializerMethodField()
+    # Topic taxonomy details for displaying topic badges
+    topics_details = serializers.SerializerMethodField()
+    # Learning eligibility - whether project appears in learning content
+    is_learning_eligible = serializers.SerializerMethodField()
+    # Content metadata taxonomy details for filtering/badges
+    content_type_details = serializers.SerializerMethodField()
+    time_investment_details = serializers.SerializerMethodField()
+    difficulty_details = serializers.SerializerMethodField()
+    pricing_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -425,9 +518,20 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'tools_details',  # Full tool objects for displaying icons
             'categories',  # IDs for filtering
             'categories_details',  # Full category objects for displaying badges
-            'topics',
+            'topics',  # IDs for filtering
+            'topics_details',  # Full topic taxonomy objects for displaying badges
+            # Content metadata taxonomy fields
+            'content_type_taxonomy',  # ID for filtering
+            'content_type_details',
+            'time_investment',  # ID for filtering
+            'time_investment_details',
+            'difficulty_taxonomy',  # ID for filtering
+            'difficulty_details',
+            'pricing_taxonomy',  # ID for filtering
+            'pricing_details',
             'heart_count',
             'is_liked_by_user',
+            'is_learning_eligible',
             'published_date',
             'created_at',
             'content',  # Populated for battle and rss_article projects
@@ -469,6 +573,49 @@ class ProjectCardSerializer(serializers.ModelSerializer):
         """Get categories ordered by name for displaying category badges."""
         categories = obj.categories.order_by('name')
         return TaxonomySerializer(categories, many=True).data
+
+    def get_topics_details(self, obj):
+        """Get topic taxonomies ordered by name for displaying topic badges."""
+        topics = obj.topics.order_by('name')
+        return TaxonomySerializer(topics, many=True).data
+
+    def get_content_type_details(self, obj):
+        """Get content type taxonomy details."""
+        if obj.content_type_taxonomy:
+            return TaxonomySerializer(obj.content_type_taxonomy).data
+        return None
+
+    def get_time_investment_details(self, obj):
+        """Get time investment taxonomy details."""
+        if obj.time_investment:
+            return TaxonomySerializer(obj.time_investment).data
+        return None
+
+    def get_difficulty_details(self, obj):
+        """Get difficulty taxonomy details."""
+        if obj.difficulty_taxonomy:
+            return TaxonomySerializer(obj.difficulty_taxonomy).data
+        return None
+
+    def get_pricing_details(self, obj):
+        """Get pricing taxonomy details."""
+        if obj.pricing_taxonomy:
+            return TaxonomySerializer(obj.pricing_taxonomy).data
+        return None
+
+    def get_is_learning_eligible(self, obj):
+        """Get learning eligibility from ProjectLearningMetadata.
+
+        Returns True if the project appears in learning content.
+        Defaults to True if no metadata record exists.
+        """
+        from django.core.exceptions import ObjectDoesNotExist
+
+        try:
+            return obj.learning_metadata.is_learning_eligible
+        except ObjectDoesNotExist:
+            # No metadata exists - default to True (all projects are learning-eligible by default)
+            return True
 
     def get_content(self, obj):
         """Return minimal content for card rendering.
@@ -592,8 +739,18 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             'external_url': 'externalUrl',
             'tools_details': 'toolsDetails',
             'categories_details': 'categoriesDetails',
+            'topics_details': 'topicsDetails',
+            'content_type_taxonomy': 'contentTypeTaxonomy',
+            'content_type_details': 'contentTypeDetails',
+            'time_investment': 'timeInvestment',
+            'time_investment_details': 'timeInvestmentDetails',
+            'difficulty_taxonomy': 'difficultyTaxonomy',
+            'difficulty_details': 'difficultyDetails',
+            'pricing_taxonomy': 'pricingTaxonomy',
+            'pricing_details': 'pricingDetails',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
+            'is_learning_eligible': 'isLearningEligible',
             'published_date': 'publishedDate',
             'created_at': 'createdAt',
         }

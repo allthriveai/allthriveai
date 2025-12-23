@@ -29,8 +29,20 @@ import type {
   ProfileSection,
   ProfileSectionType,
   ProfileSectionContent,
+  AboutSectionContent,
+  LinksSectionContent,
+  SkillsSectionContent,
+  LearningGoalsSectionContent,
+  FeaturedProjectsSectionContent,
+  AllProjectsSectionContent,
+  StorefrontSectionContent,
+  FeaturedContentSectionContent,
+  BattleStatsSectionContent,
+  RecentBattlesSectionContent,
+  CustomSectionContent,
 } from '@/types/profileSections';
 import { FeaturedProjectsSection } from './FeaturedProjectsSection';
+import { AllProjectsSection } from './AllProjectsSection';
 import { SkillsSection } from './SkillsSection';
 import { CustomSection } from './CustomSection';
 import { AboutSection } from './AboutSection';
@@ -73,6 +85,7 @@ interface ProfileSectionRendererProps {
   section: ProfileSection;
   user: ProfileUser;
   isEditing?: boolean;
+  isOwnProfile?: boolean;
   onUpdate?: (content: ProfileSectionContent) => void;
   onSocialLinksUpdate?: (links: SocialLinksUpdate) => Promise<void>;
 }
@@ -81,38 +94,53 @@ export function ProfileSectionRenderer({
   section,
   user,
   isEditing,
+  isOwnProfile,
   onUpdate,
   onSocialLinksUpdate,
 }: ProfileSectionRendererProps) {
-  if (!section.visible && !isEditing) {
+  if (!section.visible && !isEditing && !isOwnProfile) {
     return null;
   }
 
-  const commonProps = { user, isEditing, onUpdate };
+  const commonProps = { user, isEditing, isOwnProfile, onUpdate };
 
   switch (section.type) {
     case 'about':
-      return <AboutSection content={section.content as any} {...commonProps} />;
+      return <AboutSection content={section.content as AboutSectionContent} {...commonProps} />;
     case 'links':
-      return <LinksSection content={section.content as any} {...commonProps} onSocialLinksUpdate={onSocialLinksUpdate} />;
+      return <LinksSection content={section.content as LinksSectionContent} {...commonProps} onSocialLinksUpdate={onSocialLinksUpdate} />;
     case 'skills':
-      return <SkillsSection content={section.content as any} {...commonProps} />;
+      return <SkillsSection content={section.content as SkillsSectionContent} {...commonProps} />;
     case 'learning_goals':
-      return <LearningGoalsSection content={section.content as any} {...commonProps} />;
+      return <LearningGoalsSection content={section.content as LearningGoalsSectionContent} {...commonProps} />;
     case 'featured_projects':
-      return <FeaturedProjectsSection content={section.content as any} {...commonProps} />;
+      return <FeaturedProjectsSection content={section.content as FeaturedProjectsSectionContent} {...commonProps} />;
+    case 'all_projects':
+      return <AllProjectsSection content={section.content as AllProjectsSectionContent} {...commonProps} />;
     case 'storefront':
-      return <StorefrontSection content={section.content as any} {...commonProps} />;
+      return <StorefrontSection content={section.content as StorefrontSectionContent} {...commonProps} />;
     case 'featured_content':
-      return <FeaturedContentSection content={section.content as any} {...commonProps} />;
+      return <FeaturedContentSection content={section.content as FeaturedContentSectionContent} {...commonProps} />;
     case 'battle_stats':
-      return <BattleStatsSection content={section.content as any} {...commonProps} />;
+      return <BattleStatsSection content={section.content as BattleStatsSectionContent} {...commonProps} />;
     case 'recent_battles':
-      return <RecentBattlesSection content={section.content as any} {...commonProps} />;
+      return <RecentBattlesSection content={section.content as RecentBattlesSectionContent} {...commonProps} />;
     case 'custom':
-      return <CustomSection content={section.content as any} title={section.title} {...commonProps} />;
-    default:
+      return <CustomSection content={section.content as CustomSectionContent} title={section.title} {...commonProps} />;
+    // Legacy section types - these are deprecated and render nothing
+    // The functionality they provided is now handled by ProfileHeader
+    case 'hero':
+    case 'stats':
+      // Legacy sections are no longer rendered - header handles display
+      // These will be migrated away in a future cleanup
       return null;
+    default: {
+      // Log unknown section types in development for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`Unknown profile section type: ${section.type}`);
+      }
+      return null;
+    }
   }
 }
 
@@ -123,6 +151,7 @@ interface ProfileSectionsProps {
   sections: ProfileSection[];
   user: ProfileUser;
   isEditing?: boolean;
+  isOwnProfile?: boolean;
   onSectionUpdate?: (sectionId: string, content: ProfileSectionContent) => void;
   onAddSection?: (type: ProfileSectionType, afterSectionId?: string) => void;
   onDeleteSection?: (sectionId: string) => void;
@@ -135,6 +164,7 @@ export function ProfileSections({
   sections,
   user,
   isEditing,
+  isOwnProfile,
   onSectionUpdate,
   onAddSection,
   onDeleteSection,
@@ -256,7 +286,7 @@ export function ProfileSections({
 
   // Render sections with drag-and-drop when editing
   const renderSections = () => (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
       {displaySections.map((section, index) => (
         <SortableProfileSection
           key={section.id}
@@ -265,6 +295,7 @@ export function ProfileSections({
           totalSections={displaySections.length}
           user={user}
           isEditing={isEditing}
+          isOwnProfile={isOwnProfile}
           onSectionUpdate={onSectionUpdate}
           onDeleteSection={onDeleteSection}
           onToggleVisibility={onToggleVisibility}
@@ -277,7 +308,7 @@ export function ProfileSections({
   );
 
   return (
-    <div className="pb-8">
+    <div className="pb-8 w-full">
       {/* Add Section at Top (editing mode) */}
       {isEditing && onAddSection && (
         <AddSectionButton onClick={() => handleAddClick()} position="top" />
@@ -336,6 +367,7 @@ interface SortableProfileSectionProps {
   totalSections: number;
   user: ProfileUser;
   isEditing?: boolean;
+  isOwnProfile?: boolean;
   onSectionUpdate?: (sectionId: string, content: ProfileSectionContent) => void;
   onDeleteSection?: (sectionId: string) => void;
   onToggleVisibility?: (sectionId: string) => void;
@@ -350,6 +382,7 @@ function SortableProfileSection({
   totalSections,
   user,
   isEditing,
+  isOwnProfile,
   onSectionUpdate,
   onDeleteSection,
   onToggleVisibility,
@@ -378,7 +411,7 @@ function SortableProfileSection({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative group/section ${isHidden ? 'opacity-50' : ''}`}
+      className={`relative group/section w-full ${isHidden ? 'opacity-50' : ''}`}
     >
       {/* Section Controls (editing mode) */}
       {isEditing && (
@@ -432,6 +465,7 @@ function SortableProfileSection({
         section={section}
         user={user}
         isEditing={isEditing}
+        isOwnProfile={isOwnProfile}
         onUpdate={onSectionUpdate ? (content) => onSectionUpdate(section.id, content) : undefined}
         onSocialLinksUpdate={onSocialLinksUpdate}
       />

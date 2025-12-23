@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from core.integrations.reddit_models import RedditCommunityAgent, RedditThread
 from core.projects.models import Project
+from core.projects.topic_utils import set_project_topics
 from services.agents.moderation import ContentModerator, ImageModerator
 from services.integrations.reddit.video_downloader import RedditVideoDownloader
 
@@ -671,9 +672,9 @@ class RedditSyncService:
                 f'Assigned {len(detected_categories)} categories to project: {[c.name for c in detected_categories]}'
             )
 
-        # Clean and assign topics (limit to 15)
+        # Clean and assign topics (limit to 15) using M2M helper
         topics = list(set(topics))[:15]  # Remove duplicates and limit
-        project.topics = topics
+        set_project_topics(project, topics)
         project.save()
 
         logger.info(f'Assigned {len(topics)} topics to project: {topics}')
@@ -871,6 +872,21 @@ class RedditSyncService:
             f'Created new thread: {project.slug} (r/{post_data["subreddit"]}) - '
             f'{metrics["score"]} score, {metrics["num_comments"]} comments'
         )
+
+        # Queue async AI taxonomy tagging for richer classification
+        try:
+            from services.tagging.tasks import tag_content_task
+
+            tag_content_task.delay(
+                content_type='project',
+                content_id=project.id,
+                tier='bulk',  # Use cheap model for imported content
+                force=False,
+            )
+            logger.debug(f'Queued AI tagging for Reddit project {project.id}')
+        except Exception as e:
+            # Don't fail project creation if tagging queue fails
+            logger.warning(f'Failed to queue AI tagging for project {project.id}: {e}')
 
     @classmethod
     def _update_thread(cls, thread: RedditThread, post_data: dict):

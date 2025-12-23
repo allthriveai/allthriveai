@@ -12,6 +12,7 @@ import { sanitizeHtml } from '@/utils/sanitize';
 import type { CustomSectionContent } from '@/types/profileSections';
 import type { ProjectBlock } from '@/types/models';
 import { EditableBlocksContainer } from '@/components/projects/shared/EditableBlocksContainer';
+import { IconCard } from '@/components/projects/shared/IconCard';
 
 interface CustomSectionProps {
   content: CustomSectionContent;
@@ -26,6 +27,8 @@ interface CustomSectionProps {
 function renderBlock(block: ProjectBlock, index: number) {
   switch (block.type) {
     case 'text':
+      // Don't render empty text blocks
+      if (!block.content?.trim()) return null;
       return (
         <div
           key={block.id || index}
@@ -41,10 +44,12 @@ function renderBlock(block: ProjectBlock, index: number) {
       );
 
     case 'image':
+      // Don't render images without a URL
+      if (!block.url) return null;
       return (
         <figure key={block.id || index} className="flex flex-col items-center">
           <img
-            src={block.url || ''}
+            src={block.url}
             alt={block.caption || ''}
             className="max-w-full lg:max-w-3xl h-auto rounded-xl shadow-lg"
           />
@@ -237,8 +242,16 @@ function renderBlock(block: ProjectBlock, index: number) {
 
     case 'icon_card':
       return (
-        <div key={block.id || index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <p className="text-gray-700 dark:text-gray-300">{block.text}</p>
+        <div key={block.id || index}>
+          <IconCard
+            data={{
+              icon: block.icon || 'fas:star',
+              title: block.text || '',
+              description: '',
+            }}
+            isEditing={false}
+            variant="compact"
+          />
         </div>
       );
 

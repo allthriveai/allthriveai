@@ -32,7 +32,7 @@ class Command(BaseCommand):
         self.stdout.write('OAuth callback URLs will be:')
         self.stdout.write(f'   {protocol}://{site.domain}/accounts/google/login/callback/')
         self.stdout.write(f'   {protocol}://{site.domain}/accounts/github/login/callback/')
-        self.stdout.write(f'   {protocol}://{site.domain}/accounts/linkedin_oauth2/login/callback/')
+        self.stdout.write(f'   {protocol}://{site.domain}/accounts/oidc/linkedin/login/callback/')
         self.stdout.write('')
         self.stdout.write(self.style.WARNING('⚠️  Make sure these EXACT URLs are in your OAuth provider consoles!'))
         self.stdout.write(self.style.WARNING('⚠️  Under "Authorized redirect URIs" or "Callback URLs"'))

@@ -51,3 +51,25 @@ class ProjectLikeThrottle(UserRateThrottle):
 
     rate = '60/hour'
     scope = 'project_like'
+
+
+class FeedbackThrottle(UserRateThrottle):
+    """Rate limit for feedback submission endpoints.
+
+    Prevents spam and abuse of feedback system.
+    Limit: 30 feedback submissions per hour.
+    """
+
+    rate = '30/hour'
+    scope = 'feedback'
+
+
+class FeedbackReadThrottle(UserRateThrottle):
+    """Rate limit for reading feedback data.
+
+    More generous than write limits.
+    Limit: 120 reads per hour.
+    """
+
+    rate = '120/hour'
+    scope = 'feedback_read'

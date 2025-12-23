@@ -36,8 +36,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--provider',
             type=str,
-            choices=['google', 'github', 'linkedin', 'linkedin_oauth2'],
-            help='Only process a specific provider',
+            choices=['google', 'github', 'linkedin', 'linkedin_oauth2', 'openid_connect'],
+            help='Only process a specific provider (openid_connect for LinkedIn OIDC)',
         )
 
     def handle(self, *args, **options):
@@ -46,7 +46,8 @@ class Command(BaseCommand):
         target_provider = options.get('provider')
 
         # Find social accounts
-        providers = ['google', 'github', 'linkedin', 'linkedin_oauth2']
+        # Note: LinkedIn can appear as 'linkedin', 'linkedin_oauth2' (legacy), or 'openid_connect' (OIDC)
+        providers = ['google', 'github', 'linkedin', 'linkedin_oauth2', 'openid_connect']
         if target_provider:
             providers = [target_provider]
 
@@ -132,8 +133,8 @@ class Command(BaseCommand):
                         user.location = location
                     fields_to_update.append('location')
 
-            # LinkedIn-specific fields
-            if provider in ('linkedin', 'linkedin_oauth2'):
+            # LinkedIn-specific fields (includes OIDC provider)
+            if provider in ('linkedin', 'linkedin_oauth2', 'openid_connect'):
                 # LinkedIn doesn't provide profile URL in basic scope
                 # but we can construct it if we have vanityName
                 vanity_name = extra_data.get('vanityName', '')

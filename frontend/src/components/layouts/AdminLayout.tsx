@@ -10,6 +10,15 @@ import {
   SparklesIcon,
   ClipboardDocumentListIcon,
   BeakerIcon,
+  MapIcon,
+  CpuChipIcon,
+  FolderIcon,
+  BoltIcon,
+  FireIcon,
+  RocketLaunchIcon,
+  CurrencyDollarIcon,
+  ChevronDownIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {
@@ -17,6 +26,7 @@ interface AdminSidebarItem {
   path: string;
   icon: typeof ChartBarIcon;
   badge?: number;
+  children?: AdminSidebarItem[];
 }
 
 interface AdminLayoutProps {
@@ -29,7 +39,9 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
   const location = useLocation();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/analytics']);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const prevPathRef = useRef<string>(location.pathname);
   const currentPath = location.pathname;
 
   // Redirect if not admin
@@ -39,27 +51,59 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
     }
   }, [user, isLoading, navigate]);
 
+  // Auto-expand parent menus only when navigating to a NEW parent section
+  // This prevents re-expansion after manual collapse
+  useEffect(() => {
+    const prevPath = prevPathRef.current;
+    prevPathRef.current = currentPath;
+
+    // Only auto-expand if we navigated from a different parent section
+    const prevParent = prevPath.startsWith('/admin/analytics') ? '/admin/analytics' :
+                       prevPath.startsWith('/admin/users') ? '/admin/users' : null;
+    const currentParent = currentPath.startsWith('/admin/analytics') ? '/admin/analytics' :
+                          currentPath.startsWith('/admin/users') ? '/admin/users' : null;
+
+    // If we're entering a new parent section, expand it
+    if (currentParent && currentParent !== prevParent) {
+      setExpandedItems(prev => prev.includes(currentParent) ? prev : [...prev, currentParent]);
+    }
+  }, [currentPath]);
+
+  const analyticsSubItems: AdminSidebarItem[] = [
+    { label: 'Overview', path: '/admin/analytics/overview', icon: ChartBarIcon },
+    { label: 'Users', path: '/admin/analytics/users', icon: UsersIcon },
+    { label: 'Battles', path: '/admin/analytics/battles', icon: BoltIcon },
+    { label: 'AI Usage', path: '/admin/analytics/ai', icon: CpuChipIcon },
+    { label: 'Content', path: '/admin/analytics/content', icon: FolderIcon },
+    { label: 'Engagement', path: '/admin/analytics/engagement', icon: FireIcon },
+    { label: 'Onboarding', path: '/admin/analytics/onboarding', icon: RocketLaunchIcon },
+    { label: 'Revenue', path: '/admin/analytics/revenue', icon: CurrencyDollarIcon },
+  ];
+
+  const userManagementSubItems: AdminSidebarItem[] = [
+    {
+      label: 'Invitations',
+      path: '/admin/users/invitations',
+      icon: EnvelopeIcon,
+      badge: pendingInvitationsCount > 0 ? pendingInvitationsCount : undefined,
+    },
+    { label: 'Impersonate', path: '/admin/users/impersonate', icon: UserGroupIcon },
+    { label: 'Circles', path: '/admin/users/circles', icon: UsersIcon },
+  ];
+
   const adminNavItems: AdminSidebarItem[] = [
     {
       label: 'Analytics',
       path: '/admin/analytics',
       icon: ChartBarIcon,
+      children: analyticsSubItems,
     },
     {
-      label: 'Invitations',
-      path: '/admin/invitations',
-      icon: EnvelopeIcon,
-      badge: pendingInvitationsCount > 0 ? pendingInvitationsCount : undefined,
-    },
-    {
-      label: 'Impersonate',
-      path: '/admin/impersonate',
+      label: 'User Management',
+      path: '/admin/users',
       icon: UserGroupIcon,
-    },
-    {
-      label: 'Circles',
-      path: '/admin/circles',
-      icon: UsersIcon,
+      badge: pendingInvitationsCount > 0 ? pendingInvitationsCount : undefined,
+      children: userManagementSubItems,
     },
     {
       label: 'Prompt Library',
@@ -76,28 +120,39 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       path: '/admin/uat-scenarios',
       icon: BeakerIcon,
     },
-    // Future admin sections can be added here:
-    // {
-    //   label: 'Users',
-    //   path: '/admin/users',
-    //   icon: UsersIcon,
-    // },
-    // {
-    //   label: 'Content',
-    //   path: '/admin/content',
-    //   icon: DocumentTextIcon,
-    // },
-    // {
-    //   label: 'Settings',
-    //   path: '/admin/settings',
-    //   icon: Cog6ToothIcon,
-    // },
+    {
+      label: 'Ember Flows',
+      path: '/admin/ember-flows',
+      icon: MapIcon,
+    },
+    {
+      label: 'Lesson Library',
+      path: '/admin/lessons',
+      icon: AcademicCapIcon,
+    },
   ];
 
-  // Find current active item
-  const activeItem = adminNavItems.find(item =>
-    currentPath.startsWith(item.path)
-  ) || adminNavItems[0];
+  // Find current active item (including children)
+  const findActiveItem = (items: AdminSidebarItem[]): AdminSidebarItem | undefined => {
+    for (const item of items) {
+      if (item.children) {
+        const childMatch = item.children.find(child => currentPath === child.path);
+        if (childMatch) return childMatch;
+      }
+      if (currentPath.startsWith(item.path)) return item;
+    }
+    return items[0];
+  };
+
+  const activeItem = findActiveItem(adminNavItems) || adminNavItems[0];
+
+  const toggleExpand = (path: string) => {
+    setExpandedItems(prev =>
+      prev.includes(path)
+        ? prev.filter(p => p !== path)
+        : [...prev, path]
+    );
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -148,11 +203,6 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
               <div className="flex items-center gap-3">
                 <activeItem.icon className="w-5 h-5 text-primary-600 dark:text-cyan-neon" />
                 <span className="font-medium">{activeItem.label}</span>
-                {activeItem.badge && (
-                  <span className="px-2 py-0.5 text-xs font-bold bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-accent rounded-full">
-                    {activeItem.badge}
-                  </span>
-                )}
               </div>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -164,35 +214,57 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
               </svg>
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Mobile Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-y-auto">
                 {adminNavItems.map((item) => {
-                  const isActive = item.path === activeItem.path;
+                  const isParentActive = currentPath.startsWith(item.path);
                   const Icon = item.icon;
                   return (
-                    <button
-                      key={item.path}
-                      onClick={() => handleMobileNav(item.path)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b last:border-0 border-slate-100 dark:border-white/5 ${
-                        isActive
-                          ? 'bg-primary-50 dark:bg-cyan-500/10 text-primary-600 dark:text-cyan-neon font-medium'
-                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-primary-600 dark:text-cyan-neon' : 'text-slate-400 dark:text-slate-500'}`} />
-                      {item.label}
-                      {item.badge && (
-                        <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-accent rounded-full">
-                          {item.badge}
-                        </span>
+                    <div key={item.path}>
+                      <button
+                        onClick={() => item.children ? toggleExpand(item.path) : handleMobileNav(item.path)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-b border-slate-100 dark:border-white/5 ${
+                          isParentActive
+                            ? 'bg-primary-50 dark:bg-cyan-500/10 text-primary-600 dark:text-cyan-neon font-medium'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 ${isParentActive ? 'text-primary-600 dark:text-cyan-neon' : 'text-slate-400 dark:text-slate-500'}`} />
+                        {item.label}
+                        {item.badge && (
+                          <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-accent rounded-full">
+                            {item.badge}
+                          </span>
+                        )}
+                        {item.children && (
+                          <ChevronDownIcon className={`w-4 h-4 ml-auto transition-transform ${expandedItems.includes(item.path) ? 'rotate-180' : ''}`} />
+                        )}
+                      </button>
+                      {/* Mobile Sub-items */}
+                      {item.children && expandedItems.includes(item.path) && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50">
+                          {item.children.map((child) => {
+                            const isChildActive = currentPath === child.path;
+                            const ChildIcon = child.icon;
+                            return (
+                              <button
+                                key={child.path}
+                                onClick={() => handleMobileNav(child.path)}
+                                className={`w-full flex items-center gap-3 pl-10 pr-4 py-2.5 text-sm transition-colors border-b last:border-0 border-slate-100 dark:border-white/5 ${
+                                  isChildActive
+                                    ? 'text-primary-600 dark:text-cyan-neon font-medium'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                              >
+                                <ChildIcon className={`w-4 h-4 ${isChildActive ? 'text-primary-600 dark:text-cyan-neon' : 'text-slate-400 dark:text-slate-500'}`} />
+                                {child.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
-                      {isActive && (
-                        <span className="ml-auto text-primary-600 dark:text-cyan-neon">
-                          ✓
-                        </span>
-                      )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -203,36 +275,108 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
           <nav className="hidden md:flex md:flex-col gap-1">
             {adminNavItems.map((item) => {
               const Icon = item.icon;
+              const isParentActive = currentPath.startsWith(item.path);
+              const hasChildren = item.children && item.children.length > 0;
+              const isExpanded = expandedItems.includes(item.path);
+
               return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-primary-500/10 dark:bg-cyan-500/10 text-primary-600 dark:text-cyan-neon border border-primary-500/20 dark:border-cyan-500/20 shadow-sm'
-                        : 'text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
+                <div key={item.path}>
+                  {hasChildren ? (
+                    // Parent with children - expandable
+                    <button
+                      onClick={() => toggleExpand(item.path)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        isParentActive
+                          ? 'bg-primary-500/10 dark:bg-cyan-500/10 text-primary-600 dark:text-cyan-neon border border-primary-500/20 dark:border-cyan-500/20 shadow-sm'
+                          : 'text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
                       <Icon
                         className={`w-5 h-5 ${
-                          isActive
+                          isParentActive
                             ? 'text-primary-600 dark:text-cyan-neon'
                             : 'text-slate-500 dark:text-slate-500'
                         }`}
                       />
-                      <span>{item.label}</span>
+                      <span className="flex-1 text-left">{item.label}</span>
                       {item.badge && (
-                        <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-accent rounded-full animate-pulse">
+                        <span className="px-2 py-0.5 text-xs font-bold bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-accent rounded-full animate-pulse">
                           {item.badge}
                         </span>
                       )}
-                    </>
+                      <ChevronDownIcon
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                  ) : (
+                    // Regular nav link
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                          isActive
+                            ? 'bg-primary-500/10 dark:bg-cyan-500/10 text-primary-600 dark:text-cyan-neon border border-primary-500/20 dark:border-cyan-500/20 shadow-sm'
+                            : 'text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                        }`
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <Icon
+                            className={`w-5 h-5 ${
+                              isActive
+                                ? 'text-primary-600 dark:text-cyan-neon'
+                                : 'text-slate-500 dark:text-slate-500'
+                            }`}
+                          />
+                          <span>{item.label}</span>
+                          {item.badge && (
+                            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-pink-100 dark:bg-pink-500/20 text-pink-600 dark:text-pink-accent rounded-full animate-pulse">
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </NavLink>
                   )}
-                </NavLink>
+
+                  {/* Sub-items */}
+                  {hasChildren && isExpanded && (
+                    <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-slate-700">
+                      {item.children!.map((child) => {
+                        const ChildIcon = child.icon;
+                        return (
+                          <NavLink
+                            key={child.path}
+                            to={child.path}
+                            className={({ isActive }) =>
+                              `flex items-center gap-2.5 pl-4 pr-3 py-2 text-sm transition-all ${
+                                isActive
+                                  ? 'text-primary-600 dark:text-cyan-neon font-medium border-l-2 border-primary-500 dark:border-cyan-neon -ml-px'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 rounded-r-lg'
+                              }`
+                            }
+                          >
+                            {({ isActive }) => (
+                              <>
+                                <ChildIcon
+                                  className={`w-4 h-4 ${
+                                    isActive
+                                      ? 'text-primary-600 dark:text-cyan-neon'
+                                      : 'text-slate-400 dark:text-slate-500'
+                                  }`}
+                                />
+                                <span>{child.label}</span>
+                              </>
+                            )}
+                          </NavLink>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

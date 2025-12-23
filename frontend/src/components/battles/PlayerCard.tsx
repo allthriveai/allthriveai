@@ -95,7 +95,7 @@ export function PlayerCard({
             w-12 h-12 md:w-20 md:h-20 rounded-xl md:rounded-2xl overflow-hidden
             ${isWinner ? 'ring-2 ring-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.4)]' : ''}
             ${isCurrentUser ? 'ring-2 ring-cyan-400/50' : ''}
-            bg-gradient-to-br from-slate-700/50 to-slate-800/50
+            bg-gradient-to-br from-slate-200/50 to-slate-300/50 dark:from-slate-700/50 dark:to-slate-800/50
           `}
         >
           {isAi ? (
@@ -136,8 +136,8 @@ export function PlayerCard({
       <h3
         className={`
           text-sm md:text-lg font-bold mb-1 md:mb-2 truncate max-w-full
-          ${isWinner ? 'text-amber-300' : 'text-white'}
-          ${isCurrentUser ? 'text-cyan-300' : ''}
+          ${isWinner ? 'text-amber-500 dark:text-amber-300' : 'text-slate-800 dark:text-white'}
+          ${isCurrentUser ? 'text-cyan-600 dark:text-cyan-300' : ''}
         `}
       >
         {username}
@@ -146,7 +146,7 @@ export function PlayerCard({
       {/* Status indicator */}
       <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
         {getStatusIcon()}
-        <span className="text-slate-400 hidden md:inline">{getStatusText()}</span>
+        <span className="text-slate-600 dark:text-slate-400 hidden md:inline">{getStatusText()}</span>
       </div>
 
       {/* Score (shown after judging) */}
@@ -157,9 +157,9 @@ export function PlayerCard({
           transition={{ delay: 0.5, type: 'spring' }}
           className="mt-2 md:mt-4 flex items-center gap-1 md:gap-2"
         >
-          <SparklesIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-400" />
-          <span className="text-lg md:text-2xl font-bold text-white">{score.toFixed(1)}</span>
-          <span className="text-slate-400 text-xs md:text-sm">pts</span>
+          <SparklesIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-500 dark:text-amber-400" />
+          <span className="text-lg md:text-2xl font-bold text-slate-800 dark:text-white">{score.toFixed(1)}</span>
+          <span className="text-slate-600 dark:text-slate-400 text-xs md:text-sm">pts</span>
         </motion.div>
       )}
     </motion.div>

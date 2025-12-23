@@ -286,6 +286,8 @@ class SideQuestAdmin(admin.ModelAdmin):
     ]
     search_fields = ['title', 'description', 'quest_type']
     ordering = ['category__order', 'order', '-created_at']
+    raw_id_fields = ['topic']  # Use raw_id instead of autocomplete since Taxonomy admin may not have search_fields
+    autocomplete_fields = ['category']
     readonly_fields = ['created_at', 'updated_at', 'quest_preview']
 
     list_per_page = 50

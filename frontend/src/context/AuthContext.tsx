@@ -1,11 +1,32 @@
 import { createContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { AuthState } from '@/types/models';
+import type { AuthState, User } from '@/types/models';
 import * as authService from '@/services/auth';
 import { ensureCsrfToken } from '@/services/api';
 import { setUser as setSentryUser } from '@/utils/sentry';
 import { analytics } from '@/utils/analytics';
 import { applyStoredReferralCode, hasPendingReferralCode } from '@/services/referral';
+
+// Dev bypass: set VITE_DEV_BYPASS_AUTH=true to skip authentication for local testing
+const DEV_BYPASS_AUTH = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+
+// Mock user for dev bypass
+const DEV_MOCK_USER: User = {
+  id: 999,
+  username: 'devuser',
+  email: 'dev@localhost',
+  firstName: 'Dev',
+  lastName: 'User',
+  fullName: 'Dev User',
+  role: 'admin',
+  roleDisplay: 'Admin',
+  subscriptionTier: 'premium',
+  totalPoints: 1000,
+  currentStreak: 5,
+  avatarUrl: undefined,
+  isGuest: false,
+  createdAt: new Date().toISOString(),
+};
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
@@ -36,6 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function checkAuth() {
+    // Dev bypass: skip API call and use mock user
+    if (DEV_BYPASS_AUTH) {
+      console.log('[DEV] Auth bypass enabled - using mock user');
+      setAuthState({
+        user: DEV_MOCK_USER,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+      return;
+    }
+
     try {
       const user = await authService.getCurrentUser();
       setAuthState({

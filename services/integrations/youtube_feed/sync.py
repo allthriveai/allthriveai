@@ -301,6 +301,21 @@ class YouTubeFeedSyncService:
 
         logger.info(f'Created YouTube video project: {project.title} ({feed_video.video_id})')
 
+        # Queue async AI taxonomy tagging for richer classification
+        try:
+            from services.tagging.tasks import tag_content_task
+
+            tag_content_task.delay(
+                content_type='project',
+                content_id=project.id,
+                tier='bulk',  # Use cheap model for imported content
+                force=False,
+            )
+            logger.debug(f'Queued AI tagging for project {project.id}')
+        except Exception as e:
+            # Don't fail project creation if tagging queue fails
+            logger.warning(f'Failed to queue AI tagging for project {project.id}: {e}')
+
     @classmethod
     def _update_video(cls, video_id: str, video_info: dict):
         """Update an existing YouTube video's metrics."""

@@ -46,7 +46,7 @@ export function TeamSlide() {
             The <GradientText>Team</GradientText>
           </h2>
           <p className="text-xl text-gray-400">
-            Builders who understand AI creators and building community
+            Builders who understand the AI curious and building community
           </p>
         </motion.div>
 

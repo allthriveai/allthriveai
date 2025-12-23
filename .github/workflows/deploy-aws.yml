@@ -707,12 +707,13 @@ jobs:
 
           # Run seed commands as a one-off task
           # These use update_or_create so they're safe to run on every deploy
+          # Note: This matches the commands in `make seed-all` and `make aws-seed-all`
           TASK_ARN=$(aws ecs run-task \
             --cluster ${{ env.ECS_CLUSTER }} \
             --task-definition ${{ steps.network.outputs.task_definition }} \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
-            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py seed_topics && python manage.py seed_taxonomies && python manage.py seed_categories && python manage.py seed_tools && python manage.py seed_challenge_types && python manage.py seed_billing && python manage.py seed_achievements && python manage.py create_pip && python manage.py seed_ai_daily_brief_agent"]}]}' \
+            --overrides '{"containerOverrides":[{"name":"web","command":["sh","-c","python manage.py seed_topics && python manage.py seed_taxonomies && python manage.py seed_categories && python manage.py seed_tools && python manage.py seed_quizzes && python manage.py seed_concepts && python manage.py seed_battle_prompts && python manage.py seed_billing && python manage.py seed_credit_packs && python manage.py seed_ai_pricing && python manage.py seed_achievements && python manage.py seed_core_team && python manage.py seed_ai_daily_brief_agent"]}]}' \
             --query 'tasks[0].taskArn' \
             --output text)
 
@@ -734,6 +735,76 @@ jobs:
           else
             echo "⚠️ Seed commands had issues (exit code: $EXIT_CODE) - continuing anyway"
             # Don't fail the deploy for seed issues - data may already exist
+          fi
+
+      - name: Setup Weaviate collections (idempotent)
+        run: |
+          echo "🔍 Setting up Weaviate collections..."
+
+          # Ensure Weaviate collections exist (creates if missing, skips if present)
+          # This is idempotent - safe to run on every deploy
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["python","manage.py","setup_weaviate"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "📦 Started Weaviate setup task: $TASK_ARN"
+
+          # Wait for completion
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Weaviate collections ready"
+          else
+            echo "⚠️ Weaviate setup had issues (exit code: $EXIT_CODE) - continuing anyway"
+            # Don't fail deploy - Weaviate may not be available yet or collections may exist
+          fi
+
+      - name: Index seeded content to Weaviate (async)
+        run: |
+          echo "📊 Triggering async Weaviate indexing for seeded content..."
+
+          # Queue async reindex tasks for seeded content
+          # This runs quickly (just queues Celery tasks) and indexing happens in background
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition ${{ steps.network.outputs.task_definition }} \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.network.outputs.subnets }}],securityGroups=[${{ steps.network.outputs.security_groups }}],assignPublicIp=${{ steps.network.outputs.assign_public_ip }}}" \
+            --overrides '{"containerOverrides":[{"name":"web","command":["python","manage.py","setup_weaviate","--reindex-all"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "📦 Started Weaviate reindex task: $TASK_ARN"
+
+          # Wait for completion (this just queues tasks, actual indexing is async)
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[?name==`web`].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "✅ Weaviate reindex tasks queued successfully"
+            echo "   Note: Actual indexing runs async via Celery workers"
+          else
+            echo "⚠️ Weaviate reindex had issues (exit code: $EXIT_CODE) - continuing anyway"
           fi
 
   # Smoke test OAuth endpoints after deployment
@@ -810,7 +881,7 @@ jobs:
         run: |
           echo "🔍 Testing LinkedIn OAuth endpoint..."
 
-          RESPONSE=$(curl -sI "https://api.allthrive.ai/accounts/linkedin_oauth2/login/" 2>&1)
+          RESPONSE=$(curl -sI "https://api.allthrive.ai/accounts/oidc/linkedin/login/" 2>&1)
           HTTP_CODE=$(echo "$RESPONSE" | grep -i "^HTTP" | tail -1 | awk '{print $2}')
 
           if [ "$HTTP_CODE" != "302" ]; then
@@ -867,7 +938,7 @@ jobs:
           echo "Verified endpoints:"
           echo "  ✅ GitHub OAuth:   https://api.allthrive.ai/accounts/github/login/"
           echo "  ✅ Google OAuth:   https://api.allthrive.ai/accounts/google/login/"
-          echo "  ✅ LinkedIn OAuth: https://api.allthrive.ai/accounts/linkedin_oauth2/login/"
+          echo "  ✅ LinkedIn OAuth: https://api.allthrive.ai/accounts/oidc/linkedin/login/"
           echo "  ✅ API Health:     https://api.allthrive.ai/api/v1/health/"
           echo "  ✅ Frontend:       https://allthrive.ai/"
           echo ""

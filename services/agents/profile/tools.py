@@ -68,6 +68,13 @@ VALID_SECTION_TYPES = {
     'custom',
 }
 
+# Section generation limits
+MAX_FEATURED_PROJECTS = 6
+MAX_FEATURED_CONTENT = 6
+MAX_SKILLS = 15
+MAX_LEARNING_GOALS = 5
+MAX_RECENT_BATTLES = 6
+
 
 # =============================================================================
 # Input Schemas
@@ -77,13 +84,18 @@ VALID_SECTION_TYPES = {
 class GatherUserDataInput(BaseModel):
     """Input for gather_user_data tool."""
 
+    model_config = {'extra': 'allow'}
+
     include_projects: bool = Field(default=True, description='Whether to include project details')
     include_achievements: bool = Field(default=True, description='Whether to include achievement data')
     include_interests: bool = Field(default=True, description='Whether to include interests/tags')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class GenerateProfileSectionsInput(BaseModel):
     """Input for generate_profile_sections tool."""
+
+    model_config = {'extra': 'allow'}
 
     template: str = Field(
         default='',
@@ -107,12 +119,16 @@ class GenerateProfileSectionsInput(BaseModel):
             'Write 2-3 sentences capturing who they are and what they do.'
         ),
     )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 class SaveProfileSectionsInput(BaseModel):
     """Input for save_profile_sections tool."""
 
+    model_config = {'extra': 'allow'}
+
     sections: list[dict] = Field(description='Profile sections to save')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
 # =============================================================================
@@ -213,7 +229,7 @@ def gather_user_data(
                 'type': p.type,
                 'is_showcased': p.is_showcased,
                 'external_url': p.external_url or '',
-                'topics': p.topics or [],
+                'topics': list(p.topics.values_list('name', flat=True)),
                 'hero_image_url': p.featured_image_url or '',
                 'created_at': p.created_at.isoformat() if p.created_at else None,
                 'tools': [{'name': t.name, 'slug': t.slug} for t in (p.tools.all()[:5] if hasattr(p, 'tools') else [])],
@@ -465,6 +481,10 @@ def _generate_section(
     if section_type == 'about':
         # Use AI-generated bio if provided, otherwise fall back to existing bio
         bio_content = about_bio.strip() if about_bio else basic.get('bio', '')
+        # Provide fallback if still empty
+        if not bio_content:
+            name = basic.get('full_name') or basic.get('username', 'This user')
+            bio_content = f'{name} is exploring and creating on AllThrive.'
         return {
             'id': section_id,
             'type': 'about',
@@ -522,7 +542,7 @@ def _generate_section(
             reverse=True,
         )
 
-        featured_ids = [p['id'] for p in sorted_projects[:6]]
+        featured_ids = [p['id'] for p in sorted_projects[:MAX_FEATURED_PROJECTS]]
 
         return {
             'id': section_id,
@@ -531,7 +551,7 @@ def _generate_section(
             'order': order,
             'content': {
                 'projectIds': featured_ids,
-                'maxProjects': 6,
+                'maxProjects': MAX_FEATURED_PROJECTS,
                 'layout': 'masonry',
                 'showDescription': True,
             },
@@ -585,7 +605,7 @@ def _generate_section(
             'visible': True,
             'order': order,
             'content': {
-                'skills': skills[:15],  # Limit to 15 skills
+                'skills': skills[:MAX_SKILLS],
                 'showCategories': True,
                 'showLevels': False,
                 'layout': 'tags',
@@ -597,7 +617,7 @@ def _generate_section(
         goals = []
         learning_tags = [i for i in interests if i.get('source') == 'learning' or 'learn' in i.get('name', '').lower()]
 
-        for tag in learning_tags[:5]:
+        for tag in learning_tags[:MAX_LEARNING_GOALS]:
             goals.append(
                 {
                     'topic': tag['name'],
@@ -639,7 +659,7 @@ def _generate_section(
             key=lambda p: p.get('created_at', ''),
             reverse=True,
         )
-        featured_ids = [p['id'] for p in sorted_projects[:6]]
+        featured_ids = [p['id'] for p in sorted_projects[:MAX_FEATURED_CONTENT]]
 
         return {
             'id': section_id,
@@ -648,7 +668,7 @@ def _generate_section(
             'order': order,
             'content': {
                 'projectIds': featured_ids,
-                'maxItems': 6,
+                'maxItems': MAX_FEATURED_CONTENT,
                 'title': 'Curated Picks',
                 'layout': 'masonry',
             },
@@ -677,7 +697,7 @@ def _generate_section(
             'visible': True,
             'order': order,
             'content': {
-                'maxBattles': 6,
+                'maxBattles': MAX_RECENT_BATTLES,
                 'showOutcome': True,
                 'showChallenge': True,
                 'layout': 'grid',
@@ -827,3 +847,6 @@ def gather_linkedin_data(user_id: int) -> dict:
 
 # Tool list for agent
 PROFILE_TOOLS = [gather_user_data, generate_profile_sections, save_profile_sections]
+
+# Tools that need state injection (user_id, username)
+TOOLS_NEEDING_STATE = {'gather_user_data', 'generate_profile_sections', 'save_profile_sections'}

@@ -53,12 +53,98 @@ def parse_github_url(url: str) -> tuple[str, str]:
     return match.group(1), match.group(2)
 
 
+def _refresh_github_token(social_token) -> str | None:
+    """
+    Refresh an expired GitHub App user token using the refresh token.
+
+    GitHub App tokens (ghu_...) expire after ~8 hours. This function uses
+    the refresh token (ghr_...) to get a new access token.
+
+    Args:
+        social_token: SocialToken instance with token and token_secret (refresh token)
+
+    Returns:
+        New access token or None if refresh failed
+    """
+    import requests
+    from django.conf import settings
+    from django.utils import timezone
+
+    refresh_token = social_token.token_secret
+    if not refresh_token:
+        logger.warning('No refresh token available for GitHub token refresh')
+        return None
+
+    # Get GitHub App client credentials
+    client_id = getattr(settings, 'GITHUB_CLIENT_ID', '')
+    client_secret = getattr(settings, 'GITHUB_CLIENT_SECRET', '')
+
+    if not client_id or not client_secret:
+        # Try to get from SocialApp
+        try:
+            from allauth.socialaccount.models import SocialApp
+
+            app = SocialApp.objects.get(provider='github')
+            client_id = app.client_id
+            client_secret = app.secret
+        except Exception as e:
+            logger.error(f'Failed to get GitHub App credentials: {e}')
+            return None
+
+    try:
+        response = requests.post(
+            'https://github.com/login/oauth/access_token',
+            data={
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'grant_type': 'refresh_token',
+                'refresh_token': refresh_token,
+            },
+            headers={'Accept': 'application/json'},
+            timeout=10,
+        )
+
+        if response.status_code != 200:
+            logger.error(f'GitHub token refresh failed with status {response.status_code}: {response.text}')
+            return None
+
+        data = response.json()
+
+        if 'error' in data:
+            logger.error(f'GitHub token refresh error: {data.get("error_description", data.get("error"))}')
+            return None
+
+        new_token = data.get('access_token')
+        new_refresh_token = data.get('refresh_token')
+        expires_in = data.get('expires_in', 28800)  # Default 8 hours
+
+        if not new_token:
+            logger.error('GitHub token refresh returned no access_token')
+            return None
+
+        # Update the stored token
+        social_token.token = new_token
+        if new_refresh_token:
+            social_token.token_secret = new_refresh_token
+        social_token.expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
+        social_token.save()
+
+        logger.info(f'Successfully refreshed GitHub token for account {social_token.account_id}')
+        return new_token
+
+    except Exception as e:
+        logger.error(f'Failed to refresh GitHub token: {e}', exc_info=True)
+        return None
+
+
 def get_user_github_token(user) -> str | None:
     """
     Get user's GitHub OAuth token from encrypted storage.
 
     Tries django-allauth first (for users who signed up with GitHub),
     then falls back to SocialConnection (for users who connected GitHub separately).
+
+    For GitHub App tokens (ghu_...), automatically refreshes if expired.
 
     Args:
         user: Django User instance
@@ -68,11 +154,24 @@ def get_user_github_token(user) -> str | None:
     """
     # Import here to avoid circular import during Django app loading
     from allauth.socialaccount.models import SocialAccount, SocialToken
+    from django.utils import timezone
 
     # First try django-allauth (for users who signed up with GitHub)
     try:
         social_account = SocialAccount.objects.get(user=user, provider='github')
         social_token = SocialToken.objects.get(account=social_account)
+
+        # Check if token is expired (GitHub App tokens start with 'ghu_')
+        if social_token.token and social_token.token.startswith('ghu_'):
+            if social_token.expires_at and social_token.expires_at < timezone.now():
+                logger.info(f'GitHub token expired for user {user.id}, attempting refresh')
+                new_token = _refresh_github_token(social_token)
+                if new_token:
+                    return new_token
+                else:
+                    logger.warning(f'Token refresh failed for user {user.id}, token may be invalid')
+                    return None
+
         logger.debug(f'Using GitHub OAuth token for user {user.id} from django-allauth')
         return social_token.token
     except (SocialAccount.DoesNotExist, SocialToken.DoesNotExist):
@@ -435,12 +534,31 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
                 project.categories.add(fallback)
                 logger.warning(f'Default category not found, using fallback "{fallback.name}" for project {project.id}')
 
-    # Apply topics
-    topics = analysis.get('topics', [])
-    if topics:
-        project.topics = topics[:20]  # Limit to 20
-        project.save(update_fields=['topics'])
-        logger.info(f'Applied {len(topics[:20])} topics to project {project.id}')
+    # Apply topics (ManyToMany to Taxonomy with taxonomy_type='topic')
+    topic_names = analysis.get('topics', [])
+    if topic_names:
+        topic_objects = []
+        for topic_name in topic_names[:20]:  # Limit to 20
+            # Normalize topic name: lowercase, replace spaces with hyphens
+            normalized_name = topic_name.lower().strip()
+            slug = normalized_name.replace(' ', '-')
+
+            # Find or create the topic taxonomy
+            topic_obj, created = Taxonomy.objects.get_or_create(
+                slug=slug,
+                taxonomy_type='topic',
+                defaults={
+                    'name': topic_name.title(),
+                    'is_active': True,
+                },
+            )
+            topic_objects.append(topic_obj)
+            if created:
+                logger.debug(f'Created new topic taxonomy: {topic_obj.name}')
+
+        # Use .set() for ManyToMany field
+        project.topics.set(topic_objects)
+        logger.info(f'Applied {len(topic_objects)} topics to project {project.id}')
 
     # Apply AI tools (ChatGPT, Claude, etc.) - try multiple matching strategies
     tools_added = 0
@@ -462,7 +580,9 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
             tools_added += 1
             logger.info(f'Added tool "{tool.name}" to project {project.id}')
         else:
-            logger.debug(f'Tool "{tool_name}" not found in database')
+            # Log as warning so it's visible in production logs
+            # This helps identify when users mention tools we don't have
+            logger.warning(f'Tool "{tool_name}" not found in database - consider adding it')
 
     # Apply technologies from tech_stack sections
     tech_added = 0
@@ -511,7 +631,8 @@ def apply_ai_metadata(project, analysis: dict, content: dict = None) -> None:
                     tech_added += 1
                     logger.info(f'Added tool "{tool.name}" to project {project.id}')
 
+    topics_count = len(topic_names) if topic_names else 0
     logger.info(
-        f'AI metadata applied: {categories_added} categories, {len(topics)} topics, '
+        f'AI metadata applied: {categories_added} categories, {topics_count} topics, '
         f'{tools_added} AI tools, {tech_added} technologies'
     )

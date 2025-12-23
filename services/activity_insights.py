@@ -43,6 +43,7 @@ class ActivityInsightsService:
                 'points_by_category': self.get_points_by_category(),
                 'insights': self.get_personalized_insights(),
                 'stats_summary': self.get_stats_summary(),
+                'game_stats': self.get_game_stats(),
             }
         except Exception as e:
             StructuredLogger.log_error(
@@ -183,17 +184,20 @@ class ActivityInsightsService:
         )
 
         # 1. Quiz topics - highest weight (active learning)
-        quiz_attempts = QuizAttempt.objects.filter(
-            user=self.user,
-            completed_at__isnull=False,
-        ).select_related('quiz')
+        quiz_attempts = (
+            QuizAttempt.objects.filter(
+                user=self.user,
+                completed_at__isnull=False,
+            )
+            .select_related('quiz')
+            .prefetch_related('quiz__topics')
+        )
 
         for attempt in quiz_attempts:
-            topic = attempt.quiz.topic
-            if topic:
-                topic_scores[topic]['quiz_count'] += 1
+            for topic in attempt.quiz.topics.all():
+                topic_scores[topic.name]['quiz_count'] += 1
                 # Weight by score
-                topic_scores[topic]['points'] += attempt.percentage_score
+                topic_scores[topic.name]['points'] += attempt.percentage_score
 
         # 2. User's own created projects (non-clipped)
         user_projects = Project.objects.filter(
@@ -202,9 +206,9 @@ class ActivityInsightsService:
         ).exclude(type='clipped')
 
         for project in user_projects:
-            for topic in project.topics or []:
-                topic_scores[topic]['project_count'] += 1
-                topic_scores[topic]['points'] += 10
+            for topic in project.topics.all():
+                topic_scores[topic.name]['project_count'] += 1
+                topic_scores[topic.name]['points'] += 10
 
         # 3. Clipped/saved projects - shows interest in learning
         clipped_projects = Project.objects.filter(
@@ -214,9 +218,9 @@ class ActivityInsightsService:
         )
 
         for project in clipped_projects:
-            for topic in project.topics or []:
-                topic_scores[topic]['clipped_count'] += 1
-                topic_scores[topic]['points'] += 8  # Strong interest signal
+            for topic in project.topics.all():
+                topic_scores[topic.name]['clipped_count'] += 1
+                topic_scores[topic.name]['points'] += 8  # Strong interest signal
 
         # 4. Liked projects - shows appreciation/interest
         liked_projects = ProjectLike.objects.filter(
@@ -225,9 +229,9 @@ class ActivityInsightsService:
 
         for like in liked_projects:
             if like.project:
-                for topic in like.project.topics or []:
-                    topic_scores[topic]['liked_count'] += 1
-                    topic_scores[topic]['points'] += 3  # Lighter engagement signal
+                for topic in like.project.topics.all():
+                    topic_scores[topic.name]['liked_count'] += 1
+                    topic_scores[topic.name]['points'] += 3  # Lighter engagement signal
 
         # 5. Prompt battles participated in - count the tool's category if available
         battles = PromptBattle.objects.filter(
@@ -348,6 +352,8 @@ class ActivityInsightsService:
             'referral': 'Referrals',
             'prompt_battle': 'Prompt Battles',
             'prompt_battle_win': 'Battle Wins',
+            'context_snake_score': 'Context Snake',
+            'ethics_defender_score': 'Ethics Defender',
         }
 
         # Colors for visualization
@@ -365,6 +371,8 @@ class ActivityInsightsService:
             'referral': '#06b6d4',  # cyan
             'prompt_battle': '#f43f5e',  # rose
             'prompt_battle_win': '#fbbf24',  # yellow/gold
+            'context_snake_score': '#22d3ee',  # cyan (matches game theme)
+            'ethics_defender_score': '#a855f7',  # purple
         }
 
         result = []
@@ -495,6 +503,39 @@ class ActivityInsightsService:
                 }
             )
 
+        # Game high score insight
+        from core.games.models import GameScore
+
+        snake_high = (
+            GameScore.objects.filter(
+                user=self.user,
+                game='context_snake',
+            )
+            .order_by('-score')
+            .first()
+        )
+
+        if snake_high and snake_high.score >= 30:
+            insights.append(
+                {
+                    'type': 'game_high_score',
+                    'icon': 'trophy',
+                    'title': 'Snake Master',
+                    'description': f'Your best run: {snake_high.score} tokens! Can you beat it?',
+                    'color': 'cyan',
+                }
+            )
+        elif snake_high and snake_high.score >= 15:
+            insights.append(
+                {
+                    'type': 'game_high_score',
+                    'icon': 'gamepad',
+                    'title': 'Token Collector',
+                    'description': f'High score: {snake_high.score} tokens. Keep practicing!',
+                    'color': 'blue',
+                }
+            )
+
         return insights[:4]  # Return max 4 insights
 
     def get_stats_summary(self):
@@ -562,6 +603,76 @@ class ActivityInsightsService:
                 'current_streak': 0,
                 'longest_streak': 0,
                 'battles_count': 0,
+            }
+
+    def get_game_stats(self):
+        """
+        Get game activity statistics for the user.
+        Returns high scores, play counts, and recent games.
+        """
+        try:
+            from core.games.models import GameScore
+
+            # Get all user's game scores
+            user_scores = GameScore.objects.filter(user=self.user)
+
+            # Game display names
+            game_display = {
+                'context_snake': 'Context Snake',
+                'ethics_defender': 'Ethics Defender',
+            }
+
+            # Game icons (FontAwesome names)
+            game_icons = {
+                'context_snake': 'worm',
+                'ethics_defender': 'shield',
+            }
+
+            # Aggregate stats per game
+            games = []
+            for game_type, display_name in game_display.items():
+                game_scores = user_scores.filter(game=game_type)
+                play_count = game_scores.count()
+
+                if play_count > 0:
+                    high_score_obj = game_scores.order_by('-score').first()
+                    recent_scores = game_scores.order_by('-created_at')[:5]
+
+                    games.append(
+                        {
+                            'game': game_type,
+                            'displayName': display_name,  # camelCase for frontend
+                            'icon': game_icons.get(game_type, 'gamepad'),
+                            'playCount': play_count,  # camelCase for frontend
+                            'highScore': high_score_obj.score if high_score_obj else 0,
+                            'highScoreDate': (high_score_obj.created_at.isoformat() if high_score_obj else None),
+                            'recentScores': [
+                                {
+                                    'score': s.score,
+                                    'date': s.created_at.isoformat(),
+                                }
+                                for s in recent_scores
+                            ],
+                        }
+                    )
+
+            # Calculate totals
+            total_plays = sum(g['playCount'] for g in games)
+
+            return {
+                'games': games,
+                'totalPlays': total_plays,  # camelCase for frontend
+            }
+        except Exception as e:
+            StructuredLogger.log_error(
+                message='Failed to get game stats',
+                error=e,
+                user=self.user,
+                extra={'operation': 'get_game_stats'},
+            )
+            return {
+                'games': [],
+                'totalPlays': 0,
             }
 
     def _format_topic_display(self, topic_slug):

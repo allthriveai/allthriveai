@@ -4,22 +4,17 @@ import {
   faGraduationCap,
   faUsers,
   faUser,
-  faLifeRing,
   faWrench,
   faTrophy,
   faBrain,
   faUserGroup,
   faGift,
   faCalendar,
-  faComments,
-  faBug,
-  faInfoCircle,
-  faHeart,
   faWandSparkles,
-  faDollarSign,
   faIdCard,
   faCog,
   faStore,
+  faCouch,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -46,20 +41,13 @@ export const getMenuSections = (
   username?: string
 ): MenuSection[] => [
   {
-    title: 'EXPLORE',
+    title: 'DISCOVER',
     icon: faCompass,
     path: '/explore',
-    items: [],
-  },
-  {
-    title: 'PLAY',
-    icon: faGamepad,
-    path: '/play/side-quests',
     items: [
-      { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
-      { label: 'Side Quests', path: '/play/side-quests', icon: faGamepad },
-      { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy, className: 'text-pink-500 dark:text-pink-400' },
-      { label: 'Quizzes', path: '/quizzes', icon: faBrain },
+      { label: 'Explore', path: '/explore', icon: faCompass },
+      { label: 'Tool Directory', path: '/tools', icon: faWrench },
+      { label: 'Marketplace (Coming Soon)', icon: faStore },
     ],
   },
   {
@@ -67,40 +55,29 @@ export const getMenuSections = (
     icon: faGraduationCap,
     path: '/learn',
     items: [
-      { label: 'Learning Paths', path: '#', icon: faGraduationCap },
+      { label: 'Learning Paths', path: '/learn', icon: faGraduationCap },
       { label: 'Quizzes', path: '/quizzes', icon: faBrain },
-      { label: 'Marketplace (Coming Soon)', icon: faStore },
-      { label: 'Tool Directory', path: '/tools', icon: faWrench },
     ],
   },
   {
-    title: 'MEMBERSHIP',
+    title: 'PLAY',
+    icon: faGamepad,
+    path: '/play/games',
+    items: [
+      { label: "This Week's Challenge", path: '/challenges', icon: faTrophy },
+      { label: 'Games', path: '/play/games', icon: faGamepad },
+      { label: 'Prompt Battle', path: '/play/prompt-battle', icon: faTrophy, className: 'text-pink-500 dark:text-pink-400' },
+    ],
+  },
+  {
+    title: 'CONNECT',
     icon: faUsers,
     path: '/thrive-circle',
     items: [
       { label: 'Your Thrive Circle', path: '/thrive-circle', icon: faUserGroup },
-      { label: 'Perks', path: '/perks', icon: faGift },
+      { label: 'The Lounge', path: '/lounge', icon: faCouch },
+      { label: 'Browse Members', path: '/explore?tab=profiles', icon: faUsers },
       { label: 'Events Calendar', onClick: () => onMenuClick('Events Calendar'), icon: faCalendar },
-    ],
-  },
-  {
-    title: 'SUPPORT',
-    icon: faLifeRing,
-    onClick: () => onMenuClick('Chat'),
-    items: [
-      { label: 'Chat', onClick: () => onMenuClick('Chat'), icon: faComments },
-      { label: 'Report an Issue', path: 'https://github.com/allthriveai/allthriveai/issues', external: true, icon: faBug },
-      {
-        label: 'About All Thrive',
-        onClick: () => onMenuClick('About Us'),
-        icon: faInfoCircle,
-        subItems: [
-          { label: 'About Us', onClick: () => onMenuClick('About Us'), icon: faInfoCircle },
-          { label: 'Our Values', onClick: () => onMenuClick('Our Values'), icon: faHeart },
-          { label: 'Whats New', path: '#', icon: faWandSparkles },
-        ]
-      },
-      { label: 'Pricing', path: '/pricing', icon: faDollarSign },
     ],
   },
   {
@@ -113,6 +90,7 @@ export const getMenuSections = (
         path: username ? `/${username}?tab=playground` : '#',
         icon: faIdCard,
       },
+      { label: 'Membership Perks', path: '/perks', icon: faGift },
       { label: 'Account Settings', path: '/account/settings', icon: faCog },
       { label: 'Onboarding', path: '/onboarding', icon: faWandSparkles },
     ],
@@ -121,21 +99,24 @@ export const getMenuSections = (
 
 // Route patterns for active state detection
 export const ROUTE_PATTERNS: Record<string, (path: string, search: string, username?: string) => boolean> = {
-  'EXPLORE': (path) => path === '/explore',
-  'LEARN': (path) => path === '/learn',
-  'Quizzes': (path) => path === '/quizzes',
+  'DISCOVER': (path) => path === '/explore',
+  'LEARN': (path) => path === '/learn' || path.startsWith('/learn/') || path === '/quizzes' || path.startsWith('/quizzes/'),
+  'Quizzes': (path) => path === '/quizzes' || path.startsWith('/quizzes/'),
   "This Week's Challenge": (path) => path === '/challenges' || path.startsWith('/challenges/') || path === '/this-weeks-challenge',
-  'Side Quests': (path) => path === '/play/side-quests',
+  'Games': (path) => path === '/play/games',
   'Prompt Battle': (path) => path === '/play/prompt-battle',
-  'Chat': (_, search) => search.includes('chat='),
   'Account Settings': (path, search) => path === '/account/settings' && !search,
   'Onboarding': (path) => path === '/onboarding',
   'My Profile': (path, search, username) =>
     username ? path === `/${username}` && (search.includes('tab=playground') || !search.includes('tab=')) : false,
   'Your Thrive Circle': (path) => path === '/thrive-circle',
-  'Perks': (path) => path === '/perks',
+  'The Lounge': (path) => path === '/lounge' || path.startsWith('/lounge/'),
+  'Browse Members': (path, search) => path === '/explore' && search.includes('tab=profiles'),
+  'My Messages': (path) => path === '/messages' || path.startsWith('/messages/'),
+  'Membership Perks': (path) => path === '/perks',
   'Marketplace': (path) => path === '/marketplace',
   'Tool Directory': (path) => path === '/tools',
+  'Learning Paths': (path) => path === '/learn' || path.startsWith('/learn/'),
 };
 
 // Timing constants

@@ -18,6 +18,8 @@ class AgentType(str, Enum):
     PROJECT = 'project'
     IMAGE_GENERATION = 'image_generation'
     SUPPORT = 'support'
+    ORCHESTRATION = 'orchestration'  # Site navigation, UI highlighting, action triggers
+    EMBER = 'ember'  # Unified agent with all tools (replaces multi-agent routing)
 
 
 @dataclass
@@ -167,8 +169,42 @@ AGENT_CAPABILITIES = {
         name='Support Agent',
         description='General help and platform support. Answers questions about features, '
         'troubleshoots issues, and provides guidance.',
-        can_handoff_to=[AgentType.DISCOVERY, AgentType.LEARNING, AgentType.PROJECT],
+        can_handoff_to=[AgentType.DISCOVERY, AgentType.LEARNING, AgentType.PROJECT, AgentType.ORCHESTRATION],
         keywords=['help', 'how to', 'what is', 'support', 'question', 'issue', 'problem'],
+    ),
+    AgentType.ORCHESTRATION: AgentCapability(
+        agent_type=AgentType.ORCHESTRATION,
+        name='Ember (Site Guide)',
+        description='Navigates users around the site, highlights UI elements to teach features, '
+        'opens panels/trays, and triggers actions. Use for "take me to", "show me where", '
+        '"go to", "where is", and site navigation requests.',
+        can_handoff_to=[AgentType.DISCOVERY, AgentType.LEARNING, AgentType.PROJECT, AgentType.SUPPORT],
+        keywords=[
+            'take me',
+            'go to',
+            'navigate',
+            'show me',
+            'where is',
+            'where do i',
+            'how do i find',
+            'open',
+            'battles',
+            'quizzes',
+            'explore',
+            'profile',
+            'settings',
+            'quest',
+            'challenges',
+            'side quest',
+        ],
+    ),
+    AgentType.EMBER: AgentCapability(
+        agent_type=AgentType.EMBER,
+        name='Ember (Unified Assistant)',
+        description='Unified AI assistant with access to ALL tools - discovery, learning, project creation, '
+        'navigation, and profile management. Single agent that handles any request without routing overhead.',
+        can_handoff_to=[],  # Ember handles everything, no handoffs needed
+        keywords=[],  # Ember is selected via feature flag, not keywords
     ),
 }
 

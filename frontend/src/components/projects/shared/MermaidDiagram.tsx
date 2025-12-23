@@ -158,30 +158,12 @@ export function MermaidDiagram({ code, className = '', caption }: MermaidDiagram
     );
   }
 
+  // If rendering failed, silently hide the diagram instead of showing an error
+  // This provides a better UX when AI generates invalid mermaid syntax
   if (error) {
-    return (
-      <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-        <p className="text-red-600 dark:text-red-400 text-sm font-medium mb-2">
-          Failed to render diagram
-        </p>
-        <details className="text-xs">
-          <summary className="cursor-pointer text-red-500 dark:text-red-400 hover:underline">
-            Show error details
-          </summary>
-          <p className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded text-red-700 dark:text-red-300 font-mono">
-            {error}
-          </p>
-        </details>
-        <details className="mt-2 text-xs">
-          <summary className="cursor-pointer text-gray-600 dark:text-gray-400 hover:underline">
-            Show diagram code
-          </summary>
-          <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded overflow-auto text-gray-700 dark:text-gray-300">
-            {code}
-          </pre>
-        </details>
-      </div>
-    );
+    // Log for debugging but don't show to users
+    console.warn('Mermaid diagram hidden due to render error:', error);
+    return null;
   }
 
   return (

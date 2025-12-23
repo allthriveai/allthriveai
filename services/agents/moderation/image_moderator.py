@@ -3,11 +3,13 @@ Image content moderation service using OpenAI's GPT-4 Vision API.
 """
 
 import logging
+import time
 from typing import Any
 
 from openai import APIConnectionError, APIError, APITimeoutError, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from core.ai_usage.tracker import AIUsageTracker
 from services.ai import AIProvider
 
 logger = logging.getLogger(__name__)
@@ -58,13 +60,14 @@ class ImageModerator:
         retry=retry_if_exception_type((APIConnectionError, APITimeoutError, RateLimitError)),
         reraise=True,
     )
-    def moderate_image(self, image_url: str, context: str = '') -> dict[str, Any]:
+    def moderate_image(self, image_url: str, context: str = '', user=None) -> dict[str, Any]:
         """
         Moderate an image using GPT-4 Vision API.
 
         Args:
             image_url: URL of the image to moderate
             context: Optional context about the image source
+            user: Optional user for usage tracking
 
         Returns:
             Dictionary with moderation results
@@ -92,8 +95,10 @@ class ImageModerator:
 
         try:
             # Use vision model from AI gateway to analyze the image
+            start_time = time.time()
+            model_used = self._get_vision_model()
             response = self.client.chat.completions.create(
-                model=self._get_vision_model(),
+                model=model_used,
                 messages=[
                     {
                         'role': 'system',
@@ -137,6 +142,27 @@ class ImageModerator:
                 max_tokens=300,
                 response_format={'type': 'json_object'},
             )
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            # Track usage - vision API is expensive
+            if user:
+                try:
+                    # Get actual token usage from response
+                    usage = response.usage
+                    provider = self.ai_provider.current_provider if self.ai_provider else 'openai'
+                    AIUsageTracker.track_usage(
+                        user=user,
+                        feature='image_moderation',
+                        provider=provider,
+                        model=model_used,
+                        input_tokens=usage.prompt_tokens if usage else 0,
+                        output_tokens=usage.completion_tokens if usage else 0,
+                        latency_ms=latency_ms,
+                        status='success',
+                        request_metadata={'context': context, 'image_url': image_url[:100]},
+                    )
+                except Exception as tracking_error:
+                    logger.warning(f'Failed to track image moderation usage: {tracking_error}')
 
             # Parse the response
             import json

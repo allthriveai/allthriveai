@@ -36,6 +36,7 @@ import { ChallengesSection } from './ChallengesSection';
 import { LinksSection } from './LinksSection';
 import { CustomSection } from './CustomSection';
 import { SlideUpSection } from './SlideUpSection';
+import { VideoSection } from './VideoSection';
 import { SectionTypePicker } from '../editor/SectionTypePicker';
 
 interface SectionRendererProps {
@@ -70,6 +71,8 @@ export function SectionRenderer({ section, isEditing, onUpdate }: SectionRendere
       return <LinksSection content={section.content as any} {...commonProps} />;
     case 'slideup':
       return <SlideUpSection content={section.content as any} {...commonProps} />;
+    case 'video':
+      return <VideoSection content={section.content as any} />;
     case 'custom':
       return <CustomSection content={section.content as any} {...commonProps} />;
     default:

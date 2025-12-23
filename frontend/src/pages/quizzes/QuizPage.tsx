@@ -7,6 +7,7 @@ import { QuizCard } from '@/components/quiz/QuizCard';
 import { QuizProgress } from '@/components/quiz/QuizProgress';
 import { QuizResults } from '@/components/quiz/QuizResults';
 import { QuestCompletionCelebration } from '@/components/side-quests/QuestCompletionCelebration';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 import type { Quiz, QuizQuestion, CompletedQuestInfo } from '@/components/quiz/types';
 
 type QuizState = 'intro' | 'taking' | 'feedback' | 'results';
@@ -14,6 +15,7 @@ type QuizState = 'intro' | 'taking' | 'feedback' | 'results';
 export default function QuizPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const pointsNotification = usePointsNotificationOptional();
 
   // All hooks must be called before any conditional returns
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -118,6 +120,16 @@ export default function QuizPage() {
     try {
       const response = await completeQuiz(attemptId);
       setQuizState('results');
+
+      // Show points notification if points were earned
+      if (response.pointsEarned && response.pointsEarned > 0 && pointsNotification) {
+        pointsNotification.showPointsNotification({
+          points: response.pointsEarned,
+          title: 'Quiz Complete!',
+          message: `Great job finishing "${quiz?.title || 'the quiz'}"!`,
+          activityType: 'quiz_complete',
+        });
+      }
 
       // Check if any quests were completed
       if (response.completedQuests && response.completedQuests.length > 0) {

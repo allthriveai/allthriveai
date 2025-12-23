@@ -32,7 +32,7 @@ const FEATURE_OPTIONS = [
   { key: 'marketplace', label: 'Marketplace', description: 'Sell courses & projects', icon: ShoppingBagIcon },
   { key: 'challenges', label: 'Games & Challenges', description: 'Weekly games and challenges', icon: CalendarDaysIcon },
   { key: 'investing', label: 'Investing', description: 'Find AI projects', icon: CurrencyDollarIcon },
-  { key: 'community', label: 'Community', description: 'Connect with creators', icon: UserGroupIcon },
+  { key: 'community', label: 'Community', description: 'Connect with members', icon: UserGroupIcon },
 ];
 
 // Integration options for portfolio import
@@ -237,7 +237,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
             /* Form */
             <form onSubmit={handleSubmit} className="space-y-5">
               <p className="text-gray-400 text-sm">
-                Join our community of AI creators! Fill out the form below and we'll
+                Join our AI curious community! Fill out the form below and we'll
                 review your request.
               </p>
 

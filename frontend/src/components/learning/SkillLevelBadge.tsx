@@ -27,7 +27,7 @@ const levelStyles: Record<LearningPathSkillLevel, { bg: string; text: string; bo
     text: 'text-purple-700 dark:text-purple-400',
     border: 'border-purple-200 dark:border-purple-800',
   },
-  master: {
+  expert: {
     bg: 'bg-amber-100 dark:bg-amber-900/30',
     text: 'text-amber-700 dark:text-amber-400',
     border: 'border-amber-200 dark:border-amber-800',

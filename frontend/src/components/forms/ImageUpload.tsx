@@ -3,6 +3,7 @@ import type { DragEvent, ChangeEvent } from 'react';
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { api } from '@/services/api';
 import type { ApiError } from '@/types/api';
+import { useAuth } from '@/hooks/useAuth';
 
 // File signature (magic bytes) mapping for image validation
 const FILE_SIGNATURES: Record<string, number[][]> = {
@@ -117,6 +118,7 @@ export function ImageUpload({
   showPresets = false,
   username = '',
 }: ImageUploadProps) {
+  const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -264,6 +266,19 @@ export function ImageUpload({
     setError(null);
   };
 
+  const handleOpenEmber = () => {
+    // Dispatch event to open Ember with avatar generation context
+    // This works directly since we're in DashboardLayout which listens for this event
+    if (user) {
+      window.dispatchEvent(new CustomEvent('openAvatarGenerate', {
+        detail: {
+          userId: user.id,
+          username: user.username,
+        }
+      }));
+    }
+  };
+
   return (
     <div className={`${className} flex flex-col items-center`}>
       <input
@@ -362,10 +377,10 @@ export function ImageUpload({
         <div className="mt-4 w-full">
           <button
             type="button"
-            onClick={() => setShowPresetPicker(!showPresetPicker)}
+            onClick={handleOpenEmber}
             className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
           >
-            {showPresetPicker ? 'Hide default avatars' : 'Or choose a default avatar'}
+            Or let Ember create one for you
           </button>
 
           {showPresetPicker && (

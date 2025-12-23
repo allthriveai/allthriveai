@@ -1,8 +1,29 @@
-# Discord-like Messaging & Forums for AllThrive AI
+# Community Messaging for AllThrive AI
 
 ## Executive Summary
 
-Build a community messaging system combining Discord's real-time feel with forum-style thread organization. Leverages existing Django Channels infrastructure, ThriveCircle community model, and established patterns. Target: 100K users with hybrid AI/human moderation.
+Build a community messaging system for human-to-human communication, separate from Ember AI chat. Three core features:
+
+1. **Forums (The Lounge)** - User-created topic-based discussion rooms, starting with a General forum
+2. **Direct Messages** - 1:1 and group messaging between users
+3. **Thrive Circle Chat** - Built-in messaging for weekly cohorts
+
+Target: 100K users with hybrid AI/human moderation. Leverages existing Django Channels infrastructure and ThriveCircle model.
+
+---
+
+## Relationship to Ember AI Chat
+
+The community messaging system is **separate from Ember AI chat**:
+
+| System | Purpose | Participants | Infrastructure |
+|--------|---------|--------------|----------------|
+| **Ember Chat** | AI assistant for help, projects, learning | User ↔ AI | Celery for LLM processing |
+| **Community Chat** | Human-to-human communication | User ↔ User(s) | Direct consumer (no Celery) |
+
+See `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` for Ember details.
+
+---
 
 ## Third-Party Services
 
@@ -13,8 +34,7 @@ Build a community messaging system combining Discord's real-time feel with forum
 | **MinIO** | File/image attachments | Existing |
 | **OpenAI API** | Content moderation | Existing (free endpoint) |
 | **AWS SES** | Email notifications (digests, mentions) | Existing |
-| **Twilio** | SMS for critical alerts (opt-in) | Existing |
-| **Celery** | Async message processing | Existing |
+| **Celery** | Async notifications (NOT message processing) | Existing |
 | **Firebase FCM** | Browser & mobile push notifications | **NEW** - free tier |
 
 ### Firebase Cloud Messaging Setup
@@ -25,22 +45,12 @@ Push Notification Flow:
 2. Frontend requests FCM token, sends to backend
 3. Backend stores FCM token per user device
 4. On new message/mention → Celery task → FCM API → Push to device
-
-Backend:
-- pip install firebase-admin
-- Store FCM tokens in User model or separate DeviceToken model
-- Celery task to send push via FCM
-
-Frontend:
-- firebase SDK for token registration
-- Service worker for background notifications
 ```
 
 **When to send push notifications:**
 - Direct messages (always, if enabled)
 - @mentions in rooms
 - Replies to your threads
-- Mod actions on your content
 
 **NOT for:**
 - Every message in a room (too noisy)
@@ -55,66 +65,57 @@ Frontend:
 
 ```
 COMMUNITY (nav dropdown)
-├── The Lounge          → /lounge         (topic-based discussions, open to all)
-├── Your Thrive Circle  → /thrive-circle  (intimate weekly cohort - KEEP AS-IS)
-├── Messages            → /messages       (DMs)
-├── Events              → (existing calendar)
-└── Perks               → /perks          (KEEP AS-IS)
+├── The Lounge      → /lounge         (forums - start with General)
+├── Thrive Circle   → /thrive-circle  (with built-in chat)
+└── Messages        → /messages       (DMs)
 ```
 
 **Key naming decisions:**
-- **The Lounge** = casual, open discussion rooms by topic (replaces "channels/spaces/hub")
-- **Thrive Circle** = kept as-is, intimate weekly cohorts of ~20-30 users
-- **Rooms** = topic areas within The Lounge (not "channels")
+- **The Lounge** = forums for topic discussions (user-created after trust threshold)
+- **Thrive Circle** = kept as-is with added chat functionality
+- **Forums** = topic rooms within The Lounge
+- **Rooms** = individual chat spaces (forum, circle, or DM)
 
 ---
 
-## Recommended Architecture
-
-### UX Model: "The Lounge" + Embedded Chat
-
-For a learning platform, we recommend **real-time chat with automatic threading** (hybrid Discord + Slack), plus **contextual embeds** throughout the platform:
-
-- **Real-time messaging** for engagement and quick help
-- **Persistent threads** for organized, searchable discussions
-- **Help rooms auto-thread** - each question becomes its own thread to reduce noise
-- **Embedded chat widgets** in projects, learning paths, and profile pages
-
-```
-THE LOUNGE (/lounge)
-├── 🎨 AI Art & Design       (topic room)
-├── 💻 Coding & Automation   (topic room)
-├── ✍️ Prompt Engineering    (topic room)
-├── 🆕 Newcomers Welcome     (topic room)
-└── 💬 General Chat          (topic room)
-
-Each room has:
-  └── Main chat (real-time)
-  └── Threads (for deeper discussions)
-  └── Pinned resources
-
-Embedded Chat Contexts:
-  └── Project page → Project discussion thread
-  └── Learning path → Path-specific help chat
-  └── User profile → "Ask me" mini-chat (if enabled)
-  └── Battle results → Post-battle discussion
-```
-
-### Voice/Video: Future Roadmap
-Data models include `room_type: 'voice'` field for future implementation, but v1 is text-only.
+## Architecture
 
 ### Community Structure
 
-| Layer | Name | Description | Moderation |
-|-------|------|-------------|------------|
-| 1 | The Lounge | Admin-created topic rooms (AI Art, Coding, etc.) | Platform mods |
-| 2 | Thrive Circle | Auto-generated private space per weekly cohort | Peer + platform |
-| 3 | Project Chats | Project owners enable discussions | Owner + platform |
+| Layer | Name | Description | Creation |
+|-------|------|-------------|----------|
+| 1 | Forums | Topic-based public/private rooms | Trust-gated (users) or admin |
+| 2 | Thrive Circle | Weekly cohort chat rooms | Auto-created with circle |
+| 3 | DMs | 1:1 or group direct messages | Any user |
 
-**Why not fully user-created communities:**
-- Moderation burden scales poorly
-- Spam/abuse vectors are harder to control
-- Resource allocation simpler with known room counts
+### Forum Creation (Trust-Gated)
+
+Users can create forums after reaching trust threshold:
+- **Minimum requirements**: 10 messages sent, 7 days active on platform
+- **Daily limit**: 3 forum creates per day
+- **Visibility options**: `public` | `private` | `unlisted`
+
+Admin-created forums (like "General") have no trust requirement to join.
+
+### Message Flow (No Celery for Messages)
+
+```
+User sends message
+    ↓
+WebSocket Consumer receives
+    ↓
+[Async] AI Moderation (OpenAI Moderation API)
+    ↓ (if passed)
+[Sync] Save to PostgreSQL
+    ↓
+[Sync] Broadcast via Redis Pub/Sub
+    ↓
+Channel Layer delivers to connected clients
+    ↓
+[Async] Celery: mentions, notifications only (NOT message processing)
+```
+
+**Key difference from Ember**: Community messages are handled directly in the consumer without Celery queuing.
 
 ---
 
@@ -123,18 +124,15 @@ Data models include `room_type: 'voice'` field for future implementation, but v1
 ### Core Models (new `core/community` app)
 
 ```python
-# Lounge - The main community space (singleton for now, extensible later)
-- id (UUID), name, slug, description
-- is_active, member_count, message_count
-
-# Room - A topic room within The Lounge (or private in Circle/Project)
+# Room - A forum, circle chat, or DM thread
 - id (UUID), name, slug, description, emoji
-- room_type: 'lounge' | 'circle' | 'project' | 'dm'
-- context_type: 'text' | 'announcement' | 'help' | 'showcase' | 'voice' (future)
-- lounge (FK Lounge, nullable), circle (FK ThriveCircle, nullable), project (FK Project, nullable)
+- room_type: 'forum' | 'circle' | 'dm'
+- visibility: 'public' | 'private' | 'unlisted'
+- creator (FK User, nullable for system-created)
+- circle (FK ThriveCircle, nullable)
 - auto_thread (bool), position, is_default
-- read_permission_level, write_permission_level
 - slow_mode_seconds, last_message_at, online_count
+- min_trust_to_join (int, default 0)
 
 # Thread - Attached to room or message
 - id (UUID), room (FK), parent_message (FK Message)
@@ -159,9 +157,9 @@ Data models include `room_type: 'voice'` field for future implementation, but v1
 - role: 'owner' | 'admin' | 'moderator' | 'trusted' | 'member' | 'muted' | 'banned'
 - trust_score, messages_sent, warnings_count
 
-# DirectMessageThread + DirectMessage
-- participants (M2M User), is_group
-- Similar message structure but simpler
+# DirectMessageThread
+- id (UUID), participants (M2M User), is_group
+- last_message_at, created_by (FK User)
 
 # ModerationAction + ModerationQueue
 - Track all mod actions with source: 'ai' | 'community' | 'admin' | 'system'
@@ -173,48 +171,191 @@ Data models include `room_type: 'voice'` field for future implementation, but v1
 
 ---
 
-## Real-Time Architecture
+## WebSocket Implementation
 
-### New WebSocket Consumers
+### Two-Step Token Exchange (REQUIRED)
+
+Follow existing pattern from `07-WEBSOCKET-IMPLEMENTATION.md`:
+
+1. **Frontend**: POST `/api/v1/auth/ws-connection-token/` with HTTP-only cookie
+2. **Backend**: Generate 60s TTL single-use token, store in Redis DB 2
+3. **Frontend**: Connect to `ws://host/ws/community/room/{id}/?connection_token={token}`
+4. **Backend**: Validate token in JWTAuthMiddleware, consume (delete) on use
+
+### WebSocket URL Routes
+
+Add to `core/community/routing.py`:
 
 | Consumer | Path | Purpose |
 |----------|------|---------|
-| `LoungeRoomConsumer` | `ws/lounge/room/<uuid>/` | Messages, typing, reactions |
-| `LoungePresenceConsumer` | `ws/lounge/presence/` | Online status across rooms |
-| `DirectMessageConsumer` | `ws/dm/<uuid>/` | Private messaging |
+| `CommunityRoomConsumer` | `ws/community/room/<uuid:room_id>/` | Forums, circle chat |
+| `DirectMessageConsumer` | `ws/community/dm/<uuid:thread_id>/` | Private messaging |
+| `CommunityPresenceConsumer` | `ws/community/presence/` | Online status across rooms |
 
 ### Redis Structure (DB 3 - existing Channels DB)
 
-```
-lounge:room:{id}                 # Room message group
-lounge:thread:{id}               # Thread message group
-lounge:presence:{room_id}        # SET of online user_ids (TTL 60s)
-lounge:typing:{room_id}          # HASH of user_id -> timestamp
-dm:thread:{id}                   # DM message group
-rate_limit:room:{user_id}        # Rate limiting counters
-```
-
-### Message Flow
+Key prefix: `community:` (distinct from Ember's `chat_` prefix)
 
 ```
-User sends message
-    ↓
-WebSocket Consumer receives
-    ↓
-[Async] AI Moderation (OpenAI Moderation API)
-    ↓ (if passed)
-[Sync] Save to PostgreSQL
-    ↓
-[Async] Broadcast via Redis Pub/Sub
-    ↓
-Channel Layer delivers to connected clients
-    ↓
-[Async] Celery: mentions, notifications, search indexing
+community:room:{id}              # Room message channel group
+community:thread:{id}            # Thread message channel group
+community:presence:{room_id}     # ZSET of online users (TTL 60s)
+community:typing:{room_id}       # HASH of user_id → timestamp (TTL 10s)
+community:dm:{thread_id}         # DM message channel group
+rate_limit:community:{user_id}   # Sliding window rate limiting
+```
+
+### Consumer Requirements
+
+Each consumer MUST implement:
+
+1. **Origin validation** - Check against CORS_ALLOWED_ORIGINS
+2. **Authentication check** - Reject if not authenticated (code 4001)
+3. **Heartbeat handling** - Respond to `{type: 'ping'}` with `{event: 'pong'}`
+4. **Rate limiting** - Use RateLimiter from `core/agents/security.py`
+5. **Group management** - Join/leave Redis channel groups
+
+### Frontend Hook Requirements
+
+New hooks must implement (per `useIntelligentChat` pattern):
+
+1. **Connection token fetch** - Before WebSocket connect
+2. **Heartbeat** - Send ping every 30s
+3. **Reconnection** - Exponential backoff (1s, 2s, 4s, 8s, 16s, max 30s)
+4. **Message limit** - MAX_MESSAGES = 100 (prevent memory leak)
+5. **Race condition guard** - `isConnecting` state to prevent duplicate connections
+6. **Error logging** - Use `logError()` from errorHandler
+
+---
+
+## Scalability (100K Users)
+
+### Database Optimizations
+
+- **Cursor-based pagination** for message history (O(1) vs offset's O(n))
+- **Composite indexes**: (room_id, created_at), (thread_id, created_at), (author_id, -created_at)
+- **Partial indexes**: is_flagged=True, is_pinned=True
+- **Connection pooling**: Use pgbouncer for PostgreSQL connections
+
+### Rate Limits
+
+| Action | Limit |
+|--------|-------|
+| Messages per minute | 10 |
+| Messages per hour | 100 |
+| Reactions per minute | 30 |
+| Forum creates per day | 3 (trust-gated users) |
+
+### Production Timeouts
+
+Reference existing AWS config:
+- ALB idle_timeout: 300s
+- CloudFront OriginReadTimeout: 300s
+- Daphne --websocket-timeout: 86400 (24h)
+- Daphne --ping-interval: 30s
+
+---
+
+## UI Design Requirements
+
+All community components MUST follow the Neon Glass design system.
+Reference: `frontend/src/pages/NeonGlassStyleguide.tsx` (`/styleguide-neon`)
+
+### Glass Surfaces
+
+| Class | Use Case |
+|-------|----------|
+| `.glass-panel` | Main containers (room view, DM inbox) |
+| `.glass-card` | Interactive cards (forum list items, user cards) |
+| `.glass-subtle` | Secondary containers (message bubbles) |
+
+### Message Styling
+
+- **System messages**: `glass-subtle p-4 rounded-2xl rounded-tl-sm`
+- **User messages**: `bg-gradient-to-r from-cyan-500 to-cyan-600 p-4 rounded-2xl rounded-tr-sm`
+- **Avatar**: `w-8 h-8 rounded-full` with gradient or user image
+
+### Buttons
+
+| Class | Use Case |
+|-------|----------|
+| `.btn-primary` | Primary actions (Send, Create Forum) |
+| `.btn-secondary` | Secondary actions (Cancel, Back) |
+| `.btn-outline` | Tertiary actions |
+| `.btn-ghost` | Icon-only buttons |
+
+### Inputs & Indicators
+
+- Use `.input-glass` for all text inputs
+- Online status: `.luminous-dot` (cyan glow)
+- Typing indicator: animated dots in slate-400
+- Unread badge: cyan bg with white text
+
+### Section Colors
+
+Use "Connect" gradient for Community nav: `from-#EC4899 to-#DB2777` (pink)
+
+---
+
+## Code Standards
+
+### API Case Conversion (Automatic)
+
+The existing axios interceptors handle all case conversion:
+- **Requests**: camelCase → snake_case (frontend → Django)
+- **Responses**: snake_case → camelCase (Django → frontend)
+
+Files:
+- `frontend/src/utils/caseTransform.ts`
+- `frontend/src/services/api.ts` (lines 84-125)
+
+**Rule**: All TypeScript interfaces MUST use camelCase:
+
+```typescript
+// CORRECT
+interface Message {
+  id: string;
+  roomId: string;
+  authorId: string;
+  createdAt: string;
+  messageType: 'text' | 'image' | 'system';
+}
+
+// WRONG
+interface Message {
+  room_id: string;  // ❌
+  created_at: string;  // ❌
+}
+```
+
+### Error Handling
+
+Use `errorHandler.ts` for all error handling:
+
+```typescript
+import { logError, handleError } from '@/utils/errorHandler';
+
+// In service functions:
+try {
+  const response = await api.get(`/community/rooms/${roomId}/messages/`);
+  return response.data;
+} catch (error) {
+  handleError('CommunityService.getRoomMessages', error, {
+    metadata: { roomId },
+    showAlert: false,
+  });
+  throw error;
+}
+
+// In WebSocket handlers:
+socket.onerror = (error) => {
+  logError('CommunityWebSocket.onError', error, { roomId });
+};
 ```
 
 ---
 
-## Moderation System (Hybrid - Free Tier)
+## Moderation System
 
 ### Two-Layer Pipeline (OpenAI Moderation API - Free)
 
@@ -237,91 +378,16 @@ Decision Thresholds:
 └── Score ≥ 0.7 → Block + queue for review
 ```
 
-**Cost: $0** - OpenAI Moderation API is free with no rate limits for reasonable use.
+### Trust Levels
+
+- `new`: Can't post links/images, 2x slow mode
+- `member`: Full posting (after 10 msgs, 3 days)
+- `trusted`: No slow mode, can create forums (after 50 msgs, 14 days)
 
 ### Community Moderator Tools
 
 - **Review Queue**: See flagged content with AI explanation
 - **Actions**: Approve, delete, warn, mute, ban, escalate
-- **Trust Levels**: Automatic progression based on behavior
-  - `new`: Can't post links/images, 2x slow mode
-  - `member`: Full posting (after 10 msgs, 3 days)
-  - `trusted`: No slow mode, can pin (after 50 msgs, 14 days)
-
----
-
-## Scalability (100K Users)
-
-### Database
-
-- **Cursor-based pagination** for message history (O(1) vs offset's O(n))
-- **Composite indexes** on (room, created_at), (thread, created_at), (author, -created_at)
-- **Partial indexes** for is_flagged=True, is_pinned=True
-
-### Redis
-
-- **Presence**: ZSET with timestamp scores, cleanup stale entries every 60s
-- **Typing**: HASH with 10s TTL per user
-- **Rate limiting**: Sliding window (10/min, 100/hour per user)
-
-### Rate Limits
-
-| Action | Limit |
-|--------|-------|
-| Messages per minute | 10 |
-| Messages per hour | 100 |
-| Reactions per minute | 30 |
-| Thread creates per hour | 5 |
-
----
-
-## Frontend Components
-
-```
-frontend/src/components/community/
-├── Lounge/             # The Lounge main view
-│   ├── LoungePage.tsx        # Full lounge layout
-│   ├── RoomList.tsx          # Left sidebar with topic rooms
-│   └── RoomListItem.tsx      # Individual room with online count
-├── Room/               # Room view (messages + threads)
-│   ├── RoomView.tsx
-│   ├── Message.tsx
-│   ├── MessageReactions.tsx
-│   └── MessageAttachment.tsx
-├── Composer/           # Rich text input
-│   ├── MessageComposer.tsx
-│   ├── EmojiPicker.tsx
-│   └── MentionSuggester.tsx
-├── Thread/             # Side panel for threads
-├── Presence/           # Online users, typing
-├── Moderation/         # Mod dashboard
-├── DirectMessages/     # DM UI
-└── Embeds/             # Contextual chat embeds
-    ├── ProjectChatEmbed.tsx      # Chat widget for project pages
-    ├── LearningPathChat.tsx      # Help chat for learning paths
-    ├── ProfileAskMe.tsx          # "Ask me" on user profiles
-    └── MinimalChatWidget.tsx     # Collapsible chat component
-```
-
-### Embedded Chat Strategy
-
-Embeds use the same WebSocket infrastructure but with a minimal UI:
-
-| Context | Room Type | Features |
-|---------|-----------|----------|
-| Project Page | Auto-created project room | Comments, Q&A, reactions |
-| Learning Path | Shared help room per path | Quick questions, peer help |
-| User Profile | DM-like "Ask me" (opt-in) | Direct questions to creator |
-| Battle Results | Post-battle thread | Discussion, rematch |
-
-Embeds share components with full community view but in collapsed/minimal mode.
-
-### Key Hooks
-
-- `useLoungeRoom(roomId)` - WebSocket for room messaging
-- `useLoungePresence()` - Track online users across rooms
-- `useDirectMessages(threadId)` - DM WebSocket
-- `useEmbeddedChat(contextType, contextId)` - For embedded widgets (resolves to room)
 
 ---
 
@@ -336,7 +402,7 @@ Embeds share components with full community view but in collapsed/minimal mode.
 
 ### Block/Mute
 
-- **Block**: Complete separation (no DMs, hidden messages, no mutual private spaces)
+- **Block**: Complete separation (no DMs, hidden messages)
 - **Mute**: Silent (no notifications but can still interact)
 
 ### GDPR
@@ -348,37 +414,36 @@ Embeds share components with full community view but in collapsed/minimal mode.
 
 ## Implementation Phases
 
-### Phase 1: Foundation (2-3 weeks)
+### Phase 1: Core Infrastructure
 - Create `core/community` Django app with models
-- Basic WebSocket consumer for messaging
+- Basic WebSocket consumer for room messaging
+- General forum (admin-created)
 - Frontend: LoungePage, RoomList, RoomView components
-- Integrate with existing auth
 
-### Phase 2: Real-Time (2 weeks)
-- Presence tracking
-- Typing indicators
-- Reactions
-- Threads
-- Cursor pagination
+### Phase 2: Thrive Circle Chat
+- Add Room FK to ThriveCircle model
+- Auto-create chat room when circle forms
+- Integrate chat UI into circle page
 
-### Phase 3: Moderation (2-3 weeks)
+### Phase 3: Direct Messages
+- DirectMessageThread model
+- DM-specific WebSocket consumer
+- DM inbox UI (/messages)
+
+### Phase 4: User-Created Forums
+- Forum creation UI (trust-gated)
+- Forum discovery/browse page
+- Forum moderation (owner + platform)
+
+### Phase 5: Moderation & Polish
 - OpenAI Moderation API integration
-- Moderation queue backend
-- Moderator dashboard UI
-- Trust levels
-- User reporting
-
-### Phase 4: Advanced (2 weeks)
-- Direct messages
-- Mentions and notifications
-- File/image attachments
-- Search integration
-
-### Phase 5: Integration (1-2 weeks)
-- Auto-create Circle Spaces
-- Project Space feature
+- Trust level progression
+- Reporting and moderation queue
 - Performance optimization
-- Load testing
+
+### Future Roadmap
+- Voice/video (data models include `room_type: 'voice'` for future)
+- Push notifications via Firebase FCM
 
 ---
 
@@ -390,8 +455,7 @@ Embeds share components with full community view but in collapsed/minimal mode.
 | `config/asgi.py` | Add community WebSocket routing |
 | `core/agents/routing.py` | Include community websocket_urlpatterns |
 | `core/users/models.py` | Add DM preferences, notification settings |
-| `core/thrive_circle/models.py` | Add OneToOne to Room |
-| `core/projects/models.py` | Add OneToOne to Room |
+| `core/thrive_circle/models.py` | Add Room FK for circle chat |
 | `frontend/src/App.tsx` | Add community routes |
 | `frontend/src/components/navigation/menuData.ts` | Replace MEMBERSHIP with COMMUNITY |
 
@@ -410,7 +474,7 @@ core/community/
 ├── serializers.py      # DRF serializers
 ├── permissions.py      # Custom permissions
 ├── services.py         # Business logic
-├── tasks.py            # Celery tasks (notifications, FCM)
+├── tasks.py            # Celery tasks (notifications only)
 └── tests/
 
 services/moderation/
@@ -427,12 +491,28 @@ services/notifications/
 **Frontend:**
 ```
 frontend/src/
-├── components/community/   # All components above
+├── components/community/
+│   ├── Lounge/
+│   │   ├── LoungePage.tsx
+│   │   ├── RoomList.tsx
+│   │   └── RoomListItem.tsx
+│   ├── Room/
+│   │   ├── RoomView.tsx
+│   │   ├── Message.tsx
+│   │   ├── MessageReactions.tsx
+│   │   └── MessageAttachment.tsx
+│   ├── Composer/
+│   │   ├── MessageComposer.tsx
+│   │   ├── EmojiPicker.tsx
+│   │   └── MentionSuggester.tsx
+│   ├── Thread/
+│   ├── Presence/
+│   ├── Moderation/
+│   └── DirectMessages/
 ├── hooks/
-│   ├── useLoungeRoom.ts
-│   ├── useLoungePresence.ts
-│   ├── useDirectMessages.ts
-│   └── useEmbeddedChat.ts
+│   ├── useCommunityRoom.ts
+│   ├── useCommunityPresence.ts
+│   └── useDirectMessages.ts
 ├── pages/community/
 │   ├── LoungePage.tsx
 │   ├── RoomPage.tsx
@@ -445,10 +525,21 @@ frontend/src/
 
 ## Critical Files to Read Before Implementation
 
-1. `core/battles/consumers.py` - Pattern for WebSocket consumers (1,381 lines, well-structured)
+1. `core/battles/consumers.py` - Pattern for WebSocket consumers (1,381 lines)
 2. `core/agents/middleware.py` - JWT auth middleware for WebSockets
 3. `core/agents/ws_connection_tokens.py` - Connection token pattern
 4. `core/thrive_circle/models.py` - Existing Circle model to integrate with
-5. `frontend/src/hooks/useBattleWebSocket.ts` - Frontend WebSocket pattern
-6. `core/projects/moderation.py` - Existing profanity filter to extend
-7. `frontend/src/components/navigation/menuData.ts` - Navigation structure to modify
+5. `frontend/src/hooks/useIntelligentChat.ts` - Frontend WebSocket pattern
+6. `frontend/src/utils/errorHandler.ts` - Global logger utility
+7. `frontend/src/utils/caseTransform.ts` - Case conversion utilities
+8. `frontend/src/services/api.ts` - Axios interceptors pattern
+9. `frontend/src/pages/NeonGlassStyleguide.tsx` - UI design system
+10. `docs/evergreen-architecture/07-WEBSOCKET-IMPLEMENTATION.md` - WebSocket architecture
+
+---
+
+## Related Documentation
+
+- `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` - Ember AI chat (separate system)
+- `/docs/evergreen-architecture/07-WEBSOCKET-IMPLEMENTATION.md` - WebSocket patterns
+- `/docs/evergreen-architecture/13-TAXONOMY-SYSTEM.md` - Could use for forum categorization later

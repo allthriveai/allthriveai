@@ -146,6 +146,8 @@ class QuizAdmin(admin.ModelAdmin):
     search_fields = ['title', 'description', 'topic']
     ordering = ['-created_at']
     inlines = [QuizQuestionInline]
+    autocomplete_fields = ['topics_taxonomy', 'categories', 'tools']
+    filter_horizontal = ['topics_taxonomy']
 
     def save_model(self, request, obj, form, change):
         if not change:  # If creating new quiz
