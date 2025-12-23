@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             model_name='savedlearningpath',
             name='is_published',
             field=models.BooleanField(
-                db_index=True, default=False, help_text='Whether this path is published to the explore feed'
+                db_index=True, default=True, help_text='Whether this path is published to the explore feed'
             ),
         ),
         migrations.AddField(
