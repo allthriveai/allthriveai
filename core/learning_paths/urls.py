@@ -94,6 +94,12 @@ urlpatterns = [
         views.ExploreLearningPathsView.as_view(),
         name='explore-learning-paths',
     ),
+    # Explore endpoint for individual AI lessons
+    path(
+        'explore/lessons/',
+        views.ExploreLessonsView.as_view(),
+        name='explore-lessons',
+    ),
     # Lesson image endpoint - on-demand image generation
     path(
         'me/saved-paths/<str:slug>/lessons/<int:order>/image/',

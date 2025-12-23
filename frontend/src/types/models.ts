@@ -438,6 +438,18 @@ export interface ToolWhatsNew {
   description: string;
 }
 
+export interface LearningPathMinimal {
+  id: number;
+  title: string;
+  slug: string;
+  difficulty?: string;
+  estimatedHours?: number;
+  coverImage?: string;
+  url: string;
+  creatorUsername: string;
+  creatorAvatar?: string;
+}
+
 export interface Tool {
   id: number;
   name: string;
@@ -507,6 +519,9 @@ export interface Tool {
 
   // Taxonomy Link
   taxonomy?: number;
+
+  // Related Learning Paths
+  learningPaths?: LearningPathMinimal[];
 
   // Topic suggestions
   suggestedTopics?: TopicSlug[];

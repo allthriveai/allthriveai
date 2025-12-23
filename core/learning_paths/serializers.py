@@ -313,6 +313,30 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
         return topics
 
 
+class PublicLessonSerializer(serializers.Serializer):
+    """Serializer for individual lessons in the explore feed.
+
+    Lessons are extracted from published SavedLearningPath curriculum items.
+    Each lesson has its Gemini-generated image from the LessonImage table.
+    """
+
+    id = serializers.CharField()  # Composite: f"{path_id}_{lesson_order}"
+    title = serializers.CharField()
+    summary = serializers.CharField(allow_blank=True)
+    image_url = serializers.URLField(allow_null=True)
+    difficulty = serializers.CharField()
+    estimated_minutes = serializers.IntegerField()
+    lesson_type = serializers.CharField()  # explanation, example, practice, etc.
+    path_id = serializers.IntegerField()
+    path_slug = serializers.CharField()
+    path_title = serializers.CharField()
+    username = serializers.CharField()
+    user_full_name = serializers.CharField()
+    user_avatar_url = serializers.URLField(allow_null=True)
+    lesson_order = serializers.IntegerField()
+    published_at = serializers.DateTimeField()
+
+
 class ConceptSerializer(serializers.ModelSerializer):
     """Serializer for Concept model."""
 

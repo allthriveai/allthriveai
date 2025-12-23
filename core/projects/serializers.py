@@ -769,6 +769,14 @@ class ProjectCardSerializer(serializers.ModelSerializer):
                     'heroVideoUrl': hero_video_url,
                 }
 
+        # Game projects - return gameUrl for direct navigation from explore feed
+        if obj.type == 'game':
+            game_url = obj.content.get('gameUrl')
+            if game_url:
+                return {
+                    'gameUrl': game_url,
+                }
+
         return None
 
     def to_representation(self, instance):

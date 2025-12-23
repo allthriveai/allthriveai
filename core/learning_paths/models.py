@@ -1779,6 +1779,14 @@ class SavedLearningPath(models.Model):
         help_text='When this path was published to explore feed',
     )
 
+    # Tools featured in this learning path (for discovery on tool pages)
+    tools = models.ManyToManyField(
+        'tools.Tool',
+        blank=True,
+        related_name='learning_paths',
+        help_text='Tools featured or taught in this learning path',
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
