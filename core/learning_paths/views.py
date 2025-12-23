@@ -19,6 +19,7 @@ from .models import (
     LearnerProfile,
     LearningEvent,
     LessonImage,
+    LessonRating,
     ProactiveOfferResponse,
     ProjectLearningMetadata,
     SavedLearningPath,
@@ -1186,3 +1187,174 @@ class LessonImageView(APIView):
         )
 
         return Response({'imageUrl': image_url})
+
+
+class PersistLessonView(APIView):
+    """Persist an AI-generated lesson when user first views it."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug, order):
+        """
+        POST /api/v1/me/saved-paths/{slug}/lessons/{order}/persist/
+
+        Persists an AI lesson from the curriculum as a Project.
+        Returns the persisted project info.
+        """
+        from services.agents.learning.lesson_persistence import LessonPersistenceService
+
+        # Get the saved path
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get curriculum item
+        order = int(order)
+        curriculum = path.path_data.get('curriculum', [])
+        lesson_item = next(
+            (c for c in curriculum if c.get('order') == order and c.get('type') == 'ai_lesson'),
+            None,
+        )
+
+        if not lesson_item:
+            return Response(
+                {'error': 'AI lesson not found at this order'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if already persisted
+        if lesson_item.get('persisted_project_id'):
+            return Response(
+                {
+                    'projectId': lesson_item['persisted_project_id'],
+                    'alreadyPersisted': True,
+                }
+            )
+
+        try:
+            # Get topics covered from path data
+            topics_covered = path.path_data.get('topics_covered', [])
+            topic = topics_covered[0] if topics_covered else path.title
+
+            # Persist the lesson
+            result = LessonPersistenceService.persist_ai_lesson(
+                title=lesson_item.get('title', 'AI Lesson'),
+                lesson_content=lesson_item.get('content', {}),
+                topic=topic,
+                difficulty=lesson_item.get('difficulty', 'beginner'),
+                estimated_minutes=lesson_item.get('estimated_minutes', 15),
+                user=request.user,
+                saved_path_id=path.id,
+                lesson_order=order,
+            )
+
+            # Update the curriculum item with persisted project ID
+            lesson_item['persisted_project_id'] = result['project_id']
+            lesson_item['persisted_url'] = result['url']
+            path.save(update_fields=['path_data', 'updated_at'])
+
+            return Response(
+                {
+                    'projectId': result['project_id'],
+                    'slug': result['slug'],
+                    'url': result['url'],
+                    'alreadyExisted': result['already_existed'],
+                }
+            )
+
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class LessonRatingView(APIView):
+    """Rate a lesson as helpful or not helpful."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_id):
+        """
+        POST /api/v1/lessons/{project_id}/rate/
+
+        Rate a lesson as helpful or not helpful.
+        """
+        from django.shortcuts import get_object_or_404
+
+        from core.projects.models import Project
+
+        # Get the project (must be a lesson)
+        project = get_object_or_404(
+            Project.objects.filter(learning_metadata__is_lesson=True),
+            id=project_id,
+        )
+
+        # Validate rating
+        rating_value = request.data.get('rating')
+        if rating_value not in ['helpful', 'not_helpful']:
+            return Response(
+                {'error': 'Rating must be "helpful" or "not_helpful"'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create or update rating
+        rating, created = LessonRating.objects.update_or_create(
+            user=request.user,
+            project=project,
+            defaults={
+                'rating': rating_value,
+                'feedback': request.data.get('feedback', ''),
+            },
+        )
+
+        # Update aggregate counts on ProjectLearningMetadata
+        if hasattr(project, 'learning_metadata'):
+            project.learning_metadata.update_rating_counts()
+
+        return Response(
+            {
+                'status': 'rated',
+                'rating': rating.rating,
+                'created': created,
+            }
+        )
+
+    def get(self, request, project_id):
+        """
+        GET /api/v1/lessons/{project_id}/rate/
+
+        Get the current user's rating for a lesson.
+        """
+        from django.shortcuts import get_object_or_404
+
+        from core.projects.models import Project
+
+        project = get_object_or_404(
+            Project.objects.filter(learning_metadata__is_lesson=True),
+            id=project_id,
+        )
+
+        rating = LessonRating.objects.filter(
+            user=request.user,
+            project=project,
+        ).first()
+
+        if not rating:
+            return Response({'rating': None})
+
+        return Response(
+            {
+                'rating': rating.rating,
+                'feedback': rating.feedback,
+                'createdAt': rating.created_at.isoformat(),
+            }
+        )

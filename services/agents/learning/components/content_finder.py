@@ -41,6 +41,7 @@ class ProjectInfo(TypedDict):
     url: str
     difficulty: str
     description: str
+    is_lesson: bool
 
 
 class QuizInfo(TypedDict):
@@ -217,9 +218,18 @@ class ContentFinder:
                 is_learning_eligible=True,
             )
 
+            # Use subquery to annotate is_lesson status
+            lesson_subquery = ProjectLearningMetadata.objects.filter(
+                project_id=OuterRef('pk'),
+                is_lesson=True,
+            )
+
             queryset = (
                 Project.objects.filter(base_filter & content_filter)
-                .annotate(is_learning_eligible=Exists(eligible_subquery))
+                .annotate(
+                    is_learning_eligible=Exists(eligible_subquery),
+                    is_lesson_annotated=Exists(lesson_subquery),
+                )
                 .select_related(
                     'user',
                     'content_type_taxonomy',
@@ -273,6 +283,7 @@ class ContentFinder:
                         'url': f'/{project.user.username}/{project.slug}',
                         'difficulty': difficulty_slug,
                         'description': (project.description or '')[:200],
+                        'is_lesson': getattr(project, 'is_lesson_annotated', False),
                     }
                 )
 

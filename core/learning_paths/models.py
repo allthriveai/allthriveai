@@ -716,6 +716,24 @@ class ProjectLearningMetadata(models.Model):
         db_index=True,
         help_text='Whether this project appears in learning content',
     )
+
+    # Is this curated/AI-generated educational content?
+    # Only is_lesson=True projects count toward content gap
+    is_lesson = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Whether this project is curated educational content for learning paths',
+    )
+
+    # Rating aggregates for quality tracking
+    positive_ratings = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of helpful ratings from users',
+    )
+    negative_ratings = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of not helpful ratings from users',
+    )
     learning_quality_score = models.FloatField(
         default=0.0,
         db_index=True,
@@ -792,6 +810,26 @@ class ProjectLearningMetadata(models.Model):
         tech_score = (1.0 if self.key_techniques else 0.0) * 0.2
 
         self.learning_quality_score = desc_score + views_score + arch_score + tech_score
+
+    @property
+    def rating_quality_score(self) -> float:
+        """Quality score from 0.0 to 1.0 based on user ratings."""
+        total = self.positive_ratings + self.negative_ratings
+        if total == 0:
+            return 0.5  # Neutral default
+        return self.positive_ratings / total
+
+    def update_rating_counts(self):
+        """Update rating aggregates from LessonRating records."""
+        from django.db.models import Count, Q
+
+        ratings = self.project.lesson_ratings.aggregate(
+            positive=Count('id', filter=Q(rating='helpful')),
+            negative=Count('id', filter=Q(rating='not_helpful')),
+        )
+        self.positive_ratings = ratings['positive'] or 0
+        self.negative_ratings = ratings['negative'] or 0
+        self.save(update_fields=['positive_ratings', 'negative_ratings', 'updated_at'])
 
 
 # ============================================================================
@@ -1800,3 +1838,54 @@ class LessonImage(models.Model):
 
     def __str__(self):
         return f'Image for lesson {self.lesson_order} in {self.saved_path.title}'
+
+
+# ============================================================================
+# LESSON RATING - User feedback on lesson quality
+# ============================================================================
+
+
+class LessonRating(models.Model):
+    """
+    User feedback on lesson quality for continuous improvement.
+
+    Ratings are aggregated on ProjectLearningMetadata for efficient querying.
+    One rating per user per lesson is enforced via unique_together.
+    """
+
+    class Rating(models.TextChoices):
+        HELPFUL = 'helpful', 'Helpful'
+        NOT_HELPFUL = 'not_helpful', 'Not Helpful'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='lesson_ratings',
+    )
+    project = models.ForeignKey(
+        'core.Project',
+        on_delete=models.CASCADE,
+        related_name='lesson_ratings',
+    )
+    rating = models.CharField(
+        max_length=20,
+        choices=Rating.choices,
+    )
+    feedback = models.TextField(
+        blank=True,
+        help_text='Optional written feedback from user',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'project']
+        verbose_name = 'Lesson Rating'
+        verbose_name_plural = 'Lesson Ratings'
+        indexes = [
+            models.Index(fields=['project', 'rating']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} rated {self.project.title} as {self.rating}'

@@ -104,6 +104,12 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
     username: string;
   } | null>(null);
 
+  // Avatar generation state (from settings page)
+  const [avatarGenerateContext, setAvatarGenerateContext] = useState<{
+    userId: number;
+    username: string;
+  } | null>(null);
+
   // Learning setup context state
   const [learningSetupContext, setLearningSetupContext] = useState<LearningSetupContext | null>(null);
 
@@ -264,6 +270,22 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
     return () => window.removeEventListener('openProfileGenerate', handleProfileGenerateEvent as EventListener);
   }, []);
 
+  // Listen for avatar generation event (from ImageUpload on settings page)
+  useEffect(() => {
+    const handleAvatarGenerateEvent = (event: CustomEvent<{
+      userId: number;
+      username: string;
+    }>) => {
+      const { userId, username } = event.detail;
+      setAvatarGenerateContext({ userId, username });
+      setAddProjectOpen(true);
+      setAboutOpen(false);
+      setEventsOpen(false);
+    };
+    window.addEventListener('openAvatarGenerate', handleAvatarGenerateEvent as EventListener);
+    return () => window.removeEventListener('openAvatarGenerate', handleAvatarGenerateEvent as EventListener);
+  }, []);
+
   const handleMenuClick = useCallback((menuItem: string) => {
     if (menuItem === 'About Us') {
       setAboutOpen((wasOpen) => {
@@ -318,6 +340,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
     setAddProjectOpen(false);
     setArchitectureRegenerateContext(null);
     setProfileGenerateContext(null);
+    setAvatarGenerateContext(null);
   };
 
   const handleOpenCommentPanel = useCallback((project: Project) => {
@@ -386,11 +409,14 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
                 ? `project-${architectureRegenerateContext.projectId}-architecture`
                 : profileGenerateContext
                   ? `profile-${profileGenerateContext.userId}-generate`
-                  : conversationId
+                  : avatarGenerateContext
+                    ? `avatar-${avatarGenerateContext.userId}-generate`
+                    : conversationId
             }
             context={chatContext}
             architectureRegenerateContext={architectureRegenerateContext}
             profileGenerateContext={profileGenerateContext}
+            avatarGenerateContext={avatarGenerateContext}
             learningSetupContext={learningSetupContext}
             defaultExpanded={chatExpanded}
           />

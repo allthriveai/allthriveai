@@ -25,6 +25,12 @@ export interface ProfileGenerateContext {
   username: string;
 }
 
+// Avatar generation context - triggers initial message for avatar creation (from settings)
+export interface AvatarGenerateContext {
+  userId: number;
+  username: string;
+}
+
 // Learning setup context - shows learning goal selection before chat
 export interface LearningSetupContext {
   needsSetup: boolean;

@@ -87,4 +87,16 @@ urlpatterns = [
         views.LessonImageView.as_view(),
         name='lesson-image',
     ),
+    # Lesson persistence endpoint - persist AI lesson as Project when viewed
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/persist/',
+        views.PersistLessonView.as_view(),
+        name='persist-lesson',
+    ),
+    # Lesson rating endpoints
+    path(
+        'lessons/<int:project_id>/rate/',
+        views.LessonRatingView.as_view(),
+        name='lesson-rating',
+    ),
 ]

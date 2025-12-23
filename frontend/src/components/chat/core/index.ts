@@ -18,6 +18,7 @@ export type {
   ChatContext,
   ArchitectureRegenerateContext,
   ProfileGenerateContext,
+  AvatarGenerateContext,
   LearningSetupContext,
   PendingAction,
   OnboardingState,

@@ -563,27 +563,33 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
     def _has_content_gap(cls, existing_content: dict) -> bool:
         """Determine if there's a content gap requiring AI generation.
 
-        Only counts content that would actually be added as individual curriculum items:
-        - Videos, articles, code-repos (from projects with matching content_type)
+        Only counts LESSON content (is_lesson=True) that would be added as curriculum items:
+        - Videos, articles, code-repos (from projects with is_lesson=True and matching content_type)
         - Quizzes and games
         - Tool overview
 
-        Does NOT count generic projects (they only appear in related_projects section).
+        Regular community projects (is_lesson=False) only appear in related_projects section
+        and do NOT count toward filling the content gap.
         """
         projects = existing_content.get('projects', [])
         quizzes = existing_content.get('quizzes', [])
         games = existing_content.get('games', [])
         tool = existing_content.get('tool')
 
-        # Count projects that would be added as curriculum items
+        # Only count LESSON projects (is_lesson=True)
+        lesson_projects = [p for p in projects if p.get('is_lesson', False)]
+
+        # Count lesson projects that would be added as curriculum items
         # Match content-video, video, content-article, article, etc.
         curriculum_content_types = {'video', 'article', 'code-repo'}
-        curriculum_projects = [
-            p for p in projects if any(ct in (p.get('content_type') or '').lower() for ct in curriculum_content_types)
+        curriculum_lesson_projects = [
+            p
+            for p in lesson_projects
+            if any(ct in (p.get('content_type') or '').lower() for ct in curriculum_content_types)
         ]
 
-        # Total = tool (if exists) + curriculum projects + quizzes + games
-        total_curriculum_items = (1 if tool else 0) + len(curriculum_projects) + len(quizzes) + len(games)
+        # Total = tool (if exists) + lesson projects + quizzes + games
+        total_curriculum_items = (1 if tool else 0) + len(curriculum_lesson_projects) + len(quizzes) + len(games)
 
         # Consider it a gap if we have fewer than 3 curriculum items
         # This ensures AI lessons are generated when we only have related projects
@@ -741,7 +747,12 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
         user_id: int | None = None,
     ) -> AILessonContent | None:
         """Generate a single AI lesson for a concept."""
+        from django.contrib.auth import get_user_model
+
+        from core.ai_usage.tracker import AIUsageTracker
         from services.ai.provider import AIProvider
+
+        User = get_user_model()
 
         # Build the personalized prompt
         style_instruction = STYLE_INSTRUCTIONS.get(learning_style, STYLE_INSTRUCTIONS['mixed'])
@@ -765,6 +776,38 @@ Remember to return valid JSON matching the required structure."""
                 temperature=0.7,
                 max_tokens=2000,
             )
+
+            # Track AI usage for billing and analytics
+            if user_id and ai.last_usage:
+                try:
+                    user = User.objects.get(id=user_id)
+                    AIUsageTracker.track_usage(
+                        user=user,
+                        feature='lesson_generation',
+                        provider=ai._provider.value if ai._provider else 'unknown',
+                        model=ai.last_usage.get('gateway_model', 'gpt-4o-mini'),
+                        input_tokens=ai.last_usage.get('prompt_tokens', 0),
+                        output_tokens=ai.last_usage.get('completion_tokens', 0),
+                        request_type='completion',
+                        status='success',
+                        request_metadata={
+                            'concept': concept,
+                            'topic': topic,
+                            'learning_style': learning_style,
+                            'difficulty': difficulty,
+                        },
+                        gateway_metadata={
+                            'gateway_provider': ai.last_usage.get('gateway_provider'),
+                            'gateway_model': ai.last_usage.get('gateway_model'),
+                            'requested_model': ai.last_usage.get('requested_model'),
+                        }
+                        if ai.last_usage.get('gateway_provider')
+                        else None,
+                    )
+                except User.DoesNotExist:
+                    logger.warning(f'User {user_id} not found for AI usage tracking')
+                except Exception as e:
+                    logger.error(f'Failed to track AI usage: {e}', exc_info=True)
 
             # Parse JSON response
             lesson_content = cls._parse_lesson_response(response)

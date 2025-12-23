@@ -189,14 +189,14 @@ function ImageCardGrid({
 
 /**
  * Normalize AllThrive URLs to relative paths.
- * Converts absolute URLs like https://allthriveai.com/path or https://www.allthriveai.com/path
- * to relative URLs like /path for proper internal navigation.
+ * Converts absolute URLs like https://allthrive.ai/path to relative URLs like /path
+ * for proper internal navigation.
  */
 function normalizeAllThriveUrl(href: string | undefined): string | undefined {
   if (!href) return href;
 
-  // Match allthriveai.com or www.allthriveai.com (with or without https://)
-  const allThrivePattern = /^(https?:\/\/)?(www\.)?allthriveai\.com/i;
+  // Match allthrive.ai or www.allthrive.ai (with or without https://)
+  const allThrivePattern = /^(https?:\/\/)?(www\.)?allthrive\.ai/i;
   if (allThrivePattern.test(href)) {
     // Extract the path portion after the domain
     const url = href.replace(allThrivePattern, '');
@@ -545,7 +545,7 @@ export function AssistantMessage({
             className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover"
           />
           <div className="flex-1 min-w-0">
-            <div className="glass-message px-5 py-4 rounded-2xl rounded-br-sm">
+            <div className="glass-message px-5 py-4 rounded-2xl rounded-bl-sm">
               <div className="text-lg text-slate-700 dark:text-slate-200 prose prose-lg prose-slate dark:prose-invert max-w-none">
                 {renderMarkdownContent(mainContent, true)}
               </div>

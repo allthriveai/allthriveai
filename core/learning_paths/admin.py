@@ -8,8 +8,10 @@ from .models import (
     LearnerProfile,
     LearningEvent,
     LearningOutcome,
+    LessonRating,
     MicroLesson,
     ProjectLearningMetadata,
+    SavedLearningPath,
     UserConceptMastery,
     UserLearningPath,
     UserSkillProficiency,
@@ -137,18 +139,70 @@ class MicroLessonAdmin(admin.ModelAdmin):
 class ProjectLearningMetadataAdmin(admin.ModelAdmin):
     list_display = [
         'project',
+        'is_lesson',
         'is_learning_eligible',
         'learning_quality_score',
         'complexity_level',
+        'positive_ratings',
+        'negative_ratings',
         'times_used_for_learning',
     ]
-    list_filter = ['is_learning_eligible', 'complexity_level']
+    list_filter = ['is_lesson', 'is_learning_eligible', 'complexity_level']
     search_fields = ['project__title', 'key_techniques', 'learning_summary']
     filter_horizontal = ['concepts']
-    readonly_fields = ['times_used_for_learning', 'last_used_for_learning', 'created_at', 'updated_at']
-    ordering = ['-learning_quality_score']
+    readonly_fields = [
+        'times_used_for_learning',
+        'last_used_for_learning',
+        'positive_ratings',
+        'negative_ratings',
+        'created_at',
+        'updated_at',
+    ]
+    ordering = ['-is_lesson', '-learning_quality_score']
 
-    actions = ['recalculate_eligibility']
+    fieldsets = (
+        ('Project', {'fields': ('project',)}),
+        (
+            'Lesson Status',
+            {
+                'fields': ('is_lesson', 'is_learning_eligible', 'complexity_level'),
+                'description': 'Mark projects as lessons to include them in learning path curricula.',
+            },
+        ),
+        (
+            'Learning Content',
+            {
+                'fields': ('learning_quality_score', 'learning_summary', 'key_techniques', 'concepts'),
+            },
+        ),
+        (
+            'Ratings',
+            {
+                'fields': ('positive_ratings', 'negative_ratings'),
+                'classes': ('collapse',),
+            },
+        ),
+        (
+            'Usage Stats',
+            {
+                'fields': ('times_used_for_learning', 'last_used_for_learning'),
+                'classes': ('collapse',),
+            },
+        ),
+        ('Timestamps', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+
+    actions = ['mark_as_lesson', 'unmark_as_lesson', 'recalculate_eligibility']
+
+    @admin.action(description='Mark selected as lessons')
+    def mark_as_lesson(self, request, queryset):
+        updated = queryset.update(is_lesson=True)
+        self.message_user(request, f'Marked {updated} projects as lessons.')
+
+    @admin.action(description='Unmark selected as lessons')
+    def unmark_as_lesson(self, request, queryset):
+        updated = queryset.update(is_lesson=False)
+        self.message_user(request, f'Unmarked {updated} projects as lessons.')
 
     @admin.action(description='Recalculate learning eligibility')
     def recalculate_eligibility(self, request, queryset):
@@ -268,3 +322,54 @@ class UserSkillProficiencyAdmin(admin.ModelAdmin):
     filter_horizontal = ['outcomes_achieved']
     readonly_fields = ['first_assessed_at', 'last_updated_at']
     ordering = ['-last_updated_at']
+
+
+@admin.register(LessonRating)
+class LessonRatingAdmin(admin.ModelAdmin):
+    """Admin for lesson ratings from users."""
+
+    list_display = [
+        'user',
+        'project',
+        'rating',
+        'created_at',
+    ]
+    list_filter = ['rating', 'created_at']
+    search_fields = ['user__username', 'project__title', 'feedback']
+    readonly_fields = ['created_at', 'updated_at']
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(SavedLearningPath)
+class SavedLearningPathAdmin(admin.ModelAdmin):
+    """Admin for user's saved learning paths."""
+
+    list_display = [
+        'title',
+        'user',
+        'slug',
+        'difficulty',
+        'is_active',
+        'is_archived',
+        'created_at',
+    ]
+    list_filter = ['difficulty', 'is_active', 'is_archived', 'created_at']
+    search_fields = ['title', 'user__username', 'slug']
+    readonly_fields = ['created_at', 'updated_at']
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('Path Info', {'fields': ('user', 'title', 'slug', 'difficulty', 'estimated_hours', 'cover_image')}),
+        ('Status', {'fields': ('is_active', 'is_archived')}),
+        (
+            'Path Data',
+            {
+                'fields': ('path_data',),
+                'classes': ('collapse',),
+                'description': 'JSON data containing curriculum and learning content.',
+            },
+        ),
+        ('Timestamps', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )

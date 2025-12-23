@@ -11,6 +11,7 @@ from .models import (
     GoalCheckIn,
     LearnerProfile,
     LearningEvent,
+    LessonRating,
     MicroLesson,
     ProactiveOfferResponse,
     ProjectLearningMetadata,
@@ -347,6 +348,7 @@ class ProjectLearningMetadataSerializer(serializers.ModelSerializer):
     project_slug = serializers.CharField(source='project.slug', read_only=True)
     author_username = serializers.CharField(source='project.user.username', read_only=True)
     concepts = ConceptSerializer(many=True, read_only=True)
+    rating_quality_score = serializers.FloatField(read_only=True)
 
     class Meta:
         model = ProjectLearningMetadata
@@ -358,11 +360,15 @@ class ProjectLearningMetadataSerializer(serializers.ModelSerializer):
             'author_username',
             'concepts',
             'is_learning_eligible',
+            'is_lesson',
             'learning_quality_score',
             'key_techniques',
             'complexity_level',
             'learning_summary',
             'times_used_for_learning',
+            'positive_ratings',
+            'negative_ratings',
+            'rating_quality_score',
         ]
         read_only_fields = fields
 
@@ -612,3 +618,31 @@ class FeedbackSummarySerializer(serializers.Serializer):
     content_helpfulness_score = serializers.FloatField()
     last_goal_checkin = GoalCheckInSerializer(allow_null=True)
     recent_feedback = ConversationFeedbackSerializer(many=True)
+
+
+# ============================================================================
+# LESSON RATING SERIALIZERS
+# ============================================================================
+
+
+class LessonRatingSerializer(serializers.ModelSerializer):
+    """Serializer for LessonRating model."""
+
+    class Meta:
+        model = LessonRating
+        fields = [
+            'id',
+            'project',
+            'rating',
+            'feedback',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'project', 'created_at', 'updated_at']
+
+
+class CreateLessonRatingSerializer(serializers.Serializer):
+    """Serializer for creating/updating a lesson rating."""
+
+    rating = serializers.ChoiceField(choices=LessonRating.Rating.choices)
+    feedback = serializers.CharField(required=False, allow_blank=True, max_length=2000)

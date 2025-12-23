@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { api } from '@/services/api';
 import type { ApiError } from '@/types/api';
@@ -119,7 +118,6 @@ export function ImageUpload({
   showPresets = false,
   username = '',
 }: ImageUploadProps) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -269,13 +267,16 @@ export function ImageUpload({
   };
 
   const handleOpenEmber = () => {
-    // Set localStorage flag to open the AI profile generator
-    localStorage.setItem('ember_open_profile_generator', 'true');
-    // Dispatch event for when already on profile page
-    window.dispatchEvent(new CustomEvent('ember-open-profile-generator'));
-    // Navigate to user's profile page
-    const profilePath = user?.username ? `/${user.username}` : '/dashboard';
-    navigate(profilePath);
+    // Dispatch event to open Ember with avatar generation context
+    // This works directly since we're in DashboardLayout which listens for this event
+    if (user) {
+      window.dispatchEvent(new CustomEvent('openAvatarGenerate', {
+        detail: {
+          userId: user.id,
+          username: user.username,
+        }
+      }));
+    }
   };
 
   return (

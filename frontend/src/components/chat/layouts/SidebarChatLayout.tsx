@@ -26,6 +26,7 @@ import {
   type ChatContext,
   type ArchitectureRegenerateContext,
   type ProfileGenerateContext,
+  type AvatarGenerateContext,
   type LearningSetupContext,
 } from '../core';
 import { ChatPlusMenu, type IntegrationType } from '../ChatPlusMenu';
@@ -76,6 +77,7 @@ interface SidebarChatLayoutProps {
   // Special contexts for DashboardLayout compatibility
   architectureRegenerateContext?: ArchitectureRegenerateContext | null;
   profileGenerateContext?: ProfileGenerateContext | null;
+  avatarGenerateContext?: AvatarGenerateContext | null;
   learningSetupContext?: LearningSetupContext | null;
   // Expand mode for learning sessions
   defaultExpanded?: boolean;
@@ -161,6 +163,46 @@ function ProfileMessageSender({
   return null;
 }
 
+// Helper component to handle avatar generation initial message
+function AvatarMessageSender({
+  avatarGenerateContext,
+  isConnected,
+  isLoading,
+  messagesLength,
+  sendMessage,
+}: {
+  avatarGenerateContext: AvatarGenerateContext | null;
+  isConnected: boolean;
+  isLoading: boolean;
+  messagesLength: number;
+  sendMessage: (message: string) => void;
+}) {
+  const sentRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      avatarGenerateContext &&
+      isConnected &&
+      !sentRef.current &&
+      !isLoading &&
+      messagesLength === 0
+    ) {
+      const initialMessage = `I'd like help creating a unique avatar for my profile. Can you help me design a custom avatar that represents me?`;
+      sendMessage(initialMessage);
+      sentRef.current = true;
+    }
+  }, [avatarGenerateContext, isConnected, isLoading, messagesLength, sendMessage]);
+
+  // Reset when context changes
+  useEffect(() => {
+    if (!avatarGenerateContext) {
+      sentRef.current = false;
+    }
+  }, [avatarGenerateContext]);
+
+  return null;
+}
+
 export function SidebarChatLayout({
   isOpen,
   onClose,
@@ -168,6 +210,7 @@ export function SidebarChatLayout({
   context = 'default',
   architectureRegenerateContext = null,
   profileGenerateContext = null,
+  avatarGenerateContext = null,
   learningSetupContext = null,
   defaultExpanded = false,
 }: SidebarChatLayoutProps) {
@@ -253,7 +296,8 @@ export function SidebarChatLayout({
           !state.onboarding?.isActive &&
           !showLearningSetup &&
           !architectureRegenerateContext &&
-          !profileGenerateContext;
+          !profileGenerateContext &&
+          !avatarGenerateContext;
 
         // Handle quick action click
         const handleQuickAction = (message: string) => {
@@ -400,6 +444,15 @@ export function SidebarChatLayout({
             {/* Profile generation message sender - auto-sends initial profile generation message */}
             <ProfileMessageSender
               profileGenerateContext={profileGenerateContext}
+              isConnected={state.isConnected}
+              isLoading={state.isLoading}
+              messagesLength={state.messages.length}
+              sendMessage={state.sendMessage}
+            />
+
+            {/* Avatar generation message sender - auto-sends initial avatar creation message */}
+            <AvatarMessageSender
+              avatarGenerateContext={avatarGenerateContext}
               isConnected={state.isConnected}
               isLoading={state.isLoading}
               messagesLength={state.messages.length}
