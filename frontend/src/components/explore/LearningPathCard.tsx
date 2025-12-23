@@ -2,10 +2,11 @@
  * Learning Path Card for Explore Feed
  *
  * Displays a published learning path in the explore masonry grid.
+ * Opens a preview tray when clicked instead of navigating directly.
  */
-import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock, faSignal, faGraduationCap, faUser } from '@fortawesome/free-solid-svg-icons';
+import { useLearningPathPreviewTraySafe } from '@/context/LearningPathPreviewTrayContext';
 import type { PublicLearningPath } from '@/services/learningPaths';
 
 interface LearningPathCardProps {
@@ -13,23 +14,31 @@ interface LearningPathCardProps {
 }
 
 export function LearningPathCard({ learningPath }: LearningPathCardProps) {
+  const previewContext = useLearningPathPreviewTraySafe();
+  const openPreview = previewContext?.openLearningPathPreview;
+
   const {
-    slug,
     title,
     difficulty,
     estimatedHours,
     coverImage,
     curriculumCount,
     topicsCovered,
-    username,
     userFullName,
     userAvatarUrl,
   } = learningPath;
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (openPreview) {
+      e.preventDefault();
+      openPreview(learningPath);
+    }
+  };
+
   return (
-    <Link
-      to={`/${username}/learn/${slug}`}
-      className="group block bg-white dark:bg-gray-800 rounded overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700"
+    <button
+      onClick={handleClick}
+      className="group block w-full text-left bg-white dark:bg-gray-800 rounded overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700"
     >
       {/* Cover image */}
       {coverImage ? (
@@ -120,6 +129,6 @@ export function LearningPathCard({ learningPath }: LearningPathCardProps) {
           </span>
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
