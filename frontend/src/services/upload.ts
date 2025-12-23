@@ -60,6 +60,7 @@ export interface FileUploadResponse {
   fileType: string;
   fileSize: number;
   isPublic: boolean;
+  extractedText?: string; // PDF text content for AI processing (e.g., resume parsing)
 }
 
 /**

@@ -2131,20 +2131,40 @@ def _handle_figma_import(
         result['message'] = 'Successfully imported your Figma design!'
         logger.info(f'[Figma Import] Successfully imported project {result.get("project_id")}')
 
-        # Ensure Figma imports have ONLY "Design" category (ID 3)
+        # Ensure Figma imports have ONLY "Design" category
         # Clear any AI-assigned categories and set Design as the sole category
         project_id = result.get('project_id')
         if project_id:
             try:
                 project = Project.objects.get(id=project_id)
                 try:
-                    design_category = Taxonomy.objects.get(id=3, taxonomy_type='category', is_active=True)
+                    # Look up by name pattern rather than hardcoded ID
+                    design_category = Taxonomy.objects.get(
+                        name__icontains='Design',
+                        taxonomy_type='category',
+                        is_active=True,
+                    )
                     # Clear all existing categories and set only Design
                     project.categories.clear()
                     project.categories.add(design_category)
-                    logger.info(f'[Figma Import] Set Design category for project {project_id}')
+                    logger.info(
+                        f'[Figma Import] Set Design category (ID {design_category.id}) for project {project_id}'
+                    )
                 except Taxonomy.DoesNotExist:
-                    logger.warning('[Figma Import] Design category (ID 3) not found')
+                    logger.warning('[Figma Import] Design category not found')
+                except Taxonomy.MultipleObjectsReturned:
+                    # If multiple, get the most specific one
+                    design_category = Taxonomy.objects.filter(
+                        name__icontains='Design',
+                        taxonomy_type='category',
+                        is_active=True,
+                    ).first()
+                    if design_category:
+                        project.categories.clear()
+                        project.categories.add(design_category)
+                        logger.info(
+                            f'[Figma Import] Set Design category (ID {design_category.id}) for project {project_id}'
+                        )
             except Project.DoesNotExist:
                 logger.warning(f'[Figma Import] Project {project_id} not found when setting category')
     else:

@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # Request configuration
 REQUEST_TIMEOUT = 15
-PLAYWRIGHT_TIMEOUT = 30000  # 30 seconds for JS rendering
+PLAYWRIGHT_TIMEOUT = 60000  # 60 seconds for JS rendering (increased for Figma/heavy pages)
 MAX_CONTENT_LENGTH = 500_000  # 500KB max HTML
 
 # =============================================================================

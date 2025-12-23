@@ -946,11 +946,12 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     },
     'github': {
+        # Note: GitHub Apps get repo access through App installation, not OAuth scopes.
+        # Only user-related scopes are valid for GitHub App user authorization.
         'SCOPE': [
             'user',
             'user:email',
             'read:user',  # Read user profile data
-            'repo',  # Read access to repositories (public and private)
         ],
     },
     'figma': {

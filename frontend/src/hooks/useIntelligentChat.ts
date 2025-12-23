@@ -872,6 +872,25 @@ export function useIntelligentChat({
               // NOTE: get_trending_projects and get_recommendations tools were removed
               // All project discovery now goes through the unified find_content tool
               // which is handled above (data.tool === 'find_content')
+
+              // Check for profile generation tools - dispatch event for ProfilePage to consume
+              if (data.tool === 'generate_profile_sections' || data.tool === 'save_profile_sections') {
+                try {
+                  // The tool output contains the generated sections
+                  const outputData = data.output as Record<string, unknown> | undefined;
+                  const sections = outputData?.sections;
+
+                  if (sections && Array.isArray(sections) && sections.length > 0) {
+                    // Dispatch custom event for ProfilePage to handle
+                    window.dispatchEvent(new CustomEvent('emberProfileSectionsGenerated', {
+                      detail: { sections, toolName: data.tool }
+                    }));
+                    console.log('[Profile] Dispatched emberProfileSectionsGenerated event with', sections.length, 'sections');
+                  }
+                } catch (parseError) {
+                  console.warn('[Profile] Failed to parse profile sections from tool output:', parseError);
+                }
+              }
               break;
 
             case 'image_generating': {

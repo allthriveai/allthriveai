@@ -319,6 +319,37 @@ export default function ProfilePage() {
     };
   }, []);
 
+  // Listen for Ember-generated profile sections (from AI profile generation)
+  useEffect(() => {
+    // Only listen for events on own profile
+    if (!isOwnProfile) return;
+
+    const handleEmberSections = (event: CustomEvent<{ sections: ProfileSection[]; toolName?: string }>) => {
+      const { sections, toolName } = event.detail;
+      if (sections && Array.isArray(sections) && sections.length > 0) {
+        console.log('[Profile] Received', sections.length, 'sections from Ember', toolName ? `(${toolName})` : '');
+
+        // Update profile sections with AI-generated content
+        setProfileSections(sections);
+
+        // Enter edit mode so user can review/modify before saving
+        setIsEditingShowcase(true);
+
+        // Switch to showcase tab if not already there
+        if (activeTab !== 'showcase') {
+          setActiveTab('showcase');
+          setSearchParams({ tab: 'showcase' });
+        }
+
+        // Trigger save (user can undo by refreshing)
+        setSaveStatus('saving');
+      }
+    };
+
+    window.addEventListener('emberProfileSectionsGenerated', handleEmberSections as EventListener);
+    return () => window.removeEventListener('emberProfileSectionsGenerated', handleEmberSections as EventListener);
+  }, [isOwnProfile, activeTab, setSearchParams]);
+
   // Close "More" menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

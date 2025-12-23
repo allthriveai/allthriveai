@@ -8,17 +8,21 @@ export function Footer() {
 
   const navigation = {
     discover: [
-      { name: 'Explore Projects', href: '/explore' },
-      { name: 'Learn', href: '/learn' },
-      { name: 'Tools', href: '/tools' },
+      { name: 'Explore', href: '/explore' },
+      { name: 'Tool Directory', href: '/tools' },
+    ],
+    learn: [
+      { name: 'Learning Paths', href: '/learn' },
+      { name: 'Quizzes', href: '/quizzes' },
     ],
     play: [
+      { name: "This Week's Challenge", href: '/challenges' },
+      { name: 'Games', href: '/play/games' },
       { name: 'Prompt Battle', href: '/play/prompt-battle' },
-      { name: 'Side Quests', href: '/play/side-quests' },
-      { name: 'Quizzes', href: '/quizzes' },
     ],
     connect: [
       { name: 'Thrive Circle', href: '/thrive-circle' },
+      { name: 'The Lounge', href: '/lounge' },
       { name: 'Sign In', href: '/auth' },
     ],
     allthrive: [
@@ -32,9 +36,9 @@ export function Footer() {
   return (
     <footer className="relative bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-white/5" role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-2 md:grid-cols-[auto_1fr] gap-8 lg:gap-12">
           {/* All Thrive column */}
-          <div aria-label="All Thrive">
+          <div aria-label="All Thrive" className="col-span-2 md:col-span-1">
             <Link to="/" className="inline-flex items-center gap-2 mb-4">
               <img
                 src="/all-thrvie-logo.png"
@@ -89,56 +93,76 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Discover links */}
-          <nav aria-label="Discover">
-            <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Discover</h3>
-            <ul className="space-y-3">
-              {navigation.discover.map((item) => (
-                <li key={item.name}>
-                  <Link
-                    to={item.href}
-                    className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          {/* Navigation columns wrapper */}
+          <div className="col-span-2 md:col-span-1 grid grid-cols-2 md:flex md:justify-between gap-8 md:pl-12">
+            {/* Discover links */}
+            <nav aria-label="Discover">
+              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Discover</h3>
+              <ul className="space-y-3">
+                {navigation.discover.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      to={item.href}
+                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
 
-          {/* Play links */}
-          <nav aria-label="Play">
-            <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Play</h3>
-            <ul className="space-y-3">
-              {navigation.play.map((item) => (
-                <li key={item.name}>
-                  <Link
-                    to={item.href}
-                    className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+            {/* Learn links */}
+            <nav aria-label="Learn">
+              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Learn</h3>
+              <ul className="space-y-3">
+                {navigation.learn.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      to={item.href}
+                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
 
-          {/* Connect links */}
-          <nav aria-label="Connect">
-            <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Connect</h3>
-            <ul className="space-y-3">
-              {navigation.connect.map((item) => (
-                <li key={item.name}>
-                  <Link
-                    to={item.href}
-                    className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+            {/* Play links */}
+            <nav aria-label="Play">
+              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Play</h3>
+              <ul className="space-y-3">
+                {navigation.play.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      to={item.href}
+                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            {/* Connect links */}
+            <nav aria-label="Connect">
+              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Connect</h3>
+              <ul className="space-y-3">
+                {navigation.connect.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      to={item.href}
+                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
         </div>
 
         {/* Bottom bar */}

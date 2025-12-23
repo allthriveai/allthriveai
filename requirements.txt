@@ -82,6 +82,7 @@ Pillow>=10.4.0
 python-magic>=0.4.27
 markdown>=3.7
 youtube-transcript-api>=0.6.2  # YouTube transcript extraction for course generation
+pypdf>=4.0.0  # PDF text extraction for resume parsing
 
 # HTTP/API
 requests>=2.32.0

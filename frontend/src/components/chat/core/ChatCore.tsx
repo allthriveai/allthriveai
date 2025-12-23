@@ -114,7 +114,7 @@ export function ChatCore({
 
       try {
         const uploadedImages: { name: string; url: string }[] = [];
-        const uploadedFiles: { name: string; url: string; type: string }[] = [];
+        const uploadedFiles: { name: string; url: string; type: string; extractedText?: string }[] = [];
 
         for (const file of attachments) {
           // Check if upload was cancelled
@@ -136,6 +136,7 @@ export function ChatCore({
               name: file.name,
               url: result.url,
               type: result.fileType,
+              extractedText: result.extractedText, // PDF text content for AI processing
             });
           }
         }
@@ -147,16 +148,43 @@ export function ChatCore({
           const messageText = content.trim() || `Please analyze this image: ${uploadedImages[0].name}`;
           rawSendMessageWithImage(messageText, imageUrl);
         } else {
-          // Multiple files or mixed files - fall back to text descriptions
-          const fileDescriptions = [
-            ...uploadedImages.map(f => `[Image: ${f.name}](${f.url})`),
-            ...uploadedFiles.map(f => `[File: ${f.name}](${f.url})`),
-          ].join('\n');
+          // Multiple files or mixed files - build message with file info
+          const fileDescriptions: string[] = [];
+          const pdfContents: string[] = [];
 
-          // Send user's message with file descriptions appended
-          const messageWithAttachments = content.trim()
-            ? `${content}\n\n${fileDescriptions}`
-            : fileDescriptions;
+          // Add image descriptions
+          uploadedImages.forEach(f => {
+            fileDescriptions.push(`[Image: ${f.name}](${f.url})`);
+          });
+
+          // Add file descriptions, with PDF text content if available
+          uploadedFiles.forEach(f => {
+            if (f.extractedText && f.type === 'application/pdf') {
+              // For PDFs with extracted text, include the actual content for AI to process
+              pdfContents.push(`[Resume/Document content from ${f.name}]:\n\n${f.extractedText}`);
+            } else {
+              fileDescriptions.push(`[File: ${f.name}](${f.url})`);
+            }
+          });
+
+          // Build the full message
+          let messageWithAttachments = content.trim();
+
+          // Add file descriptions (links for images and non-PDF files)
+          if (fileDescriptions.length > 0) {
+            const descriptions = fileDescriptions.join('\n');
+            messageWithAttachments = messageWithAttachments
+              ? `${messageWithAttachments}\n\n${descriptions}`
+              : descriptions;
+          }
+
+          // Add PDF content (extracted text for AI to analyze)
+          if (pdfContents.length > 0) {
+            const pdfText = pdfContents.join('\n\n---\n\n');
+            messageWithAttachments = messageWithAttachments
+              ? `${messageWithAttachments}\n\n${pdfText}`
+              : pdfText;
+          }
 
           rawSendMessage(messageWithAttachments);
         }
