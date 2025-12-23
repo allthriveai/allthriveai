@@ -7,7 +7,7 @@ Usage:
     python manage.py setup_weaviate --check          # Check connection status only
     python manage.py setup_weaviate --reindex        # Trigger full reindex of all projects
     python manage.py setup_weaviate --reindex-users  # Trigger full reindex of user profiles
-    python manage.py setup_weaviate --reindex-all    # Reindex projects, users, and quizzes
+    python manage.py setup_weaviate --reindex-all    # Reindex ALL content types
 """
 
 from django.core.management.base import BaseCommand
@@ -42,7 +42,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--reindex-all',
             action='store_true',
-            help='Trigger full reindex of projects, users, and quizzes',
+            help='Trigger full reindex of ALL content (projects, users, quizzes, tools, concepts, lessons)',
         )
 
     def handle(self, *args, **options):
@@ -95,8 +95,11 @@ class Command(BaseCommand):
     def _handle_reindex(self, options):
         """Handle reindex operations."""
         from services.weaviate.tasks import (
+            full_reindex_concepts,
+            full_reindex_micro_lessons,
             full_reindex_projects,
             full_reindex_quizzes,
+            full_reindex_tools,
             full_reindex_users,
         )
 
@@ -113,6 +116,18 @@ class Command(BaseCommand):
             self.stdout.write('Triggering full reindex of quizzes...')
             result = full_reindex_quizzes.delay()
             self.stdout.write(self.style.SUCCESS(f'  Quizzes reindex queued: task_id={result.id}'))
+
+            self.stdout.write('Triggering full reindex of tools...')
+            result = full_reindex_tools.delay()
+            self.stdout.write(self.style.SUCCESS(f'  Tools reindex queued: task_id={result.id}'))
+
+            self.stdout.write('Triggering full reindex of concepts...')
+            result = full_reindex_concepts.delay()
+            self.stdout.write(self.style.SUCCESS(f'  Concepts reindex queued: task_id={result.id}'))
+
+            self.stdout.write('Triggering full reindex of micro lessons...')
+            result = full_reindex_micro_lessons.delay()
+            self.stdout.write(self.style.SUCCESS(f'  Micro lessons reindex queued: task_id={result.id}'))
 
             self.stdout.write(self.style.SUCCESS('\nAll reindex tasks queued! Monitor Celery logs for progress.'))
         elif options['reindex']:

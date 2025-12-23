@@ -53,16 +53,42 @@ make frontend        # Run frontend locally (or cd frontend && npm run dev -- --
 ### Data Management
 | Command | Description |
 |---------|-------------|
-| `make create-pip` | Create Pip bot user |
-| `make recreate-pip` | Delete and recreate Pip with latest data |
+| `make seed-all` | Seed all initial data (see full list below) |
+| `make seed-core-team` | Seed Core Team (Ember, Pip, Sage, Haven) |
+| `make recreate-core-team` | Recreate Core Team with latest data |
 | `make seed-quizzes` | Seed initial quiz data |
-| `make seed-all` | Seed all initial data |
+| `make seed-quests` | Seed Thrive Circle side quests |
+| `make seed-rooms` | Seed community rooms (The Lounge) |
+| `make seed-curation-agents` | Seed Reddit, YouTube, RSS curation agents |
 | `make export-tools` | Export tools from database to YAML |
 | `make load-tools` | Load tools from YAML into database |
 | `make export-tasks` | Export tasks from database to YAML |
 | `make load-tasks` | Load tasks from YAML into database |
 | `make create-youtube-agent` | Create YouTube feed agent (see below) |
 | `make reset-db` | DANGER: Flush database and reseed |
+
+#### What `seed-all` Includes
+The `seed-all` command runs these seeders in order:
+- `seed_topics` - Project topics (Chatbots, Images, Video, etc.)
+- `seed_taxonomies` - User interests & skills
+- `seed_categories` - Project categories
+- `seed_tools` - AI tools directory
+- `seed_technologies` - Programming languages (Python, TypeScript, etc.)
+- `seed_quizzes` - Quiz content
+- `seed_concepts` - Learning concepts
+- `seed_battle_prompts` - Prompt battle challenges
+- `seed_billing` - Billing/subscription plans
+- `seed_credit_packs` - Credit pack options
+- `seed_ai_pricing` - AI provider cost tracking
+- `seed_achievements` - Gamification achievements
+- `seed_quests` - Thrive Circle side quests
+- `seed_tasks` - Task options (statuses, types, priorities)
+- `seed_uat_scenarios` - UAT testing scenarios
+- `seed_rooms` - Community rooms (The Lounge: General, Showcase, Help, etc.)
+- `seed_core_team` - Ember, Pip, Sage, Haven
+- `seed_curation_agents` - Reddit, YouTube, RSS agents
+- `seed_games` - Game metadata for Weaviate search
+- `create_test_users` - Test users for impersonation (local only)
 
 #### Creating YouTube Feed Agents
 Create automated agents that sync videos from YouTube channels:
