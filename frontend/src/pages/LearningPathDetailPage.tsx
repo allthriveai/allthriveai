@@ -1135,7 +1135,7 @@ export default function LearningPathDetailPage() {
                               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
                               : 'bg-white/10 text-gray-300 border border-white/20 hover:bg-white/20 hover:text-white'
                           } ${isPublishing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          title={savedPath.isPublished ? 'Remove from explore feed' : 'Share on explore feed'}
+                          title={savedPath.isPublished ? 'Remove from Explore' : 'Share with others through Explore'}
                         >
                           {isPublishing ? (
                             <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
@@ -1145,7 +1145,7 @@ export default function LearningPathDetailPage() {
                             <FontAwesomeIcon icon={faLock} />
                           )}
                           <span className="hidden sm:inline">
-                            {savedPath.isPublished ? 'Shared' : 'Share'}
+                            {savedPath.isPublished ? 'Shared on Explore' : 'Share on Explore'}
                           </span>
                         </button>
                       )}
@@ -1171,7 +1171,7 @@ export default function LearningPathDetailPage() {
                           <span className="text-gray-400">•</span>
                           <span className="inline-flex items-center gap-1 text-emerald-400">
                             <FontAwesomeIcon icon={faGlobe} className="text-[10px]" />
-                            Shared
+                            Shared on Explore
                           </span>
                         </>
                       )}
