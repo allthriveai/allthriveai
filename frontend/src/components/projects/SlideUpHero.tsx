@@ -325,17 +325,17 @@ export function SlideUpHero({
                     {renderElement(element2)}
 
                     {/* Actions and Tools - Single Row */}
-                    <div className="mt-6 pt-6 border-t border-white/30">
+                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-white/30">
                       <div className="flex flex-wrap items-center gap-3">
                         {/* Heart/Like Button */}
                         <button
                           onClick={onLikeToggle}
                           disabled={!isAuthenticated}
-                          className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg group"
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-200/70 dark:bg-white/20 backdrop-blur-md text-slate-700 dark:text-white rounded-full text-sm border border-slate-300 dark:border-white/30 hover:bg-slate-300 dark:hover:bg-white/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg group"
                           aria-label={isLiked ? 'Unlike' : 'Like'}
                         >
                           {isLiked ? (
-                            <HeartIconSolid className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform" />
+                            <HeartIconSolid className="w-5 h-5 text-red-500 dark:text-red-400 group-hover:scale-110 transition-transform" />
                           ) : (
                             <HeartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
                           )}
@@ -345,7 +345,7 @@ export function SlideUpHero({
                         {/* Comment Button */}
                         <button
                           onClick={onCommentClick}
-                          className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 shadow-lg group"
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-200/70 dark:bg-white/20 backdrop-blur-md text-slate-700 dark:text-white rounded-full text-sm border border-slate-300 dark:border-white/30 hover:bg-slate-300 dark:hover:bg-white/30 transition-all hover:scale-105 active:scale-95 shadow-lg group"
                           aria-label="Comment"
                         >
                           <ChatBubbleLeftIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -353,7 +353,7 @@ export function SlideUpHero({
 
                         {/* Divider */}
                         {tools && tools.length > 0 && (
-                          <div className="h-6 w-px bg-white/30 mx-1" />
+                          <div className="h-6 w-px bg-slate-300 dark:bg-white/30 mx-1" />
                         )}
 
                         {/* Tools pills */}
@@ -361,7 +361,7 @@ export function SlideUpHero({
                           <button
                             key={tool.id}
                             onClick={() => onToolClick?.(tool.slug)}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-200/70 dark:bg-white/20 backdrop-blur-md text-slate-700 dark:text-white rounded-full text-sm border border-slate-300 dark:border-white/30 hover:bg-slate-300 dark:hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
                           >
                             {tool.logoUrl && (
                               <img
@@ -383,7 +383,7 @@ export function SlideUpHero({
               {!isExpanded && (
                 <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
                   {/* Gradient fade to indicate more content */}
-                  <div className="h-20 bg-gradient-to-t from-black/30 to-transparent" />
+                  <div className="h-20 bg-gradient-to-t from-slate-900/20 dark:from-black/30 to-transparent" />
 
                   {/* Interactive indicator */}
                   <button
@@ -393,10 +393,10 @@ export function SlideUpHero({
                   >
                     {/* Animated chevron */}
                     <div className="animate-bounce">
-                      <ChevronUpIcon className="w-6 h-6 text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
+                      <ChevronUpIcon className="w-6 h-6 text-slate-700 dark:text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
                     </div>
                     {/* Optional text hint */}
-                    <span className="text-xs font-medium text-white/80 group-hover:text-white drop-shadow-md transition-colors">
+                    <span className="text-xs font-medium text-slate-600 dark:text-white/80 group-hover:text-slate-900 dark:group-hover:text-white drop-shadow-md transition-colors">
                       Tap for more
                     </span>
                   </button>
