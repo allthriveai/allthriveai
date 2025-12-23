@@ -162,16 +162,16 @@ class GetOrCreateTopicTests(TestCase):
 
     def test_does_not_create_duplicate_of_existing_category(self):
         """Topics don't duplicate existing categories."""
-        # Create a category first
+        # Create a category first (using unique slug not seeded in migrations)
         category = Taxonomy.objects.create(
             taxonomy_type=Taxonomy.TaxonomyType.CATEGORY,
-            name='Developer & Coding',
-            slug='developer-coding',
+            name='Test Unique Category',
+            slug='test-unique-category',
             is_active=True,
         )
 
         # Try to create topic with same name
-        topic = get_or_create_topic('Developer & Coding')
+        topic = get_or_create_topic('Test Unique Category')
 
         # Should return None
         self.assertIsNone(topic)
@@ -193,21 +193,23 @@ class EnsureTopicsInTaxonomyTests(TestCase):
 
     def test_ensure_multiple_topics(self):
         """Multiple topics are created from a list."""
-        raw_topics = ['Machine Learning', 'AI Agents', 'Automation']
+        # Use unique topic names that won't conflict with seeded data
+        raw_topics = ['Test Topic Alpha', 'Test Topic Beta', 'Test Topic Gamma']
         topics = ensure_topics_in_taxonomy(raw_topics)
 
         self.assertEqual(len(topics), 3)
         slugs = {t.slug for t in topics}
-        self.assertEqual(slugs, {'machine-learning', 'ai-agents', 'automation'})
+        self.assertEqual(slugs, {'test-topic-alpha', 'test-topic-beta', 'test-topic-gamma'})
 
     def test_filters_excluded_topics(self):
         """Excluded topics are filtered out."""
-        raw_topics = ['Machine Learning', 'winner', 'AI Agents', 'prompt battle']
+        # Use unique topic names that won't conflict with seeded data
+        raw_topics = ['Test Topic Delta', 'winner', 'Test Topic Epsilon', 'prompt battle']
         topics = ensure_topics_in_taxonomy(raw_topics)
 
         self.assertEqual(len(topics), 2)
         slugs = {t.slug for t in topics}
-        self.assertEqual(slugs, {'machine-learning', 'ai-agents'})
+        self.assertEqual(slugs, {'test-topic-delta', 'test-topic-epsilon'})
 
     def test_handles_empty_list(self):
         """Empty list returns empty list."""
@@ -221,7 +223,8 @@ class EnsureTopicsInTaxonomyTests(TestCase):
 
     def test_deduplicates_topics(self):
         """Duplicate topics in input don't create duplicates."""
-        raw_topics = ['Machine Learning', 'machine learning', 'MACHINE LEARNING']
+        # Use unique topic name that won't conflict with seeded data
+        raw_topics = ['Test Dedup Topic', 'test dedup topic', 'TEST DEDUP TOPIC']
         topics = ensure_topics_in_taxonomy(raw_topics)
 
         # All resolve to same topic
@@ -230,7 +233,7 @@ class EnsureTopicsInTaxonomyTests(TestCase):
         self.assertEqual(topics[0].pk, topics[2].pk)
 
         # Only one in database
-        count = Taxonomy.objects.filter(slug='machine-learning').count()
+        count = Taxonomy.objects.filter(slug='test-dedup-topic').count()
         self.assertEqual(count, 1)
 
 
@@ -312,32 +315,32 @@ class ProjectTopicsTaxonomyIntegrationTests(TestCase):
         """Project topics correctly map to existing taxonomy entries."""
         from core.taxonomy.topic_service import normalize_topic_slug
 
-        # Create existing tool
+        # Create existing tool (using unique slug not seeded in migrations)
         Taxonomy.objects.create(
             taxonomy_type=Taxonomy.TaxonomyType.TOOL,
-            name='Claude',
-            slug='claude',
+            name='Test Tool Unique',
+            slug='test-tool-unique',
             is_active=True,
         )
 
-        # Create existing category
+        # Create existing category (using unique slug not seeded in migrations)
         Taxonomy.objects.create(
             taxonomy_type=Taxonomy.TaxonomyType.CATEGORY,
-            name='Developer & Coding',
-            slug='developer-coding',
+            name='Test Category Unique',
+            slug='test-category-unique',
             is_active=True,
         )
 
         # Simulate project topics
-        project_topics = ['claude', 'developer & coding', 'automation']
+        project_topics = ['test tool unique', 'test category unique', 'automation']
 
         # Verify they map correctly
         for topic_str in project_topics:
             slug = normalize_topic_slug(topic_str)
             entry = Taxonomy.objects.filter(slug=slug).first()
 
-            if topic_str == 'claude':
+            if topic_str == 'test tool unique':
                 self.assertEqual(entry.taxonomy_type, 'tool')
-            elif topic_str == 'developer & coding':
+            elif topic_str == 'test category unique':
                 self.assertEqual(entry.taxonomy_type, 'category')
             # 'automation' would be created as topic type
