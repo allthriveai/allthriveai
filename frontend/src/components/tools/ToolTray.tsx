@@ -20,6 +20,7 @@ import {
   faListCheck,
   faBolt,
   faFolderOpen,
+  faGraduationCap,
 } from '@fortawesome/free-solid-svg-icons';
 
 interface ToolTrayProps {
@@ -388,6 +389,49 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
                     </li>
                   ))}
                 </ul>
+              </section>
+            )}
+
+            {/* Learning Paths featuring this tool */}
+            {tool.learningPaths && tool.learningPaths.length > 0 && (
+              <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-3 flex items-center gap-2">
+                  <FontAwesomeIcon icon={faGraduationCap} className="w-3.5 h-3.5" />
+                  Learn {tool.name}
+                </h2>
+                <div className="space-y-2">
+                  {tool.learningPaths.map((path) => (
+                    <Link
+                      key={path.id}
+                      to={path.url}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+                    >
+                      {path.coverImage ? (
+                        <img
+                          src={path.coverImage}
+                          alt=""
+                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0">
+                          <FontAwesomeIcon icon={faGraduationCap} className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400">
+                          {path.title}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {path.difficulty && <span className="capitalize">{path.difficulty}</span>}
+                          {path.difficulty && path.estimatedHours && ' · '}
+                          {path.estimatedHours && <span>{path.estimatedHours}h</span>}
+                          {(path.difficulty || path.estimatedHours) && path.creatorUsername && ' · '}
+                          {path.creatorUsername && <span>by @{path.creatorUsername}</span>}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </section>
             )}
 

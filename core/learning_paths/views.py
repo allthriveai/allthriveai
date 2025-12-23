@@ -1205,6 +1205,104 @@ class ExploreLearningPathsView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
+class ExploreLessonsView(APIView):
+    """View for browsing individual AI lessons in the explore feed."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        """
+        GET /api/v1/explore/lessons/
+
+        Returns individual AI lessons from published learning paths.
+        Each lesson includes its Gemini-generated image if available.
+        Supports search filtering.
+        """
+
+        from .serializers import PublicLessonSerializer
+
+        # Get all published learning paths with their lesson images
+        paths = (
+            SavedLearningPath.objects.filter(
+                is_published=True,
+                is_archived=False,
+            )
+            .select_related('user')
+            .prefetch_related('lesson_images')
+            .order_by('-published_at')
+        )
+
+        # Search filter
+        search = request.GET.get('search', '').strip().lower()
+
+        # Extract lessons from all paths
+        lessons = []
+        for path in paths:
+            curriculum = path.path_data.get('curriculum', []) if path.path_data else []
+            difficulty = path.path_data.get('difficulty', 'beginner') if path.path_data else 'beginner'
+
+            # Build a lookup dict for lesson images
+            image_lookup = {img.lesson_order: img.image_url for img in path.lesson_images.all()}
+
+            for idx, item in enumerate(curriculum):
+                # Only include AI lessons
+                if item.get('type') != 'ai_lesson':
+                    continue
+
+                title = item.get('title', 'Untitled Lesson')
+                content = item.get('content', {})
+                summary = content.get('summary', '') if isinstance(content, dict) else ''
+
+                # Apply search filter
+                if search:
+                    searchable = f'{title} {summary}'.lower()
+                    if search not in searchable:
+                        continue
+
+                lesson_order = item.get('order', idx + 1)
+                image_url = image_lookup.get(lesson_order)
+
+                lessons.append(
+                    {
+                        'id': f'{path.id}_{lesson_order}',
+                        'title': title,
+                        'summary': summary[:200] if summary else '',
+                        'image_url': image_url,
+                        'difficulty': difficulty,
+                        'estimated_minutes': item.get('estimatedMinutes', 5),
+                        'lesson_type': content.get('lessonType', 'explanation')
+                        if isinstance(content, dict)
+                        else 'explanation',
+                        'path_id': path.id,
+                        'path_slug': path.slug,
+                        'path_title': path.title,
+                        'username': path.user.username,
+                        'user_full_name': path.user.get_full_name() or path.user.username,
+                        'user_avatar_url': path.user.avatar_url if hasattr(path.user, 'avatar_url') else None,
+                        'lesson_order': lesson_order,
+                        'published_at': path.published_at,
+                    }
+                )
+
+        # Simple pagination (return first 50 for now)
+        page = int(request.GET.get('page', 1))
+        page_size = 20
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_lessons = lessons[start:end]
+
+        serializer = PublicLessonSerializer(paginated_lessons, many=True)
+
+        return Response(
+            {
+                'count': len(lessons),
+                'next': f'?page={page + 1}' if end < len(lessons) else None,
+                'previous': f'?page={page - 1}' if page > 1 else None,
+                'results': serializer.data,
+            }
+        )
+
+
 class LessonImageView(APIView):
     """View for on-demand lesson image generation."""
 

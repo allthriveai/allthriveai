@@ -5,8 +5,8 @@
  */
 
 // Shared styling constants
-const VIDEO_GLOW_BACKDROP = 'absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl';
-const VIDEO_CONTAINER_OUTER = 'relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden';
+const VIDEO_GLOW_BACKDROP = 'absolute -inset-2 md:-inset-4 bg-slate-200/50 dark:bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl';
+const VIDEO_CONTAINER_OUTER = 'relative p-1 md:p-2 bg-slate-200/70 dark:bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-slate-300 dark:border-white/20 shadow-2xl overflow-hidden';
 const VIDEO_CONTAINER_INNER = 'relative aspect-video rounded-xl md:rounded-2xl overflow-hidden bg-black';
 
 interface HeroVideoProps {
@@ -105,7 +105,7 @@ export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroV
       <div className="w-full flex justify-center">
         <div className="relative group inline-block">
           <div className={VIDEO_GLOW_BACKDROP} />
-          <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
+          <div className="relative p-1 md:p-2 bg-slate-200/70 dark:bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-slate-300 dark:border-white/20 shadow-2xl">
             <video
               src={videoUrl}
               controls
@@ -153,7 +153,7 @@ export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroV
       <div className="w-full flex justify-center">
         <div className="relative group inline-block">
           <div className={VIDEO_GLOW_BACKDROP} />
-          <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
+          <div className="relative p-1 md:p-2 bg-slate-200/70 dark:bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-slate-300 dark:border-white/20 shadow-2xl overflow-hidden">
             <div className="relative w-[280px] md:w-[320px] aspect-[9/16] rounded-xl md:rounded-2xl overflow-hidden bg-black">
               <iframe
                 src={embedUrl}

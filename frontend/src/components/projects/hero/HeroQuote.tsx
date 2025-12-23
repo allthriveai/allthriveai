@@ -34,9 +34,9 @@ export function HeroQuote({ quote }: HeroQuoteProps) {
         <div className="absolute -inset-2 md:-inset-4 bg-gradient-to-r from-primary-500/20 to-secondary-500/20 rounded-2xl md:rounded-3xl blur-xl md:blur-2xl opacity-50 group-hover:opacity-70 transition duration-500" />
 
         {/* Quote container */}
-        <div className="relative p-6 md:p-8 lg:p-10 bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl max-h-[80vh] overflow-y-auto">
+        <div className="relative p-6 md:p-8 lg:p-10 bg-slate-100/70 dark:bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl border border-slate-200 dark:border-white/20 shadow-2xl max-h-[80vh] overflow-y-auto">
           <p
-            className="font-light text-white leading-relaxed text-center relative z-10"
+            className="font-light text-slate-900 dark:text-white leading-relaxed text-center relative z-10"
             style={{ fontSize, lineHeight: '1.45' }}
           >
             "{quote.trim()}"

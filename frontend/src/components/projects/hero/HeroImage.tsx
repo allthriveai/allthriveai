@@ -137,33 +137,33 @@ export function HeroImage({
         >
           <div
             className={`absolute -inset-2 md:-inset-4 rounded-2xl md:rounded-3xl blur-lg md:blur-xl transition-all duration-300 ${
-              isDragging ? 'bg-primary-500/20 opacity-100' : 'bg-white/5 opacity-50'
+              isDragging ? 'bg-primary-500/20 opacity-100' : 'bg-slate-200/50 dark:bg-white/5 opacity-50'
             }`}
           />
           <div
             className={`relative p-1 md:p-2 backdrop-blur-sm rounded-2xl md:rounded-3xl border-dashed shadow-2xl transition-all duration-300 ${
               isDragging
                 ? 'bg-primary-500/10 border-2 border-primary-500'
-                : 'bg-white/10 border border-white/20'
+                : 'bg-slate-200/70 dark:bg-white/10 border border-slate-300 dark:border-white/20'
             }`}
           >
-            <div className="w-full aspect-video rounded-xl md:rounded-2xl bg-white/5 flex flex-col items-center justify-center p-8 min-h-[200px]">
+            <div className="w-full aspect-video rounded-xl md:rounded-2xl bg-slate-100 dark:bg-white/5 flex flex-col items-center justify-center p-8 min-h-[200px]">
               {isUploading ? (
                 <>
                   <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
-                  <p className="text-white/60 text-sm">Uploading...</p>
+                  <p className="text-slate-500 dark:text-white/60 text-sm">Uploading...</p>
                 </>
               ) : isDragging ? (
                 <>
                   <PhotoIcon className="w-16 h-16 text-primary-400 mb-4 animate-bounce" />
                   <p className="text-primary-400 text-sm font-medium mb-2">Drop image to upload</p>
-                  <p className="text-white/40 text-xs">Release to open editor</p>
+                  <p className="text-slate-400 dark:text-white/40 text-xs">Release to open editor</p>
                 </>
               ) : (
                 <>
-                  <PhotoIcon className="w-16 h-16 text-white/30 mb-4" />
-                  <p className="text-white/60 text-sm font-medium mb-2">Click to add hero image</p>
-                  <p className="text-white/40 text-xs">Recommended: 1200x630px</p>
+                  <PhotoIcon className="w-16 h-16 text-slate-300 dark:text-white/30 mb-4" />
+                  <p className="text-slate-500 dark:text-white/60 text-sm font-medium mb-2">Click to add hero image</p>
+                  <p className="text-slate-400 dark:text-white/40 text-xs">Recommended: 1200x630px</p>
                 </>
               )}
             </div>
@@ -173,9 +173,9 @@ export function HeroImage({
         {/* URL input option */}
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="flex-1 h-px bg-white/20" />
-            <span className="text-xs text-white/40">OR</span>
-            <div className="flex-1 h-px bg-white/20" />
+            <div className="flex-1 h-px bg-slate-300 dark:bg-white/20" />
+            <span className="text-xs text-slate-400 dark:text-white/40">OR</span>
+            <div className="flex-1 h-px bg-slate-300 dark:bg-white/20" />
           </div>
           <input
             type="url"
@@ -194,7 +194,7 @@ export function HeroImage({
               }
             }}
             placeholder="Paste image URL and press Enter..."
-            className="w-full px-4 py-2 text-sm bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-primary-500"
+            className="w-full px-4 py-2 text-sm bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/20 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/40 focus:outline-none focus:border-primary-500"
           />
         </div>
       </div>
@@ -234,18 +234,18 @@ export function HeroImage({
         {/* Glassy Card Container for Image */}
         <div
           className={`absolute -inset-2 md:-inset-4 rounded-2xl md:rounded-3xl blur-lg md:blur-xl transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl ${
-            isDragging ? 'bg-primary-500/20 opacity-100' : 'bg-white/5 opacity-50'
+            isDragging ? 'bg-primary-500/20 opacity-100' : 'bg-slate-200/50 dark:bg-white/5 opacity-50'
           }`}
         />
         <div
           className={`relative p-1 md:p-2 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-2xl transition-all duration-300 ${
             isDragging
               ? 'bg-primary-500/10 border-2 border-primary-500'
-              : 'bg-white/10 border border-white/20'
+              : 'bg-slate-200/70 dark:bg-white/10 border border-slate-300 dark:border-white/20'
           }`}
         >
           {isUploading ? (
-            <div className="w-full aspect-video rounded-xl md:rounded-2xl bg-white/5 flex items-center justify-center">
+            <div className="w-full aspect-video rounded-xl md:rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
               <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
