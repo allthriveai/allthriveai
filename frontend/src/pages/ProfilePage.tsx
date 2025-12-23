@@ -506,7 +506,7 @@ export default function ProfilePage() {
             tier: displayUser.tier,
             role: displayUser.role,
             username: displayUser.username,
-            projectCount: displayUser.lifetime_projects_created || 0,
+            projectCount: displayUser.lifetimeProjectsCreated || 0,
           });
           const defaultSections = getDefaultSectionsForTemplate(template);
           setProfileSections(defaultSections);

@@ -2131,23 +2131,22 @@ def _handle_figma_import(
         result['message'] = 'Successfully imported your Figma design!'
         logger.info(f'[Figma Import] Successfully imported project {result.get("project_id")}')
 
-        # Ensure Figma imports have "Design" category (ID 3)
-        # This overrides the default "Developer & Coding" fallback
+        # Ensure Figma imports have ONLY "Design" category (ID 3)
+        # Clear any AI-assigned categories and set Design as the sole category
         project_id = result.get('project_id')
         if project_id:
             try:
                 project = Project.objects.get(id=project_id)
-                # Check if Design category (ID 3) is already assigned
-                has_design_category = project.categories.filter(id=3).exists()
-                if not has_design_category:
-                    try:
-                        design_category = Taxonomy.objects.get(id=3, taxonomy_type='category', is_active=True)
-                        project.categories.add(design_category)
-                        logger.info(f'[Figma Import] Added Design category to project {project_id}')
-                    except Taxonomy.DoesNotExist:
-                        logger.warning('[Figma Import] Design category (ID 3) not found')
+                try:
+                    design_category = Taxonomy.objects.get(id=3, taxonomy_type='category', is_active=True)
+                    # Clear all existing categories and set only Design
+                    project.categories.clear()
+                    project.categories.add(design_category)
+                    logger.info(f'[Figma Import] Set Design category for project {project_id}')
+                except Taxonomy.DoesNotExist:
+                    logger.warning('[Figma Import] Design category (ID 3) not found')
             except Project.DoesNotExist:
-                logger.warning(f'[Figma Import] Project {project_id} not found when adding category')
+                logger.warning(f'[Figma Import] Project {project_id} not found when setting category')
     else:
         logger.warning(f'[Figma Import] Failed to import: {result.get("error")}')
     return result

@@ -20,22 +20,25 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 # Learning path cover image prompt template
-# Style: Neon glass aesthetic with warm learning theme (orange/amber/yellow)
-COVER_IMAGE_PROMPT = """Create a minimalist illustration that visually represents the concept of "{title}".
+# Style: Neon glass aesthetic with AllThrive brand colors (emerald/cyan/yellow)
+COVER_IMAGE_PROMPT = """Create a clear, recognizable illustration that visually represents "{title}".
 
-IMPORTANT: The image should clearly depict {concept_visualization}. This is the primary focus.
+CRITICAL: The image must clearly depict {concept_visualization}.
+Make it obvious what the topic is - avoid being too abstract.
 
 Style requirements:
 - Dark slate background (#0F172A to #020617 gradient)
-- Warm neon accents using orange, amber, and yellow (#F97316 orange, #F59E0B amber, #EAB308 yellow)
-- Secondary cyan/teal accents for contrast (#22D3EE)
+- Primary emerald/green neon accents (#10B981 emerald, #22C55E green, #4ADE80 light green)
+- Secondary cyan/teal highlights (#22D3EE cyan, #14B8A6 teal)
+- Tertiary yellow/amber accents for energy (#EAB308 yellow, #FBBF24 amber)
 - Clean geometric shapes with soft glow effects
 - No text, words, or letters in the image
-- Simple, elegant composition
-- Glass-like transparency effects with warm undertones
+- Concrete, recognizable imagery over abstract shapes
+- Glass-like transparency effects with cool undertones
 - Professional and modern feel with an inviting, educational atmosphere
 
 The illustration must visually communicate {theme_hint} in an immediately recognizable way.
+Viewers should understand the topic at a glance.
 """
 
 
@@ -125,6 +128,14 @@ def get_theme_hint(title: str) -> tuple[str, str]:
         return (
             'cybersecurity and protection',
             'shield-like structures with encryption key patterns and secure lock mechanisms protecting data flows',
+        )
+
+    # API / Pricing / Cost themes (check before tokenization since "token pricing" should match here)
+    if any(kw in title_lower for kw in ['pricing', 'cost', 'billing', 'budget', 'usage', 'api key']):
+        return (
+            'API pricing and cost management',
+            'layered pricing tiers with tokens flowing through meters and gauges, '
+            'showing usage dashboards with charts, coin/credit symbols, and API request counters',
         )
 
     # Context window / Tokenization

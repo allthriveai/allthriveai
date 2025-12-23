@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (including Playwright dependencies for screenshots)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
@@ -23,6 +23,23 @@ RUN apt-get update \
         postgresql-client \
         redis \
         unzip \
+        # Playwright dependencies for headless browser screenshots
+        libnss3 \
+        libnspr4 \
+        libdbus-1-3 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libxkbcommon0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libasound2 \
+        libpango-1.0-0 \
+        libcairo2 \
         && update-ca-certificates \
         && curl -fsSL https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem -o /etc/ssl/certs/rds-us-east-1-bundle.pem \
         && rm -rf /var/lib/apt/lists/*
@@ -46,6 +63,16 @@ RUN pip install --no-cache-dir yt-dlp
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Set Playwright browsers to install in a shared location accessible by all users
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+
+# Install Playwright browsers for Figma screenshot capture
+# Install to shared location before switching to non-root user
+RUN mkdir -p /opt/playwright-browsers \
+    && chmod 755 /opt/playwright-browsers \
+    && playwright install chromium --with-deps 2>/dev/null || echo "Playwright browser install skipped (optional)" \
+    && chmod -R 755 /opt/playwright-browsers
 
 # Copy project
 COPY . .

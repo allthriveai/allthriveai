@@ -19,7 +19,7 @@ export type BottomSheetState = 'collapsed' | 'half' | 'full';
 // Thresholds for state transitions
 const TRANSITION_THRESHOLD = 100; // pixels to trigger state change
 const VELOCITY_THRESHOLD = 0.3; // pixels per ms for fast gesture
-const _COLLAPSED_HEIGHT = 72; // px (excluding safe area)
+// COLLAPSED_HEIGHT reserved for future rubber band effect at collapsed state
 
 interface UseBottomSheetGestureProps {
   sheetRef: React.RefObject<HTMLElement | null>;

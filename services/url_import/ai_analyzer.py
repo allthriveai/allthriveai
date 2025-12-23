@@ -46,10 +46,7 @@ Generate structured sections for a visually appealing project portfolio. Return 
       {{"label": "Visit Website", "url": "{url}", "style": "primary"}}
     ]
   }},
-  "links": [
-    {{"label": "Documentation", "url": "...", "icon": "book"}},
-    {{"label": "GitHub", "url": "...", "icon": "github"}}
-  ],
+  "links": [],
   "category_ids": [9],
   "topics": ["topic1", "topic2"],
   "tool_names": ["Tool1", "Tool2"]
@@ -65,11 +62,14 @@ IMPORTANT:
   FaClock (time/scheduling), FaFileAlt (documents), FaCheck (validation),
   FaLayerGroup (modular), FaTools (utilities), FaPalette (customization)
 - For tech_stack: Only include if technologies are mentioned or inferable
-- For links: Extract any relevant URLs from the content (docs, GitHub, demos)
+- For links: ONLY include links that are EXPLICITLY present in the page content. DO NOT invent or guess URLs.
+  Never add generic help pages, topic pages, or documentation that isn't specifically linked from the source.
+  If no relevant links are found in the content, return an empty array.
 - Category IDs: 1-15 (pick 1-2 most relevant):
-  1-Chatbots, 2-Websites/Apps, 3-Design, 4-Video, 5-Education,
+  1-Chatbots, 2-Websites/Apps, 3-Design (Mockups & UI), 4-Video, 5-Education,
   6-Games, 7-Automation, 8-Productivity, 9-Developer/Coding,
   10-Prompts, 11-Experiments, 12-Wellness, 13-AI Agents, 14-AI Research, 15-Analytics
+  IMPORTANT: For Figma URLs (figma.com), ALWAYS use category 3 (Design).
 - Topics: lowercase, specific, 3-8 keywords
 - tool_names: Only include actual AI/dev tools if mentioned (ChatGPT, Claude, etc.)
 
