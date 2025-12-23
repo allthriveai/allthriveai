@@ -226,6 +226,17 @@ export function SidebarChatLayout({
   const [isPanelDragging, setIsPanelDragging] = useState(false);
   const panelDragCounterRef = useRef(0);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // Panel-level drag handlers
   const handlePanelDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -459,10 +470,11 @@ export function SidebarChatLayout({
               sendMessage={state.sendMessage}
             />
 
-            {/* Backdrop */}
+            {/* Subtle backdrop overlay - pointer-events-none allows scrolling main content */}
+            {/* Use the X button or click outside (on the page itself) to close */}
             <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-              onClick={onClose}
+              className="fixed inset-0 bg-black/10 z-40 pointer-events-none"
+              aria-hidden="true"
             />
 
             {/* Sidebar Panel */}
