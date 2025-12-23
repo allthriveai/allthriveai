@@ -426,6 +426,56 @@ export async function getExploreLearningPaths(params?: {
   return response.data;
 }
 
+// =============================================================================
+// EXPLORE LESSONS - Public APIs for individual AI lessons
+// =============================================================================
+
+/**
+ * Public lesson for explore feed
+ * Individual AI-generated lessons from published learning paths
+ */
+export interface PublicLesson {
+  id: string;
+  title: string;
+  summary: string;
+  imageUrl: string | null;
+  difficulty: string;
+  estimatedMinutes: number;
+  lessonType: string;
+  pathId: number;
+  pathSlug: string;
+  pathTitle: string;
+  username: string;
+  userFullName: string;
+  userAvatarUrl: string | null;
+  lessonOrder: number;
+  publishedAt: string;
+}
+
+/**
+ * Paginated response for explore lessons endpoint
+ */
+export interface ExploreLessonsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: PublicLesson[];
+}
+
+/**
+ * Get published AI lessons for the explore feed
+ */
+export async function getExploreLessons(params?: {
+  page?: number;
+  search?: string;
+}): Promise<ExploreLessonsResponse> {
+  const response = await api.get<ExploreLessonsResponse>(
+    '/explore/lessons/',
+    { params }
+  );
+  return response.data;
+}
+
 /**
  * Get or generate an AI illustration for a lesson
  * Returns the image URL on success, null on failure
