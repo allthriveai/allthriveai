@@ -19,6 +19,7 @@ import {
   TrashIcon,
   ChevronRightIcon,
   SparklesIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { updateProject, deleteProjectRedirect } from '@/services/projects';
 import { getTaxonomiesByType } from '@/services/personalization';
@@ -113,7 +114,7 @@ export function ProjectSettingsPanel({
   }, [project.id, project.content, onProjectUpdate]);
 
   // Handle metadata change
-  const handleMetadataChange = useCallback(async (field: string, value: number | null) => {
+  const handleMetadataChange = useCallback(async (field: string, value: number | boolean | null) => {
     try {
       setIsSaving(true);
       const updated = await updateProject(project.id, { [field]: value });
@@ -443,6 +444,33 @@ export function ProjectSettingsPanel({
                         Current: {project.pricingDetails.name}
                       </p>
                     )}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="!my-4 border-t border-white/10" />
+
+                  {/* Lesson Library Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <div className="flex items-center gap-3">
+                      <AcademicCapIcon className="w-5 h-5 text-emerald-400" />
+                      <div>
+                        <p className="text-sm font-medium text-white">Lesson Library</p>
+                        <p className="text-xs text-white/60">Include in curated educational content</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleMetadataChange('isLesson', !project.isLesson)}
+                      disabled={isSaving}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                        project.isLesson ? 'bg-emerald-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          project.isLesson ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
                 </>
               )}

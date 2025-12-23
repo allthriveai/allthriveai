@@ -28,7 +28,12 @@ import {
   faRobot,
   faComments,
   faUsers,
+  faThumbsUp,
+  faThumbsDown,
+  faTimes,
+  faSearchPlus,
 } from '@fortawesome/free-solid-svg-icons';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -38,7 +43,64 @@ import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/ga
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
-import { getLessonImage, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
+import { getLessonImage, rateLesson, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
+import { getToolBySlug } from '@/services/tools';
+import type { Tool } from '@/types/models';
+
+/**
+ * Image Lightbox component for viewing lesson images full-screen
+ */
+interface ImageLightboxProps {
+  imageUrl: string;
+  alt: string;
+  onClose: () => void;
+}
+
+function ImageLightbox({ imageUrl, alt, onClose }: ImageLightboxProps) {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-3 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+        aria-label="Close image"
+      >
+        <FontAwesomeIcon icon={faTimes} className="w-6 h-6" />
+      </button>
+
+      {/* Image container */}
+      <div
+        className="relative max-w-[95vw] max-h-[95vh] animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={imageUrl}
+          alt={alt}
+          className="max-w-full max-h-[95vh] object-contain rounded-lg shadow-2xl"
+        />
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 /**
  * Detect programming language from code content
@@ -266,7 +328,7 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
 
       {/* Game container */}
       <div className="p-4 flex justify-center">
-        <ChatGameCard gameType={gameType} />
+        <ChatGameCard gameType={gameType} hideTryAnother />
       </div>
     </div>
   );
@@ -321,14 +383,156 @@ function ProjectCard({ project }: { project: RelatedProject }) {
 }
 
 /**
+ * Tool Item Card - expandable card that shows tool details inline
+ */
+function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [tool, setTool] = useState<Tool | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  // Fetch tool data when expanded for the first time
+  useEffect(() => {
+    if (isExpanded && !tool && !isLoading && !error && item.toolSlug) {
+      setIsLoading(true);
+      getToolBySlug(item.toolSlug)
+        .then((data) => setTool(data))
+        .catch(() => setError(true))
+        .finally(() => setIsLoading(false));
+    }
+  }, [isExpanded, tool, isLoading, error, item.toolSlug]);
+
+  return (
+    <div className="glass-strong rounded overflow-hidden">
+      {/* Header - always visible */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-start gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left"
+      >
+        {/* Order number */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-sm font-bold text-cyan-400">
+          {index + 1}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+              <FontAwesomeIcon icon={faWrench} className="text-[10px]" />
+              Tool
+            </span>
+          </div>
+          <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
+        </div>
+
+        {/* Expand/collapse indicator */}
+        <FontAwesomeIcon
+          icon={isExpanded ? faChevronDown : faChevronRight}
+          className="text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1"
+        />
+      </button>
+
+      {/* Expanded content */}
+      {isExpanded && (
+        <div className="border-t border-slate-200 dark:border-white/10 p-6">
+          {isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500" />
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-8">
+              <p className="text-slate-500 dark:text-gray-400 mb-4">Failed to load tool details.</p>
+              <Link
+                to={`/tools/${item.toolSlug}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                View Tool Page
+                <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
+              </Link>
+            </div>
+          )}
+
+          {tool && (
+            <div className="space-y-4">
+              {/* Tool header with logo */}
+              <div className="flex items-start gap-4">
+                {tool.logoUrl && (
+                  <img
+                    src={tool.logoUrl}
+                    alt={tool.name}
+                    className="w-16 h-16 rounded-lg object-cover bg-slate-100 dark:bg-white/10"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{tool.name}</h4>
+                  <p className="text-slate-600 dark:text-gray-400 text-sm">{tool.tagline}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 text-xs">
+                      {tool.categoryDisplay}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs capitalize">
+                      {tool.pricingModel.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">
+                {tool.description}
+              </p>
+
+              {/* Features */}
+              {tool.features && tool.features.length > 0 && (
+                <div>
+                  <h5 className="text-slate-900 dark:text-white font-medium text-sm mb-2">Key Features</h5>
+                  <ul className="space-y-1">
+                    {tool.features.slice(0, 4).map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-300">
+                        <span className="text-cyan-500 mt-1">•</span>
+                        <span><strong>{feature.title}:</strong> {feature.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                {tool.websiteUrl && (
+                  <a
+                    href={tool.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Visit Website
+                    <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
+                  </a>
+                )}
+                <Link
+                  to={`/tools/${item.toolSlug}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
+                >
+                  Full Details
+                  <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Related Projects Card - shows community projects section
  */
 function RelatedProjectsCard({ item, index }: { item: CurriculumItem; index: number }) {
   const projects = item.projects || [];
-
-  if (projects.length === 0) {
-    return null;
-  }
 
   return (
     <div className="glass-strong rounded overflow-hidden">
@@ -350,19 +554,38 @@ function RelatedProjectsCard({ item, index }: { item: CurriculumItem; index: num
             </div>
             <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
             <p className="text-slate-600 dark:text-gray-400 text-sm mt-1">
-              Explore projects from the AllThrive community
+              {projects.length > 0
+                ? 'Explore projects from the AllThrive community'
+                : 'Be the first to share a project on this topic!'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Projects grid */}
+      {/* Projects grid or empty state */}
       <div className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
+        {projects.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <FontAwesomeIcon icon={faUsers} className="text-2xl text-amber-400" />
+            </div>
+            <p className="text-slate-600 dark:text-gray-400 text-sm mb-4">
+              No community projects yet for this topic.
+            </p>
+            <Link
+              to="/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Share Your Project
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -383,6 +606,9 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
+  const [userRating, setUserRating] = useState<'helpful' | 'not_helpful' | null>(null);
+  const [isRating, setIsRating] = useState(false);
   const content = item.content;
 
   // Fetch lesson image when expanded for the first time
@@ -415,6 +641,31 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
         practicePrompt: content.practicePrompt,
         keyConcepts: content.keyConcepts,
       });
+    }
+  };
+
+  const handleRating = async (rating: 'helpful' | 'not_helpful') => {
+    // If user clicks the same rating, toggle it off
+    if (userRating === rating) {
+      setUserRating(null);
+      return;
+    }
+
+    // Need projectId to rate - for AI lessons this comes after persisting
+    if (!item.projectId) {
+      // For now, just set the UI state - actual rating will be saved when lesson is persisted
+      setUserRating(rating);
+      return;
+    }
+
+    setIsRating(true);
+    try {
+      await rateLesson(item.projectId, rating);
+      setUserRating(rating);
+    } catch (error) {
+      console.error('Failed to rate lesson:', error);
+    } finally {
+      setIsRating(false);
     }
   };
 
@@ -483,13 +734,32 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
             </div>
           )}
           {imageUrl && (
-            <div className="bg-slate-100 dark:bg-white/5 rounded-lg overflow-hidden">
-              <img
-                src={imageUrl}
-                alt={`Illustration for ${item.title}`}
-                className="w-full h-auto"
-              />
-            </div>
+            <>
+              <button
+                onClick={() => setShowLightbox(true)}
+                className="relative w-full bg-slate-100 dark:bg-white/5 rounded-lg overflow-hidden group cursor-zoom-in"
+              >
+                <img
+                  src={imageUrl}
+                  alt={`Illustration for ${item.title}`}
+                  className="w-full h-auto transition-transform duration-300 group-hover:scale-[1.02]"
+                />
+                {/* Hover overlay with zoom icon */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-3">
+                    <FontAwesomeIcon icon={faSearchPlus} className="text-white text-lg" />
+                  </div>
+                </div>
+              </button>
+              {/* Image lightbox */}
+              {showLightbox && (
+                <ImageLightbox
+                  imageUrl={imageUrl}
+                  alt={`Illustration for ${item.title}`}
+                  onClose={() => setShowLightbox(false)}
+                />
+              )}
+            </>
           )}
 
           {/* Main explanation */}
@@ -561,6 +831,44 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
               />
             </div>
           )}
+
+          {/* Rating section */}
+          <div className="border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-slate-600 dark:text-gray-400 text-sm">Was this lesson helpful?</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleRating('helpful')}
+                  disabled={isRating}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    userRating === 'helpful'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'
+                  } ${isRating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <FontAwesomeIcon icon={faThumbsUp} />
+                  Helpful
+                </button>
+                <button
+                  onClick={() => handleRating('not_helpful')}
+                  disabled={isRating}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    userRating === 'not_helpful'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400'
+                  } ${isRating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <FontAwesomeIcon icon={faThumbsDown} />
+                  Not Helpful
+                </button>
+              </div>
+            </div>
+            {userRating && (
+              <p className="text-emerald-600 dark:text-emerald-400 text-xs mt-2">
+                Thanks for your feedback!
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -581,6 +889,11 @@ function CurriculumItemCard({ item, index, pathSlug, onOpenChat }: CurriculumIte
   // Use AILessonCard for AI-generated lessons
   if (item.type === 'ai_lesson') {
     return <AILessonCard item={item} index={index} pathSlug={pathSlug} onOpenChat={onOpenChat} />;
+  }
+
+  // Use ToolItemCard for expandable tool info
+  if (item.type === 'tool' && item.toolSlug) {
+    return <ToolItemCard item={item} index={index} />;
   }
 
   // Use GameItemCard for inline games

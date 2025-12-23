@@ -52,6 +52,7 @@ export interface User {
   currentStatus?: string;
   totalAchievementsUnlocked?: number;
   lifetimeProjectsCreated?: number;
+  projectsCount?: number;
   // Guest user flag
   isGuest?: boolean;
   // Admin role (includes superusers)
@@ -138,6 +139,7 @@ export interface Project {
   isPromoted?: boolean; // Admin promoted - appears at top of explore feeds
   promotedAt?: string; // When this project was promoted
   isLearningEligible?: boolean; // Whether this project appears in learning content
+  isLesson?: boolean; // Whether this project is curated educational content for lesson library
   bannerUrl?: string; // Banner/cover image
   featuredImageUrl?: string;
   externalUrl?: string;
@@ -328,6 +330,7 @@ export interface ProjectPayload {
   isHighlighted?: boolean;
   isPrivate?: boolean;
   isArchived?: boolean;
+  isLesson?: boolean; // Add to lesson library
   bannerUrl?: string;
   featuredImageUrl?: string;
   externalUrl?: string;

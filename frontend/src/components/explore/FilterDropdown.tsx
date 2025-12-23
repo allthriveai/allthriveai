@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon,
   ScissorsIcon,
   AcademicCapIcon,
+  PuzzlePieceIcon,
 } from '@heroicons/react/24/outline';
 import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
 import type { Taxonomy } from '@/types/models';
@@ -35,6 +36,7 @@ export const CONTENT_TYPES = [
   { key: 'image_collection', label: 'Image Collections', icon: PhotoIcon, color: '#EC4899' },
   { key: 'reddit_thread', label: 'Reddit Threads', icon: ChatBubbleLeftRightIcon, color: '#FF4500' },
   { key: 'clipped', label: 'Clipped Content', icon: ScissorsIcon, color: '#14B8A6' },
+  { key: 'game', label: 'Games', icon: PuzzlePieceIcon, color: '#22C55E' },
   { key: 'quiz', label: 'Quizzes', icon: AcademicCapIcon, color: '#A855F7' },
 ] as const;
 

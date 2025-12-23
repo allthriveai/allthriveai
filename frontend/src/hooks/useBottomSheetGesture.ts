@@ -129,10 +129,10 @@ export function useBottomSheetGesture({
 
     // Check scroll position in expanded states
     const isAtTop = scrollContainer ? scrollContainer.scrollTop <= 0 : true;
-    // isAtBottom reserved for future rubber band effect at bottom of scroll
-    const _isAtBottom = scrollContainer
-      ? scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5
-      : true;
+    // Note: isAtBottom calculation reserved for future rubber band effect at bottom of scroll
+    // const isAtBottom = scrollContainer
+    //   ? scrollContainer.scrollHeight - scrollContainer.scrollTop <= scrollContainer.clientHeight + 5
+    //   : true;
 
     // Allow drag in these cases:
     // 1. Collapsed state - any swipe up should expand

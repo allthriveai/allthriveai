@@ -24,7 +24,7 @@ export function DMEmptyState({ onStartThread }: DMEmptyStateProps) {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isCreatingThread, setIsCreatingThread] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: suggestions, isLoading: isLoadingSuggestions } = useDMSuggestions(8);

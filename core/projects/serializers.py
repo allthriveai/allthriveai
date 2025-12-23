@@ -59,6 +59,9 @@ class ProjectSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
 
+    # Lesson library fields - from ProjectLearningMetadata
+    is_lesson = serializers.BooleanField(required=False, default=False)
+
     class Meta:
         model = Project
         fields = [
@@ -95,6 +98,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'pricing_taxonomy',
             'pricing_details',
             'ai_tag_metadata',
+            'is_lesson',
             'heart_count',
             'is_liked_by_user',
             'content',
@@ -355,7 +359,15 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         """Convert snake_case field names to camelCase for frontend compatibility."""
+        from django.core.exceptions import ObjectDoesNotExist
+
         data = super().to_representation(instance)
+
+        # Read is_lesson from learning_metadata (default False if no metadata)
+        try:
+            data['is_lesson'] = instance.learning_metadata.is_lesson
+        except ObjectDoesNotExist:
+            data['is_lesson'] = False
 
         # Add Reddit-specific data to content if this is a Reddit thread
         if instance.type == 'reddit_thread':
@@ -429,6 +441,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'user_tags': 'userTags',
             'heart_count': 'heartCount',
             'is_liked_by_user': 'isLikedByUser',
+            'is_lesson': 'isLesson',
             'published_date': 'publishedDate',
             'created_at': 'createdAt',
             'updated_at': 'updatedAt',
@@ -445,15 +458,36 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Create a new project with default banner image if not provided."""
+        from core.learning_paths.models import ProjectLearningMetadata
+
+        # Extract is_lesson if present (stored in ProjectLearningMetadata, not Project)
+        is_lesson = validated_data.pop('is_lesson', None)
+
         # Set default banner image if banner_url is not provided or empty
         if not validated_data.get('banner_url'):
             validated_data['banner_url'] = DEFAULT_BANNER_IMAGE
-        return super().create(validated_data)
+
+        instance = super().create(validated_data)
+
+        # Create ProjectLearningMetadata if is_lesson was provided and is True
+        if is_lesson:
+            ProjectLearningMetadata.objects.create(
+                project=instance,
+                is_lesson=True,
+                is_learning_eligible=True,
+            )
+
+        return instance
 
     def update(self, instance, validated_data):
         """Update project and save tools_order if tools are included."""
+        from core.learning_paths.models import ProjectLearningMetadata
+
         # Extract tools if present (ManyToMany needs special handling)
         tools = validated_data.pop('tools', None)
+
+        # Extract is_lesson if present (stored in ProjectLearningMetadata)
+        is_lesson = validated_data.pop('is_lesson', None)
 
         # Update regular fields
         instance = super().update(instance, validated_data)
@@ -464,6 +498,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             # Save the order as a list of IDs (first tool appears in project teaser)
             instance.tools_order = [tool.id for tool in tools]
             instance.save(update_fields=['tools_order'])
+
+        # If is_lesson was provided, update or create ProjectLearningMetadata
+        if is_lesson is not None:
+            metadata, created = ProjectLearningMetadata.objects.get_or_create(
+                project=instance,
+                defaults={'is_lesson': is_lesson, 'is_learning_eligible': True},
+            )
+            if not created and metadata.is_lesson != is_lesson:
+                metadata.is_lesson = is_lesson
+                metadata.save(update_fields=['is_lesson', 'updated_at'])
 
         return instance
 

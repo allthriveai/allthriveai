@@ -491,3 +491,131 @@ export async function getLessonStats(): Promise<LessonStats> {
   const response = await api.get<LessonStats>('/admin/learning/lessons/stats/');
   return response.data;
 }
+
+/**
+ * AI Lesson from saved learning path (for admin view)
+ */
+export interface AILessonMetadata {
+  id: string;
+  pathId: number;
+  pathSlug: string;
+  pathTitle: string;
+  order: number;
+  title: string;
+  summary: string;
+  keyConcepts: string[];
+  difficulty: string;
+  estimatedMinutes: number;
+  username: string;
+  createdAt: string;
+  hasExamples: boolean;
+  hasDiagram: boolean;
+  hasPracticePrompt: boolean;
+}
+
+/**
+ * Get all AI-generated lessons from saved learning paths (admin only)
+ */
+export async function getAdminAILessons(params?: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}): Promise<PaginatedResponse<AILessonMetadata>> {
+  const response = await api.get<PaginatedResponse<AILessonMetadata>>(
+    '/admin/learning/lessons/ai-lessons/',
+    { params }
+  );
+  return response.data;
+}
+
+/**
+ * Full AI lesson content for editing
+ */
+export interface AILessonFullContent {
+  id: string;
+  pathId: number;
+  pathSlug: string;
+  pathTitle: string;
+  order: number;
+  title: string;
+  difficulty: string;
+  estimatedMinutes: number;
+  username: string;
+  createdAt: string;
+  summary: string;
+  keyConcepts: string[];
+  explanation: string;
+  practicePrompt?: string;
+  mermaidDiagram?: string;
+  examples?: Array<{
+    title: string;
+    description: string;
+    code?: string;
+  }>;
+}
+
+/**
+ * Get a single AI lesson with full content for editing (admin only)
+ */
+export async function getAdminAILessonDetail(pathId: number, order: number): Promise<AILessonFullContent> {
+  const response = await api.get<AILessonFullContent>(
+    `/admin/learning/lessons/ai-lessons/${pathId}/${order}/detail/`
+  );
+  return response.data;
+}
+
+/**
+ * Update an AI lesson (admin only)
+ */
+export async function updateAdminAILesson(
+  pathId: number,
+  order: number,
+  data: Partial<{
+    title: string;
+    difficulty: string;
+    estimatedMinutes: number;
+    summary: string;
+    keyConcepts: string[];
+    explanation: string;
+    practicePrompt: string;
+    mermaidDiagram: string;
+    examples: Array<{ title: string; description: string; code?: string }>;
+  }>
+): Promise<AILessonMetadata> {
+  const response = await api.patch<AILessonMetadata>(
+    `/admin/learning/lessons/ai-lessons/${pathId}/${order}/`,
+    data
+  );
+  return response.data;
+}
+
+// =============================================================================
+// LESSON RATING APIs (User-facing)
+// =============================================================================
+
+/**
+ * Rate a lesson as helpful or not helpful
+ */
+export async function rateLesson(
+  projectId: number,
+  rating: 'helpful' | 'not_helpful',
+  feedback?: string
+): Promise<LessonRating> {
+  const response = await api.post<LessonRating>(`/lessons/${projectId}/rate/`, {
+    rating,
+    feedback: feedback || '',
+  });
+  return response.data;
+}
+
+/**
+ * Get the current user's rating for a lesson (if any)
+ */
+export async function getMyLessonRating(projectId: number): Promise<LessonRating | null> {
+  try {
+    const response = await api.get<LessonRating>(`/lessons/${projectId}/rate/`);
+    return response.data;
+  } catch {
+    return null;
+  }
+}

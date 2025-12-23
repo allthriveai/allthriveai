@@ -423,37 +423,37 @@ export function AssistantMessage({
 
   // Common markdown components factory
   const getMarkdownComponents = (neon: boolean) => ({
-    p: ({ children }: { children: React.ReactNode }) => (
+    p: ({ children }: { children?: React.ReactNode }) => (
       <p className={`${neon ? 'mb-4' : 'mb-3'} last:mb-0 leading-relaxed`}>{children}</p>
     ),
-    ul: ({ children }: { children: React.ReactNode }) => (
+    ul: ({ children }: { children?: React.ReactNode }) => (
       <ul className={`${neon ? 'mb-4' : 'mb-3'} ml-4 space-y-2 list-disc list-outside`}>{children}</ul>
     ),
-    ol: ({ children }: { children: React.ReactNode }) => (
+    ol: ({ children }: { children?: React.ReactNode }) => (
       <ol className={`${neon ? 'mb-4' : 'mb-3'} ml-4 space-y-2 list-decimal list-outside`}>{children}</ol>
     ),
-    li: ({ children }: { children: React.ReactNode }) => (
+    li: ({ children }: { children?: React.ReactNode }) => (
       <li className="leading-relaxed pl-1">{children}</li>
     ),
-    h1: ({ children }: { children: React.ReactNode }) => (
+    h1: ({ children }: { children?: React.ReactNode }) => (
       <h1 className={`${neon ? 'text-xl' : 'text-base'} font-bold ${neon ? 'mb-3 mt-4' : 'mb-2 mt-3'} first:mt-0`}>{children}</h1>
     ),
-    h2: ({ children }: { children: React.ReactNode }) => (
+    h2: ({ children }: { children?: React.ReactNode }) => (
       <h2 className={`${neon ? 'text-lg' : 'text-sm'} font-semibold ${neon ? 'mb-2 mt-4' : 'mb-1.5 mt-3'} first:mt-0`}>{children}</h2>
     ),
-    h3: ({ children }: { children: React.ReactNode }) => (
+    h3: ({ children }: { children?: React.ReactNode }) => (
       <h3 className={`${neon ? 'text-base' : 'text-sm'} font-semibold ${neon ? 'mb-2 mt-3' : 'mb-1 mt-2'} first:mt-0`}>{children}</h3>
     ),
-    strong: ({ children }: { children: React.ReactNode }) => (
+    strong: ({ children }: { children?: React.ReactNode }) => (
       <strong className={`font-semibold ${neon ? 'text-slate-900 dark:text-white' : ''}`}>{children}</strong>
     ),
-    em: ({ children }: { children: React.ReactNode }) => <em className="italic">{children}</em>,
-    blockquote: ({ children }: { children: React.ReactNode }) => (
+    em: ({ children }: { children?: React.ReactNode }) => <em className="italic">{children}</em>,
+    blockquote: ({ children }: { children?: React.ReactNode }) => (
       <blockquote className={`border-l-${neon ? '4' : '2'} border-cyan-500/50 pl-${neon ? '4' : '3'} my-${neon ? '4' : '3'} italic ${neon ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400'}`}>
         {children}
       </blockquote>
     ),
-    a: ({ href, children }: { href?: string; children: React.ReactNode }) => {
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
       const normalizedHref = normalizeAllThriveUrl(href);
       const isInternal = normalizedHref?.startsWith('/');
       if (isInternal && normalizedHref) {
@@ -478,12 +478,12 @@ export function AssistantMessage({
         </a>
       );
     },
-    pre: ({ children }: { children: React.ReactNode }) => (
+    pre: ({ children }: { children?: React.ReactNode }) => (
       <pre className={`overflow-x-auto whitespace-pre-wrap break-words ${neon ? 'bg-slate-900/50 dark:bg-slate-950/50 p-4' : 'bg-slate-900 dark:bg-slate-950 p-3'} rounded-lg text-sm ${neon ? 'my-4' : 'my-3'}`}>
         {children}
       </pre>
     ),
-    code: ({ children, node }: { children: React.ReactNode; node?: { position?: { start: { line: number }; end: { line: number } } } }) => {
+    code: ({ children, node }: { children?: React.ReactNode; node?: { position?: { start: { line: number }; end: { line: number } } } }) => {
       const isInline = node?.position?.start.line === node?.position?.end.line;
       return isInline ? (
         <code className={`${neon ? 'bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5' : 'bg-gray-200 dark:bg-gray-700 px-1 py-0.5'} rounded text-sm font-mono break-all`}>

@@ -536,16 +536,17 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
         existing_content: dict,
         order: int,
     ) -> int:
-        """Add 'See what others are doing' section with related projects at the end."""
+        """Add 'See what others are doing' section with related projects at the end.
+
+        Always adds this section to encourage community engagement.
+        Shows available projects if any, otherwise shows an empty section
+        that the frontend can render with a "be the first" message.
+        """
         projects = existing_content.get('projects', [])
 
-        # Need at least 3 projects to show this section
-        if len(projects) < 3:
-            return order
-
-        # Take 3-5 projects (dynamic based on availability)
+        # Take up to 5 projects (dynamic based on availability)
         project_count = min(5, len(projects))
-        selected_projects = projects[:project_count]
+        selected_projects = projects[:project_count] if projects else []
 
         curriculum.append(
             CurriculumItem(
@@ -553,7 +554,7 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
                 type='related_projects',
                 title='See what others are doing',
                 projects=selected_projects,
-                estimated_minutes=10,
+                estimated_minutes=5 if selected_projects else 2,
                 generated=False,
             )
         )

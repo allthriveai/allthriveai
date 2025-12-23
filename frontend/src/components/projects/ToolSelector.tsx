@@ -30,7 +30,8 @@ export function ToolSelector({ selectedToolIds, onChange, disabled, initialSelec
   useEffect(() => {
     async function loadTools() {
       try {
-        const response = await getTools({ ordering: 'name' });
+        // Request all tools with a large page_size to avoid pagination
+        const response = await getTools({ ordering: 'name', page_size: 500 });
         setTools(response.results);
       } catch (error) {
         console.error('Failed to load tools:', error);

@@ -55,6 +55,11 @@ const TIER_CONFIG: Record<TierName, { emoji: string; description: string; color:
     description: 'Community curator! You help shape and elevate the entire community.',
     color: 'text-yellow-400',
   },
+  team: {
+    emoji: '🎯',
+    description: 'Team member! You help build and grow the All Thrive community.',
+    color: 'text-indigo-400',
+  },
 };
 
 export default function ThriveCirclePage() {

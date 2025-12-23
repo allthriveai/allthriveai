@@ -1507,3 +1507,209 @@ class AdminLessonViewSet(viewsets.ModelViewSet):
                 'topRatedLessons': ProjectLearningMetadataSerializer(top_rated, many=True).data,
             }
         )
+
+    @action(detail=False, methods=['get'], url_path='ai-lessons')
+    def ai_lessons(self, request):
+        """
+        GET /api/v1/admin/learning/lessons/ai-lessons/
+
+        List all AI-generated lessons from saved learning paths.
+        """
+        if not self.request.user.is_authenticated or self.request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Pagination
+        page = safe_int(request.query_params.get('page'), 1)
+        page_size = safe_int(request.query_params.get('pageSize'), 20, max_value=100)
+        search = request.query_params.get('search', '')
+
+        # Get all saved learning paths
+        paths = SavedLearningPath.objects.select_related('user').order_by('-created_at')
+
+        if search:
+            from django.db.models import Q
+
+            paths = paths.filter(Q(title__icontains=search) | Q(user__username__icontains=search))
+
+        # Extract AI lessons from all paths
+        ai_lessons_list = []
+        for path in paths:
+            path_data = path.path_data or {}
+            curriculum = path_data.get('curriculum', [])
+
+            for item in curriculum:
+                if item.get('type') == 'ai_lesson':
+                    content = item.get('content', {})
+                    ai_lessons_list.append(
+                        {
+                            'id': f"{path.id}-{item.get('order', 0)}",
+                            'pathId': path.id,
+                            'pathSlug': path.slug,
+                            'pathTitle': path.title,
+                            'order': item.get('order', 0),
+                            'title': item.get('title', 'Untitled Lesson'),
+                            'summary': content.get('summary', ''),
+                            'keyConcepts': content.get('keyConcepts', []),
+                            'difficulty': item.get('difficulty', path.difficulty),
+                            'estimatedMinutes': item.get('estimatedMinutes', 10),
+                            'username': path.user.username,
+                            'createdAt': path.created_at.isoformat(),
+                            'hasExamples': bool(content.get('examples')),
+                            'hasDiagram': bool(content.get('mermaidDiagram')),
+                            'hasPracticePrompt': bool(content.get('practicePrompt')),
+                        }
+                    )
+
+        # Apply pagination
+        total = len(ai_lessons_list)
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_lessons = ai_lessons_list[start:end]
+
+        return Response(
+            {
+                'count': total,
+                'next': f'?page={page + 1}' if end < total else None,
+                'previous': f'?page={page - 1}' if page > 1 else None,
+                'results': paginated_lessons,
+            }
+        )
+
+    @action(detail=False, methods=['get'], url_path=r'ai-lessons/(?P<path_id>\d+)/(?P<order>\d+)/detail')
+    def get_ai_lesson_detail(self, request, path_id=None, order=None):
+        """
+        GET /api/v1/admin/learning/lessons/ai-lessons/{path_id}/{order}/detail/
+
+        Get full AI lesson content for editing.
+        """
+        if not self.request.user.is_authenticated or self.request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        path_id = int(path_id)
+        order = int(order)
+
+        try:
+            path = SavedLearningPath.objects.select_related('user').get(id=path_id)
+        except SavedLearningPath.DoesNotExist:
+            return Response({'error': 'Learning path not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Find the lesson in the curriculum
+        curriculum = path.path_data.get('curriculum', [])
+        lesson = next(
+            (item for item in curriculum if item.get('order') == order and item.get('type') == 'ai_lesson'),
+            None,
+        )
+
+        if not lesson:
+            return Response({'error': 'AI lesson not found at this order'}, status=status.HTTP_404_NOT_FOUND)
+
+        content = lesson.get('content', {})
+
+        return Response(
+            {
+                'id': f'{path.id}-{order}',
+                'pathId': path.id,
+                'pathSlug': path.slug,
+                'pathTitle': path.title,
+                'order': order,
+                'title': lesson.get('title', 'Untitled Lesson'),
+                'difficulty': lesson.get('difficulty', path.difficulty),
+                'estimatedMinutes': lesson.get('estimatedMinutes', 10),
+                'username': path.user.username,
+                'createdAt': path.created_at.isoformat(),
+                # Full content fields
+                'summary': content.get('summary', ''),
+                'keyConcepts': content.get('keyConcepts', []),
+                'explanation': content.get('explanation', ''),
+                'examples': content.get('examples', []),
+                'practicePrompt': content.get('practicePrompt', ''),
+                'mermaidDiagram': content.get('mermaidDiagram', ''),
+            }
+        )
+
+    @action(detail=False, methods=['patch'], url_path=r'ai-lessons/(?P<path_id>\d+)/(?P<order>\d+)')
+    def update_ai_lesson(self, request, path_id=None, order=None):
+        """
+        PATCH /api/v1/admin/learning/lessons/ai-lessons/{path_id}/{order}/
+
+        Update an AI-generated lesson's content.
+        """
+        if not self.request.user.is_authenticated or self.request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        path_id = int(path_id)
+        order = int(order)
+
+        # Get the saved learning path
+        try:
+            path = SavedLearningPath.objects.get(id=path_id)
+        except SavedLearningPath.DoesNotExist:
+            return Response({'error': 'Learning path not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Find the lesson in the curriculum
+        curriculum = path.path_data.get('curriculum', [])
+        lesson_index = None
+        for i, item in enumerate(curriculum):
+            if item.get('order') == order and item.get('type') == 'ai_lesson':
+                lesson_index = i
+                break
+
+        if lesson_index is None:
+            return Response({'error': 'AI lesson not found at this order'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Update lesson fields
+        lesson = curriculum[lesson_index]
+        content = lesson.get('content', {})
+
+        # Update title if provided
+        if 'title' in request.data:
+            lesson['title'] = request.data['title']
+
+        # Update difficulty if provided
+        if 'difficulty' in request.data:
+            lesson['difficulty'] = request.data['difficulty']
+
+        # Update estimatedMinutes if provided
+        if 'estimatedMinutes' in request.data:
+            lesson['estimatedMinutes'] = request.data['estimatedMinutes']
+
+        # Update content fields
+        if 'summary' in request.data:
+            content['summary'] = request.data['summary']
+        if 'keyConcepts' in request.data:
+            content['keyConcepts'] = request.data['keyConcepts']
+        if 'explanation' in request.data:
+            content['explanation'] = request.data['explanation']
+        if 'practicePrompt' in request.data:
+            content['practicePrompt'] = request.data['practicePrompt']
+        if 'mermaidDiagram' in request.data:
+            content['mermaidDiagram'] = request.data['mermaidDiagram']
+        if 'examples' in request.data:
+            content['examples'] = request.data['examples']
+
+        lesson['content'] = content
+        curriculum[lesson_index] = lesson
+
+        # Save the updated path data
+        path.path_data['curriculum'] = curriculum
+        path.save(update_fields=['path_data', 'updated_at'])
+
+        return Response(
+            {
+                'id': f'{path.id}-{order}',
+                'pathId': path.id,
+                'pathSlug': path.slug,
+                'pathTitle': path.title,
+                'order': order,
+                'title': lesson.get('title', 'Untitled Lesson'),
+                'summary': content.get('summary', ''),
+                'keyConcepts': content.get('keyConcepts', []),
+                'difficulty': lesson.get('difficulty', path.difficulty),
+                'estimatedMinutes': lesson.get('estimatedMinutes', 10),
+                'username': path.user.username,
+                'createdAt': path.created_at.isoformat(),
+                'hasExamples': bool(content.get('examples')),
+                'hasDiagram': bool(content.get('mermaidDiagram')),
+                'hasPracticePrompt': bool(content.get('practicePrompt')),
+            }
+        )

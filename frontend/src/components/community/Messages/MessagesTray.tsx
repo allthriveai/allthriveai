@@ -168,7 +168,7 @@ function ThreadListView({
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isCreatingThread, setIsCreatingThread] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout>(undefined);
 
   const { data: suggestions, isLoading: isLoadingSuggestions } = useDMSuggestions(6);
 
