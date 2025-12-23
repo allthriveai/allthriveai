@@ -10,7 +10,53 @@ Seed new taxonomy types for content discovery and user personalization:
 - role: Job function/audience (multi-select)
 """
 
-from django.db import migrations
+from django.db import IntegrityError, migrations, transaction
+
+
+def safe_get_or_create_taxonomy(Taxonomy, slug, name, taxonomy_type, description):
+    """
+    Safely get or create a taxonomy, handling unique constraint on name.
+
+    The Taxonomy model has unique constraints on both slug and name (until
+    migration 0057 removes the name constraint). This function handles the
+    case where a taxonomy with the same name but different slug already exists.
+    """
+    # First try by slug and taxonomy_type
+    taxonomy = Taxonomy.objects.filter(slug=slug, taxonomy_type=taxonomy_type).first()
+    if taxonomy:
+        return taxonomy
+
+    # Also try by just slug (it's globally unique)
+    taxonomy = Taxonomy.objects.filter(slug=slug).first()
+    if taxonomy:
+        return taxonomy
+
+    # Try by name and taxonomy_type (in case it exists with a different slug)
+    taxonomy = Taxonomy.objects.filter(name=name, taxonomy_type=taxonomy_type).first()
+    if taxonomy:
+        return taxonomy
+
+    # Try to create, but handle race conditions and name conflicts
+    try:
+        with transaction.atomic():
+            taxonomy = Taxonomy.objects.create(
+                slug=slug,
+                name=name,
+                taxonomy_type=taxonomy_type,
+                description=description,
+                is_active=True,
+            )
+            return taxonomy
+    except IntegrityError:
+        # Another process created it, or name/slug conflict - fetch existing
+        taxonomy = Taxonomy.objects.filter(slug=slug).first()
+        if taxonomy:
+            return taxonomy
+        taxonomy = Taxonomy.objects.filter(name=name, taxonomy_type=taxonomy_type).first()
+        if taxonomy:
+            return taxonomy
+        # If still not found, the name exists with a different type - skip this one
+        return None
 
 
 def seed_new_taxonomies(apps, schema_editor):
@@ -95,13 +141,12 @@ def seed_new_taxonomies(apps, schema_editor):
     ]
 
     for item in content_types:
-        Taxonomy.objects.get_or_create(
-            slug=item['slug'],
-            defaults={
-                **item,
-                'taxonomy_type': 'content_type',
-                'is_active': True,
-            },
+        safe_get_or_create_taxonomy(
+            Taxonomy,
+            item['slug'],
+            item['name'],
+            'content_type',
+            item['description'],
         )
 
     # =========================================================================
@@ -132,13 +177,12 @@ def seed_new_taxonomies(apps, schema_editor):
     ]
 
     for item in time_investments:
-        Taxonomy.objects.get_or_create(
-            slug=item['slug'],
-            defaults={
-                **item,
-                'taxonomy_type': 'time_investment',
-                'is_active': True,
-            },
+        safe_get_or_create_taxonomy(
+            Taxonomy,
+            item['slug'],
+            item['name'],
+            'time_investment',
+            item['description'],
         )
 
     # =========================================================================
@@ -164,13 +208,12 @@ def seed_new_taxonomies(apps, schema_editor):
     ]
 
     for item in difficulties:
-        Taxonomy.objects.get_or_create(
-            slug=item['slug'],
-            defaults={
-                **item,
-                'taxonomy_type': 'difficulty',
-                'is_active': True,
-            },
+        safe_get_or_create_taxonomy(
+            Taxonomy,
+            item['slug'],
+            item['name'],
+            'difficulty',
+            item['description'],
         )
 
     # =========================================================================
@@ -196,13 +239,12 @@ def seed_new_taxonomies(apps, schema_editor):
     ]
 
     for item in pricing_tiers:
-        Taxonomy.objects.get_or_create(
-            slug=item['slug'],
-            defaults={
-                **item,
-                'taxonomy_type': 'pricing',
-                'is_active': True,
-            },
+        safe_get_or_create_taxonomy(
+            Taxonomy,
+            item['slug'],
+            item['name'],
+            'pricing',
+            item['description'],
         )
 
     # =========================================================================
@@ -297,13 +339,12 @@ def seed_new_taxonomies(apps, schema_editor):
     ]
 
     for item in personality_types:
-        Taxonomy.objects.get_or_create(
-            slug=item['slug'],
-            defaults={
-                **item,
-                'taxonomy_type': 'personality',
-                'is_active': True,
-            },
+        safe_get_or_create_taxonomy(
+            Taxonomy,
+            item['slug'],
+            item['name'],
+            'personality',
+            item['description'],
         )
 
     # =========================================================================
@@ -339,13 +380,12 @@ def seed_new_taxonomies(apps, schema_editor):
     ]
 
     for item in learning_styles:
-        Taxonomy.objects.get_or_create(
-            slug=item['slug'],
-            defaults={
-                **item,
-                'taxonomy_type': 'learning_style',
-                'is_active': True,
-            },
+        safe_get_or_create_taxonomy(
+            Taxonomy,
+            item['slug'],
+            item['name'],
+            'learning_style',
+            item['description'],
         )
 
     # =========================================================================
@@ -417,13 +457,12 @@ def seed_new_taxonomies(apps, schema_editor):
     ]
 
     for item in roles:
-        Taxonomy.objects.get_or_create(
-            slug=item['slug'],
-            defaults={
-                **item,
-                'taxonomy_type': 'role',
-                'is_active': True,
-            },
+        safe_get_or_create_taxonomy(
+            Taxonomy,
+            item['slug'],
+            item['name'],
+            'role',
+            item['description'],
         )
 
 
