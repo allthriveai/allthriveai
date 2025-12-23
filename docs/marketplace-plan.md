@@ -15,6 +15,7 @@ Build a full-featured creator marketplace where users can sell courses, digital 
 | Video hosting | Full platform with transcoding, adaptive streaming |
 | Library UX | Unified - purchased content merges into Learn page |
 | Creator AI allowance | Very generous (1M+ tokens/month) |
+| Donations | Tip jar, checkout tips, recurring memberships |
 
 ---
 
@@ -218,7 +219,149 @@ ai_allowance_tier = models.CharField(
 )
 ```
 
-### 1.5 Product Model Updates
+### 1.5 Donation Models
+
+Add to `core/marketplace/models.py`:
+
+```python
+class CreatorDonationSettings(models.Model):
+    """Creator's donation configuration."""
+    creator = models.OneToOneField(User, on_delete=models.CASCADE, related_name='donation_settings')
+
+    # Tip jar settings
+    tip_jar_enabled = models.BooleanField(default=False)
+    tip_jar_message = models.TextField(blank=True, default="Support my work!")
+    suggested_amounts = models.JSONField(default=list)  # [5, 10, 25, 50]
+    allow_custom_amount = models.BooleanField(default=True)
+    minimum_amount = models.DecimalField(max_digits=10, decimal_places=2, default=1.00)
+
+    # Checkout tip settings
+    checkout_tips_enabled = models.BooleanField(default=False)
+    checkout_tip_percentages = models.JSONField(default=list)  # [10, 15, 20]
+
+    # Membership/recurring settings
+    memberships_enabled = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class MembershipTier(models.Model):
+    """Recurring membership tiers for creators."""
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='membership_tiers')
+    name = models.CharField(max_length=100)  # e.g., "Supporter", "Champion", "Patron"
+    description = models.TextField(blank=True)
+    price_monthly = models.DecimalField(max_digits=10, decimal_places=2)
+    price_yearly = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    # Benefits
+    benefits = models.JSONField(default=list)  # ["Early access", "Exclusive content", "Discord role"]
+    badge_icon = models.CharField(max_length=50, blank=True)  # Icon identifier for badge
+    badge_color = models.CharField(max_length=7, blank=True)  # Hex color
+
+    # Limits
+    max_members = models.PositiveIntegerField(null=True, blank=True)  # None = unlimited
+
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['creator', 'order']
+
+
+class Donation(models.Model):
+    """One-time donations (tip jar and checkout tips)."""
+    DONATION_TYPES = [
+        ('tip', 'Tip Jar'),
+        ('checkout_tip', 'Checkout Tip'),
+    ]
+
+    donor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='donations_made')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='donations_received')
+
+    donation_type = models.CharField(max_length=20, choices=DONATION_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default='USD')
+
+    # Optional link to order (for checkout tips)
+    order = models.ForeignKey('Order', null=True, blank=True, on_delete=models.SET_NULL)
+
+    # Optional message
+    message = models.TextField(blank=True)
+    is_anonymous = models.BooleanField(default=False)
+
+    # Payment
+    stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
+    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # 0% for donations
+    creator_payout = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # Payout tracking
+    payout_status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('transferred', 'Transferred'), ('paid', 'Paid Out')],
+        default='pending'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Membership(models.Model):
+    """Active memberships (recurring donations)."""
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='memberships')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='members')
+    tier = models.ForeignKey(MembershipTier, on_delete=models.PROTECT)
+
+    # Billing
+    billing_cycle = models.CharField(
+        max_length=10,
+        choices=[('monthly', 'Monthly'), ('yearly', 'Yearly')],
+        default='monthly'
+    )
+    price_at_signup = models.DecimalField(max_digits=10, decimal_places=2)
+    stripe_subscription_id = models.CharField(max_length=255, blank=True)
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('active', 'Active'),
+            ('past_due', 'Past Due'),
+            ('cancelled', 'Cancelled'),
+            ('paused', 'Paused'),
+        ],
+        default='active',
+        db_index=True
+    )
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    current_period_start = models.DateTimeField()
+    current_period_end = models.DateTimeField()
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ['member', 'creator']  # One membership per creator
+
+
+class MembershipPayment(models.Model):
+    """Track individual membership payments."""
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    creator_payout = models.DecimalField(max_digits=10, decimal_places=2)
+
+    stripe_invoice_id = models.CharField(max_length=255, blank=True)
+    period_start = models.DateTimeField()
+    period_end = models.DateTimeField()
+
+    paid_at = models.DateTimeField(auto_now_add=True)
+```
+
+### 1.6 Product Model Updates
 
 Add to existing `Product` model:
 
@@ -410,7 +553,238 @@ class CreatorAIAllowanceService:
         )
 ```
 
-### 4.2 Creator Dashboard Enhancements
+### 4.2 Donation Services
+
+Create `core/marketplace/services/donations.py`:
+
+```python
+class DonationService:
+    """Handle one-time donations (tip jar and checkout tips)."""
+
+    PLATFORM_FEE_PERCENTAGE = 0  # 0% platform fee on donations (creator gets 100% minus Stripe fees)
+
+    @staticmethod
+    def create_tip_jar_donation(donor, creator, amount, message='', is_anonymous=False) -> Donation:
+        """Process a tip jar donation."""
+        # Validate minimum amount
+        settings = CreatorDonationSettings.objects.get(creator=creator)
+        if amount < settings.minimum_amount:
+            raise ValidationError(f"Minimum donation is ${settings.minimum_amount}")
+
+        # Calculate payout (0% platform fee, just Stripe fees ~2.9% + $0.30)
+        stripe_fee = (amount * Decimal('0.029')) + Decimal('0.30')
+        creator_payout = amount - stripe_fee
+
+        # Create Stripe PaymentIntent with destination charge
+        payment_intent = stripe.PaymentIntent.create(
+            amount=int(amount * 100),  # cents
+            currency='usd',
+            transfer_data={
+                'destination': creator.creator_account.stripe_account_id,
+            },
+            metadata={
+                'type': 'tip',
+                'donor_id': donor.id if donor else None,
+                'creator_id': creator.id,
+            }
+        )
+
+        donation = Donation.objects.create(
+            donor=donor,
+            creator=creator,
+            donation_type='tip',
+            amount=amount,
+            message=message,
+            is_anonymous=is_anonymous,
+            stripe_payment_intent_id=payment_intent.id,
+            platform_fee=0,
+            creator_payout=creator_payout,
+        )
+
+        return donation, payment_intent.client_secret
+
+    @staticmethod
+    def add_checkout_tip(order, tip_amount) -> Donation:
+        """Add tip to an existing order during checkout."""
+        stripe_fee = (tip_amount * Decimal('0.029'))
+        creator_payout = tip_amount - stripe_fee
+
+        return Donation.objects.create(
+            donor=order.buyer,
+            creator=order.product.creator,
+            donation_type='checkout_tip',
+            amount=tip_amount,
+            order=order,
+            stripe_payment_intent_id=order.stripe_payment_intent_id,
+            platform_fee=0,
+            creator_payout=creator_payout,
+        )
+
+
+class MembershipService:
+    """Handle recurring memberships (subscriptions)."""
+
+    @staticmethod
+    def create_membership(member, tier, billing_cycle='monthly') -> Membership:
+        """Create a new membership subscription."""
+        price = tier.price_monthly if billing_cycle == 'monthly' else tier.price_yearly
+
+        # Check tier capacity
+        if tier.max_members:
+            current_count = Membership.objects.filter(tier=tier, status='active').count()
+            if current_count >= tier.max_members:
+                raise ValidationError("This tier is full")
+
+        # Create Stripe subscription
+        stripe_price = MembershipService._get_or_create_stripe_price(tier, billing_cycle)
+
+        subscription = stripe.Subscription.create(
+            customer=member.stripe_customer_id,
+            items=[{'price': stripe_price.id}],
+            transfer_data={
+                'destination': tier.creator.creator_account.stripe_account_id,
+            },
+            metadata={
+                'tier_id': tier.id,
+                'member_id': member.id,
+                'creator_id': tier.creator.id,
+            }
+        )
+
+        return Membership.objects.create(
+            member=member,
+            creator=tier.creator,
+            tier=tier,
+            billing_cycle=billing_cycle,
+            price_at_signup=price,
+            stripe_subscription_id=subscription.id,
+            status='active',
+            current_period_start=datetime.fromtimestamp(subscription.current_period_start),
+            current_period_end=datetime.fromtimestamp(subscription.current_period_end),
+        )
+
+    @staticmethod
+    def cancel_membership(membership, at_period_end=True):
+        """Cancel a membership."""
+        stripe.Subscription.modify(
+            membership.stripe_subscription_id,
+            cancel_at_period_end=at_period_end,
+        )
+
+        if not at_period_end:
+            membership.status = 'cancelled'
+            membership.cancelled_at = timezone.now()
+        membership.save()
+
+    @staticmethod
+    def handle_subscription_webhook(event):
+        """Handle Stripe subscription webhooks."""
+        subscription = event.data.object
+
+        if event.type == 'invoice.paid':
+            # Record payment
+            membership = Membership.objects.get(stripe_subscription_id=subscription.subscription)
+            MembershipPayment.objects.create(
+                membership=membership,
+                amount=Decimal(subscription.amount_paid) / 100,
+                platform_fee=0,
+                creator_payout=Decimal(subscription.amount_paid) / 100,
+                stripe_invoice_id=subscription.id,
+                period_start=datetime.fromtimestamp(subscription.lines.data[0].period.start),
+                period_end=datetime.fromtimestamp(subscription.lines.data[0].period.end),
+            )
+
+        elif event.type == 'customer.subscription.updated':
+            membership = Membership.objects.get(stripe_subscription_id=subscription.id)
+            membership.current_period_start = datetime.fromtimestamp(subscription.current_period_start)
+            membership.current_period_end = datetime.fromtimestamp(subscription.current_period_end)
+            membership.status = 'active' if subscription.status == 'active' else 'past_due'
+            membership.save()
+
+        elif event.type == 'customer.subscription.deleted':
+            membership = Membership.objects.get(stripe_subscription_id=subscription.id)
+            membership.status = 'cancelled'
+            membership.cancelled_at = timezone.now()
+            membership.save()
+```
+
+### 4.3 Donation API Endpoints
+
+Add to `core/marketplace/views.py`:
+
+```python
+class DonationViewSet(viewsets.ModelViewSet):
+    """Handle donation operations."""
+
+    @action(detail=False, methods=['post'])
+    def tip(self, request):
+        """Send a tip to a creator."""
+        creator_id = request.data.get('creator_id')
+        amount = Decimal(request.data.get('amount'))
+        message = request.data.get('message', '')
+        is_anonymous = request.data.get('is_anonymous', False)
+
+        creator = User.objects.get(id=creator_id)
+        donation, client_secret = DonationService.create_tip_jar_donation(
+            donor=request.user,
+            creator=creator,
+            amount=amount,
+            message=message,
+            is_anonymous=is_anonymous,
+        )
+
+        return Response({
+            'donation_id': donation.id,
+            'client_secret': client_secret,
+        })
+
+    @action(detail=False, methods=['get'])
+    def received(self, request):
+        """Get donations received by current user."""
+        donations = Donation.objects.filter(creator=request.user)
+        return Response(DonationSerializer(donations, many=True).data)
+
+
+class MembershipViewSet(viewsets.ModelViewSet):
+    """Handle membership operations."""
+
+    @action(detail=False, methods=['post'])
+    def subscribe(self, request):
+        """Subscribe to a creator's membership tier."""
+        tier_id = request.data.get('tier_id')
+        billing_cycle = request.data.get('billing_cycle', 'monthly')
+
+        tier = MembershipTier.objects.get(id=tier_id)
+        membership = MembershipService.create_membership(
+            member=request.user,
+            tier=tier,
+            billing_cycle=billing_cycle,
+        )
+
+        return Response(MembershipSerializer(membership).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel a membership."""
+        membership = self.get_object()
+        at_period_end = request.data.get('at_period_end', True)
+        MembershipService.cancel_membership(membership, at_period_end)
+        return Response({'status': 'cancelled'})
+
+    @action(detail=False, methods=['get'])
+    def my_memberships(self, request):
+        """Get current user's active memberships."""
+        memberships = Membership.objects.filter(member=request.user, status='active')
+        return Response(MembershipSerializer(memberships, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def my_members(self, request):
+        """Get members of current user's tiers (for creators)."""
+        memberships = Membership.objects.filter(creator=request.user, status='active')
+        return Response(MembershipSerializer(memberships, many=True).data)
+```
+
+### 4.4 Creator Dashboard Enhancements
 
 Extend `get_creator_dashboard_stats()`:
 
@@ -428,6 +802,25 @@ def get_creator_dashboard_stats(user) -> dict:
         'products_by_type': {...},
         'revenue_trend': [...],  # Last 30 days
         'top_products': [...],
+        # Donation stats
+        'donations': {
+            'total_tips_received': Donation.objects.filter(creator=user).aggregate(Sum('amount')),
+            'tips_this_month': Donation.objects.filter(
+                creator=user,
+                created_at__gte=timezone.now().replace(day=1)
+            ).aggregate(Sum('amount')),
+            'recent_tips': DonationSerializer(
+                Donation.objects.filter(creator=user).order_by('-created_at')[:5],
+                many=True
+            ).data,
+        },
+        'memberships': {
+            'total_members': Membership.objects.filter(creator=user, status='active').count(),
+            'monthly_recurring': Membership.objects.filter(
+                creator=user, status='active'
+            ).aggregate(Sum('price_at_signup')),
+            'members_by_tier': {...},
+        },
     }
 ```
 
@@ -601,10 +994,11 @@ def migrate_course_content(apps, schema_editor):
 ### Backend
 | File | Changes |
 |------|---------|
-| `core/marketplace/models.py` | Add CourseModule, CourseLesson, CourseQuiz, VideoAsset, progress tracking, RefundRequest models |
+| `core/marketplace/models.py` | Add CourseModule, CourseLesson, CourseQuiz, VideoAsset, progress tracking, RefundRequest, **CreatorDonationSettings, Donation, MembershipTier, Membership, MembershipPayment** models |
 | `core/marketplace/services.py` | Add CourseAccessService, CreatorAIAllowanceService, VideoUploadService, RefundService |
-| `core/marketplace/views.py` | Add course builder endpoints, video upload endpoints, refund endpoints |
-| `core/marketplace/serializers.py` | Add serializers for new models |
+| `core/marketplace/services/donations.py` | **NEW**: DonationService, MembershipService |
+| `core/marketplace/views.py` | Add course builder endpoints, video upload endpoints, refund endpoints, **DonationViewSet, MembershipViewSet** |
+| `core/marketplace/serializers.py` | Add serializers for new models including **DonationSerializer, MembershipSerializer, MembershipTierSerializer** |
 | `core/marketplace/tasks/video.py` | Video processing Celery tasks |
 | `core/projects/views.py` | Modify explore to include product data |
 | `services/search/unified_search.py` | Add product fields to Weaviate schema |
@@ -612,19 +1006,27 @@ def migrate_course_content(apps, schema_editor):
 | `core/community/models.py` | Add ProductRoom model linking products to community rooms |
 | `core/community/services.py` | Extend to create product rooms, auto-add buyers |
 | `core/marketplace/communication.py` | **NEW**: Creator inbox, blast messaging service |
+| `core/marketplace/webhooks.py` | **UPDATE**: Add subscription webhook handlers |
 
 ### Frontend
 | File | Changes |
 |------|---------|
 | `pages/ExplorePage.tsx` | Add product badges, pricing filter |
 | `pages/LearnPage.tsx` | Add purchased products to unified library |
-| `pages/ProductDetailPage.tsx` | New - Product landing page |
+| `pages/ProductDetailPage.tsx` | New - Product landing page with **TipJarButton** |
 | `pages/LessonPlayerPage.tsx` | New - Lesson viewer with video |
 | `pages/CourseBuilderPage.tsx` | New - Course creation interface |
+| `pages/CreatorDonationSettingsPage.tsx` | **NEW** - Configure tip jar, suggested amounts |
+| `pages/CreatorMembershipSettingsPage.tsx` | **NEW** - Manage membership tiers |
 | `components/marketplace/` | New - ModuleEditor, LessonEditor, VideoUploader, etc. |
+| `components/marketplace/TipJarButton.tsx` | **NEW** - Tip button for creator profiles/products |
+| `components/marketplace/TipModal.tsx` | **NEW** - Tip amount selection and payment |
+| `components/marketplace/MembershipTiersCard.tsx` | **NEW** - Display creator's membership tiers |
+| `components/marketplace/MembershipCheckoutModal.tsx` | **NEW** - Subscribe to membership |
 | `components/projects/ProjectCard.tsx` | Add product price badge |
 | `services/marketplace.ts` | New API service for marketplace |
-| `types/marketplace.ts` | Update types for new models |
+| `services/donations.ts` | **NEW** - Donation and membership API service |
+| `types/marketplace.ts` | Update types for new models including **Donation, MembershipTier, Membership** |
 
 ### Infrastructure
 | Item | Requirement |
@@ -664,7 +1066,7 @@ def migrate_course_content(apps, schema_editor):
 - [ ] Create CourseAccessService (freemium logic)
 - [ ] Build LessonViewerPage (text + video embeds)
 
-#### Week 4: Library, AI Allowance, Refunds & Creator-Buyer Communication
+#### Week 4: Library, AI Allowance, Refunds, Donations & Creator-Buyer Communication
 - [ ] Integrate purchased products into LearnPage (unified library)
 - [ ] Add CourseProgressCard component
 - [ ] Add CreatorAccount AI allowance fields (1M tokens/month)
@@ -673,6 +1075,17 @@ def migrate_course_content(apps, schema_editor):
 - [ ] **Create refund request endpoint (buyer can request)**
 - [ ] **Creator refund approval/denial in dashboard**
 - [ ] **Stripe refund integration**
+
+**Donations - Tip Jar** (leverages existing Stripe Connect):
+- [ ] **Add CreatorDonationSettings, Donation models**
+- [ ] **Create DonationService** (tip processing via Stripe Connect)
+- [ ] **Creator donation settings page** (enable tip jar, set suggested amounts)
+- [ ] **TipJarButton component** on creator profile and product pages
+- [ ] **TipModal** with amount selection and optional message (cash OR credits - see Credit Transfers spec)
+- [ ] **Checkout tips**: "Add a tip" option in ProductCheckoutModal
+- [ ] **Creator dashboard**: Recent tips received, total donations (cash + credits combined)
+
+> **Integration Note**: Credit-based tipping integrates with the **Credit Transfers** feature (separate spec at `/docs/credit-transfers-plan.md`). TipModal offers both: "Pay with card" or "Pay with credits".
 
 **Creator-Buyer Communication** (leverages existing community infrastructure):
 - [ ] **1:1 Private DMs**: Use existing DirectMessageThread - add "Message Creator" button on product page
@@ -695,12 +1108,14 @@ def migrate_course_content(apps, schema_editor):
 - ✅ Creator AI allowance (1M tokens/month)
 - ✅ **Refund requests**: Buyer requests → Creator approves → Stripe processes
 - ✅ **Creator-buyer communication**: 1:1 DMs, product lounge rooms, blast announcements
+- ✅ **Donations**: Tip jar on creator profiles, checkout tips, donation dashboard
 
 **What's NOT in MVP**:
 - ❌ Course builder (creators use existing YouTube import)
 - ❌ Native video upload/hosting
 - ❌ Weaviate search for products
 - ❌ Reviews, ratings, bundles, coupons
+- ❌ Recurring memberships (subscriptions) - moved to Phase C
 
 ---
 
@@ -774,6 +1189,17 @@ def migrate_course_content(apps, schema_editor):
 - [ ] Completion certificates
 - [ ] Email notifications (purchase, completion)
 
+#### Weeks 7-8: Recurring Memberships
+- [ ] **Add MembershipTier, Membership, MembershipPayment models**
+- [ ] **Create MembershipService** (Stripe Subscriptions integration)
+- [ ] **Creator membership settings page** (create tiers, set prices, benefits)
+- [ ] **MembershipTiersCard component** on creator profile pages
+- [ ] **Membership checkout flow** (monthly/yearly billing)
+- [ ] **Member badge display** on user profiles (supporter icons)
+- [ ] **Member management page** for creators (view members, revenue)
+- [ ] **Subscription webhooks** (invoice.paid, subscription.updated, subscription.deleted)
+- [ ] **Member-only content** (optional: gate content behind membership)
+
 **Phase C Deliverables**:
 - ✅ Products in Weaviate semantic search
 - ✅ Creator analytics dashboard
@@ -781,6 +1207,7 @@ def migrate_course_content(apps, schema_editor):
 - ✅ Discount codes and promotions
 - ✅ Course bundles
 - ✅ Completion certificates
+- ✅ **Recurring memberships**: Tiered subscriptions, member badges, member management
 
 ---
 
@@ -788,10 +1215,10 @@ def migrate_course_content(apps, schema_editor):
 
 | Milestone | Duration | Key Outcome | Dependencies |
 |-----------|----------|-------------|--------------|
-| **MVP (A)** | 3-4 weeks | Digital products + pre-built courses selling | None |
+| **MVP (A)** | 3-4 weeks | Digital products + pre-built courses + donations | None |
 | **Phase B** | 6-8 weeks | Full course builder + native video hosting | MVP + AWS setup |
-| **Phase C** | 4-6 weeks | Search, analytics, reviews, bundles | Phase B |
+| **Phase C** | 6-8 weeks | Search, analytics, reviews, bundles, memberships | Phase B |
 
-**Total**: 13-18 weeks for complete platform
+**Total**: 15-20 weeks for complete platform
 
-**Recommendation**: Ship MVP with digital products + YouTube-imported courses first. Add course builder when creators ask for it.
+**Recommendation**: Ship MVP with digital products + YouTube-imported courses + tip jar first. Add course builder when creators ask for it.

@@ -2,12 +2,13 @@
 Management command to set up Weaviate vector database schema.
 
 Usage:
-    python manage.py setup_weaviate                  # Create all collections
-    python manage.py setup_weaviate --reset          # Delete and recreate collections
-    python manage.py setup_weaviate --check          # Check connection status only
-    python manage.py setup_weaviate --reindex        # Trigger full reindex of all projects
-    python manage.py setup_weaviate --reindex-users  # Trigger full reindex of user profiles
-    python manage.py setup_weaviate --reindex-all    # Reindex ALL content types
+    python manage.py setup_weaviate                          # Create all collections
+    python manage.py setup_weaviate --reset                  # Delete and recreate collections
+    python manage.py setup_weaviate --check                  # Check connection status only
+    python manage.py setup_weaviate --reindex                # Trigger full reindex of all projects
+    python manage.py setup_weaviate --reindex-users          # Trigger full reindex of user profiles
+    python manage.py setup_weaviate --reindex-learning-paths # Trigger full reindex of learning paths
+    python manage.py setup_weaviate --reindex-all            # Reindex ALL content types
 """
 
 from django.core.management.base import BaseCommand
@@ -40,9 +41,14 @@ class Command(BaseCommand):
             help='Trigger full reindex of user profiles to Weaviate',
         )
         parser.add_argument(
+            '--reindex-learning-paths',
+            action='store_true',
+            help='Trigger full reindex of published learning paths to Weaviate',
+        )
+        parser.add_argument(
             '--reindex-all',
             action='store_true',
-            help='Trigger full reindex of ALL content (projects, users, quizzes, tools, concepts, lessons)',
+            help='Trigger full reindex of ALL content types',
         )
 
     def handle(self, *args, **options):
@@ -67,7 +73,13 @@ class Command(BaseCommand):
             return
 
         # Handle reindex options
-        if options['reindex'] or options['reindex_users'] or options['reindex_all']:
+        reindex_requested = (
+            options['reindex']
+            or options['reindex_users']
+            or options['reindex_learning_paths']
+            or options['reindex_all']
+        )
+        if reindex_requested:
             self._handle_reindex(options)
             return
 
@@ -96,6 +108,7 @@ class Command(BaseCommand):
         """Handle reindex operations."""
         from services.weaviate.tasks import (
             full_reindex_concepts,
+            full_reindex_learning_paths,
             full_reindex_micro_lessons,
             full_reindex_projects,
             full_reindex_quizzes,
@@ -129,6 +142,10 @@ class Command(BaseCommand):
             result = full_reindex_micro_lessons.delay()
             self.stdout.write(self.style.SUCCESS(f'  Micro lessons reindex queued: task_id={result.id}'))
 
+            self.stdout.write('Triggering full reindex of learning paths...')
+            result = full_reindex_learning_paths.delay()
+            self.stdout.write(self.style.SUCCESS(f'  Learning paths reindex queued: task_id={result.id}'))
+
             self.stdout.write(self.style.SUCCESS('\nAll reindex tasks queued! Monitor Celery logs for progress.'))
         elif options['reindex']:
             self.stdout.write('Triggering full reindex of projects...')
@@ -143,4 +160,12 @@ class Command(BaseCommand):
             result = full_reindex_users.delay()
             self.stdout.write(
                 self.style.SUCCESS(f'Users reindex queued: task_id={result.id}\n' 'Monitor Celery logs for progress.')
+            )
+        elif options['reindex_learning_paths']:
+            self.stdout.write('Triggering full reindex of learning paths...')
+            result = full_reindex_learning_paths.delay()
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Learning paths reindex queued: task_id={result.id}\n' 'Monitor Celery logs for progress.'
+                )
             )

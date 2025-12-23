@@ -33,13 +33,18 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
 };
 
 // Rotating status messages when no specific tool is active
+// Dragon-themed for Ember!
 const THINKING_MESSAGES = [
   'Thinking...',
-  'Processing...',
-  'Working on it...',
+  'Stoking the flames...',
+  'Consulting my hoard...',
+  'Warming up...',
+  'Fanning the embers...',
   'Almost there...',
-  'Analyzing...',
-  'Generating response...',
+  'Kindling ideas...',
+  'Breathing fire on this...',
+  'Perching and pondering...',
+  'Consulting my treasure trove...',
 ];
 
 export function LoadingMessage({
@@ -70,7 +75,7 @@ export function LoadingMessage({
         <img
           src="/ember-avatar.png"
           alt="Ember"
-          className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover"
+          className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover -scale-x-100"
         />
         <div className="glass-subtle px-5 py-4 rounded-2xl rounded-br-sm flex-1">
           <div className="flex items-center gap-3">

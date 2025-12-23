@@ -8,6 +8,7 @@ Content Collections:
 - Quiz: Quiz semantic search
 - MicroLesson: Micro-lesson semantic search
 - Game: Game discovery
+- LearningPath: Published learning paths for explore feed search
 
 Learning Intelligence Collections:
 - KnowledgeState: User knowledge per concept for semantic gap detection
@@ -34,6 +35,7 @@ class WeaviateSchema:
     QUIZ_COLLECTION = 'Quiz'
     MICRO_LESSON_COLLECTION = 'MicroLesson'
     GAME_COLLECTION = 'Game'
+    LEARNING_PATH_COLLECTION = 'LearningPath'
 
     # Learning intelligence collections
     KNOWLEDGE_STATE_COLLECTION = 'KnowledgeState'
@@ -733,6 +735,120 @@ class WeaviateSchema:
             ],
         }
 
+    @classmethod
+    def get_learning_path_schema(cls) -> dict:
+        """
+        Schema for LearningPath collection.
+
+        Stores published learning path embeddings for semantic search
+        and discovery in the explore feed.
+        """
+        return {
+            'class': cls.LEARNING_PATH_COLLECTION,
+            'description': 'Learning path embeddings for semantic search and discovery',
+            'vectorizer': 'none',
+            'properties': [
+                {
+                    'name': 'learning_path_id',
+                    'dataType': ['int'],
+                    'description': 'Django SavedLearningPath model ID',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'slug',
+                    'dataType': ['text'],
+                    'description': 'URL slug for the learning path',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'title',
+                    'dataType': ['text'],
+                    'description': 'Learning path title',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'combined_text',
+                    'dataType': ['text'],
+                    'description': 'Combined text for keyword search (title + topics + curriculum)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'difficulty',
+                    'dataType': ['text'],
+                    'description': 'Difficulty level (beginner, intermediate, advanced)',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'estimated_hours',
+                    'dataType': ['number'],
+                    'description': 'Estimated time to complete in hours',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'topics_covered',
+                    'dataType': ['text[]'],
+                    'description': 'Topics covered in the learning path',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'curriculum_count',
+                    'dataType': ['int'],
+                    'description': 'Number of items in the curriculum',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'owner_id',
+                    'dataType': ['int'],
+                    'description': 'User ID of learning path owner',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'owner_username',
+                    'dataType': ['text'],
+                    'description': 'Username of learning path owner (for search)',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'owner_full_name',
+                    'dataType': ['text'],
+                    'description': 'Full name of learning path owner',
+                    'indexFilterable': True,
+                    'indexSearchable': True,
+                },
+                {
+                    'name': 'is_published',
+                    'dataType': ['boolean'],
+                    'description': 'Whether learning path is published to explore feed',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'published_at',
+                    'dataType': ['date'],
+                    'description': 'When the learning path was published',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+                {
+                    'name': 'created_at',
+                    'dataType': ['date'],
+                    'description': 'Learning path creation timestamp',
+                    'indexFilterable': True,
+                    'indexSearchable': False,
+                },
+            ],
+        }
+
     # =========================================================================
     # Learning Intelligence Collections
     # =========================================================================
@@ -1046,6 +1162,7 @@ class WeaviateSchema:
             cls.get_quiz_schema(),
             cls.get_micro_lesson_schema(),
             cls.get_game_schema(),
+            cls.get_learning_path_schema(),
             # Learning intelligence collections
             cls.get_knowledge_state_schema(),
             cls.get_learning_gap_schema(),

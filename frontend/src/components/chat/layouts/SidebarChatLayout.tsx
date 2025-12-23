@@ -514,7 +514,7 @@ export function SidebarChatLayout({
                   <img
                     src="/ember-avatar.png"
                     alt="Ember"
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-10 h-10 rounded-full object-cover -scale-x-100"
                   />
                   <div>
                     <h2 className="text-sm font-semibold text-slate-900 dark:text-white">AllThrive Chat</h2>
