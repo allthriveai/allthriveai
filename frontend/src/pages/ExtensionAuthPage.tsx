@@ -54,10 +54,10 @@ export default function ExtensionAuthPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-slate-400">Checking authentication...</p>
+          <p className="text-slate-600 dark:text-slate-400">Checking authentication...</p>
         </div>
       </div>
     );
@@ -70,15 +70,15 @@ export default function ExtensionAuthPage() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="text-center max-w-md p-6">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
             <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-white mb-2">Authentication Failed</h1>
-          <p className="text-slate-400 mb-4">{error}</p>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Authentication Failed</h1>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-500 transition"
@@ -92,11 +92,11 @@ export default function ExtensionAuthPage() {
 
   // Show loading while fetching token
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
       <div className="text-center">
         <div className="animate-spin w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4" />
-        <p className="text-slate-400">Connecting extension...</p>
-        <p className="text-slate-500 text-sm mt-2">This tab will close automatically.</p>
+        <p className="text-slate-600 dark:text-slate-400">Connecting extension...</p>
+        <p className="text-slate-500 dark:text-slate-500 text-sm mt-2">This tab will close automatically.</p>
       </div>
     </div>
   );

@@ -21,8 +21,9 @@ import {
   getFilterOptions,
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
-import { getExploreLearningPaths, type PublicLearningPath } from '@/services/learningPaths';
+import { getExploreLearningPaths, getExploreLessons, type PublicLearningPath, type PublicLesson } from '@/services/learningPaths';
 import { LearningPathCard } from '@/components/explore/LearningPathCard';
+import { LessonCard } from '@/components/explore/LessonCard';
 import { useAuth } from '@/hooks/useAuth';
 import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 import { useFreshnessToken } from '@/hooks/useFreshnessToken';
@@ -221,6 +222,18 @@ export function ExplorePage() {
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Fetch individual lessons (exclude from profiles tab)
+  const {
+    data: lessonsData,
+    isLoading: isLoadingLessons,
+  } = useQuery({
+    queryKey: ['exploreLessons', searchQuery],
+    queryFn: () => getExploreLessons({ search: searchQuery || undefined }),
+    enabled: activeTab !== 'profiles',
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   // Determine which data to display
   // IMPORTANT: If category or tool filters are selected but taxonomies/tools haven't loaded yet,
   // show loading state instead of showing unfiltered results
@@ -294,7 +307,7 @@ export function ExplorePage() {
 
     return quizzes;
   }, [activeTab, quizzesData?.results, selectedContentType, selectedCategorySlugs, selectedToolSlugs]);
-  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isLoadingLearningPaths || isWaitingForFilters;
+  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isLoadingLearningPaths || isLoadingLessons || isWaitingForFilters;
 
   // Determine if there's an error to display
   const hasError = activeTab === 'profiles' ? !!profilesError : !!projectsError;
@@ -314,21 +327,35 @@ export function ExplorePage() {
     return learningPathsData?.results || [];
   }, [activeTab, learningPathsData?.results, selectedContentType]);
 
-  // Mix quizzes and learning paths into projects while preserving backend sort order
+  // Get lessons to display (filter by search if applicable)
+  const displayLessons = useMemo(() => {
+    // Don't show lessons in profiles tab
+    if (activeTab === 'profiles') return [];
+
+    // Hide lessons when a specific content type is selected (except 'all')
+    if (selectedContentType !== 'all') return [];
+
+    return lessonsData?.results || [];
+  }, [activeTab, lessonsData?.results, selectedContentType]);
+
+  // Mix quizzes, learning paths, and lessons into projects while preserving backend sort order
   // Projects maintain their order from the API (sorted by recency/trending/relevance)
-  // Quizzes and learning paths are interleaved at regular intervals for variety
+  // Quizzes, learning paths, and lessons are interleaved at regular intervals for variety
   type MixedItem =
     | { type: 'quiz'; data: Quiz; stableKey: string }
     | { type: 'project'; data: Project; stableKey: string }
-    | { type: 'learning-path'; data: PublicLearningPath; stableKey: string };
+    | { type: 'learning-path'; data: PublicLearningPath; stableKey: string }
+    | { type: 'lesson'; data: PublicLesson; stableKey: string };
 
   const mixedItems = useMemo(() => {
     const QUIZ_INTERVAL = 8; // Insert a quiz every N projects
     const LEARNING_PATH_INTERVAL = 12; // Insert a learning path every N projects
+    const LESSON_INTERVAL = 6; // Insert a lesson every N projects
     const result: MixedItem[] = [];
 
     let quizIndex = 0;
     let learningPathIndex = 0;
+    let lessonIndex = 0;
 
     // Iterate through projects in their original order from backend
     displayProjects.forEach((project, projectIndex) => {
@@ -352,6 +379,17 @@ export function ExplorePage() {
           stableKey: `quiz-${quiz.slug || quiz.id}`
         });
         quizIndex++;
+      }
+
+      // Insert a lesson at specific intervals (if available)
+      if (projectIndex > 0 && projectIndex % LESSON_INTERVAL === 0 && lessonIndex < displayLessons.length) {
+        const lesson = displayLessons[lessonIndex];
+        result.push({
+          type: 'lesson' as const,
+          data: lesson,
+          stableKey: `lesson-${lesson.id}`
+        });
+        lessonIndex++;
       }
 
       // Add the project in its original order
@@ -384,8 +422,19 @@ export function ExplorePage() {
       learningPathIndex++;
     }
 
+    // Add any remaining lessons at the end
+    while (lessonIndex < displayLessons.length) {
+      const lesson = displayLessons[lessonIndex];
+      result.push({
+        type: 'lesson' as const,
+        data: lesson,
+        stableKey: `lesson-${lesson.id}`
+      });
+      lessonIndex++;
+    }
+
     return result;
-  }, [displayQuizzes, displayProjects, displayLearningPaths]);
+  }, [displayQuizzes, displayProjects, displayLearningPaths, displayLessons]);
 
   // Handle tab change
   const handleTabChange = (tab: ExploreTab) => {
@@ -681,7 +730,7 @@ export function ExplorePage() {
                 ) : (
                   <>
                     <MasonryGrid>
-                      {/* Interleave quizzes, learning paths, and projects with stable ordering */}
+                      {/* Interleave quizzes, learning paths, lessons, and projects with stable ordering */}
                       {mixedItems.map((item) => (
                         <div key={item.stableKey} className="break-inside-avoid mb-2">
                           {item.type === 'quiz' ? (
@@ -692,6 +741,8 @@ export function ExplorePage() {
                             />
                           ) : item.type === 'learning-path' ? (
                             <LearningPathCard learningPath={item.data} />
+                          ) : item.type === 'lesson' ? (
+                            <LessonCard lesson={item.data} />
                           ) : (
                             <ProjectCard
                               project={item.data}
