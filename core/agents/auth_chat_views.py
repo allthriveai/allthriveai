@@ -10,7 +10,8 @@ from django.contrib.auth import authenticate
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -402,6 +403,37 @@ Do you agree to these values?"""
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@extend_schema(
+    parameters=[
+        {
+            'name': 'session_id',
+            'in': 'query',
+            'required': True,
+            'schema': {'type': 'string', 'format': 'uuid'},
+            'description': 'Chat session ID',
+        }
+    ],
+    responses={
+        200: inline_serializer(
+            name='AuthChatStateResponse',
+            fields={
+                'session_id': serializers.CharField(),
+                'step': serializers.CharField(allow_null=True),
+                'mode': serializers.CharField(allow_null=True),
+                'messages': serializers.ListField(child=serializers.DictField()),
+                'has_email': serializers.BooleanField(),
+                'has_name': serializers.BooleanField(),
+                'has_password': serializers.BooleanField(),
+                'has_interests': serializers.BooleanField(),
+                'agreed_to_values': serializers.BooleanField(),
+            },
+        ),
+        400: inline_serializer(
+            name='AuthChatStateErrorResponse',
+            fields={'error': serializers.CharField()},
+        ),
+    },
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def auth_chat_state(request):
@@ -440,6 +472,29 @@ def auth_chat_state(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@extend_schema(
+    request=inline_serializer(
+        name='AuthChatFinalizeRequest',
+        fields={'session_id': serializers.CharField()},
+    ),
+    responses={
+        200: inline_serializer(
+            name='AuthChatFinalizeResponse',
+            fields={
+                'success': serializers.BooleanField(),
+                'username': serializers.CharField(),
+            },
+        ),
+        400: inline_serializer(
+            name='AuthChatFinalizeErrorResponse',
+            fields={'error': serializers.CharField()},
+        ),
+        401: inline_serializer(
+            name='AuthChatFinalizeUnauthorizedResponse',
+            fields={'error': serializers.CharField()},
+        ),
+    },
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @csrf_exempt
