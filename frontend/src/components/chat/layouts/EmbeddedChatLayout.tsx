@@ -717,7 +717,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
           // Convert LearningContentItem to minimal Project for the tray
           // The tray will fetch full project data when opened
-          const project: Project = {
+          const project = {
             id: parseInt(item.id, 10) || 0,
             title: item.title,
             slug: item.slug || '',
@@ -727,7 +727,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
             content: {},
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          };
+          } as Project;
 
           projectPreviewTray.openProjectPreview(project);
         };
@@ -736,8 +736,8 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
         const handleCreateProjectFromImage = async (sessionId: number) => {
           const result = await createProjectFromImageSession(sessionId);
           return {
-            projectUrl: result.url,
-            projectTitle: result.title,
+            projectUrl: result.project.url,
+            projectTitle: result.project.title,
           };
         };
 

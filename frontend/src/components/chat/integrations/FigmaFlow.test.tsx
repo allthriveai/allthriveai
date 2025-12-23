@@ -13,7 +13,7 @@ import type { IntegrationFlowState } from '../core/types';
 
 // Default props for testing
 const defaultProps = {
-  state: { step: 'select', message: 'Paste your Figma URL' } as IntegrationFlowState,
+  state: { step: 'select', message: 'Paste your Figma URL', error: null } as IntegrationFlowState,
   onConnect: vi.fn(),
   onImportUrl: vi.fn().mockResolvedValue(undefined),
   isFigmaUrl: (url: string) => {
@@ -36,6 +36,7 @@ describe('FigmaFlow', () => {
       const loadingState: IntegrationFlowState = {
         step: 'loading',
         message: 'Checking connection...',
+        error: null,
       };
 
       render(<FigmaFlow {...defaultProps} state={loadingState} />);
@@ -47,6 +48,7 @@ describe('FigmaFlow', () => {
       const loadingState: IntegrationFlowState = {
         step: 'loading',
         message: 'Loading...',
+        error: null,
       };
 
       render(<FigmaFlow {...defaultProps} state={loadingState} />);
@@ -62,6 +64,7 @@ describe('FigmaFlow', () => {
       const connectState: IntegrationFlowState = {
         step: 'connect',
         message: 'Connect your Figma account to import designs',
+        error: null,
       };
 
       render(<FigmaFlow {...defaultProps} state={connectState} />);
@@ -74,6 +77,7 @@ describe('FigmaFlow', () => {
       const connectState: IntegrationFlowState = {
         step: 'connect',
         message: 'Connect your Figma account',
+        error: null,
       };
 
       render(<FigmaFlow {...defaultProps} state={connectState} />);
@@ -85,6 +89,7 @@ describe('FigmaFlow', () => {
       const connectState: IntegrationFlowState = {
         step: 'connect',
         message: 'Connect to Figma',
+        error: null,
       };
       const onConnect = vi.fn();
 
@@ -100,6 +105,7 @@ describe('FigmaFlow', () => {
       const connectState: IntegrationFlowState = {
         step: 'connect',
         message: 'Connect to Figma',
+        error: null,
       };
       const onBack = vi.fn();
 
@@ -301,6 +307,7 @@ describe('FigmaFlow', () => {
       const customState: IntegrationFlowState = {
         step: 'select',
         message: 'Custom message for user',
+        error: null,
       };
 
       render(<FigmaFlow {...defaultProps} state={customState} />);

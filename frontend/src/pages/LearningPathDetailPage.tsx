@@ -28,6 +28,8 @@ import {
   faRobot,
   faComments,
   faUsers,
+  faThumbsUp,
+  faThumbsDown,
 } from '@fortawesome/free-solid-svg-icons';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -38,7 +40,7 @@ import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/ga
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
-import { getLessonImage, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
+import { getLessonImage, rateLesson, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
 
 /**
  * Detect programming language from code content
@@ -326,10 +328,6 @@ function ProjectCard({ project }: { project: RelatedProject }) {
 function RelatedProjectsCard({ item, index }: { item: CurriculumItem; index: number }) {
   const projects = item.projects || [];
 
-  if (projects.length === 0) {
-    return null;
-  }
-
   return (
     <div className="glass-strong rounded overflow-hidden">
       {/* Header */}
@@ -350,19 +348,38 @@ function RelatedProjectsCard({ item, index }: { item: CurriculumItem; index: num
             </div>
             <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
             <p className="text-slate-600 dark:text-gray-400 text-sm mt-1">
-              Explore projects from the AllThrive community
+              {projects.length > 0
+                ? 'Explore projects from the AllThrive community'
+                : 'Be the first to share a project on this topic!'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Projects grid */}
+      {/* Projects grid or empty state */}
       <div className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
+        {projects.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <FontAwesomeIcon icon={faUsers} className="text-2xl text-amber-400" />
+            </div>
+            <p className="text-slate-600 dark:text-gray-400 text-sm mb-4">
+              No community projects yet for this topic.
+            </p>
+            <Link
+              to="/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Share Your Project
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -383,6 +400,8 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [userRating, setUserRating] = useState<'helpful' | 'not_helpful' | null>(null);
+  const [isRating, setIsRating] = useState(false);
   const content = item.content;
 
   // Fetch lesson image when expanded for the first time
@@ -415,6 +434,31 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
         practicePrompt: content.practicePrompt,
         keyConcepts: content.keyConcepts,
       });
+    }
+  };
+
+  const handleRating = async (rating: 'helpful' | 'not_helpful') => {
+    // If user clicks the same rating, toggle it off
+    if (userRating === rating) {
+      setUserRating(null);
+      return;
+    }
+
+    // Need projectId to rate - for AI lessons this comes after persisting
+    if (!item.projectId) {
+      // For now, just set the UI state - actual rating will be saved when lesson is persisted
+      setUserRating(rating);
+      return;
+    }
+
+    setIsRating(true);
+    try {
+      await rateLesson(item.projectId, rating);
+      setUserRating(rating);
+    } catch (error) {
+      console.error('Failed to rate lesson:', error);
+    } finally {
+      setIsRating(false);
     }
   };
 
@@ -561,6 +605,44 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
               />
             </div>
           )}
+
+          {/* Rating section */}
+          <div className="border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-slate-600 dark:text-gray-400 text-sm">Was this lesson helpful?</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleRating('helpful')}
+                  disabled={isRating}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    userRating === 'helpful'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'
+                  } ${isRating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <FontAwesomeIcon icon={faThumbsUp} />
+                  Helpful
+                </button>
+                <button
+                  onClick={() => handleRating('not_helpful')}
+                  disabled={isRating}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    userRating === 'not_helpful'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400'
+                  } ${isRating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <FontAwesomeIcon icon={faThumbsDown} />
+                  Not Helpful
+                </button>
+              </div>
+            </div>
+            {userRating && (
+              <p className="text-emerald-600 dark:text-emerald-400 text-xs mt-2">
+                Thanks for your feedback!
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -309,8 +309,8 @@ export function SidebarChatLayout({
         const handleCreateProjectFromImage = async (sessionId: number) => {
           const result = await createProjectFromImageSession(sessionId);
           return {
-            projectUrl: result.url,
-            projectTitle: result.title,
+            projectUrl: result.project.url,
+            projectTitle: result.project.title,
           };
         };
 

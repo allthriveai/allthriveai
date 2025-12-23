@@ -340,7 +340,7 @@ export default function LearnPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout hideFooter>
         {() => (
           <div className="h-full flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500" />
@@ -351,7 +351,7 @@ export default function LearnPage() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout hideFooter>
       {() => (
         <div className="h-[calc(100vh-4rem)] overflow-hidden">
           {isAuthenticated ? (

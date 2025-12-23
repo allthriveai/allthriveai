@@ -34,11 +34,12 @@ import { api } from '@/services/api';
 import { logError } from '@/utils/errorHandler';
 import { getErrorMessage } from '@/utils/errors';
 import type { IntegrationState, IntegrationActions, IntegrationId, IntegrationFlowStep } from '../core/types';
+import type { IntelligentChatMetadata } from '@/hooks/useIntelligentChat';
 
 interface UseIntegrationFlowOptions {
   onSendMessage: (message: string) => void;
   onHasInteracted?: () => void;
-  onAddLocalMessage?: (content: string, metadata?: { type?: string }) => void;
+  onAddLocalMessage?: (content: string, metadata?: IntelligentChatMetadata) => void;
 }
 
 interface IntegrationFlowReturn {

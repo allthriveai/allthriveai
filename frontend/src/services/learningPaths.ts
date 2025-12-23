@@ -491,3 +491,34 @@ export async function getLessonStats(): Promise<LessonStats> {
   const response = await api.get<LessonStats>('/admin/learning/lessons/stats/');
   return response.data;
 }
+
+// =============================================================================
+// LESSON RATING APIs (User-facing)
+// =============================================================================
+
+/**
+ * Rate a lesson as helpful or not helpful
+ */
+export async function rateLesson(
+  projectId: number,
+  rating: 'helpful' | 'not_helpful',
+  feedback?: string
+): Promise<LessonRating> {
+  const response = await api.post<LessonRating>(`/lessons/${projectId}/rate/`, {
+    rating,
+    feedback: feedback || '',
+  });
+  return response.data;
+}
+
+/**
+ * Get the current user's rating for a lesson (if any)
+ */
+export async function getMyLessonRating(projectId: number): Promise<LessonRating | null> {
+  try {
+    const response = await api.get<LessonRating>(`/lessons/${projectId}/rate/`);
+    return response.data;
+  } catch {
+    return null;
+  }
+}

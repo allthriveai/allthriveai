@@ -138,10 +138,10 @@ export function InlineChatLayout({
         const integrationFlow = extendedState.integrationFlow;
 
         // Send concept context message if provided and not already sent
-        if (conceptContext && conceptMessageSentRef.current !== conceptContext.conceptId) {
-          conceptMessageSentRef.current = conceptContext.conceptId;
+        if (conceptContext && conceptMessageSentRef.current !== conceptContext.conceptSlug) {
+          conceptMessageSentRef.current = conceptContext.conceptSlug;
           // Build context-aware message
-          const conceptMessage = `Tell me more about "${conceptContext.conceptTitle}" from my ${conceptContext.pathTitle} learning path. I'm currently on step ${conceptContext.stepNumber} of ${conceptContext.totalSteps}.`;
+          const conceptMessage = `Tell me more about "${conceptContext.conceptName}" from my ${conceptContext.topicName} learning path.`;
           // Use setTimeout to avoid updating state during render
           setTimeout(() => {
             state.sendMessage(conceptMessage);
@@ -174,8 +174,8 @@ export function InlineChatLayout({
         const handleCreateProjectFromImage = async (sessionId: number) => {
           const result = await createProjectFromImageSession(sessionId);
           return {
-            projectUrl: result.url,
-            projectTitle: result.title,
+            projectUrl: result.project.url,
+            projectTitle: result.project.title,
           };
         };
 

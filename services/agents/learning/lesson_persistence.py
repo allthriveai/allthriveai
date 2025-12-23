@@ -84,6 +84,7 @@ class LessonPersistenceService:
         from core.learning_paths.models import ProjectLearningMetadata
         from core.projects.models import Project
         from core.taxonomy.models import Taxonomy
+        from core.taxonomy.topic_service import ensure_topics_in_taxonomy
 
         ember = cls.get_ember_user()
 
@@ -163,6 +164,18 @@ class LessonPersistenceService:
         # Add topic if found
         if topic_taxonomy:
             project.topics.add(topic_taxonomy)
+
+        # Add key_concepts as topics in the taxonomy
+        # This ensures lesson concepts like "Vector Database", "Semantic Search" are tracked
+        key_concepts = lesson_content.get('key_concepts', [])
+        if key_concepts:
+            concept_topics = ensure_topics_in_taxonomy(key_concepts)
+            if concept_topics:
+                project.topics.add(*concept_topics)
+                logger.debug(
+                    f'Added {len(concept_topics)} concept topics to lesson project {project.id}',
+                    extra={'topics': [t.slug for t in concept_topics]},
+                )
 
         # Create or update learning metadata with is_lesson=True
         metadata, _ = ProjectLearningMetadata.objects.get_or_create(

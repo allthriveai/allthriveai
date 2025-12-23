@@ -52,6 +52,7 @@ export interface User {
   currentStatus?: string;
   totalAchievementsUnlocked?: number;
   lifetimeProjectsCreated?: number;
+  projectsCount?: number;
   // Guest user flag
   isGuest?: boolean;
   // Admin role (includes superusers)
