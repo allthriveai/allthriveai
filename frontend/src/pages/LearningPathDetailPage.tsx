@@ -39,6 +39,8 @@ import { LearningChatPanel, type LessonContext } from '@/components/learning/Lea
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
 import { getLessonImage, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
+import { getToolBySlug } from '@/services/tools';
+import type { Tool } from '@/types/models';
 
 /**
  * Detect programming language from code content
@@ -369,6 +371,162 @@ function RelatedProjectsCard({ item, index }: { item: CurriculumItem; index: num
 }
 
 /**
+ * Tool Item Card - renders expandable tool info without leaving the page
+ */
+function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [tool, setTool] = useState<Tool | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  // Fetch tool details when expanded for the first time
+  useEffect(() => {
+    if (isExpanded && !tool && !isLoading && !error && item.toolSlug) {
+      setIsLoading(true);
+      getToolBySlug(item.toolSlug)
+        .then((data) => setTool(data))
+        .catch(() => setError(true))
+        .finally(() => setIsLoading(false));
+    }
+  }, [isExpanded, tool, isLoading, error, item.toolSlug]);
+
+  return (
+    <div className="glass-strong rounded overflow-hidden">
+      {/* Header - always visible, clickable to expand */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-start gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left"
+      >
+        {/* Order number */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-sm font-bold text-cyan-400">
+          {index + 1}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+              <FontAwesomeIcon icon={faWrench} className="text-[10px]" />
+              Tool
+            </span>
+          </div>
+          <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
+        </div>
+
+        {/* Expand/collapse indicator */}
+        <FontAwesomeIcon
+          icon={isExpanded ? faChevronDown : faChevronRight}
+          className="text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1"
+        />
+      </button>
+
+      {/* Expanded content */}
+      {isExpanded && (
+        <div className="border-t border-slate-200 dark:border-white/10 p-4">
+          {isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500" />
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-6 text-slate-500 dark:text-gray-400">
+              <p>Could not load tool details.</p>
+              <Link
+                to={`/tools/${item.toolSlug}`}
+                className="text-cyan-500 hover:text-cyan-400 underline mt-2 inline-block"
+              >
+                View tool page →
+              </Link>
+            </div>
+          )}
+
+          {tool && (
+            <div className="space-y-4">
+              {/* Tool header with logo */}
+              <div className="flex items-start gap-4">
+                {tool.logoUrl && (
+                  <img
+                    src={tool.logoUrl}
+                    alt={tool.name}
+                    className="w-16 h-16 rounded-lg object-contain bg-slate-100 dark:bg-white/10 p-2 flex-shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{tool.name}</h4>
+                  {tool.tagline && (
+                    <p className="text-slate-600 dark:text-gray-400 text-sm mt-1">{tool.tagline}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 text-xs">
+                      {tool.categoryDisplay || tool.category}
+                    </span>
+                    {tool.pricingModel && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs capitalize">
+                        {tool.pricingDisplay || tool.pricingModel.replace('_', ' ')}
+                      </span>
+                    )}
+                    {tool.hasFreeTier && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs">
+                        Free tier
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              {tool.description && (
+                <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">
+                  {tool.description}
+                </p>
+              )}
+
+              {/* Key features */}
+              {tool.features && tool.features.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Key Features</h5>
+                  <ul className="space-y-1">
+                    {tool.features.slice(0, 4).map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-gray-300">
+                        <span className="text-cyan-500 mt-1">•</span>
+                        <span>{feature.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-3 pt-2">
+                {tool.websiteUrl && (
+                  <a
+                    href={tool.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Visit Website
+                    <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
+                  </a>
+                )}
+                <Link
+                  to={`/tools/${item.toolSlug}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Full Details
+                  <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * AI Lesson Card component - renders expandable AI-generated lesson content
  */
 interface AILessonCardProps {
@@ -591,6 +749,11 @@ function CurriculumItemCard({ item, index, pathSlug, onOpenChat }: CurriculumIte
   // Use RelatedProjectsCard for community projects section
   if (item.type === 'related_projects') {
     return <RelatedProjectsCard item={item} index={index} />;
+  }
+
+  // Use ToolItemCard for tools - show expandable info instead of navigating away
+  if (item.type === 'tool' && item.toolSlug) {
+    return <ToolItemCard item={item} index={index} />;
   }
 
   const icon = getTypeIcon(item.type);
