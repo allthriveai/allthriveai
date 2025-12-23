@@ -176,25 +176,28 @@ class Command(BaseCommand):
         updated_count = 0
 
         for data in taxonomies_data:
-            taxonomy, created = Taxonomy.objects.get_or_create(
+            # Use filter().first() to handle potential duplicates gracefully
+            taxonomy = Taxonomy.objects.filter(
                 name=data['name'],
-                defaults={
-                    'taxonomy_type': data['category'],  # 'category' key maps to taxonomy_type field
-                    'description': data['description'],
-                    'is_active': True,
-                },
-            )
+                taxonomy_type=data['category'],
+            ).first()
 
-            if created:
-                created_count += 1
-                self.stdout.write(self.style.SUCCESS(f'Created taxonomy: {taxonomy.name}'))
-            else:
+            if taxonomy:
                 # Update existing taxonomy
-                taxonomy.taxonomy_type = data['category']  # 'category' key maps to taxonomy_type field
                 taxonomy.description = data['description']
                 taxonomy.is_active = True
                 taxonomy.save()
                 updated_count += 1
-                self.stdout.write(self.style.WARNING(f'Updated taxonomy: {taxonomy.name}'))
+                self.stdout.write(f'Updated taxonomy: {taxonomy.name} ({taxonomy.taxonomy_type})')
+            else:
+                # Create new taxonomy
+                taxonomy = Taxonomy.objects.create(
+                    name=data['name'],
+                    taxonomy_type=data['category'],
+                    description=data['description'],
+                    is_active=True,
+                )
+                created_count += 1
+                self.stdout.write(self.style.SUCCESS(f'Created taxonomy: {taxonomy.name} ({taxonomy.taxonomy_type})'))
 
         self.stdout.write(self.style.SUCCESS(f'\nSeeding complete! Created {created_count}, Updated {updated_count}'))
