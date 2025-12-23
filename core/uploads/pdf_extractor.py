@@ -41,8 +41,9 @@ def extract_text_from_pdf(file_data: bytes, max_pages: int = 10, max_chars: int 
 
         # Truncate to max_chars to stay within AI context limits
         if len(full_text) > max_chars:
+            original_len = len(full_text)
             full_text = full_text[:max_chars] + '\n\n[Text truncated for length...]'
-            logger.info(f'PDF text truncated from {len(full_text)} to {max_chars} characters')
+            logger.info(f'PDF text truncated from {original_len} to {max_chars} characters')
 
         logger.info(f'Extracted {len(full_text)} characters from {len(reader.pages)} page PDF')
         return full_text

@@ -2165,6 +2165,17 @@ def _handle_figma_import(
                         logger.info(
                             f'[Figma Import] Set Design category (ID {design_category.id}) for project {project_id}'
                         )
+
+                # Also add Figma as a "Built With" tool
+                try:
+                    from core.projects.models import Tool
+
+                    figma_tool = Tool.objects.get(name__iexact='Figma')
+                    project.tools.add(figma_tool)
+                    logger.info(f'[Figma Import] Added Figma tool for project {project_id}')
+                except Tool.DoesNotExist:
+                    logger.warning('[Figma Import] Figma tool not found')
+
             except Project.DoesNotExist:
                 logger.warning(f'[Figma Import] Project {project_id} not found when setting category')
     else:

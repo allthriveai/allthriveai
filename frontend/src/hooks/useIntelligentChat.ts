@@ -590,15 +590,6 @@ export function useIntelligentChat({
             case 'tool_end':
               // Tool execution completed - clear current tool
               setCurrentTool(null);
-              // DEBUG: Log tool_end event data
-              console.log('[DEBUG tool_end] tool:', data.tool, 'output keys:', data.output ? Object.keys(data.output) : 'none');
-              if (data.output?.content) {
-                console.log('[DEBUG tool_end] content array length:', (data.output.content as unknown[])?.length);
-                console.log('[DEBUG tool_end] content[0]:', (data.output.content as unknown[])?.[0]);
-              }
-              if (data.output?.projects) {
-                console.log('[DEBUG tool_end] projects array length:', (data.output.projects as unknown[])?.length);
-              }
               // Check for project creation
               // Handle create_project, import_github_project, and import_from_url
               if ((data.tool === 'create_project' || data.tool === 'import_github_project' || data.tool === 'import_from_url') &&
@@ -708,18 +699,8 @@ export function useIntelligentChat({
                 // find_content returns projects in a separate 'projects' array (not in content)
                 const projectsArray = outputData?.projects as Array<Record<string, unknown>> | undefined;
 
-              // DEBUG: Log find_content condition check
-              console.log('[DEBUG find_content check] tool:', data.tool);
-              console.log('[DEBUG find_content check] frontendContent length:', frontendContent?.length);
-              console.log('[DEBUG find_content check] projectsArray length:', projectsArray?.length);
-              console.log('[DEBUG find_content check] will enter block:',
-                (data.tool === 'find_content' || data.tool === 'find_learning_content') &&
-                ((frontendContent && frontendContent.length > 0) || (projectsArray && projectsArray.length > 0))
-              );
-
               if ((data.tool === 'find_content' || data.tool === 'find_learning_content') &&
                   ((frontendContent && frontendContent.length > 0) || (projectsArray && projectsArray.length > 0))) {
-                console.log('[DEBUG find_content] ENTERED processing block');
                 // Support both camelCase (find_content) and snake_case (legacy find_learning_content)
                 const contentArray = (frontendContent || []) as Array<{
                   type: string;
@@ -881,11 +862,19 @@ export function useIntelligentChat({
                   const sections = outputData?.sections;
 
                   if (sections && Array.isArray(sections) && sections.length > 0) {
-                    // Dispatch custom event for ProfilePage to handle
-                    window.dispatchEvent(new CustomEvent('emberProfileSectionsGenerated', {
-                      detail: { sections, toolName: data.tool }
-                    }));
-                    console.log('[Profile] Dispatched emberProfileSectionsGenerated event with', sections.length, 'sections');
+                    // Validate sections have required fields before dispatching
+                    const isValidSection = (s: unknown): boolean =>
+                      typeof s === 'object' && s !== null &&
+                      'id' in s && 'type' in s && typeof (s as Record<string, unknown>).id === 'string';
+
+                    const validSections = sections.filter(isValidSection);
+
+                    if (validSections.length > 0) {
+                      // Dispatch custom event for ProfilePage to handle
+                      window.dispatchEvent(new CustomEvent('emberProfileSectionsGenerated', {
+                        detail: { sections: validSections, toolName: data.tool }
+                      }));
+                    }
                   }
                 } catch (parseError) {
                   console.warn('[Profile] Failed to parse profile sections from tool output:', parseError);

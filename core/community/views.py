@@ -33,8 +33,8 @@ from .permissions import (
     CanCreateRoom,
     IsDMParticipant,
     IsMessageAuthor,
+    IsMessageAuthorOrRoomModerator,
     IsRoomMember,
-    IsRoomModerator,
     IsRoomOwnerOrAdmin,
 )
 from .serializers import (
@@ -224,7 +224,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         if self.action in ('update', 'partial_update'):
             return [IsAuthenticated(), IsMessageAuthor()]
         if self.action == 'destroy':
-            return [IsAuthenticated(), IsMessageAuthor() | IsRoomModerator()]
+            return [IsAuthenticated(), IsMessageAuthorOrRoomModerator()]
         return super().get_permissions()
 
     def list(self, request, room_id=None):

@@ -237,3 +237,36 @@ class IsMessageAuthor(permissions.BasePermission):
             return obj.author_id == request.user.id
 
         return False
+
+
+class IsMessageAuthorOrRoomModerator(permissions.BasePermission):
+    """
+    Combined permission: allows message author OR room moderators.
+
+    Used for message deletion where either the author or a moderator can delete.
+    This combined class avoids using the | operator which drf_spectacular doesn't support.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        if not request.user.is_authenticated:
+            return False
+
+        from .models import Message
+
+        if not isinstance(obj, Message):
+            return False
+
+        # Check if user is the message author
+        if obj.author_id == request.user.id:
+            return True
+
+        # Staff always have moderation access
+        if request.user.is_staff:
+            return True
+
+        # Check for moderator role in the room
+        try:
+            membership = RoomMembership.objects.get(room=obj.room, user=request.user)
+            return membership.role in ('owner', 'admin', 'moderator')
+        except RoomMembership.DoesNotExist:
+            return False

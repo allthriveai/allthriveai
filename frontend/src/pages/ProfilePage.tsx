@@ -348,7 +348,7 @@ export default function ProfilePage() {
 
     window.addEventListener('emberProfileSectionsGenerated', handleEmberSections as EventListener);
     return () => window.removeEventListener('emberProfileSectionsGenerated', handleEmberSections as EventListener);
-  }, [isOwnProfile, activeTab, setSearchParams]);
+  }, [isOwnProfile, setSearchParams]);
 
   // Close "More" menu when clicking outside
   useEffect(() => {

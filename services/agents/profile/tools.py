@@ -68,6 +68,13 @@ VALID_SECTION_TYPES = {
     'custom',
 }
 
+# Section generation limits
+MAX_FEATURED_PROJECTS = 6
+MAX_FEATURED_CONTENT = 6
+MAX_SKILLS = 15
+MAX_LEARNING_GOALS = 5
+MAX_RECENT_BATTLES = 6
+
 
 # =============================================================================
 # Input Schemas
@@ -474,6 +481,10 @@ def _generate_section(
     if section_type == 'about':
         # Use AI-generated bio if provided, otherwise fall back to existing bio
         bio_content = about_bio.strip() if about_bio else basic.get('bio', '')
+        # Provide fallback if still empty
+        if not bio_content:
+            name = basic.get('full_name') or basic.get('username', 'This user')
+            bio_content = f'{name} is exploring and creating on AllThrive.'
         return {
             'id': section_id,
             'type': 'about',
@@ -531,7 +542,7 @@ def _generate_section(
             reverse=True,
         )
 
-        featured_ids = [p['id'] for p in sorted_projects[:6]]
+        featured_ids = [p['id'] for p in sorted_projects[:MAX_FEATURED_PROJECTS]]
 
         return {
             'id': section_id,
@@ -540,7 +551,7 @@ def _generate_section(
             'order': order,
             'content': {
                 'projectIds': featured_ids,
-                'maxProjects': 6,
+                'maxProjects': MAX_FEATURED_PROJECTS,
                 'layout': 'masonry',
                 'showDescription': True,
             },
@@ -594,7 +605,7 @@ def _generate_section(
             'visible': True,
             'order': order,
             'content': {
-                'skills': skills[:15],  # Limit to 15 skills
+                'skills': skills[:MAX_SKILLS],
                 'showCategories': True,
                 'showLevels': False,
                 'layout': 'tags',
@@ -606,7 +617,7 @@ def _generate_section(
         goals = []
         learning_tags = [i for i in interests if i.get('source') == 'learning' or 'learn' in i.get('name', '').lower()]
 
-        for tag in learning_tags[:5]:
+        for tag in learning_tags[:MAX_LEARNING_GOALS]:
             goals.append(
                 {
                     'topic': tag['name'],
@@ -648,7 +659,7 @@ def _generate_section(
             key=lambda p: p.get('created_at', ''),
             reverse=True,
         )
-        featured_ids = [p['id'] for p in sorted_projects[:6]]
+        featured_ids = [p['id'] for p in sorted_projects[:MAX_FEATURED_CONTENT]]
 
         return {
             'id': section_id,
@@ -657,7 +668,7 @@ def _generate_section(
             'order': order,
             'content': {
                 'projectIds': featured_ids,
-                'maxItems': 6,
+                'maxItems': MAX_FEATURED_CONTENT,
                 'title': 'Curated Picks',
                 'layout': 'masonry',
             },
