@@ -29,7 +29,7 @@ export function LearningPathCard({ learningPath }: LearningPathCardProps) {
   return (
     <Link
       to={`/${username}/learn/${slug}`}
-      className="group block bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700"
+      className="group block bg-white dark:bg-gray-800 rounded overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700"
     >
       {/* Cover image */}
       {coverImage ? (
