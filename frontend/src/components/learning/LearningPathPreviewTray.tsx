@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
-import { XMarkIcon, ArrowRightIcon, ClockIcon, AcademicCapIcon, SignalIcon, UserIcon, PlayCircleIcon, DocumentTextIcon, BookOpenIcon, PuzzlePieceIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { XMarkIcon, ArrowRightIcon, ClockIcon, AcademicCapIcon, SignalIcon, PlayCircleIcon, DocumentTextIcon, BookOpenIcon, PuzzlePieceIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/hooks/useTheme';
 import type { PublicLearningPath } from '@/services/learningPaths';
 
@@ -226,33 +226,6 @@ export function LearningPathPreviewTray({ isOpen, onClose, learningPath }: Learn
               <div className="flex items-center gap-1.5">
                 <AcademicCapIcon className="w-4 h-4" />
                 <span>{learningPath.curriculumCount} items</span>
-              </div>
-            </div>
-
-            {/* Author */}
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-              {learningPath.userAvatarUrl ? (
-                <img
-                  src={learningPath.userAvatarUrl}
-                  alt={learningPath.userFullName}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <UserIcon className="w-5 h-5 text-gray-400" />
-                </div>
-              )}
-              <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                  {learningPath.userFullName}
-                </div>
-                <Link
-                  to={`/${learningPath.username}`}
-                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400"
-                  onClick={onClose}
-                >
-                  @{learningPath.username}
-                </Link>
               </div>
             </div>
 
