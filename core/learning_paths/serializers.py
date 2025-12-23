@@ -3,6 +3,7 @@
 from rest_framework import serializers
 
 from core.taxonomy.serializers import TaxonomySerializer
+from core.tools.serializers import ToolIconSerializer
 
 from .models import (
     Concept,
@@ -190,6 +191,7 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
     ai_lesson_count = serializers.SerializerMethodField()
     curated_count = serializers.SerializerMethodField()
     topics_covered = serializers.SerializerMethodField()
+    tools = ToolIconSerializer(many=True, read_only=True)
 
     class Meta:
         model = SavedLearningPath
@@ -209,6 +211,7 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
             'ai_lesson_count',
             'curated_count',
             'topics_covered',
+            'tools',
             'created_at',
             'updated_at',
         ]
