@@ -308,9 +308,9 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
         return [{'title': item.get('title', 'Untitled'), 'type': item.get('type', 'lesson')} for item in curriculum[:8]]
 
     def get_topics_covered(self, obj):
-        """Get topics covered from path_data (limit to 5 for display)."""
+        """Get all topics covered from path_data."""
         topics = obj.path_data.get('topics_covered', []) if obj.path_data else []
-        return topics[:5]
+        return topics
 
 
 class ConceptSerializer(serializers.ModelSerializer):
