@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { useLearningPathBySlug } from '@/hooks/useLearningPaths';
+import { useLearningPathBySlug, useSavedPath, usePublishSavedPath, useUnpublishSavedPath } from '@/hooks/useLearningPaths';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGraduationCap,
@@ -32,6 +32,9 @@ import {
   faThumbsDown,
   faTimes,
   faSearchPlus,
+  faGlobe,
+  faLock,
+  faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -1040,6 +1043,16 @@ export default function LearningPathDetailPage() {
   const { data: path, isLoading, error } = useLearningPathBySlug(username || '', slug || '');
   const { user } = useAuth();
 
+  // Check if current user is the owner of this path
+  const isOwner = !!(user && username && user.username === username);
+
+  // Fetch saved path data (has isPublished field) only if user is owner
+  const { data: savedPath } = useSavedPath(slug || '', isOwner);
+
+  // Publish/unpublish mutations
+  const publishMutation = usePublishSavedPath();
+  const unpublishMutation = useUnpublishSavedPath();
+
   // Chat panel state - visible on right side (desktop), bottom sheet (mobile)
   const [currentLessonContext, setCurrentLessonContext] = useState<LessonContext | null>(null);
 
@@ -1050,6 +1063,18 @@ export default function LearningPathDetailPage() {
   const handleOpenChat = (context: LessonContext) => {
     setCurrentLessonContext(context);
   };
+
+  // Handle publish/unpublish toggle
+  const handleTogglePublish = () => {
+    if (!slug) return;
+    if (savedPath?.isPublished) {
+      unpublishMutation.mutate(slug);
+    } else {
+      publishMutation.mutate(slug);
+    }
+  };
+
+  const isPublishing = publishMutation.isPending || unpublishMutation.isPending;
 
   return (
     <DashboardLayout hideFooter>
@@ -1084,21 +1109,50 @@ export default function LearningPathDetailPage() {
                   </>
                 )}
 
-                <div className="relative px-4 sm:px-6 lg:px-8 py-4 max-w-4xl">
-                    {/* Back link - over cover image */}
-                    <Link
-                      to="/learn"
-                      className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
-                    >
-                      <FontAwesomeIcon icon={faArrowLeft} />
-                      Back to Learn
-                    </Link>
+                <div className="relative px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="flex items-start justify-between gap-4 max-w-4xl">
+                      <div className="flex-1">
+                        {/* Back link - over cover image */}
+                        <Link
+                          to="/learn"
+                          className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
+                        >
+                          <FontAwesomeIcon icon={faArrowLeft} />
+                          Back to Learn
+                        </Link>
 
-                    {/* Title - stays white because it's over a cover image */}
-                    <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
+                        {/* Title - stays white because it's over a cover image */}
+                        <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
+                      </div>
+
+                      {/* Share button - only show for path owner */}
+                      {isOwner && savedPath && (
+                        <button
+                          onClick={handleTogglePublish}
+                          disabled={isPublishing}
+                          className={`flex-shrink-0 mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            savedPath.isPublished
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                              : 'bg-white/10 text-gray-300 border border-white/20 hover:bg-white/20 hover:text-white'
+                          } ${isPublishing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={savedPath.isPublished ? 'Remove from explore feed' : 'Share on explore feed'}
+                        >
+                          {isPublishing ? (
+                            <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          ) : savedPath.isPublished ? (
+                            <FontAwesomeIcon icon={faGlobe} />
+                          ) : (
+                            <FontAwesomeIcon icon={faLock} />
+                          )}
+                          <span className="hidden sm:inline">
+                            {savedPath.isPublished ? 'Shared' : 'Share'}
+                          </span>
+                        </button>
+                      )}
+                    </div>
 
                     {/* Meta info - over cover image */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300 max-w-4xl">
                       <div className="flex items-center gap-1.5">
                         <FontAwesomeIcon icon={faClock} className="text-[10px]" />
                         <span>{path.estimatedHours}h</span>
@@ -1111,6 +1165,16 @@ export default function LearningPathDetailPage() {
                         <FontAwesomeIcon icon={faGraduationCap} className="text-[10px]" />
                         <span>{path.curriculum?.length ?? 0} items</span>
                       </div>
+                      {/* Published indicator - for non-owners viewing */}
+                      {savedPath?.isPublished && !isOwner && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          <span className="inline-flex items-center gap-1 text-emerald-400">
+                            <FontAwesomeIcon icon={faGlobe} className="text-[10px]" />
+                            Shared
+                          </span>
+                        </>
+                      )}
                       {/* Topics covered - inline (over cover image) */}
                       {(path.topicsCovered?.length ?? 0) > 0 && (
                         <>

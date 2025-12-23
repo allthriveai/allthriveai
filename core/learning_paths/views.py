@@ -3,7 +3,8 @@
 from django.db import IntegrityError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -41,6 +42,7 @@ from .serializers import (
     LearningStatsSerializer,
     ProactiveOfferResponseSerializer,
     ProjectLearningMetadataSerializer,
+    PublicLearningPathSerializer,
     SavedLearningPathListSerializer,
     SavedLearningPathSerializer,
     TopicRecommendationSerializer,
@@ -1104,6 +1106,103 @@ class ActivateSavedPathView(APIView):
 
         serializer = SavedLearningPathSerializer(path)
         return Response(serializer.data)
+
+
+class PublishSavedPathView(APIView):
+    """View for publishing/unpublishing a learning path to the explore feed."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug):
+        """
+        POST /api/v1/me/saved-paths/{slug}/publish/
+
+        Publish a learning path to the explore feed.
+        """
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Publish the path
+        path.publish()
+
+        serializer = SavedLearningPathSerializer(path)
+        return Response(serializer.data)
+
+    def delete(self, request, slug):
+        """
+        DELETE /api/v1/me/saved-paths/{slug}/publish/
+
+        Unpublish a learning path from the explore feed.
+        """
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Unpublish the path
+        path.unpublish()
+
+        serializer = SavedLearningPathSerializer(path)
+        return Response(serializer.data)
+
+
+class ExploreLearningPathsView(APIView):
+    """View for browsing published learning paths in the explore feed."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        """
+        GET /api/v1/explore/learning-paths/
+
+        Returns published learning paths sorted by most recent.
+        Supports filtering by difficulty and search.
+        """
+        from django.db.models import Q
+
+        queryset = (
+            SavedLearningPath.objects.filter(
+                is_published=True,
+                is_archived=False,
+            )
+            .select_related('user')
+            .order_by('-published_at')
+        )
+
+        # Filter by difficulty
+        difficulty = request.GET.get('difficulty')
+        if difficulty and difficulty in dict(SavedLearningPath.DIFFICULTY_CHOICES):
+            queryset = queryset.filter(difficulty=difficulty)
+
+        # Search by title or username
+        search = request.GET.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(user__username__icontains=search) | Q(user__first_name__icontains=search)
+            )
+
+        # Paginate results
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        paginated = paginator.paginate_queryset(queryset, request)
+        serializer = PublicLearningPathSerializer(paginated, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
 class LessonImageView(APIView):

@@ -21,6 +21,8 @@ import {
   getFilterOptions,
 } from '@/services/explore';
 import { getQuizzes } from '@/services/quiz';
+import { getExploreLearningPaths } from '@/services/learningPaths';
+import { LearningPathCard } from '@/components/explore/LearningPathCard';
 import { useAuth } from '@/hooks/useAuth';
 import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 import { useFreshnessToken } from '@/hooks/useFreshnessToken';
@@ -202,10 +204,42 @@ export function ExplorePage() {
   } = useQuery({
     queryKey: ['exploreQuizzes', searchQuery],
     queryFn: () => getQuizzes({ search: searchQuery || undefined }),
-    enabled: activeTab !== 'profiles',
+    enabled: activeTab !== 'profiles' && activeTab !== 'learning-paths',
     staleTime: 30 * 1000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Fetch learning paths with infinite scroll
+  const {
+    data: learningPathsData,
+    isLoading: isLoadingLearningPaths,
+    isFetchingNextPage: isFetchingNextLearningPaths,
+    hasNextPage: hasNextLearningPaths,
+    fetchNextPage: fetchNextLearningPaths,
+    error: learningPathsError,
+    refetch: refetchLearningPaths,
+  } = useInfiniteQuery({
+    queryKey: ['exploreLearningPaths', searchQuery],
+    queryFn: ({ pageParam = 1 }) => getExploreLearningPaths({ page: pageParam as number, search: searchQuery || undefined }),
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.next ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+    enabled: activeTab === 'learning-paths',
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Flatten learning paths for display
+  const allLearningPaths = useMemo(() => {
+    const paths = learningPathsData?.pages.flatMap(page => page.results) || [];
+    const seen = new Set<number>();
+    return paths.filter(path => {
+      if (seen.has(path.id)) return false;
+      seen.add(path.id);
+      return true;
+    });
+  }, [learningPathsData]);
 
   // Determine which data to display
   // IMPORTANT: If category or tool filters are selected but taxonomies/tools haven't loaded yet,
@@ -280,14 +314,24 @@ export function ExplorePage() {
 
     return quizzes;
   }, [activeTab, quizzesData?.results, selectedContentType, selectedCategorySlugs, selectedToolSlugs]);
-  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isWaitingForFilters;
+  const isLoading = isLoadingProjects || isLoadingSemanticSearch || isLoadingProfiles || isLoadingQuizzes || isLoadingLearningPaths || isWaitingForFilters;
 
   // Determine if there's an error to display
-  const hasError = activeTab === 'profiles' ? !!profilesError : !!projectsError;
+  const hasError = activeTab === 'profiles'
+    ? !!profilesError
+    : activeTab === 'learning-paths'
+    ? !!learningPathsError
+    : !!projectsError;
   const errorMessage = activeTab === 'profiles'
     ? (profilesError as any)?.error || 'Failed to load profiles'
+    : activeTab === 'learning-paths'
+    ? (learningPathsError as any)?.error || 'Failed to load learning paths'
     : (projectsError as any)?.error || 'Failed to load projects';
-  const handleRetry = activeTab === 'profiles' ? refetchProfiles : refetchProjects;
+  const handleRetry = activeTab === 'profiles'
+    ? refetchProfiles
+    : activeTab === 'learning-paths'
+    ? refetchLearningPaths
+    : refetchProjects;
 
   // Mix quizzes into projects while preserving backend sort order
   // Projects maintain their order from the API (sorted by recency/trending/relevance)
@@ -399,6 +443,10 @@ export function ExplorePage() {
             if (hasNextProfiles && !isFetchingNextProfiles) {
               fetchNextProfiles();
             }
+          } else if (activeTab === 'learning-paths') {
+            if (hasNextLearningPaths && !isFetchingNextLearningPaths) {
+              fetchNextLearningPaths();
+            }
           } else {
             if (hasNextPage && !isFetchingNextPage) {
               fetchNextPage();
@@ -425,7 +473,7 @@ export function ExplorePage() {
         observer.unobserve(currentTarget);
       }
     };
-  }, [activeTab, hasNextPage, hasNextProfiles, isFetchingNextPage, isFetchingNextProfiles, fetchNextPage, fetchNextProfiles]);
+  }, [activeTab, hasNextPage, hasNextProfiles, hasNextLearningPaths, isFetchingNextPage, isFetchingNextProfiles, isFetchingNextLearningPaths, fetchNextPage, fetchNextProfiles, fetchNextLearningPaths]);
 
   // Proactive preloading: fetch next page when we have rendered content but more is available
   // This ensures content is ready before user scrolls to it
@@ -436,6 +484,12 @@ export function ExplorePage() {
       if (totalProfiles > 0 && totalProfiles < 90 && hasNextProfiles && !isFetchingNextProfiles) {
         fetchNextProfiles();
       }
+    } else if (activeTab === 'learning-paths') {
+      // For learning paths: preload if we have less than 3 pages worth and more available
+      const totalPaths = allLearningPaths.length;
+      if (totalPaths > 0 && totalPaths < 60 && hasNextLearningPaths && !isFetchingNextLearningPaths) {
+        fetchNextLearningPaths();
+      }
     } else {
       // For projects: preload if we have less than 3 pages worth and more available
       const totalProjects = allProjects.length;
@@ -443,10 +497,10 @@ export function ExplorePage() {
         fetchNextPage();
       }
     }
-  }, [activeTab, allProfiles.length, allProjects.length, hasNextPage, hasNextProfiles, isFetchingNextPage, isFetchingNextProfiles, fetchNextPage, fetchNextProfiles]);
+  }, [activeTab, allProfiles.length, allProjects.length, allLearningPaths.length, hasNextPage, hasNextProfiles, hasNextLearningPaths, isFetchingNextPage, isFetchingNextProfiles, isFetchingNextLearningPaths, fetchNextPage, fetchNextProfiles, fetchNextLearningPaths]);
 
-  // Show filters on all content tabs except profiles
-  const showFilters = activeTab !== 'profiles';
+  // Show filters on all content tabs except profiles and learning paths
+  const showFilters = activeTab !== 'profiles' && activeTab !== 'learning-paths';
 
   // Handle welcome redirect from auth - open chat in welcome mode
   // Temporarily disabled to avoid auto-reopening the Add Project chat on Explore
@@ -578,6 +632,68 @@ export function ExplorePage() {
                     </div>
                   </div>
                 )}
+                  </>
+                )}
+              </div>
+            ) : activeTab === 'learning-paths' ? (
+              // Learning Paths Grid
+              <div
+                role="tabpanel"
+                id={`tabpanel-${activeTab}`}
+                aria-labelledby={`tab-${activeTab}`}
+                className="relative z-10"
+              >
+                {isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+                    <LoadingSkeleton type="project" count={12} />
+                  </div>
+                ) : allLearningPaths.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center max-w-md mx-auto">
+                      <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        {searchQuery
+                          ? `No learning paths found for "${searchQuery}"`
+                          : 'No learning paths yet'}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {searchQuery
+                          ? 'Try different keywords or clear your search'
+                          : 'Be the first to publish a learning path!'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+                      {allLearningPaths.map((path) => (
+                        <div
+                          key={path.id}
+                          className="animate-fade-in-up"
+                          style={{
+                            animationDelay: '0ms',
+                            animationFillMode: 'backwards',
+                          }}
+                        >
+                          <LearningPathCard learningPath={path} />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Infinite scroll trigger */}
+                    <div ref={observerTarget} className="h-20 mt-8" aria-hidden="true" />
+
+                    {/* Loading indicator for next page */}
+                    {isFetchingNextLearningPaths && (
+                      <div className="flex justify-center py-8" role="status" aria-live="polite">
+                        <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-label="Loading">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-sm">Loading more learning paths...</span>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

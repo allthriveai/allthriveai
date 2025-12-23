@@ -189,6 +189,7 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
     curriculum_count = serializers.SerializerMethodField()
     ai_lesson_count = serializers.SerializerMethodField()
     curated_count = serializers.SerializerMethodField()
+    topics_covered = serializers.SerializerMethodField()
 
     class Meta:
         model = SavedLearningPath
@@ -201,10 +202,13 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
             'cover_image',
             'is_active',
             'is_archived',
+            'is_published',
+            'published_at',
             'curriculum',
             'curriculum_count',
             'ai_lesson_count',
             'curated_count',
+            'topics_covered',
             'created_at',
             'updated_at',
         ]
@@ -227,6 +231,10 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
         """Get curated content count."""
         return obj.path_data.get('curated_count', 0) if obj.path_data else 0
 
+    def get_topics_covered(self, obj):
+        """Get topics covered from path_data."""
+        return obj.path_data.get('topics_covered', []) if obj.path_data else []
+
 
 class SavedLearningPathListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for SavedLearningPath list views."""
@@ -243,6 +251,7 @@ class SavedLearningPathListSerializer(serializers.ModelSerializer):
             'estimated_hours',
             'cover_image',
             'is_active',
+            'is_published',
             'curriculum_count',
             'created_at',
         ]
@@ -252,6 +261,49 @@ class SavedLearningPathListSerializer(serializers.ModelSerializer):
         """Get total curriculum item count."""
         curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
         return len(curriculum)
+
+
+class PublicLearningPathSerializer(serializers.ModelSerializer):
+    """Serializer for learning paths in the explore feed (public view)."""
+
+    username = serializers.CharField(source='user.username', read_only=True)
+    user_full_name = serializers.SerializerMethodField()
+    user_avatar_url = serializers.CharField(source='user.avatar_url', read_only=True)
+    curriculum_count = serializers.SerializerMethodField()
+    topics_covered = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SavedLearningPath
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'difficulty',
+            'estimated_hours',
+            'cover_image',
+            'curriculum_count',
+            'topics_covered',
+            'username',
+            'user_full_name',
+            'user_avatar_url',
+            'published_at',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_user_full_name(self, obj):
+        """Get user display name."""
+        return obj.user.get_full_name() or obj.user.username
+
+    def get_curriculum_count(self, obj):
+        """Get total curriculum item count."""
+        curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
+        return len(curriculum)
+
+    def get_topics_covered(self, obj):
+        """Get topics covered from path_data (limit to 5 for display)."""
+        topics = obj.path_data.get('topics_covered', []) if obj.path_data else []
+        return topics[:5]
 
 
 class ConceptSerializer(serializers.ModelSerializer):
