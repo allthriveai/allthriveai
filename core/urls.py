@@ -65,6 +65,7 @@ from .battles.views import (
     start_battle_turn,
 )
 from .events.views import EventViewSet
+from .feedback.views import FeedbackViewSet
 from .integrations.figma.views import get_file_preview as get_figma_file_preview
 from .integrations.figma.views import list_user_files as list_figma_files
 from .integrations.github.views import (
@@ -96,6 +97,7 @@ from .projects.views import (
     toggle_project_promotion,
     user_clipped_projects,
     user_liked_projects,
+    user_prompt_library,
 )
 from .quizzes.views import QuizAttemptViewSet, QuizViewSet
 from .referrals.views import ReferralCodeViewSet, ReferralViewSet, validate_referral_code
@@ -167,6 +169,7 @@ from .views import ai_analytics_views, csp_report, db_health
 # Main router for public/general endpoints
 main_router = DefaultRouter()
 main_router.register(r'quizzes', QuizViewSet, basename='quiz')
+main_router.register(r'feedback', FeedbackViewSet, basename='feedback')
 
 # Router for /me user-scoped endpoints
 me_router = DefaultRouter()
@@ -187,6 +190,7 @@ me_router.register(r'achievements', AchievementViewSet, basename='me-achievement
 me_router.register(r'circles', CircleViewSet, basename='me-circles')
 me_router.register(r'avatars', UserAvatarViewSet, basename='me-avatars')
 me_router.register(r'avatar-sessions', AvatarGenerationSessionViewSet, basename='me-avatar-sessions')
+me_router.register(r'feedback', FeedbackViewSet, basename='me-feedback')
 
 # Taxonomy router (public but auth-required)
 taxonomy_router = DefaultRouter()
@@ -298,6 +302,7 @@ urlpatterns = [
     path('users/<str:username>/projects/<str:slug>/', get_project_by_slug, name='get_project_by_slug'),
     path('users/<str:username>/liked-projects/', user_liked_projects, name='user_liked_projects'),
     path('users/<str:username>/clipped-projects/', user_clipped_projects, name='user_clipped_projects'),
+    path('users/<str:username>/prompt-library/', user_prompt_library, name='user_prompt_library'),
     # Follow endpoints
     path('users/<str:username>/follow/', toggle_follow, name='toggle_follow'),
     path('users/<str:username>/followers/', list_followers, name='list_followers'),
