@@ -38,7 +38,7 @@ import {
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import { getTools, updateProjectTags } from '@/services/projects';
-import type { Tool } from '@/types/models';
+import type { Tool, Taxonomy } from '@/types/models';
 
 // Convert plain URLs to markdown links before parsing
 // This ensures URLs in YouTube descriptions become clickable
@@ -123,7 +123,9 @@ export function VideoProjectLayout() {
   // Inline editing state for tools and topics
   const [availableTools, setAvailableTools] = useState<Tool[]>([]);
   const [selectedToolIds, setSelectedToolIds] = useState<number[]>(project.tools || []);
-  const [editTopics, setEditTopics] = useState<string[]>(project.topics || []);
+  const [editTopics, setEditTopics] = useState<string[]>(
+    project.topicsDetails?.map((t: Taxonomy) => t.name) || []
+  );
   const [newTopic, setNewTopic] = useState('');
   const [isSavingTags, setIsSavingTags] = useState(false);
   const [toolSearchQuery, setToolSearchQuery] = useState('');
@@ -139,9 +141,9 @@ export function VideoProjectLayout() {
 
       // Reset selections to current project values
       setSelectedToolIds(project.tools || []);
-      setEditTopics(project.topics || []);
+      setEditTopics(project.topicsDetails?.map((t: Taxonomy) => t.name) || []);
     }
-  }, [isEditing, project.tools, project.topics]);
+  }, [isEditing, project.tools, project.topicsDetails]);
 
   // Filter tools by search query
   const filteredTools = availableTools.filter(tool =>
@@ -709,7 +711,7 @@ export function VideoProjectLayout() {
         )}
 
         {/* Topics Section - Inline Editable */}
-        {(isEditing || (project.topics && project.topics.length > 0)) && (
+        {(isEditing || (project.topicsDetails && project.topicsDetails.length > 0)) && (
           <div className="space-y-3">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Topics</p>
             {isEditing ? (
@@ -752,13 +754,13 @@ export function VideoProjectLayout() {
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {project.topics?.map((topic, index) => (
+                {project.topicsDetails?.map((topic: Taxonomy) => (
                   <button
-                    key={index}
-                    onClick={() => openTopicTray(topic)}
+                    key={topic.id}
+                    onClick={() => openTopicTray(topic.name)}
                     className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
                   >
-                    #{topic}
+                    #{topic.name}
                   </button>
                 ))}
               </div>

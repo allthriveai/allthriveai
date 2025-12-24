@@ -532,18 +532,18 @@ export function ClippedArticleLayout() {
           )}
 
           {/* Topics */}
-          {project.topics && project.topics.length > 0 && (
+          {project.topicsDetails && project.topicsDetails.length > 0 && (
             <div className="mb-12">
               <h3 className="text-sm font-semibold mb-4 uppercase tracking-wider text-gray-500 dark:text-white/50">
                 Topics
               </h3>
               <div className="flex flex-wrap gap-2">
-                {project.topics.slice(0, 8).map((topic: string, index: number) => (
+                {project.topicsDetails.slice(0, 8).map((topic: Taxonomy) => (
                   <span
-                    key={index}
+                    key={topic.id}
                     className="px-3 py-1.5 text-sm rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
                   >
-                    {topic}
+                    {topic.name}
                   </span>
                 ))}
               </div>
