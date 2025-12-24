@@ -148,7 +148,8 @@ Resources:
         - Key: Type
           Value: Private
 
-  # Elastic IPs for NAT Gateways
+  # Elastic IP for NAT Gateway (single NAT Gateway for cost savings during testing)
+  # NOTE: For production HA, add a second NAT Gateway in PublicSubnet2
   NatGateway1EIP:
     Type: AWS::EC2::EIP
     DependsOn: InternetGatewayAttachment
@@ -160,18 +161,8 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
-  NatGateway2EIP:
-    Type: AWS::EC2::EIP
-    DependsOn: InternetGatewayAttachment
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName}-nat-eip-2
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  # NAT Gateways
+  # NAT Gateway (single instance for cost savings - ~$32/mo savings)
+  # NOTE: For production HA, deploy NAT Gateways in multiple AZs
   NatGateway1:
     Type: AWS::EC2::NatGateway
     Properties:
@@ -180,17 +171,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName}-nat-gateway-1
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  NatGateway2:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGateway2EIP.AllocationId
-      SubnetId: !Ref PublicSubnet2
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName}-nat-gateway-2
         - Key: Environment
           Value: !Ref EnvironmentName
 
@@ -249,83 +229,69 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PrivateSubnet1
 
-  PrivateRouteTable2:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName}-private-rt-2
-        - Key: Environment
-          Value: !Ref EnvironmentName
-
-  DefaultPrivateRoute2:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable2
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway2
-
+  # All private subnets use the single NAT Gateway for cost savings
+  # NOTE: For production HA, create separate route tables per AZ with dedicated NAT Gateways
   PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PrivateRouteTable2
+      RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PrivateSubnet2
 
   PrivateSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PrivateRouteTable2
+      RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PrivateSubnet3
 
-  # VPC Flow Logs
-  VPCFlowLogsLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub /aws/vpc/${EnvironmentName}-allthrive-flow-logs
-      RetentionInDays: 30
-      Tags:
-        - Key: Environment
-          Value: !Ref EnvironmentName
+  # VPC Flow Logs - DISABLED for cost savings (~$5-10/mo savings)
+  # Uncomment for production security monitoring
+  # VPCFlowLogsLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     LogGroupName: !Sub /aws/vpc/${EnvironmentName}-allthrive-flow-logs
+  #     RetentionInDays: 7
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref EnvironmentName
 
-  VPCFlowLogsRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub ${EnvironmentName}-allthrive-vpc-flow-logs-role
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: vpc-flow-logs.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: VPCFlowLogsPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogGroups
-                  - logs:DescribeLogStreams
-                Resource: '*'
+  # VPCFlowLogsRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: !Sub ${EnvironmentName}-allthrive-vpc-flow-logs-role
+  #     AssumeRolePolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: vpc-flow-logs.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     Policies:
+  #       - PolicyName: VPCFlowLogsPolicy
+  #         PolicyDocument:
+  #           Version: '2012-10-17'
+  #           Statement:
+  #             - Effect: Allow
+  #               Action:
+  #                 - logs:CreateLogGroup
+  #                 - logs:CreateLogStream
+  #                 - logs:PutLogEvents
+  #                 - logs:DescribeLogGroups
+  #                 - logs:DescribeLogStreams
+  #               Resource: '*'
 
-  VPCFlowLog:
-    Type: AWS::EC2::FlowLog
-    Properties:
-      DeliverLogsPermissionArn: !GetAtt VPCFlowLogsRole.Arn
-      LogGroupName: !Ref VPCFlowLogsLogGroup
-      ResourceId: !Ref VPC
-      ResourceType: VPC
-      TrafficType: ALL
-      Tags:
-        - Key: Name
-          Value: !Sub ${EnvironmentName}-allthrive-flow-log
-        - Key: Environment
-          Value: !Ref EnvironmentName
+  # VPCFlowLog:
+  #   Type: AWS::EC2::FlowLog
+  #   Properties:
+  #     DeliverLogsPermissionArn: !GetAtt VPCFlowLogsRole.Arn
+  #     LogGroupName: !Ref VPCFlowLogsLogGroup
+  #     ResourceId: !Ref VPC
+  #     ResourceType: VPC
+  #     TrafficType: ALL
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${EnvironmentName}-allthrive-flow-log
+  #       - Key: Environment
+  #         Value: !Ref EnvironmentName
 
 Outputs:
   VPCId:
@@ -387,9 +353,3 @@ Outputs:
     Value: !Ref NatGateway1
     Export:
       Name: !Sub ${EnvironmentName}-NatGateway1Id
-
-  NatGateway2Id:
-    Description: NAT Gateway 2 ID
-    Value: !Ref NatGateway2
-    Export:
-      Name: !Sub ${EnvironmentName}-NatGateway2Id

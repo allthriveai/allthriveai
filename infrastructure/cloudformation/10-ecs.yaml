@@ -18,17 +18,17 @@ Parameters:
 
   WebDesiredCount:
     Type: Number
-    Default: 2
+    Default: 1  # Reduced for cost savings during testing (~$15/mo savings combined)
     MinValue: 1
     MaxValue: 10
-    Description: Desired number of web tasks
+    Description: Desired number of web tasks (use 2+ for production HA)
 
   CeleryDesiredCount:
     Type: Number
-    Default: 2
+    Default: 1  # Reduced for cost savings during testing
     MinValue: 1
     MaxValue: 20
-    Description: Desired number of celery worker tasks
+    Description: Desired number of celery worker tasks (use 2+ for production HA)
 
   WebCpu:
     Type: Number
@@ -74,13 +74,14 @@ Parameters:
 
 Resources:
   # ECS Cluster
+  # Container Insights disabled for cost savings (~$3-5/mo savings)
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Sub ${EnvironmentName}-allthrive-cluster
       ClusterSettings:
         - Name: containerInsights
-          Value: enabled
+          Value: disabled  # Enable for production monitoring
       CapacityProviders:
         - FARGATE
         - FARGATE_SPOT
@@ -97,11 +98,12 @@ Resources:
           Value: !Ref EnvironmentName
 
   # CloudWatch Log Groups
+  # Reduced retention for cost savings (~$2-5/mo savings depending on log volume)
   WebLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-web
-      RetentionInDays: 30
+      RetentionInDays: 7  # Reduced from 30 for testing
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
@@ -110,7 +112,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-celery
-      RetentionInDays: 30
+      RetentionInDays: 7  # Reduced from 30 for testing
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
@@ -119,7 +121,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-celery-beat
-      RetentionInDays: 30
+      RetentionInDays: 7  # Reduced from 30 for testing
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
@@ -128,7 +130,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /ecs/${EnvironmentName}-allthrive-weaviate
-      RetentionInDays: 30
+      RetentionInDays: 7  # Reduced from 30 for testing
       Tags:
         - Key: Environment
           Value: !Ref EnvironmentName
@@ -796,6 +798,7 @@ Resources:
           Value: !Ref EnvironmentName
 
   # Weaviate Task Definition
+  # Reduced resources for testing - increase for production workloads
   WeaviateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     DependsOn:
@@ -806,8 +809,8 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      Cpu: 1024
-      Memory: 2048
+      Cpu: 512   # Reduced from 1024 for testing (~$15/mo savings)
+      Memory: 1024  # Reduced from 2048 for testing
       ExecutionRoleArn: !ImportValue
         Fn::Sub: ${EnvironmentName}-ECSTaskExecutionRoleArn
       TaskRoleArn: !ImportValue
