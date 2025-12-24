@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
 import { HeroVideo } from './hero/HeroVideo';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/gameRegistry';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { toggleProjectLike, getProjectBySlug } from '@/services/projects';
@@ -100,6 +101,22 @@ function isBattleProject(project: Project): boolean {
   return project.type === 'battle' && !!project.content?.battleResult;
 }
 
+/**
+ * Check if project is a game and get its game type
+ */
+function getGameType(project: Project): PlayableGameType | null {
+  if (project.type !== 'game') return null;
+
+  // Map game URLs to game types
+  const gameUrl = project.content?.gameUrl || '';
+  if (gameUrl.includes('context-snake') || gameUrl.includes('snake')) return 'snake';
+  if (gameUrl.includes('ethics-defender') || gameUrl.includes('ethics')) return 'ethics';
+  if (gameUrl.includes('prompt-battle')) return 'prompt_battle';
+  if (gameUrl.includes('quiz') || gameUrl.includes('trivia')) return 'quiz';
+
+  return null;
+}
+
 // Helper to get FA icon component by name
 function getFaIcon(iconName: string): React.ComponentType<{ className?: string }> | null {
   if (!iconName) return null;
@@ -120,6 +137,10 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   // Tool tray state
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
+
+  // Game state - lazy load the mini game component
+  const [GameComponent, setGameComponent] = useState<React.ComponentType<any> | null>(null);
+  const [isLoadingGame, setIsLoadingGame] = useState(false);
 
   // Enriched project with full content (fetched when tray opens)
   const [enrichedProject, setEnrichedProject] = useState<Project | null>(null);
@@ -372,6 +393,40 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen, onClose]);
+
+  // Load game component when tray opens for a game project
+  useEffect(() => {
+    if (!isOpen || !project) {
+      setGameComponent(null);
+      return;
+    }
+
+    const gameType = getGameType(project);
+    if (!gameType) {
+      setGameComponent(null);
+      return;
+    }
+
+    const gameConfig = GAME_REGISTRY[gameType];
+    if (!gameConfig) {
+      setGameComponent(null);
+      return;
+    }
+
+    // Lazy load the game component
+    setIsLoadingGame(true);
+    gameConfig.component()
+      .then((module) => {
+        setGameComponent(() => module.default);
+      })
+      .catch((error) => {
+        console.error('Failed to load game:', error);
+        setGameComponent(null);
+      })
+      .finally(() => {
+        setIsLoadingGame(false);
+      });
+  }, [isOpen, project?.id, project?.type]);
 
   // Track drag state in refs for native event handlers (to avoid stale closures)
   const isDraggingRef = useRef(false);
@@ -817,6 +872,198 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     );
   };
 
+  // Render game-specific content
+  const renderGameContent = () => {
+    const gameUrl = project.content?.gameUrl || '';
+    const gameType = getGameType(project);
+
+    // Handle game end - navigate to full game
+    const handleGameEnd = () => {
+      // Game ended in mini mode - could show score or prompt to play full game
+    };
+
+    // Navigate to full game
+    const handlePlayFullGame = () => {
+      if (gameUrl) {
+        onClose();
+        // Navigate within the app
+        navigate(gameUrl);
+      }
+    };
+
+    return (
+      <>
+        {/* Header */}
+        <div className="flex-shrink-0 px-6 md:px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                  Game
+                </span>
+              </div>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                {project.title}
+              </h1>
+              <Link
+                to={`/${project.username}`}
+                className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+              >
+                by @{project.username}
+              </Link>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              aria-label="Close"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Game Content */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain pb-10">
+          {/* Mini Game Area */}
+          <div className="p-4">
+            <div className="rounded-xl overflow-hidden bg-slate-900 border border-gray-700">
+              {isLoadingGame ? (
+                <div className="flex items-center justify-center h-[300px] bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-gray-400">Loading game...</span>
+                  </div>
+                </div>
+              ) : GameComponent && gameType ? (
+                <GameComponent variant="mini" onGameEnd={handleGameEnd} />
+              ) : (
+                // Fallback if game can't be loaded - show featured image or placeholder
+                <div className="flex items-center justify-center h-[300px] bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                  {project.featuredImageUrl ? (
+                    <img
+                      src={getOptimizedImageUrl(project.featuredImageUrl, { width: 600 })}
+                      alt={project.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 text-gray-400">
+                      <PlayIcon className="w-16 h-16" />
+                      <span className="text-sm">Click below to play</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Description */}
+          {project.description && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                {project.description}
+              </p>
+            </div>
+          )}
+
+          {/* Category badges */}
+          {project.categoriesDetails && project.categoriesDetails.length > 0 && (
+            <div className="px-6 md:px-4 pb-4">
+              <div className="flex flex-wrap gap-2">
+                {project.categoriesDetails.slice(0, 3).map((category) => (
+                  <span
+                    key={category.id}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full"
+                    style={{
+                      backgroundColor: category.color ? `${category.color}20` : 'rgba(16, 185, 129, 0.2)',
+                      color: category.color || '#10b981',
+                    }}
+                  >
+                    {category.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tool badges */}
+          {project.toolsDetails && project.toolsDetails.length > 0 && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-xs text-gray-500 mb-2">Built with:</p>
+              <div className="flex flex-wrap gap-2">
+                {project.toolsDetails.slice(0, 3).map((tool) => (
+                  <button
+                    key={tool.id}
+                    onClick={() => {
+                      setSelectedToolSlug(tool.slug);
+                      setShowToolTray(true);
+                    }}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    {tool.logoUrl && (
+                      <img src={tool.logoUrl} alt={tool.name} className="w-3.5 h-3.5 rounded" />
+                    )}
+                    {tool.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 px-6 md:px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+          {/* Action buttons */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {/* Like button */}
+              <button
+                onClick={handleLike}
+                disabled={isLiking || !isAuthenticated}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 disabled:opacity-50 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                {isLiked ? (
+                  <HeartIconSolid className="w-4 h-4 text-red-500" />
+                ) : (
+                  <HeartIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                )}
+                {heartCount > 0 && (
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {heartCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Comment button */}
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={() => {
+                  onClose();
+                  navigate(`${projectUrl}#comments`);
+                }}
+              >
+                <ChatBubbleLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Comment</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Play Full Game CTA */}
+          <button
+            onClick={handlePlayFullGame}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium transition-colors"
+          >
+            <PlayIcon className="w-5 h-5" />
+            Play Full Game
+          </button>
+        </div>
+      </>
+    );
+  };
+
   // Render standard project content
   const renderStandardContent = () => {
     // Use enriched project data if available, otherwise fall back to original
@@ -1211,7 +1458,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         <div className="md:hidden flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
-        {isBattle ? renderBattleContent() : renderStandardContent()}
+        {isBattle ? renderBattleContent() : getGameType(project) ? renderGameContent() : renderStandardContent()}
       </aside>
 
       {/* Tool Tray - Opens when clicking a tool badge */}

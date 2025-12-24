@@ -132,11 +132,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
     if (onCardClick) {
       onCardClick(project.id);
     }
-    // Game projects always navigate directly to the game URL (skip inline preview)
-    if (project.type === 'game') {
-      return; // Let the Link component handle navigation to gameUrl
-    }
-    // If inline preview is enabled, open tray instead of navigating
+    // If inline preview is enabled, open tray instead of navigating (includes games)
     if (enableInlinePreview && openProjectPreview) {
       e.preventDefault();
       openProjectPreview(project);
@@ -405,10 +401,9 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
 
   // Keep users on-site for all project types (including RSS articles which now show expert reviews)
   // Use div instead of Link when in selection mode or when inline preview is enabled
-  // Exception: Game projects always use Link to navigate directly to the game URL
-  const isGameProject = project.type === 'game';
-  const CardWrapper = (selectionMode || (enableInlinePreview && !isGameProject)) ? 'div' : Link;
-  const cardProps = (selectionMode || (enableInlinePreview && !isGameProject))
+  // Use div wrapper when inline preview is enabled (so click opens tray, not navigates)
+  const CardWrapper = (selectionMode || enableInlinePreview) ? 'div' : Link;
+  const cardProps = (selectionMode || enableInlinePreview)
     ? { onClick: handleClick, style: { cursor: 'pointer' } }
     : { to: projectUrl, onClick: handleClick };
 
