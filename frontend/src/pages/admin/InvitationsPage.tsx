@@ -18,6 +18,7 @@ import {
 import {
   CheckCircleIcon as CheckCircleSolidIcon,
   XCircleIcon as XCircleSolidIcon,
+  PencilIcon,
 } from '@heroicons/react/24/solid';
 
 interface Invitation {
@@ -32,6 +33,7 @@ interface Invitation {
   reviewedAt: string | null;
   reviewedBy: string | null;
   reviewNotes: string;
+  adminNotes: string;
   approvalEmailSentAt: string | null;
   userSignedUp?: boolean;
   userJoinedAt?: string | null;
@@ -65,6 +67,9 @@ export default function InvitationsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
+  const [editingNotesValue, setEditingNotesValue] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   // Redirect if not admin
   useEffect(() => {
@@ -183,6 +188,33 @@ export default function InvitationsPage() {
     }
   };
 
+  const startEditingNotes = (invitation: Invitation) => {
+    setEditingNotesId(invitation.id);
+    setEditingNotesValue(invitation.adminNotes || '');
+  };
+
+  const cancelEditingNotes = () => {
+    setEditingNotesId(null);
+    setEditingNotesValue('');
+  };
+
+  const saveNotes = async (id: number) => {
+    setSavingNotes(true);
+    try {
+      await api.patch(`/admin/invitations/${id}/notes/`, { adminNotes: editingNotesValue });
+      // Update local state to avoid refetching
+      setInvitations(prev =>
+        prev.map(inv => (inv.id === id ? { ...inv, adminNotes: editingNotesValue } : inv))
+      );
+      setEditingNotesId(null);
+      setEditingNotesValue('');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to save notes');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -242,7 +274,7 @@ export default function InvitationsPage() {
   return (
     <DashboardLayout>
       <AdminLayout pendingInvitationsCount={stats.pending}>
-        <div className="p-6 md:p-8 max-w-6xl">
+        <div className="p-6 md:p-8">
           {/* Header */}
           <header className="mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">
@@ -338,7 +370,7 @@ export default function InvitationsPage() {
           )}
 
           {/* Invitations Table */}
-          <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-x-auto">
             {loading ? (
               <div className="p-12 text-center">
                 <div className="w-8 h-8 border-2 border-primary-200 dark:border-cyan-500/30 border-t-primary-500 dark:border-t-cyan-neon rounded-full animate-spin mx-auto mb-4" />
@@ -352,9 +384,9 @@ export default function InvitationsPage() {
             ) : (
               <>
                 {/* Table Header */}
-                <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400">
+                <div className="hidden md:flex gap-4 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 min-w-max">
                   {statusFilter === 'pending' && (
-                    <div className="col-span-1 flex items-center">
+                    <div className="w-8 flex items-center flex-shrink-0">
                       <input
                         type="checkbox"
                         checked={selectedIds.size === invitations.filter(i => i.status === 'pending').length && selectedIds.size > 0}
@@ -363,13 +395,14 @@ export default function InvitationsPage() {
                       />
                     </div>
                   )}
-                  <div className={statusFilter === 'pending' ? 'col-span-3' : statusFilter === 'approved' ? 'col-span-2' : 'col-span-4'}>Requester</div>
-                  <div className={statusFilter === 'approved' ? 'col-span-2' : 'col-span-3'}>Reason</div>
-                  <div className={statusFilter === 'approved' ? 'col-span-1' : 'col-span-2'}>Status</div>
-                  {statusFilter === 'approved' && <div className="col-span-2">Email</div>}
-                  {statusFilter === 'approved' && <div className="col-span-2">User Activity</div>}
-                  <div className={statusFilter === 'approved' ? 'col-span-3' : 'col-span-2'}>Date</div>
-                  {statusFilter === 'pending' && <div className="col-span-1">Actions</div>}
+                  <div className="w-64 flex-shrink-0">Requester</div>
+                  <div className="w-72 flex-shrink-0">Reason</div>
+                  <div className="w-24 flex-shrink-0">Status</div>
+                  <div className="w-48 flex-shrink-0">Notes</div>
+                  {statusFilter === 'approved' && <div className="w-20 flex-shrink-0">Email</div>}
+                  {statusFilter === 'approved' && <div className="w-36 flex-shrink-0">User Activity</div>}
+                  <div className="w-40 flex-shrink-0">Date</div>
+                  {statusFilter === 'pending' && <div className="w-24 flex-shrink-0">Actions</div>}
                 </div>
 
                 {/* Table Body */}
@@ -377,11 +410,11 @@ export default function InvitationsPage() {
                   {invitations.map((invitation) => (
                     <div
                       key={invitation.id}
-                      className="grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                      className="flex gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors min-w-max"
                     >
                       {/* Checkbox (pending only) */}
                       {statusFilter === 'pending' && (
-                        <div className="hidden md:flex col-span-1 items-center">
+                        <div className="w-8 flex items-center flex-shrink-0">
                           <input
                             type="checkbox"
                             checked={selectedIds.has(invitation.id)}
@@ -393,40 +426,34 @@ export default function InvitationsPage() {
                       )}
 
                       {/* Requester */}
-                      <div className={`${statusFilter === 'pending' ? 'md:col-span-3' : statusFilter === 'approved' ? 'md:col-span-2' : 'md:col-span-4'}`}>
+                      <div className="w-64 flex-shrink-0">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
                             <UserIcon className="w-5 h-5 text-primary-600 dark:text-cyan-neon" />
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-white truncate">{invitation.name}</p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{invitation.email}</p>
+                          <div>
+                            <p className="font-medium text-slate-900 dark:text-white">{invitation.name}</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">{invitation.email}</p>
                           </div>
                         </div>
                       </div>
 
                       {/* Reason & Features */}
-                      <div className={statusFilter === 'approved' ? 'md:col-span-2' : 'md:col-span-3'}>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+                      <div className="w-72 flex-shrink-0">
+                        <p className="text-sm text-slate-700 dark:text-slate-300">
                           {invitation.reason || <span className="text-slate-400 dark:text-slate-500 italic">No reason provided</span>}
                         </p>
                         {/* Excited Features */}
                         {invitation.excitedFeatures && invitation.excitedFeatures.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
-                            {invitation.excitedFeatures.slice(0, 3).map((feature, idx) => (
+                            {invitation.excitedFeatures.map((feature, idx) => (
                               <span
                                 key={idx}
                                 className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300"
-                                title={feature}
                               >
-                                {feature.length > 20 ? feature.slice(0, 20) + '...' : feature}
+                                {feature}
                               </span>
                             ))}
-                            {invitation.excitedFeatures.length > 3 && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
-                                +{invitation.excitedFeatures.length - 3} more
-                              </span>
-                            )}
                           </div>
                         )}
                         {/* Desired Integrations */}
@@ -445,30 +472,78 @@ export default function InvitationsPage() {
                       </div>
 
                       {/* Status */}
-                      <div className={`${statusFilter === 'approved' ? 'md:col-span-1' : 'md:col-span-2'} flex items-center`}>
+                      <div className="w-24 flex items-center flex-shrink-0">
                         <StatusBadge status={invitation.status} />
+                      </div>
+
+                      {/* Admin Notes */}
+                      <div className="w-48 flex-shrink-0">
+                        {editingNotesId === invitation.id ? (
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              value={editingNotesValue}
+                              onChange={(e) => setEditingNotesValue(e.target.value)}
+                              className="w-full px-2 py-1.5 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-primary-500 dark:focus:border-cyan-500/50 focus:ring-1 focus:ring-primary-500/30 dark:focus:ring-cyan-500/30 resize-none"
+                              rows={2}
+                              placeholder="Add notes..."
+                              autoFocus
+                            />
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => saveNotes(invitation.id)}
+                                disabled={savingNotes}
+                                className="px-2 py-1 text-xs font-medium bg-primary-100 dark:bg-cyan-500/20 text-primary-700 dark:text-cyan-400 border border-primary-300 dark:border-cyan-500/30 rounded hover:bg-primary-200 dark:hover:bg-cyan-500/30 transition-colors disabled:opacity-50"
+                              >
+                                {savingNotes ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                onClick={cancelEditingNotes}
+                                disabled={savingNotes}
+                                className="px-2 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEditingNotes(invitation)}
+                            className="group w-full text-left"
+                          >
+                            {invitation.adminNotes ? (
+                              <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-cyan-400 transition-colors">
+                                {invitation.adminNotes}
+                              </p>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-sm text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-cyan-400 transition-colors">
+                                <PencilIcon className="w-3.5 h-3.5" />
+                                Add notes
+                              </span>
+                            )}
+                          </button>
+                        )}
                       </div>
 
                       {/* Email Sent Status (approved only) */}
                       {statusFilter === 'approved' && (
-                        <div className="md:col-span-2 flex items-center">
+                        <div className="w-20 flex items-center flex-shrink-0">
                           {invitation.approvalEmailSentAt ? (
                             <span
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30"
                               title={`Sent ${formatDate(invitation.approvalEmailSentAt)}`}
                             >
-                              <CheckCircleIcon className="w-3.5 h-3.5" />
+                              <CheckCircleIcon className="w-3 h-3" />
                               Sent
                             </span>
                           ) : (
                             <button
                               onClick={() => handleResendEmail(invitation.id)}
                               disabled={actionLoading === invitation.id}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-500/30 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-500/30 hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors disabled:opacity-50"
                               title="Click to send approval email"
                             >
-                              <EnvelopeIcon className="w-3.5 h-3.5" />
-                              {actionLoading === invitation.id ? 'Sending...' : 'Not Sent - Click to Send'}
+                              <EnvelopeIcon className="w-3 h-3" />
+                              {actionLoading === invitation.id ? '...' : 'Send'}
                             </button>
                           )}
                         </div>
@@ -476,7 +551,7 @@ export default function InvitationsPage() {
 
                       {/* User Activity (approved only) */}
                       {statusFilter === 'approved' && (
-                        <div className="md:col-span-2 flex items-center">
+                        <div className="w-36 flex items-center flex-shrink-0">
                           {invitation.userSignedUp ? (
                             <div className="text-sm">
                               <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
@@ -505,7 +580,7 @@ export default function InvitationsPage() {
                       )}
 
                       {/* Date */}
-                      <div className={`${statusFilter === 'approved' ? 'md:col-span-3' : 'md:col-span-2'} flex items-center`}>
+                      <div className="w-40 flex items-center flex-shrink-0">
                         <div className="text-sm">
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
                             <CalendarIcon className="w-4 h-4" />
@@ -521,7 +596,7 @@ export default function InvitationsPage() {
 
                       {/* Actions (pending only) */}
                       {statusFilter === 'pending' && (
-                        <div className="md:col-span-1 flex items-center gap-2">
+                        <div className="w-24 flex items-center gap-2 flex-shrink-0">
                           {invitation.status === 'pending' && (
                             <>
                               <button

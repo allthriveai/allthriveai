@@ -46,21 +46,9 @@ def list_invitations(request):
         queryset = queryset.filter(status=status_filter)
 
     if search:
-        queryset = (
-            queryset.filter(models__icontains=search)
-            | queryset.filter(email__icontains=search)
-            | queryset.filter(name__icontains=search)
-        )
-        # Re-filter to apply the OR properly
         from django.db.models import Q
 
-        queryset = (
-            InvitationRequest.objects.select_related('reviewed_by')
-            .filter(Q(name__icontains=search) | Q(email__icontains=search))
-            .order_by('-created_at')
-        )
-        if status_filter in ['pending', 'approved', 'rejected']:
-            queryset = queryset.filter(status=status_filter)
+        queryset = queryset.filter(Q(name__icontains=search) | Q(email__icontains=search))
 
     # Pagination
     total = queryset.count()
@@ -89,6 +77,7 @@ def list_invitations(request):
             'reviewedAt': inv.reviewed_at.isoformat() if inv.reviewed_at else None,
             'reviewedBy': inv.reviewed_by.username if inv.reviewed_by else None,
             'reviewNotes': inv.review_notes,
+            'adminNotes': inv.admin_notes,
             'approvalEmailSentAt': inv.approval_email_sent_at.isoformat() if inv.approval_email_sent_at else None,
         }
 
@@ -413,3 +402,43 @@ def resend_approval_email(request, invitation_id):
             {'error': f'Failed to send email: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminRole])
+def update_invitation_notes(request, invitation_id):
+    """Update admin notes for an invitation.
+
+    Args:
+        invitation_id: ID of the invitation
+
+    Body:
+        adminNotes: The new admin notes text
+
+    Returns:
+        200: Success with updated invitation data
+        404: Invitation not found
+    """
+    try:
+        invitation = InvitationRequest.objects.get(id=invitation_id)
+    except InvitationRequest.DoesNotExist:
+        return Response(
+            {'error': 'Invitation not found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    admin_notes = request.data.get('adminNotes', '')
+    invitation.admin_notes = admin_notes
+    invitation.save(update_fields=['admin_notes', 'updated_at'])
+
+    logger.info(f'Updated admin notes for invitation {invitation_id} by {request.user.username}')
+
+    return Response(
+        {
+            'success': True,
+            'invitation': {
+                'id': invitation.id,
+                'adminNotes': invitation.admin_notes,
+            },
+        }
+    )
