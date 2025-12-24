@@ -35,6 +35,7 @@ import {
   faGlobe,
   faLock,
   faSpinner,
+  faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -534,62 +535,156 @@ function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) 
 /**
  * Related Projects Card - shows community projects section
  */
-function RelatedProjectsCard({ item, index }: { item: CurriculumItem; index: number }) {
+interface RelatedProjectsCardProps {
+  item: CurriculumItem;
+  index: number;
+  topicsCovered?: string[];
+  pathId?: number;
+  isAdmin?: boolean;
+  onProjectAdded?: () => void;
+}
+
+function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin, onProjectAdded }: RelatedProjectsCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isAddingProject, setIsAddingProject] = useState(false);
   const projects = item.projects || [];
+
+  // Open Ember with project creation context
+  const handleShareProject = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent toggle when clicking button
+    // Dispatch custom event to open Ember chat in project mode
+    window.dispatchEvent(new CustomEvent('openAddProject'));
+  };
+
+  // Admin: Add project by ID
+  const handleAdminAddProject = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!pathId) return;
+
+    const projectIdStr = window.prompt('Enter project ID to add:');
+    if (!projectIdStr) return;
+
+    const projectId = parseInt(projectIdStr, 10);
+    if (isNaN(projectId)) {
+      alert('Invalid project ID');
+      return;
+    }
+
+    setIsAddingProject(true);
+    try {
+      const { adminAddProjectToPath } = await import('@/services/learningPaths');
+      await adminAddProjectToPath(pathId, projectId);
+      alert('Project added successfully!');
+      onProjectAdded?.();
+    } catch (err) {
+      alert('Failed to add project: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setIsAddingProject(false);
+    }
+  };
 
   return (
     <div className="glass-strong rounded overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-white/10">
-        <div className="flex items-start gap-4">
-          {/* Order number */}
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-sm font-bold text-amber-400">
-            {index + 1}
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-amber-500/20 text-amber-400 border-amber-500/30">
-                <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
-                Community
-              </span>
-            </div>
-            <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
-            <p className="text-slate-600 dark:text-gray-400 text-sm mt-1">
-              {projects.length > 0
-                ? 'Explore projects from the AllThrive community'
-                : 'Be the first to share a project on this topic!'}
-            </p>
-          </div>
+      {/* Header - clickable to expand/collapse */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-start gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left"
+      >
+        {/* Order number */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-sm font-bold text-amber-400">
+          {index + 1}
         </div>
-      </div>
 
-      {/* Projects grid or empty state */}
-      <div className="p-4">
-        {projects.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-amber-500/20 text-amber-400 border-amber-500/30">
+              <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
+              Community
+            </span>
+            {projects.length > 0 && (
+              <span className="text-xs text-slate-500 dark:text-gray-500">
+                {projects.length} project{projects.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-              <FontAwesomeIcon icon={faUsers} className="text-2xl text-amber-400" />
+          <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
+          <p className="text-slate-600 dark:text-gray-400 text-sm mt-1">
+            {projects.length > 0
+              ? `Explore projects from the AllThrive community${topicsCovered.length > 0 ? ` related to ${topicsCovered.slice(0, 2).join(' and ')}` : ''}`
+              : 'Be the first to share a project on this topic!'}
+          </p>
+        </div>
+
+        {/* Expand/collapse indicator */}
+        <FontAwesomeIcon
+          icon={isExpanded ? faChevronDown : faChevronRight}
+          className="text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1"
+        />
+      </button>
+
+      {/* Expanded content - Projects grid or empty state */}
+      {isExpanded && (
+        <div className="border-t border-slate-200 dark:border-white/10 p-4">
+          {projects.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {projects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+              {/* Add Yours button at bottom */}
+              <div className="mt-4 flex items-center justify-center gap-3">
+                <button
+                  onClick={handleShareProject}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-sm font-medium rounded-lg transition-colors border border-amber-500/30"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  Add Yours
+                </button>
+                {isAdmin && pathId && (
+                  <button
+                    onClick={handleAdminAddProject}
+                    disabled={isAddingProject}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-sm font-medium rounded-lg transition-colors border border-purple-500/30 disabled:opacity-50"
+                  >
+                    <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                    {isAddingProject ? 'Adding...' : 'Admin: Add by ID'}
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <FontAwesomeIcon icon={faUsers} className="text-2xl text-amber-400" />
+              </div>
+              <p className="text-slate-600 dark:text-gray-400 text-sm mb-4">
+                No community projects yet{topicsCovered.length > 0 ? ` for ${topicsCovered.slice(0, 2).join(' or ')}` : ''}.
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={handleShareProject}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  Share Your Project
+                </button>
+                {isAdmin && pathId && (
+                  <button
+                    onClick={handleAdminAddProject}
+                    disabled={isAddingProject}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-sm font-medium rounded-lg transition-colors border border-purple-500/30 disabled:opacity-50"
+                  >
+                    <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                    {isAddingProject ? 'Adding...' : 'Admin: Add by ID'}
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="text-slate-600 dark:text-gray-400 text-sm mb-4">
-              No community projects yet for this topic.
-            </p>
-            <Link
-              to="/create"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Share Your Project
-            </Link>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -911,10 +1006,14 @@ interface CurriculumItemCardProps {
   item: CurriculumItem;
   index: number;
   pathSlug?: string;
+  pathId?: number;
+  isAdmin?: boolean;
   onOpenChat?: (context: LessonContext) => void;
+  onProjectAdded?: () => void;
+  topicsCovered?: string[];
 }
 
-function CurriculumItemCard({ item, index, pathSlug, onOpenChat }: CurriculumItemCardProps) {
+function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, onOpenChat, onProjectAdded, topicsCovered }: CurriculumItemCardProps) {
   // Use AILessonCard for AI-generated lessons
   if (item.type === 'ai_lesson') {
     return <AILessonCard item={item} index={index} pathSlug={pathSlug} onOpenChat={onOpenChat} />;
@@ -932,7 +1031,7 @@ function CurriculumItemCard({ item, index, pathSlug, onOpenChat }: CurriculumIte
 
   // Use RelatedProjectsCard for community projects section
   if (item.type === 'related_projects') {
-    return <RelatedProjectsCard item={item} index={index} />;
+    return <RelatedProjectsCard item={item} index={index} topicsCovered={topicsCovered} pathId={pathId} isAdmin={isAdmin} onProjectAdded={onProjectAdded} />;
   }
 
   const icon = getTypeIcon(item.type);
@@ -1040,14 +1139,17 @@ function LoadingState() {
  */
 export default function LearningPathDetailPage() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
-  const { data: path, isLoading, error } = useLearningPathBySlug(username || '', slug || '');
+  const { data: path, isLoading, error, refetch } = useLearningPathBySlug(username || '', slug || '');
   const { user } = useAuth();
 
   // Check if current user is the owner of this path
   const isOwner = !!(user && username && user.username === username);
 
-  // Fetch saved path data (has isPublished field) only if user is owner
-  const { data: savedPath } = useSavedPath(slug || '', isOwner);
+  // Check if current user is admin
+  const isAdmin = user?.role === 'admin';
+
+  // Fetch saved path data (has isPublished field) for owner OR admin
+  const { data: savedPath } = useSavedPath(slug || '', isOwner || isAdmin);
 
   // Publish/unpublish mutations
   const publishMutation = usePublishSavedPath();
@@ -1209,7 +1311,11 @@ export default function LearningPathDetailPage() {
                           item={item}
                           index={index}
                           pathSlug={slug}
+                          pathId={savedPath?.id}
+                          isAdmin={isAdmin}
                           onOpenChat={handleOpenChat}
+                          onProjectAdded={refetch}
+                          topicsCovered={path.topicsCovered}
                         />
                       ))}
                     </div>

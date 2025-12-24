@@ -1365,6 +1365,7 @@ class LessonImageView(APIView):
             lesson=lesson,
             path_title=path.title,
             user_id=request.user.id,
+            lesson_order=order,
         )
 
         if not image_url:
@@ -1908,5 +1909,173 @@ class AdminLessonViewSet(viewsets.ModelViewSet):
                 'hasExamples': bool(content.get('examples')),
                 'hasDiagram': bool(content.get('mermaidDiagram')),
                 'hasPracticePrompt': bool(content.get('practicePrompt')),
+            }
+        )
+
+
+class AdminAddProjectToPathView(APIView):
+    """Admin endpoint to add/remove projects from a learning path's community section."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, path_id):
+        """
+        POST /api/v1/admin/learning-paths/{path_id}/add-project/
+
+        Add a project to a learning path's "See what others are doing" section.
+
+        Request body:
+        {
+            "project_id": 123
+        }
+        """
+        # Admin check
+        if not request.user.is_authenticated or request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        project_id = request.data.get('project_id')
+        if not project_id:
+            return Response({'error': 'project_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the learning path
+        try:
+            path = SavedLearningPath.objects.get(id=path_id)
+        except SavedLearningPath.DoesNotExist:
+            return Response({'error': 'Learning path not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get the project
+        from core.projects.models import Project
+
+        try:
+            project = Project.objects.select_related('user', 'category').get(id=project_id)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Build project data for the curriculum
+        project_data = {
+            'id': project.id,
+            'title': project.title,
+            'slug': project.slug,
+            'description': project.description[:200] if project.description else '',
+            'thumbnail_url': project.thumbnail_url or '',
+            'username': project.user.username,
+            'user_avatar_url': getattr(project.user, 'avatar_url', ''),
+            'category': project.category.name if project.category else '',
+            'view_count': project.view_count,
+            'like_count': project.like_count,
+        }
+
+        # Find or create the related_projects curriculum item
+        curriculum = path.path_data.get('curriculum', [])
+        related_projects_item = None
+        related_projects_index = None
+
+        for i, item in enumerate(curriculum):
+            if item.get('type') == 'related_projects':
+                related_projects_item = item
+                related_projects_index = i
+                break
+
+        if related_projects_item is None:
+            # Create a new related_projects item at the end
+            max_order = max((item.get('order', 0) for item in curriculum), default=0)
+            related_projects_item = {
+                'type': 'related_projects',
+                'title': 'See what others are doing',
+                'order': max_order + 1,
+                'projects': [],
+            }
+            curriculum.append(related_projects_item)
+            related_projects_index = len(curriculum) - 1
+
+        # Check if project already exists
+        existing_ids = [p.get('id') for p in related_projects_item.get('projects', [])]
+        if project.id in existing_ids:
+            return Response(
+                {'error': 'Project is already in this learning path'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Add project to the list
+        related_projects_item.setdefault('projects', []).append(project_data)
+        curriculum[related_projects_index] = related_projects_item
+
+        # Also update path_data.related_projects for consistency
+        path.path_data['curriculum'] = curriculum
+        if 'related_projects' not in path.path_data:
+            path.path_data['related_projects'] = []
+        path.path_data['related_projects'].append(project_data)
+
+        path.save(update_fields=['path_data', 'updated_at'])
+
+        return Response(
+            {
+                'status': 'added',
+                'project': project_data,
+                'total_projects': len(related_projects_item.get('projects', [])),
+            }
+        )
+
+    def delete(self, request, path_id):
+        """
+        DELETE /api/v1/admin/learning-paths/{path_id}/add-project/
+
+        Remove a project from a learning path's "See what others are doing" section.
+
+        Request body:
+        {
+            "project_id": 123
+        }
+        """
+        # Admin check
+        if not request.user.is_authenticated or request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+        project_id = request.data.get('project_id')
+        if not project_id:
+            return Response({'error': 'project_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the learning path
+        try:
+            path = SavedLearningPath.objects.get(id=path_id)
+        except SavedLearningPath.DoesNotExist:
+            return Response({'error': 'Learning path not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Find the related_projects curriculum item
+        curriculum = path.path_data.get('curriculum', [])
+        related_projects_index = None
+
+        for i, item in enumerate(curriculum):
+            if item.get('type') == 'related_projects':
+                related_projects_index = i
+                break
+
+        if related_projects_index is None:
+            return Response({'error': 'No community projects section found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Remove the project
+        projects = curriculum[related_projects_index].get('projects', [])
+        original_count = len(projects)
+        projects = [p for p in projects if p.get('id') != project_id]
+
+        if len(projects) == original_count:
+            return Response({'error': 'Project not found in this learning path'}, status=status.HTTP_404_NOT_FOUND)
+
+        curriculum[related_projects_index]['projects'] = projects
+
+        # Also update path_data.related_projects for consistency
+        path.path_data['curriculum'] = curriculum
+        if 'related_projects' in path.path_data:
+            path.path_data['related_projects'] = [
+                p for p in path.path_data['related_projects'] if p.get('id') != project_id
+            ]
+
+        path.save(update_fields=['path_data', 'updated_at'])
+
+        return Response(
+            {
+                'status': 'removed',
+                'project_id': project_id,
+                'total_projects': len(projects),
             }
         )

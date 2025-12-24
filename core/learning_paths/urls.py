@@ -118,4 +118,10 @@ urlpatterns = [
         views.LessonRatingView.as_view(),
         name='lesson-rating',
     ),
+    # Admin: Add/remove projects from learning path community section
+    path(
+        'admin/learning-paths/<int:path_id>/add-project/',
+        views.AdminAddProjectToPathView.as_view(),
+        name='admin-add-project-to-path',
+    ),
 ]

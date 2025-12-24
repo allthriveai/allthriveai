@@ -36,7 +36,13 @@ class CreateLearningPathInput(BaseModel):
     model_config = {'extra': 'allow'}
 
     query: str = Field(
-        description='Topic for the learning path (e.g., "ai-architecture", "langchain", "rag")',
+        description=(
+            'Topic or learning goal for the path. ALWAYS pass the COMPLETE user request as ONE query. '
+            'NEVER split multi-topic requests into separate calls. '
+            'Examples: "git and claude cli" (ONE call), "using playwright with claude" (ONE call), '
+            '"python for data science" (ONE call), "react vs vue" (ONE call). '
+            'The system intelligently parses multi-subject queries and creates ONE unified learning path.'
+        ),
     )
     difficulty: str = Field(
         default='',
@@ -72,6 +78,10 @@ def create_learning_path(
     - A personalized learning journey
     - Step-by-step guidance on mastering a topic
 
+    CRITICAL: This tool handles multi-topic requests automatically.
+    NEVER call this tool multiple times for one user request.
+    Pass the COMPLETE query as-is: "git and claude cli" creates ONE unified path.
+
     Creates a curriculum mixing videos, articles, quizzes, games, code repos,
     and AI-generated lessons when curated content is unavailable.
     The path is personalized based on user's learning style and difficulty level.
@@ -84,10 +94,11 @@ def create_learning_path(
     If an existing learning path for this topic exists, ask the user
     if they want to replace it before calling with replace_existing=True.
 
-    Examples:
-    - "Create a learning path for RAG"
-    - "I want to master AI architecture"
-    - "Give me a beginner path for LangChain"
+    Examples (each is ONE call, not multiple):
+    - "git and claude cli" → ONE path about both topics
+    - "using playwright with claude" → ONE path about integration
+    - "python for data science" → ONE path covering both
+    - "react vs vue" → ONE comparison path
     """
     logger.info(
         'create_learning_path called',
@@ -109,8 +120,30 @@ def create_learning_path(
 
         from .lesson_generator import AILessonGenerator
 
+        # Analyze the topic using AI for intelligent title/concept generation
+        # This handles multi-subject queries like "playwright with claude" properly
+        topic_analysis = AILessonGenerator.analyze_topic(query, user_id=user_id)
+
+        # Use analyzed slug if available, otherwise fall back to simple slugify
+        if topic_analysis:
+            base_slug = topic_analysis['slug']
+            logger.info(
+                'Topic analysis complete',
+                extra={
+                    'query': query,
+                    'title': topic_analysis['title'],
+                    'slug': base_slug,
+                    'subjects': topic_analysis['subjects'],
+                    'relationship': topic_analysis['relationship'],
+                },
+            )
+        else:
+            # Fallback to simple slug if AI analysis fails
+            base_slug = slugify(query)
+            topic_analysis = AILessonGenerator.get_fallback_analysis(query)
+            logger.info(f'Using fallback topic analysis for: {query}')
+
         # Check for existing learning path with the same topic
-        base_slug = slugify(query)
         existing_path = SavedLearningPath.objects.filter(
             user_id=user_id,
             slug=base_slug,
@@ -145,12 +178,15 @@ def create_learning_path(
             actual_difficulty = 'beginner'
 
         # Find existing content for the path
+        # Pass analyzed subjects for better multi-subject matching
+        # e.g., for "playwright with claude", also search for "Playwright" and "Claude AI" separately
         content_result = ContentFinder.find(
             query=query,
             content_type='',  # Get all types
             limit=10,
             user_id=user_id,
             member_context=member_context,
+            additional_subjects=topic_analysis.get('subjects', []),
         )
 
         # Generate curriculum with AI lessons to fill gaps
@@ -159,11 +195,13 @@ def create_learning_path(
         # 2. Supplements with AI-generated lessons when content is sparse
         # 3. Logs content gaps to ContentGap model for strategic development
         # 4. Personalizes AI lessons based on member_context (learning style, difficulty)
+        # 5. Uses pre-analyzed concepts for better multi-subject handling
         curriculum = AILessonGenerator.generate_curriculum(
             topic=query,
             member_context=member_context,
             existing_content=content_result,
             user_id=user_id,
+            topic_analysis=topic_analysis,
         )
 
         # Apply time commitment limits
@@ -182,9 +220,9 @@ def create_learning_path(
         estimated_minutes = sum(item.get('estimated_minutes', 15) for item in curriculum)
         estimated_hours = round(estimated_minutes / 60, 1)
 
-        # Generate path title and slug
-        path_title = f"{query.replace('-', ' ').title()} Learning Path"
-        # base_slug already defined above when checking for existing path
+        # Use AI-analyzed title and slug (already computed above)
+        path_title = topic_analysis['title']
+        # base_slug already defined above from topic_analysis
 
         # Handle replace_existing: archive old path and reuse slug
         if replace_existing and existing_path:
@@ -207,9 +245,9 @@ def create_learning_path(
                 path_slug = f'{base_slug}-{counter}'
                 counter += 1
 
-        # Get tools and topics covered
+        # Get tools and topics covered - use analyzed subjects for better accuracy
         tools_covered = [content_result['tool']['slug']] if content_result.get('tool') else []
-        topics_covered = [query]
+        topics_covered = topic_analysis['subjects']  # Use analyzed subjects instead of raw query
 
         # Count AI-generated vs curated content
         ai_lesson_count = sum(1 for item in curriculum if item.get('generated'))
@@ -222,6 +260,12 @@ def create_learning_path(
             'topics_covered': topics_covered,
             'ai_lesson_count': ai_lesson_count,
             'curated_count': curated_count,
+            # Store topic analysis metadata for future reference
+            'topic_relationship': topic_analysis['relationship'],
+            'topic_description': topic_analysis.get('description', ''),
+            'original_query': query,
+            # Store related projects for "See what others are doing" section
+            'related_projects': content_result.get('projects', []),
         }
 
         # Create SavedLearningPath (this is the new multi-path model)

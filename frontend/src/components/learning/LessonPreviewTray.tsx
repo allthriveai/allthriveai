@@ -193,7 +193,7 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
         onTouchEnd={handleTouchEnd}
       >
         {/* Resize handle (desktop only) */}
-        <div className="hidden md:block" {...resizeHandleProps}>
+        <div {...resizeHandleProps} className={`hidden md:block ${resizeHandleProps.className}`}>
           <FontAwesomeIcon
             icon={faGripLinesVertical}
             className="absolute left-1 top-1/2 -translate-y-1/2 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity text-xs"

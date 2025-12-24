@@ -745,3 +745,52 @@ export async function getMyLessonRating(projectId: number): Promise<LessonRating
     return null;
   }
 }
+
+// =============================================================================
+// ADMIN LEARNING PATH MANAGEMENT
+// =============================================================================
+
+export interface AddProjectResponse {
+  status: string;
+  project: {
+    id: number;
+    title: string;
+    slug: string;
+    description: string;
+    thumbnailUrl: string;
+    username: string;
+    userAvatarUrl: string;
+    category: string;
+    viewCount: number;
+    likeCount: number;
+  };
+  totalProjects: number;
+}
+
+/**
+ * Admin: Add a project to a learning path's community section
+ */
+export async function adminAddProjectToPath(
+  pathId: number,
+  projectId: number
+): Promise<AddProjectResponse> {
+  const response = await api.post<AddProjectResponse>(
+    `/admin/learning-paths/${pathId}/add-project/`,
+    { projectId }
+  );
+  return response.data;
+}
+
+/**
+ * Admin: Remove a project from a learning path's community section
+ */
+export async function adminRemoveProjectFromPath(
+  pathId: number,
+  projectId: number
+): Promise<{ status: string; projectId: number; totalProjects: number }> {
+  const response = await api.delete(
+    `/admin/learning-paths/${pathId}/add-project/`,
+    { data: { projectId } }
+  );
+  return response.data;
+}

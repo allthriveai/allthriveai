@@ -163,6 +163,59 @@ class CurriculumItem(TypedDict, total=False):
     projects: list[dict] | None
 
 
+class TopicAnalysis(TypedDict):
+    """Structure of AI-analyzed topic for multi-subject queries."""
+
+    title: str  # Human-readable learning path title
+    slug: str  # URL-friendly slug
+    subjects: list[str]  # Individual subjects detected (e.g., ["Playwright", "Claude AI"])
+    relationship: str  # How subjects relate: "integration", "comparison", "workflow", "single"
+    description: str  # Brief description of what the learner will achieve
+    concepts: list[str]  # AI-generated lesson titles in logical order
+
+
+# System prompt for topic analysis
+TOPIC_ANALYSIS_PROMPT = """You are analyzing a learning request to create a structured learning path.
+
+Your task is to understand what the user wants to learn and break it down intelligently.
+
+IMPORTANT: Handle multi-subject queries properly. For example:
+- "playwright with claude" → Integration of Playwright (browser testing) WITH Claude (AI assistant)
+- "react vs vue" → Comparison of two frameworks
+- "python for data science" → Using Python IN the context of data science
+
+Return a JSON object with this exact structure:
+{
+    "title": "A clear, human-readable title describing what they'll learn",
+    "slug": "url-friendly-slug-for-the-path",
+    "subjects": ["Subject1", "Subject2"],
+    "relationship": "integration|comparison|workflow|single",
+    "description": "One sentence describing the learning outcome",
+    "concepts": [
+        "Lesson 1 title - foundational concept",
+        "Lesson 2 title - builds on lesson 1",
+        "Lesson 3 title - integration/application",
+        "Lesson 4 title - practical project",
+        "Lesson 5 title - advanced techniques"
+    ]
+}
+
+Guidelines for concepts:
+- For SINGLE subject: Progress from basics → intermediate → advanced
+- For INTEGRATION (X with Y): Cover X basics → Y basics → How to use them together → Practical workflow
+- For COMPARISON (X vs Y): Cover X overview → Y overview → Key differences → When to use each
+- For WORKFLOW (X for Y): Cover the goal (Y) → How X helps → Step-by-step process
+
+IMPORTANT:
+- The title should NEVER just concatenate words
+  (not "Playwright Claude" but "Browser Testing with Playwright and Claude AI")
+- Each concept should be a complete, meaningful lesson title
+- Concepts should build on each other in a logical learning progression
+- Generate 4-6 concepts based on topic complexity
+
+Return ONLY valid JSON, no other text."""
+
+
 # Style-specific prompt instructions
 STYLE_INSTRUCTIONS = {
     'visual': """
@@ -340,12 +393,190 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
 """
 
     @classmethod
+    def analyze_topic(cls, query: str, user_id: int | None = None) -> TopicAnalysis | None:
+        """
+        Analyze a learning query to extract subjects, relationship, and generate concepts.
+
+        Uses AI to intelligently parse multi-subject queries like:
+        - "playwright with claude" → Integration learning path
+        - "react vs vue" → Comparison learning path
+        - "python for data science" → Workflow learning path
+
+        Args:
+            query: The raw learning query from the user
+            user_id: User ID for AI usage tracking
+
+        Returns:
+            TopicAnalysis with title, slug, subjects, relationship, and concepts,
+            or None if analysis fails (falls back to simple parsing)
+        """
+        from django.contrib.auth import get_user_model
+
+        from core.ai_usage.tracker import AIUsageTracker
+        from services.ai.provider import AIProvider
+
+        User = get_user_model()
+
+        try:
+            ai = AIProvider(user_id=user_id)
+
+            prompt = f"""Analyze this learning request and create a structured learning path:
+
+"{query}"
+
+Remember:
+- Detect if this involves multiple subjects (tools, frameworks, concepts)
+- Create a meaningful title that describes the RELATIONSHIP, not just concatenation
+- Generate lesson concepts that build logically from basics to application
+- For integration queries, ensure lessons cover both subjects AND how they work together"""
+
+            response = ai.complete(
+                prompt=prompt,
+                system_message=TOPIC_ANALYSIS_PROMPT,
+                temperature=0.3,  # Lower temperature for more consistent structure
+                max_tokens=800,
+            )
+
+            # Track AI usage
+            if user_id and ai.last_usage:
+                try:
+                    user = User.objects.get(id=user_id)
+                    AIUsageTracker.track_usage(
+                        user=user,
+                        feature='topic_analysis',
+                        provider=ai._provider.value if ai._provider else 'unknown',
+                        model=ai.last_usage.get('gateway_model', 'gpt-4o-mini'),
+                        input_tokens=ai.last_usage.get('prompt_tokens', 0),
+                        output_tokens=ai.last_usage.get('completion_tokens', 0),
+                        request_type='completion',
+                        status='success',
+                        request_metadata={'query': query},
+                        gateway_metadata={
+                            'gateway_provider': ai.last_usage.get('gateway_provider'),
+                            'gateway_model': ai.last_usage.get('gateway_model'),
+                            'requested_model': ai.last_usage.get('requested_model'),
+                        }
+                        if ai.last_usage.get('gateway_provider')
+                        else None,
+                    )
+                except User.DoesNotExist:
+                    logger.warning(f'User {user_id} not found for AI usage tracking')
+                except Exception as e:
+                    logger.error(f'Failed to track AI usage: {e}', exc_info=True)
+
+            # Parse the response
+            analysis = cls._parse_topic_analysis(response, query)
+
+            if analysis:
+                logger.info(
+                    'Topic analysis complete',
+                    extra={
+                        'query': query,
+                        'title': analysis['title'],
+                        'subjects': analysis['subjects'],
+                        'relationship': analysis['relationship'],
+                        'concept_count': len(analysis['concepts']),
+                    },
+                )
+
+            return analysis
+
+        except Exception as e:
+            logger.error(
+                'Topic analysis failed, will use fallback',
+                extra={'query': query, 'error': str(e)},
+                exc_info=True,
+            )
+            return None
+
+    @classmethod
+    def _parse_topic_analysis(cls, response: str, original_query: str) -> TopicAnalysis | None:
+        """Parse AI response into TopicAnalysis structure."""
+        try:
+            # Clean up the response
+            json_str = response.strip()
+
+            # Remove markdown code block markers if present
+            if json_str.startswith('```json'):
+                json_str = json_str[7:]
+            elif json_str.startswith('```'):
+                json_str = json_str[3:]
+            if json_str.endswith('```'):
+                json_str = json_str[:-3]
+            json_str = json_str.strip()
+
+            # Parse JSON
+            data = json.loads(json_str)
+
+            # Validate required fields
+            required_fields = ['title', 'slug', 'subjects', 'relationship', 'concepts']
+            for field in required_fields:
+                if field not in data:
+                    logger.warning(f'Missing required field in topic analysis: {field}')
+                    return None
+
+            # Validate concepts is a non-empty list
+            if not isinstance(data['concepts'], list) or len(data['concepts']) < 2:
+                logger.warning('Topic analysis has insufficient concepts')
+                return None
+
+            # Ensure slug is properly formatted
+            clean_slug = slugify(data['slug'])
+
+            return TopicAnalysis(
+                title=data['title'],
+                slug=clean_slug,
+                subjects=data['subjects'],
+                relationship=data['relationship'],
+                description=data.get('description', ''),
+                concepts=data['concepts'],
+            )
+
+        except json.JSONDecodeError as e:
+            logger.error(f'Failed to parse topic analysis as JSON: {e}')
+            logger.debug(f'Raw response: {response[:500]}...')
+            return None
+        except Exception as e:
+            logger.error(f'Error parsing topic analysis: {e}', exc_info=True)
+            return None
+
+    @classmethod
+    def get_fallback_analysis(cls, query: str) -> TopicAnalysis:
+        """
+        Generate a fallback TopicAnalysis when AI analysis fails.
+
+        Uses simple heuristics to create a basic structure.
+        """
+        query_clean = query.replace('-', ' ').replace('_', ' ')
+        title = f'{query_clean.title()} Learning Path'
+        slug = slugify(query)
+
+        # Simple concept templates as fallback
+        concepts = [
+            f'Introduction to {query_clean.title()}',
+            f'Core Concepts of {query_clean.title()}',
+            'Practical Applications',
+            'Best Practices and Tips',
+            'Next Steps',
+        ]
+
+        return TopicAnalysis(
+            title=title,
+            slug=slug,
+            subjects=[query_clean.title()],
+            relationship='single',
+            description=f'Learn the fundamentals of {query_clean}',
+            concepts=concepts,
+        )
+
+    @classmethod
     def generate_curriculum(
         cls,
         topic: str,
         member_context: dict | None,
         existing_content: dict,
         user_id: int | None = None,
+        topic_analysis: TopicAnalysis | None = None,
     ) -> list[CurriculumItem]:
         """
         Generate a complete curriculum mixing existing content with AI-generated lessons.
@@ -355,6 +586,7 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
             member_context: User's learning preferences and context
             existing_content: Content found by ContentFinder
             user_id: User ID for logging and gap tracking
+            topic_analysis: Optional pre-analyzed topic with AI-generated concepts
 
         Returns:
             List of curriculum items (existing content + AI lessons)
@@ -375,6 +607,9 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
             # Log the content gap for strategic content development
             cls._log_content_gap(topic, user_id, existing_content, member_context)
 
+            # Get pre-analyzed concepts if available
+            analyzed_concepts = topic_analysis['concepts'] if topic_analysis else None
+
             # Generate AI lessons to fill the gap
             ai_lessons = cls._generate_ai_lessons(
                 topic=topic,
@@ -383,6 +618,7 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
                 session_length=learning_prefs['session_length'],
                 existing_count=len(curriculum),
                 user_id=user_id,
+                analyzed_concepts=analyzed_concepts,
             )
 
             for lesson in ai_lessons:
@@ -446,12 +682,14 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
             )
             order += 1
 
-        # Categorize projects by content type
+        # Categorize projects by content type - ONLY include lesson projects
         # Use 'in' matching to handle variants like 'content-video', 'content-article'
+        # Non-lesson projects only appear in the "See what others are doing" section
         projects = existing_content.get('projects', [])
-        video_projects = [p for p in projects if 'video' in (p.get('content_type') or '').lower()]
-        article_projects = [p for p in projects if 'article' in (p.get('content_type') or '').lower()]
-        code_projects = [p for p in projects if 'code-repo' in (p.get('content_type') or '').lower()]
+        lesson_projects = [p for p in projects if p.get('is_lesson', False)]
+        video_projects = [p for p in lesson_projects if 'video' in (p.get('content_type') or '').lower()]
+        article_projects = [p for p in lesson_projects if 'article' in (p.get('content_type') or '').lower()]
+        code_projects = [p for p in lesson_projects if 'code-repo' in (p.get('content_type') or '').lower()]
 
         # Add videos (introduction) - max 2
         for project in video_projects[:2]:
@@ -671,8 +909,19 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
         session_length: int,
         existing_count: int,
         user_id: int | None = None,
+        analyzed_concepts: list[str] | None = None,
     ) -> list[CurriculumItem]:
-        """Generate AI lessons to fill content gaps."""
+        """Generate AI lessons to fill content gaps.
+
+        Args:
+            topic: The topic/query for the learning path
+            learning_style: User's preferred learning style
+            difficulty: Difficulty level (beginner, intermediate, advanced)
+            session_length: Preferred session length in minutes
+            existing_count: Number of existing curriculum items
+            user_id: User ID for AI usage tracking
+            analyzed_concepts: Pre-analyzed lesson concepts from TopicAnalysis
+        """
 
         lessons = []
 
@@ -680,8 +929,17 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
         # If we have some content, generate fewer AI lessons
         lessons_to_generate = max(1, 5 - existing_count)
 
-        # Generate concept breakdown for the topic
-        concepts = cls._break_down_topic(topic, lessons_to_generate)
+        # Use pre-analyzed concepts if available, otherwise fall back to heuristics
+        if analyzed_concepts:
+            # Use AI-generated concepts, limited to how many we need
+            concepts = analyzed_concepts[:lessons_to_generate]
+            logger.info(
+                f'Using {len(concepts)} pre-analyzed concepts for lessons',
+                extra={'topic': topic, 'concepts': concepts},
+            )
+        else:
+            # Fall back to simple heuristic breakdown
+            concepts = cls._break_down_topic(topic, lessons_to_generate)
 
         for _i, concept in enumerate(concepts):
             try:

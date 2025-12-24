@@ -77,7 +77,7 @@ export function LoadingMessage({
           alt="Ember"
           className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover -scale-x-100"
         />
-        <div className="glass-subtle px-5 py-4 rounded-2xl rounded-br-sm flex-1">
+        <div className="glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm flex-1">
           <div className="flex items-center gap-3">
             <div className="flex gap-1.5">
               <div className="w-2.5 h-2.5 bg-cyan-500 dark:bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />

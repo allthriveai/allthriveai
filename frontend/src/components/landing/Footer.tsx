@@ -35,7 +35,7 @@ export function Footer() {
 
   return (
     <footer className="relative bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-white/5" role="contentinfo">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 md:grid-cols-[auto_1fr] gap-8 lg:gap-12">
           {/* All Thrive column */}
           <div aria-label="All Thrive" className="col-span-2 md:col-span-1">

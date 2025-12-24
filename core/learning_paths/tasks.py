@@ -46,7 +46,8 @@ THE IMAGE MUST:
 Visual style:
 - Dark slate background (#0F172A to #020617)
 {color_scheme}
-- Clean diagram aesthetic
+- Futuristic, sci-fi aesthetic with sleek lines and subtle metallic accents
+- Clean diagram layout with a high-tech, modern feel
 
 CRITICAL - NO TEXT IN THE IMAGE:
 - Do NOT include any labels, captions, or text
@@ -58,25 +59,44 @@ The goal is {theme_hint}.
 A learner should understand the concept from the visual alone.
 """
 
-# Color schemes that rotate for visual variety
+# Jewel tone color schemes that rotate for visual variety
+# Using matte/solid colors instead of glows for better readability
 COLOR_SCHEMES = [
-    # Green primary
+    # Emerald (green) primary
     (
-        '- Emerald/green glows (#10B981, #22C55E) for main elements\n'
-        '- Cyan/teal (#22D3EE, #14B8A6) for highlights\n'
-        '- Yellow/amber (#EAB308) for emphasis'
+        '- Emerald green (#10B981, #059669) as the primary color for main elements\n'
+        '- Slate gray (#64748B) for secondary elements\n'
+        '- White (#F8FAFC) for highlights and contrast'
     ),
-    # Cyan primary
+    # Amber (gold) primary
     (
-        '- Cyan/teal (#22D3EE, #14B8A6) for main elements\n'
-        '- Emerald/green (#10B981, #22C55E) for highlights\n'
-        '- Yellow/amber (#EAB308) for emphasis'
+        '- Amber/gold (#F59E0B, #D97706) as the primary color for main elements\n'
+        '- Warm gray (#78716C) for secondary elements\n'
+        '- Cream white (#FFFBEB) for highlights and contrast'
     ),
-    # Amber primary
+    # Cyan (teal) primary
     (
-        '- Yellow/amber (#EAB308, #F59E0B) for main elements\n'
-        '- Emerald/green (#10B981, #22C55E) for highlights\n'
-        '- Cyan/teal (#22D3EE, #14B8A6) for emphasis'
+        '- Cyan/teal (#06B6D4, #0891B2) as the primary color for main elements\n'
+        '- Cool gray (#64748B) for secondary elements\n'
+        '- Light cyan (#ECFEFF) for highlights and contrast'
+    ),
+    # Purple (violet) primary
+    (
+        '- Purple/violet (#8B5CF6, #7C3AED) as the primary color for main elements\n'
+        '- Slate gray (#64748B) for secondary elements\n'
+        '- Lavender white (#F5F3FF) for highlights and contrast'
+    ),
+    # Rose (pink) primary
+    (
+        '- Rose/ruby (#F43F5E, #E11D48) as the primary color for main elements\n'
+        '- Warm gray (#78716C) for secondary elements\n'
+        '- Light rose (#FFF1F2) for highlights and contrast'
+    ),
+    # Indigo (blue) primary
+    (
+        '- Indigo/blue (#6366F1, #4F46E5) as the primary color for main elements\n'
+        '- Slate gray (#64748B) for secondary elements\n'
+        '- Light indigo (#EEF2FF) for highlights and contrast'
     ),
 ]
 
@@ -98,10 +118,10 @@ def get_theme_hint(title: str) -> tuple[str, str]:
         return (
             'teaching how context windows limit what an LLM can "see"',
             'A horizontal row of small rectangular blocks representing tokens (like a long document). '
-            'A bright emerald GLOWING FRAME/WINDOW highlights only 5-7 blocks in the center. '
-            'Blocks INSIDE the window are bright and vivid. '
+            'A bright colored FRAME/WINDOW highlights only 5-7 blocks in the center. '
+            'Blocks INSIDE the window are bright and vivid with solid fill. '
             'Blocks OUTSIDE the window are dark, faded, almost invisible. '
-            'Cyan arrows on left and right edges show the window can slide. '
+            'Arrows on left and right edges show the window can slide. '
             'NO TEXT OR LABELS - purely visual. '
             'The contrast between bright inside vs dark outside tells the story.',
         )
@@ -430,28 +450,32 @@ REQUIREMENTS - This must be an instructional diagram, not abstract art:
 Context: {summary}
 
 DO NOT CREATE:
-- Abstract glowing shapes
+- Abstract shapes with no meaning
 - Generic "tech" imagery
 - Decorative patterns
 - Anything that could represent multiple topics
+- Glowing or neon effects that reduce readability
 
 THE DIAGRAM MUST:
 - Be specific to "{lesson_title}"
 - Teach something concrete
 - Help build a mental model
 - Use visual metaphors that clarify the concept
+- Be easy to read with clear contrast
 
 Style:
-- Dark background (#0F172A to #020617)
-- Emerald/green (#10B981, #22C55E) for main elements
-- Cyan/teal (#22D3EE, #14B8A6) for highlights
-- Yellow (#EAB308) for emphasis points
-- Clean diagram/infographic aesthetic
+- Dark slate background (#0F172A to #1E293B)
+{color_scheme}
+- Futuristic, sci-fi aesthetic with sleek lines and subtle metallic accents
+- Clean diagram layout with a high-tech, modern feel
 - Labels and arrows where they aid understanding
+- High contrast for readability - no excessive glow that reduces legibility
 """
 
 
-def generate_lesson_image(lesson: dict, path_title: str, user_id: int | None = None) -> str | None:
+def generate_lesson_image(
+    lesson: dict, path_title: str, user_id: int | None = None, lesson_order: int = 0
+) -> str | None:
     """
     Generate an educational illustration for an AI lesson.
 
@@ -459,6 +483,7 @@ def generate_lesson_image(lesson: dict, path_title: str, user_id: int | None = N
         lesson: Curriculum item with 'title' and 'content' (AILessonContent)
         path_title: Title of the learning path for context
         user_id: User ID for AI usage tracking
+        lesson_order: Order of the lesson in curriculum (for color rotation)
 
     Returns:
         URL to the generated image, or None on failure
@@ -473,10 +498,14 @@ def generate_lesson_image(lesson: dict, path_title: str, user_id: int | None = N
         # Fall back to extracting from explanation if no key concepts
         key_concepts = [lesson.get('title', 'this concept')]
 
+    # Rotate color scheme based on lesson order for visual variety
+    color_scheme = COLOR_SCHEMES[lesson_order % len(COLOR_SCHEMES)]
+
     prompt = LESSON_IMAGE_PROMPT.format(
         lesson_title=lesson.get('title', 'AI Lesson'),
         key_concepts=', '.join(key_concepts) if isinstance(key_concepts, list) else str(key_concepts),
         summary=summary or f"A lesson about {lesson.get('title', 'AI concepts')}",
+        color_scheme=color_scheme,
     )
 
     try:
