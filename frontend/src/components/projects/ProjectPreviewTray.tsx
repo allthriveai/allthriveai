@@ -2,11 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon, MagnifyingGlassPlusIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGripLinesVertical, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
+import { faGripLinesVertical, faExpand, faCompress, faLightbulb } from '@fortawesome/free-solid-svg-icons';
 import { HeroVideo } from './hero/HeroVideo';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ImageLightbox } from '@/components/ui/ImageLightbox';
@@ -106,6 +106,22 @@ function isBattleProject(project: Project): boolean {
 }
 
 /**
+ * Check if project is a prompt
+ */
+function isPromptProject(project: Project): boolean {
+  return project.type === 'prompt';
+}
+
+/**
+ * Get the prompt text from a prompt project
+ */
+function getPromptText(project: Project): string {
+  if (!project.content) return '';
+  const promptContent = project.content as { prompt?: { text?: string } };
+  return promptContent.prompt?.text || project.description || '';
+}
+
+/**
  * Check if project is a game and get its game type
  */
 function getGameType(project: Project): PlayableGameType | null {
@@ -147,6 +163,9 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   const [isLoadingGame, setIsLoadingGame] = useState(false);
   const [gameKey, setGameKey] = useState(0); // Key to force re-mount for replay
   const [gameEnded, setGameEnded] = useState(false);
+
+  // Prompt copy state
+  const [copied, setCopied] = useState(false);
 
   // Enriched project with full content (fetched when tray opens)
   const [enrichedProject, setEnrichedProject] = useState<Project | null>(null);
@@ -381,6 +400,8 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     // Reset game state for new project
     setGameKey(0);
     setGameEnded(false);
+    // Reset prompt copy state
+    setCopied(false);
   }, [project?.id]);
 
   // Fetch full project content when tray opens (for non-battle projects without rich content)
@@ -607,6 +628,20 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     if (project) {
       onClose();
       navigate(`/${project.username}/${project.slug}`);
+    }
+  };
+
+  const handleCopyPrompt = async () => {
+    if (!project) return;
+    const text = getPromptText(project);
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
     }
   };
 
@@ -1171,6 +1206,223 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     );
   };
 
+  // Render prompt-specific content
+  const renderPromptContent = () => {
+    const promptText = getPromptText(project);
+
+    return (
+      <>
+        {/* Header */}
+        <div className="flex-shrink-0 px-6 md:px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-gradient-to-r from-cyan-500 to-cyan-600 text-white flex items-center gap-1 shadow-[0_0_10px_rgba(14,165,233,0.3)]">
+                  <FontAwesomeIcon icon={faLightbulb} className="w-2.5 h-2.5" />
+                  Prompt
+                </span>
+              </div>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                {project.title}
+              </h1>
+              <Link
+                to={`/${project.username}`}
+                className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+              >
+                by @{project.username}
+              </Link>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Expand button - desktop only */}
+              <button
+                onClick={toggleExpand}
+                className="hidden md:flex p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain pb-10">
+          {/* Prompt Text */}
+          <div className="p-6 md:p-4">
+            <div className="relative">
+              <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-900/20 dark:to-sky-900/20 border border-cyan-200 dark:border-cyan-800/50">
+                <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 font-mono leading-relaxed">
+                  {promptText || 'No prompt text available.'}
+                </pre>
+              </div>
+              {/* Copy button */}
+              {promptText && (
+                <button
+                  onClick={handleCopyPrompt}
+                  className={`absolute top-2 right-2 p-2 rounded-lg transition-all ${
+                    copied
+                      ? 'bg-green-500 text-white'
+                      : 'bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-slate-800'
+                  }`}
+                  title={copied ? 'Copied!' : 'Copy prompt'}
+                >
+                  {copied ? (
+                    <CheckIcon className="w-4 h-4" />
+                  ) : (
+                    <ClipboardDocumentIcon className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Description (if different from prompt text) */}
+          {project.description && project.description !== promptText && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                {project.description}
+              </p>
+            </div>
+          )}
+
+          {/* Tool badges */}
+          {project.toolsDetails && project.toolsDetails.length > 0 && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Works with:</p>
+              <div className="flex flex-wrap gap-2">
+                {project.toolsDetails.map((tool) => (
+                  <button
+                    key={tool.id}
+                    onClick={() => {
+                      setSelectedToolSlug(tool.slug);
+                      setShowToolTray(true);
+                    }}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    {tool.logoUrl && (
+                      <img src={tool.logoUrl} alt={tool.name} className="w-3.5 h-3.5 rounded" />
+                    )}
+                    {tool.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category badges */}
+          {project.categoriesDetails && project.categoriesDetails.length > 0 && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Categories:</p>
+              <div className="flex flex-wrap gap-2">
+                {project.categoriesDetails.map((category) => (
+                  <span
+                    key={category.id}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full"
+                    style={{
+                      backgroundColor: category.color ? `${category.color}20` : 'rgba(245, 158, 11, 0.2)',
+                      color: category.color || '#f59e0b',
+                    }}
+                  >
+                    {category.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Topic tags */}
+          {project.topicsDetails && project.topicsDetails.length > 0 && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Topics:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {project.topicsDetails.map((topic) => (
+                  <span
+                    key={topic.id}
+                    className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                  >
+                    #{topic.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer - Fixed */}
+        <div className="flex-shrink-0 px-6 md:px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+          {/* Action buttons */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* Like button */}
+              <button
+                onClick={handleLike}
+                disabled={isLiking || !isAuthenticated}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 disabled:opacity-50 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                {isLiked ? (
+                  <HeartIconSolid className="w-4 h-4 text-red-500" />
+                ) : (
+                  <HeartIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                )}
+                {heartCount > 0 && (
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {heartCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Comment button */}
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={() => {
+                  onClose();
+                  navigate(`${projectUrl}#comments`);
+                }}
+              >
+                <ChatBubbleLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Comment</span>
+              </button>
+            </div>
+
+            {/* Copy button - prominent */}
+            <button
+              onClick={handleCopyPrompt}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                copied
+                  ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                  : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white shadow-[0_0_15px_rgba(14,165,233,0.3)] hover:shadow-[0_0_20px_rgba(14,165,233,0.4)]'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <CheckIcon className="w-4 h-4" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <ClipboardDocumentIcon className="w-4 h-4" />
+                  Copy Prompt
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   // Render standard project content
   const renderStandardContent = () => {
     // Use enriched project data if available, otherwise fall back to original
@@ -1609,7 +1861,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         <div className="md:hidden flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
-        {isBattle ? renderBattleContent() : getGameType(project) ? renderGameContent() : renderStandardContent()}
+        {isBattle ? renderBattleContent() : getGameType(project) ? renderGameContent() : isPromptProject(project) ? renderPromptContent() : renderStandardContent()}
       </aside>
 
       {/* Tool Tray - Opens when clicking a tool badge */}
