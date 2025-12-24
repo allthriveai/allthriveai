@@ -400,9 +400,9 @@ export function SimulatedTerminal({
     inputRef.current?.focus();
   }, []);
 
-  // Focus input on mount
+  // Focus input on mount (without scrolling the page)
   useEffect(() => {
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   return (

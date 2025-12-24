@@ -73,19 +73,38 @@ def create_learning_path(
     """
     Generate a structured learning path for a topic.
 
+    ⚠️ CRITICAL: ALWAYS ASK CLARIFYING QUESTIONS BEFORE CALLING THIS TOOL! ⚠️
+
+    NEVER call this tool immediately when a user asks for a learning path.
+
+    **ALWAYS ask about their GOAL** - what they want to build or accomplish.
+
+    **For EXPERIENCE level:**
+    - Check the member context first (injected as "About This Member")
+    - If you see their difficulty_level, USE IT - don't ask again
+    - Only ask about experience if member context is missing
+
+    Examples:
+    - "I want to learn RAG" → "Are you building a chatbot, search system, or understanding concepts?"
+    - "teach me python" → "What's your goal - data science, web apps, or automation?"
+
+    Only call this tool AFTER the user answers your question(s).
+    Then pass their specific goal as the query AND set difficulty from context or their answer.
+
+    CORRECT flow:
+    1. User: "Make me a learning path about RAG"
+    2. You: Ask about their goal (use member context for difficulty if available)
+    3. User: "I want to build a chatbot for my company docs"
+    4. You: Call create_learning_path(query="building a RAG chatbot for docs", difficulty="intermediate")
+
+    WRONG flow:
+    1. User: "Make me a learning path about RAG"
+    2. You: Call create_learning_path(query="RAG")  ← WRONG! No clarifying question asked!
+
     Use this when the user wants:
     - A structured curriculum to follow
     - A personalized learning journey
     - Step-by-step guidance on mastering a topic
-
-    IMPORTANT - ASK CLARIFYING QUESTIONS FIRST for vague requests like:
-    - "I want to learn AI" → Ask what they want to BUILD
-    - "teach me to code" → Ask their goal (websites, apps, automation?)
-    - "build an AI app" → Ask if they prefer no-code or coding
-    - "I don't know where to start" → Ask what interests them
-
-    Only call this tool AFTER you have enough context to create a focused path.
-    Vague queries produce vague paths - specific queries produce actionable paths.
 
     CRITICAL: This tool handles multi-topic requests automatically.
     NEVER call this tool multiple times for one user request.
@@ -100,14 +119,12 @@ def create_learning_path(
     Users can delete paths via the UI, so NEVER assume a path still exists based on
     conversation history. ALWAYS call this tool to verify current state.
 
-    If an existing learning path for this topic exists, ask the user
-    if they want to replace it before calling with replace_existing=True.
+    REPLACING EXISTING PATHS:
+    When this tool returns `existing_path_found: true`, it means the user already has
+    a path for this topic. You should ask if they want to replace it.
 
-    Examples (each is ONE call, not multiple):
-    - "git and claude cli" → ONE path about both topics
-    - "using playwright with claude" → ONE path about integration
-    - "python for data science" → ONE path covering both
-    - "react vs vue" → ONE comparison path
+    If the user says "yes", "replace it", "make a new one", or similar affirmative:
+    → Call this tool AGAIN with the SAME query AND replace_existing=True
     """
     logger.info(
         'create_learning_path called',
