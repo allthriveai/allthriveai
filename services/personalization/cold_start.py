@@ -294,6 +294,9 @@ class ColdStartService:
             candidates = self._apply_promotion_boost(candidates)
             diverse_projects = self._apply_user_diversity(candidates, page_size)
 
+        # Mix in timeless content (games, evergreen content) periodically
+        diverse_projects = self._mix_timeless_content(diverse_projects)
+
         return {
             'projects': diverse_projects,
             'metadata': {
@@ -403,6 +406,48 @@ class ColdStartService:
             else:
                 # Shouldn't happen, but safety fallback
                 break
+
+        return result
+
+    def _mix_timeless_content(self, projects: list, num_timeless: int = 2) -> list:
+        """Mix in timeless content (games, evergreen content) periodically.
+
+        Timeless content is injected into the feed regardless of creation date
+        to ensure games and other evergreen content appear frequently.
+
+        Args:
+            projects: List of projects to mix timeless content into
+            num_timeless: Number of timeless items to inject (default 2)
+
+        Returns:
+            Projects list with timeless content mixed in
+        """
+        from core.projects.models import Project
+
+        if not projects:
+            return projects
+
+        # Get timeless projects not already in the list
+        existing_ids = [p.id for p in projects]
+        timeless_projects = list(
+            Project.objects.filter(
+                is_private=False,
+                is_archived=False,
+                is_timeless=True,
+            )
+            .exclude(id__in=existing_ids)
+            .order_by('?')[:num_timeless]  # Random selection
+        )
+
+        if not timeless_projects:
+            return projects
+
+        # Insert timeless content at positions ~1/3 and ~2/3 through the page
+        result = list(projects)
+        insert_positions = [len(result) // 3, 2 * len(result) // 3]
+        for i, timeless_project in enumerate(timeless_projects):
+            if i < len(insert_positions) and insert_positions[i] < len(result):
+                result.insert(insert_positions[i] + i, timeless_project)
 
         return result
 

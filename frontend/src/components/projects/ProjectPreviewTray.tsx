@@ -2,13 +2,18 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGripLinesVertical, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import { HeroVideo } from './hero/HeroVideo';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { ImageLightbox } from '@/components/ui/ImageLightbox';
+import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/gameRegistry';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { useResizableTray } from '@/hooks/useResizableTray';
 import { toggleProjectLike, getProjectBySlug } from '@/services/projects';
 import { getOptimizedImageUrl } from '@/utils/imageOptimization';
 import type { Project } from '@/types/models';
@@ -100,6 +105,22 @@ function isBattleProject(project: Project): boolean {
   return project.type === 'battle' && !!project.content?.battleResult;
 }
 
+/**
+ * Check if project is a game and get its game type
+ */
+function getGameType(project: Project): PlayableGameType | null {
+  if (project.type !== 'game') return null;
+
+  // Map game URLs to game types
+  const gameUrl = project.content?.gameUrl || '';
+  if (gameUrl.includes('context-snake') || gameUrl.includes('snake')) return 'snake';
+  if (gameUrl.includes('ethics-defender') || gameUrl.includes('ethics')) return 'ethics';
+  if (gameUrl.includes('prompt-battle')) return 'prompt_battle';
+  if (gameUrl.includes('quiz') || gameUrl.includes('trivia')) return 'quiz';
+
+  return null;
+}
+
 // Helper to get FA icon component by name
 function getFaIcon(iconName: string): React.ComponentType<{ className?: string }> | null {
   if (!iconName) return null;
@@ -121,6 +142,12 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   const [showToolTray, setShowToolTray] = useState(false);
   const [selectedToolSlug, setSelectedToolSlug] = useState<string>('');
 
+  // Game state - lazy load the mini game component
+  const [GameComponent, setGameComponent] = useState<React.ComponentType<any> | null>(null);
+  const [isLoadingGame, setIsLoadingGame] = useState(false);
+  const [gameKey, setGameKey] = useState(0); // Key to force re-mount for replay
+  const [gameEnded, setGameEnded] = useState(false);
+
   // Enriched project with full content (fetched when tray opens)
   const [enrichedProject, setEnrichedProject] = useState<Project | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
@@ -129,6 +156,37 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   const [shouldRender, setShouldRender] = useState(false);
   // Track the visual open state (delayed to allow animation)
   const [visuallyOpen, setVisuallyOpen] = useState(false);
+
+  // Resizable tray - only on desktop
+  const { width: trayWidth, isDragging: isResizing, isExpanded, toggleExpand, handleProps: resizeHandleProps } = useResizableTray({
+    minWidth: 380,
+    maxWidth: 900,
+    defaultWidth: 448, // 28rem = 448px
+    storageKey: 'projectPreviewTrayWidth',
+    isOpen,
+  });
+
+  // Image lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string>('');
+  const [lightboxImages, setLightboxImages] = useState<{ url: string; alt?: string }[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const openLightbox = (imageUrl: string, allImages?: { url: string; alt?: string }[], index?: number) => {
+    setLightboxImage(imageUrl);
+    if (allImages && allImages.length > 0) {
+      setLightboxImages(allImages);
+      setLightboxIndex(index ?? 0);
+    } else {
+      setLightboxImages([]);
+      setLightboxIndex(0);
+    }
+    setLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+  };
 
   // Mobile swipe-to-dismiss state
   const [dragOffset, setDragOffset] = useState(0);
@@ -320,6 +378,9 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     // Close tool tray when switching to a different project
     setShowToolTray(false);
     setSelectedToolSlug('');
+    // Reset game state for new project
+    setGameKey(0);
+    setGameEnded(false);
   }, [project?.id]);
 
   // Fetch full project content when tray opens (for non-battle projects without rich content)
@@ -372,6 +433,40 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen, onClose]);
+
+  // Load game component when tray opens for a game project
+  useEffect(() => {
+    if (!isOpen || !project) {
+      setGameComponent(null);
+      return;
+    }
+
+    const gameType = getGameType(project);
+    if (!gameType) {
+      setGameComponent(null);
+      return;
+    }
+
+    const gameConfig = GAME_REGISTRY[gameType];
+    if (!gameConfig) {
+      setGameComponent(null);
+      return;
+    }
+
+    // Lazy load the game component
+    setIsLoadingGame(true);
+    gameConfig.component()
+      .then((module) => {
+        setGameComponent(() => module.default);
+      })
+      .catch((error) => {
+        console.error('Failed to load game:', error);
+        setGameComponent(null);
+      })
+      .finally(() => {
+        setIsLoadingGame(false);
+      });
+  }, [isOpen, project?.id, project?.type]);
 
   // Track drag state in refs for native event handlers (to avoid stale closures)
   const isDraggingRef = useRef(false);
@@ -559,13 +654,24 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 {challengeText}
               </h1>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-              aria-label="Close"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Expand button - desktop only */}
+              <button
+                onClick={toggleExpand}
+                className="hidden md:flex p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -595,11 +701,19 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
               {/* Submission image */}
               <div className="relative rounded-lg overflow-hidden border-2 border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
                 {mySubmission?.imageUrl ? (
-                  <img
-                    src={getOptimizedImageUrl(mySubmission.imageUrl, { width: 600 })}
-                    alt={`${project.username}'s submission`}
-                    className="w-full h-auto object-cover"
-                  />
+                  <button
+                    onClick={() => openLightbox(mySubmission.imageUrl!)}
+                    className="w-full group cursor-zoom-in"
+                  >
+                    <img
+                      src={getOptimizedImageUrl(mySubmission.imageUrl, { width: 600 })}
+                      alt={`${project.username}'s submission`}
+                      className="w-full h-auto object-cover transition-transform group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <MagnifyingGlassPlusIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    </div>
+                  </button>
                 ) : (
                   <div className="w-full aspect-square bg-slate-800 flex items-center justify-center">
                     <span className="text-slate-600 text-sm">No image</span>
@@ -648,11 +762,19 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
               {/* Submission image */}
               <div className="relative rounded-lg overflow-hidden border-2 border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.3)]">
                 {opponentSubmission?.imageUrl ? (
-                  <img
-                    src={getOptimizedImageUrl(opponentSubmission.imageUrl, { width: 600 })}
-                    alt="Opponent's submission"
-                    className="w-full h-auto object-cover"
-                  />
+                  <button
+                    onClick={() => openLightbox(opponentSubmission.imageUrl!)}
+                    className="w-full group cursor-zoom-in"
+                  >
+                    <img
+                      src={getOptimizedImageUrl(opponentSubmission.imageUrl, { width: 600 })}
+                      alt="Opponent's submission"
+                      className="w-full h-auto object-cover transition-transform group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <MagnifyingGlassPlusIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    </div>
+                  </button>
                 ) : (
                   <div className="w-full aspect-square bg-slate-800 flex items-center justify-center">
                     <span className="text-slate-600 text-sm">No image</span>
@@ -817,6 +939,238 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     );
   };
 
+  // Render game-specific content
+  const renderGameContent = () => {
+    const gameUrl = project.content?.gameUrl || '';
+    const gameType = getGameType(project);
+
+    // Handle game end - show replay option
+    const handleGameEnd = () => {
+      setGameEnded(true);
+    };
+
+    // Play again - reset game state and increment key to force re-mount
+    const handlePlayAgain = () => {
+      setGameEnded(false);
+      setGameKey(prev => prev + 1);
+    };
+
+    // Navigate to full game
+    const handlePlayFullGame = () => {
+      if (gameUrl) {
+        onClose();
+        // Navigate within the app
+        navigate(gameUrl);
+      }
+    };
+
+    return (
+      <>
+        {/* Header */}
+        <div className="flex-shrink-0 px-6 md:px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                  Game
+                </span>
+              </div>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                {project.title}
+              </h1>
+              <Link
+                to={`/${project.username}`}
+                className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+              >
+                by @{project.username}
+              </Link>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Expand button - desktop only */}
+              <button
+                onClick={toggleExpand}
+                className="hidden md:flex p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Game Content */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain pb-10">
+          {/* Mini Game Area */}
+          <div className="p-4">
+            <div className="relative rounded-xl overflow-hidden bg-slate-900 border border-gray-700">
+              {isLoadingGame ? (
+                <div className="flex items-center justify-center h-[300px] bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-gray-400">Loading game...</span>
+                  </div>
+                </div>
+              ) : GameComponent && gameType ? (
+                <GameComponent key={gameKey} variant="mini" onGameEnd={handleGameEnd} />
+              ) : (
+                // Fallback if game can't be loaded - show featured image or placeholder
+                <div className="flex items-center justify-center h-[300px] bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                  {project.featuredImageUrl ? (
+                    <img
+                      src={getOptimizedImageUrl(project.featuredImageUrl, { width: 600 })}
+                      alt={project.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 text-gray-400">
+                      <PlayIcon className="w-16 h-16" />
+                      <span className="text-sm">Click below to play</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Game ended overlay with replay option */}
+              {gameEnded && (
+                <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                  <h3 className="text-xl font-bold text-white">Game Over!</h3>
+                  <div className="flex flex-col gap-2 w-48">
+                    <button
+                      onClick={handlePlayAgain}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium transition-colors"
+                    >
+                      <PlayIcon className="w-5 h-5" />
+                      Play Again
+                    </button>
+                    <button
+                      onClick={handlePlayFullGame}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors"
+                    >
+                      <ArrowRightIcon className="w-4 h-4" />
+                      Full Game
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Description */}
+          {project.description && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                {project.description}
+              </p>
+            </div>
+          )}
+
+          {/* Category badges */}
+          {project.categoriesDetails && project.categoriesDetails.length > 0 && (
+            <div className="px-6 md:px-4 pb-4">
+              <div className="flex flex-wrap gap-2">
+                {project.categoriesDetails.slice(0, 3).map((category) => (
+                  <span
+                    key={category.id}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full"
+                    style={{
+                      backgroundColor: category.color ? `${category.color}20` : 'rgba(16, 185, 129, 0.2)',
+                      color: category.color || '#10b981',
+                    }}
+                  >
+                    {category.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tool badges */}
+          {project.toolsDetails && project.toolsDetails.length > 0 && (
+            <div className="px-6 md:px-4 pb-4">
+              <p className="text-xs text-gray-500 mb-2">Built with:</p>
+              <div className="flex flex-wrap gap-2">
+                {project.toolsDetails.slice(0, 3).map((tool) => (
+                  <button
+                    key={tool.id}
+                    onClick={() => {
+                      setSelectedToolSlug(tool.slug);
+                      setShowToolTray(true);
+                    }}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    {tool.logoUrl && (
+                      <img src={tool.logoUrl} alt={tool.name} className="w-3.5 h-3.5 rounded" />
+                    )}
+                    {tool.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 px-6 md:px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
+          {/* Action buttons */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {/* Like button */}
+              <button
+                onClick={handleLike}
+                disabled={isLiking || !isAuthenticated}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 disabled:opacity-50 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                {isLiked ? (
+                  <HeartIconSolid className="w-4 h-4 text-red-500" />
+                ) : (
+                  <HeartIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                )}
+                {heartCount > 0 && (
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {heartCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Comment button */}
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={() => {
+                  onClose();
+                  navigate(`${projectUrl}#comments`);
+                }}
+              >
+                <ChatBubbleLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Comment</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Play Full Game CTA */}
+          <button
+            onClick={handlePlayFullGame}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium transition-colors"
+          >
+            <PlayIcon className="w-5 h-5" />
+            Play Full Game
+          </button>
+        </div>
+      </>
+    );
+  };
+
   // Render standard project content
   const renderStandardContent = () => {
     // Use enriched project data if available, otherwise fall back to original
@@ -871,13 +1225,24 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 by @{displayProject.username}
               </Link>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-              aria-label="Close"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Expand button - desktop only */}
+              <button
+                onClick={toggleExpand}
+                className="hidden md:flex p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -894,13 +1259,19 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 />
               </div>
             ) : displayProject.featuredImageUrl ? (
-              <div className="relative w-full rounded-lg overflow-hidden">
+              <button
+                onClick={() => openLightbox(displayProject.featuredImageUrl!)}
+                className="relative w-full rounded-lg overflow-hidden group cursor-zoom-in"
+              >
                 <img
                   src={getOptimizedImageUrl(displayProject.featuredImageUrl, { width: 600 })}
                   alt={displayProject.title}
-                  className="w-full h-auto object-cover"
+                  className="w-full h-auto object-cover transition-transform group-hover:scale-[1.02]"
                 />
-              </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <MagnifyingGlassPlusIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                </div>
+              </button>
             ) : null}
           </div>
 
@@ -1066,16 +1437,27 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
               </h3>
               <div className={`grid gap-2 ${galleryImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {galleryImages.map((image: any, index: number) => (
-                  <div
+                  <button
                     key={index}
-                    className="relative rounded-lg overflow-hidden aspect-video bg-gray-100 dark:bg-slate-800"
+                    onClick={() => openLightbox(
+                      image.url || image,
+                      galleryImages.map((img: any) => ({
+                        url: img.url || img,
+                        alt: img.caption || `Gallery image`,
+                      })),
+                      index
+                    )}
+                    className="relative rounded-lg overflow-hidden aspect-video bg-gray-100 dark:bg-slate-800 group cursor-zoom-in"
                   >
                     <img
                       src={getOptimizedImageUrl(image.url || image, { width: 300 })}
                       alt={image.caption || `Gallery image ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
-                  </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <MagnifyingGlassPlusIcon className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1187,12 +1569,12 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
       />
 
       {/* Right Sidebar Drawer - Smooth slide animation
-          On desktop: shifts left when topic tray is open to show both side by side
-          On mobile: stays at right-0 (topic tray overlays on top) */}
+          On desktop: resizable width, shifts left when topic tray is open
+          On mobile: full width, stays at right-0 (topic tray overlays on top) */}
       <aside
         ref={trayRef}
-        className={`fixed top-0 right-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col ${
-          isDragging ? '' : 'transition-all duration-300 ease-in-out'
+        className={`fixed top-0 right-0 h-full w-full border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col ${
+          isDragging || isResizing ? '' : 'transition-all duration-300 ease-in-out'
         } ${visuallyOpen && dragOffset === 0 ? 'translate-x-0' : ''} ${
           !visuallyOpen && dragOffset === 0 ? 'translate-x-full' : ''
         } ${showToolTray ? 'md:right-[28rem]' : ''}`}
@@ -1204,14 +1586,30 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
           // Apply drag transform on mobile
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+          // Dynamic width on desktop (md breakpoint = 768px)
+          width: typeof window !== 'undefined' && window.innerWidth >= 768 ? `${trayWidth}px` : undefined,
+          maxWidth: typeof window !== 'undefined' && window.innerWidth >= 768 ? '90vw' : undefined,
         }}
         onTransitionEnd={handleTransitionEnd}
       >
+        {/* Resize handle - desktop only */}
+        <div
+          {...resizeHandleProps}
+          className="hidden md:flex absolute left-0 top-0 bottom-0 w-3 hover:w-4 bg-transparent hover:bg-primary-500/20 transition-all z-50 cursor-ew-resize items-center justify-center group"
+        >
+          <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <FontAwesomeIcon
+              icon={faGripLinesVertical}
+              className="text-gray-400 dark:text-gray-500 text-xs"
+            />
+          </div>
+        </div>
+
         {/* Mobile drag handle indicator */}
         <div className="md:hidden flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
-        {isBattle ? renderBattleContent() : renderStandardContent()}
+        {isBattle ? renderBattleContent() : getGameType(project) ? renderGameContent() : renderStandardContent()}
       </aside>
 
       {/* Tool Tray - Opens when clicking a tool badge */}
@@ -1222,6 +1620,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           toolSlug={selectedToolSlug}
         />
       )}
+
+      {/* Image Lightbox - Opens when clicking an image */}
+      <ImageLightbox
+        isOpen={lightboxOpen}
+        onClose={closeLightbox}
+        imageUrl={lightboxImage}
+        images={lightboxImages.length > 0 ? lightboxImages : undefined}
+        currentIndex={lightboxIndex}
+        onNavigate={setLightboxIndex}
+      />
     </>,
     document.body
   );

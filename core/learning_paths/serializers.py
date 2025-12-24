@@ -3,6 +3,7 @@
 from rest_framework import serializers
 
 from core.taxonomy.serializers import TaxonomySerializer
+from core.tools.serializers import ToolIconSerializer
 
 from .models import (
     Concept,
@@ -190,6 +191,7 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
     ai_lesson_count = serializers.SerializerMethodField()
     curated_count = serializers.SerializerMethodField()
     topics_covered = serializers.SerializerMethodField()
+    tools = ToolIconSerializer(many=True, read_only=True)
 
     class Meta:
         model = SavedLearningPath
@@ -209,6 +211,7 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
             'ai_lesson_count',
             'curated_count',
             'topics_covered',
+            'tools',
             'created_at',
             'updated_at',
         ]
@@ -311,6 +314,30 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
         """Get all topics covered from path_data."""
         topics = obj.path_data.get('topics_covered', []) if obj.path_data else []
         return topics
+
+
+class PublicLessonSerializer(serializers.Serializer):
+    """Serializer for individual lessons in the explore feed.
+
+    Lessons are extracted from published SavedLearningPath curriculum items.
+    Each lesson has its Gemini-generated image from the LessonImage table.
+    """
+
+    id = serializers.CharField()  # Composite: f"{path_id}_{lesson_order}"
+    title = serializers.CharField()
+    summary = serializers.CharField(allow_blank=True)
+    image_url = serializers.URLField(allow_null=True)
+    difficulty = serializers.CharField()
+    estimated_minutes = serializers.IntegerField()
+    lesson_type = serializers.CharField()  # explanation, example, practice, etc.
+    path_id = serializers.IntegerField()
+    path_slug = serializers.CharField()
+    path_title = serializers.CharField()
+    username = serializers.CharField()
+    user_full_name = serializers.CharField()
+    user_avatar_url = serializers.URLField(allow_null=True)
+    lesson_order = serializers.IntegerField()
+    published_at = serializers.DateTimeField()
 
 
 class ConceptSerializer(serializers.ModelSerializer):

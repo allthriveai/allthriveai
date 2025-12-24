@@ -413,7 +413,7 @@ export function DefaultProjectLayout() {
         const hasCustomGradient = project.content?.heroGradientFrom || project.content?.heroGradientTo;
 
         return (
-      <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-gray-900">
+      <div className="relative min-h-screen w-full flex items-center overflow-hidden bg-slate-50 dark:bg-gray-900">
         {/* Background Layer - Custom or category colored gradient with animated orbs */}
         <div className="absolute inset-0 z-0">
           {project.bannerUrl ? (
@@ -426,8 +426,16 @@ export function DefaultProjectLayout() {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
+              {/* Light mode overlay */}
               <div
-                className="absolute inset-0 backdrop-blur-[1px]"
+                className="absolute inset-0 backdrop-blur-[1px] block dark:hidden"
+                style={{
+                  background: `linear-gradient(to right, rgba(248,250,252,0.92), rgba(248,250,252,0.75) 50%, ${heroGradientFrom}15 100%)`
+                }}
+              />
+              {/* Dark mode overlay */}
+              <div
+                className="absolute inset-0 backdrop-blur-[1px] hidden dark:block"
                 style={{
                   background: `linear-gradient(to right, rgba(10,10,18,0.95), rgba(10,10,18,0.7) 50%, ${heroGradientFrom}20 100%)`
                 }}
@@ -435,19 +443,28 @@ export function DefaultProjectLayout() {
             </>
           ) : (
             <>
-              {/* Dark base with custom or category-colored gradient */}
+              {/* Base gradient - light mode */}
               <div
-                className="w-full h-full"
+                className="w-full h-full block dark:hidden"
+                style={{
+                  background: hasCustomGradient
+                    ? `linear-gradient(135deg, ${heroGradientFrom}30 0%, ${heroGradientTo}20 100%)`
+                    : `linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)`
+                }}
+              />
+              {/* Base gradient - dark mode */}
+              <div
+                className="w-full h-full hidden dark:block"
                 style={{
                   background: hasCustomGradient
                     ? `linear-gradient(135deg, ${heroGradientFrom} 0%, ${heroGradientTo} 100%)`
                     : `linear-gradient(135deg, #0a0a12 0%, #0f1420 50%, #0a0a12 100%)`
                 }}
               />
-              {/* Dark overlay for text readability on custom gradients */}
+              {/* Dark overlay for text readability on custom gradients - dark mode only */}
               {hasCustomGradient && (
                 <div
-                  className="absolute inset-0"
+                  className="absolute inset-0 hidden dark:block"
                   style={{
                     background: 'linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.4) 100%)'
                   }}
@@ -455,15 +472,15 @@ export function DefaultProjectLayout() {
               )}
               {/* Animated gradient orbs */}
               <div
-                className="absolute top-0 left-0 w-[60%] h-[60%] rounded-full blur-[120px] opacity-30"
+                className="absolute top-0 left-0 w-[60%] h-[60%] rounded-full blur-[120px] opacity-20 dark:opacity-30"
                 style={{ background: heroGradientFrom }}
               />
               <div
-                className="absolute bottom-0 right-0 w-[50%] h-[50%] rounded-full blur-[100px] opacity-20"
+                className="absolute bottom-0 right-0 w-[50%] h-[50%] rounded-full blur-[100px] opacity-15 dark:opacity-20"
                 style={{ background: heroGradientTo }}
               />
               <div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] rounded-full blur-[80px] opacity-15"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] rounded-full blur-[80px] opacity-10 dark:opacity-15"
                 style={{ background: heroGradientFrom }}
               />
               {/* Top accent line */}
@@ -484,7 +501,7 @@ export function DefaultProjectLayout() {
             <div className="absolute top-0 right-8 z-30">
               <button
                 onClick={() => setShowSettingsPanel(true)}
-                className="p-2 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-md"
+                className="p-2 rounded-full text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-white/10 transition-colors backdrop-blur-md"
                 title="Project Settings"
               >
                 <Cog6ToothIcon className="w-8 h-8" />
@@ -514,9 +531,9 @@ export function DefaultProjectLayout() {
                         <ChevronDownIcon className="w-4 h-4 opacity-70 group-hover:opacity-100" />
                       </button>
                       {showCategoryPicker && (
-                        <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl z-50">
+                        <div className="absolute top-full left-0 mt-2 w-64 max-h-72 overflow-y-auto rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200 dark:border-white/20 shadow-2xl z-50">
                           {categoriesLoading ? (
-                            <div className="p-4 text-center text-white/60 text-sm">Loading...</div>
+                            <div className="p-4 text-center text-slate-500 dark:text-white/60 text-sm">Loading...</div>
                           ) : (
                             <div className="p-2">
                               {allCategories.map((category) => {
@@ -528,8 +545,8 @@ export function DefaultProjectLayout() {
                                     onClick={() => handleCategoryChange(category.id)}
                                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
                                       isSelected
-                                        ? 'bg-white/20 text-white'
-                                        : 'text-white/80 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-slate-200 dark:bg-white/20 text-slate-900 dark:text-white'
+                                        : 'text-slate-600 dark:text-white/80 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
                                     }`}
                                   >
                                     <span
@@ -557,9 +574,9 @@ export function DefaultProjectLayout() {
                       {primaryCategory.name}
                     </span>
                   ) : null}
-                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 text-white/90 text-sm shadow-lg">
+                  <div className="flex items-center gap-2 bg-slate-200/70 dark:bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full border border-slate-300 dark:border-white/20 text-slate-700 dark:text-white/90 text-sm shadow-lg">
                     <span className="font-light opacity-70">by</span>
-                    <Link to={`/${project.username}`} className="font-semibold hover:text-primary-300 transition-colors">
+                    <Link to={`/${project.username}`} className="font-semibold text-slate-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
                       @{project.username}
                     </Link>
                   </div>
@@ -571,7 +588,7 @@ export function DefaultProjectLayout() {
                           setEditedDate(displayDate.split('T')[0]);
                           setShowDatePicker(!showDatePicker);
                         }}
-                        className="group flex items-center gap-2 text-white/60 text-sm bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-white/5 hover:bg-black/30 hover:text-white/80 transition-colors"
+                        className="group flex items-center gap-2 text-slate-500 dark:text-white/60 text-sm bg-slate-200/80 dark:bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-slate-300 dark:border-white/5 hover:bg-slate-300 dark:hover:bg-black/30 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
                       >
                         <CalendarIcon className="w-4 h-4" />
                         {new Date(displayDate).toLocaleDateString('en-US', {
@@ -582,17 +599,17 @@ export function DefaultProjectLayout() {
                         <PencilIcon className="w-3 h-3 opacity-0 group-hover:opacity-70 transition-opacity" />
                       </button>
                       {showDatePicker && (
-                        <div className="absolute top-full left-0 mt-2 p-3 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/20 shadow-2xl z-50">
+                        <div className="absolute top-full left-0 mt-2 p-3 rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-slate-200 dark:border-white/20 shadow-2xl z-50">
                           <input
                             type="date"
                             value={editedDate}
                             onChange={(e) => setEditedDate(e.target.value)}
-                            className="bg-gray-800 text-white px-3 py-2 rounded-lg border border-white/20 focus:border-primary-500 focus:outline-none text-sm"
+                            className="bg-slate-100 dark:bg-gray-800 text-slate-900 dark:text-white px-3 py-2 rounded-lg border border-slate-300 dark:border-white/20 focus:border-primary-500 focus:outline-none text-sm"
                           />
                           <div className="flex gap-2 mt-2">
                             <button
                               onClick={() => setShowDatePicker(false)}
-                              className="flex-1 px-3 py-1.5 text-sm text-white/60 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                              className="flex-1 px-3 py-1.5 text-sm text-slate-500 dark:text-white/60 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                             >
                               Cancel
                             </button>
@@ -607,7 +624,7 @@ export function DefaultProjectLayout() {
                       )}
                     </div>
                   ) : (
-                    <span className="text-white/60 text-sm bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-white/5">
+                    <span className="text-slate-500 dark:text-white/60 text-sm bg-slate-200/80 dark:bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-slate-300 dark:border-white/5">
                       {new Date(displayDate).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
@@ -624,7 +641,7 @@ export function DefaultProjectLayout() {
                     isEditable={isEditing}
                     onChange={handleTitleChange}
                     placeholder="Enter project title..."
-                    className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70 tracking-tight leading-tight drop-shadow-2xl"
+                    className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-900 to-slate-700 dark:from-white dark:via-white dark:to-white/70 tracking-tight leading-tight drop-shadow-2xl"
                     as="h1"
                   />
                   {/* Clipped Badge */}

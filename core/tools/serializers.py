@@ -1,6 +1,34 @@
 from rest_framework import serializers
 
+from core.learning_paths.models import SavedLearningPath
+
 from .models import Company, Tool, ToolBookmark, ToolComparison, ToolReview
+
+
+class LearningPathMinimalSerializer(serializers.ModelSerializer):
+    """Minimal serializer for learning paths displayed on tool pages."""
+
+    url = serializers.SerializerMethodField()
+    creator_username = serializers.CharField(source='user.username', read_only=True)
+    creator_avatar = serializers.CharField(source='user.avatar_url', read_only=True)
+
+    class Meta:
+        model = SavedLearningPath
+        fields = [
+            'id',
+            'title',
+            'slug',
+            'difficulty',
+            'estimated_hours',
+            'cover_image',
+            'url',
+            'creator_username',
+            'creator_avatar',
+        ]
+
+    def get_url(self, obj):
+        """Build the learning path URL."""
+        return f'/{obj.user.username}/learn/{obj.slug}'
 
 
 class ToolIconSerializer(serializers.ModelSerializer):
@@ -121,6 +149,7 @@ class ToolDetailSerializer(serializers.ModelSerializer):
     review_count = serializers.SerializerMethodField()
     bookmark_count = serializers.SerializerMethodField()
     element = serializers.CharField(read_only=True)
+    learning_paths = serializers.SerializerMethodField()
 
     class Meta:
         model = Tool
@@ -192,11 +221,25 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             'bookmark_count',
             # Taxonomy Link
             'taxonomy',
+            # Related Learning Paths
+            'learning_paths',
             # Timestamps
             'created_at',
             'updated_at',
             'last_verified_at',
         ]
+
+    def get_learning_paths(self, obj):
+        """Get published learning paths that feature this tool."""
+        paths = (
+            obj.learning_paths.filter(
+                is_published=True,
+                is_archived=False,
+            )
+            .select_related('user')
+            .order_by('-published_at')[:5]
+        )
+        return LearningPathMinimalSerializer(paths, many=True).data
 
     def get_average_rating(self, obj):
         """Calculate average rating from reviews."""

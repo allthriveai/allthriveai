@@ -30,13 +30,13 @@ function TextWithCopy({ content, caption, fontSize }: { content: string; caption
     <div className="w-full h-full flex items-center justify-center p-6 md:p-8">
       <div className="max-w-3xl w-full">
         <p
-          className="text-white leading-relaxed drop-shadow-lg"
+          className="text-slate-900 dark:text-white leading-relaxed drop-shadow-lg"
           style={{ fontSize, lineHeight: '1.5' }}
         >
           {content}
         </p>
         {caption && (
-          <p className="mt-4 text-sm text-center text-white/80 italic drop-shadow-md">
+          <p className="mt-4 text-sm text-center text-slate-600 dark:text-white/80 italic drop-shadow-md">
             {caption}
           </p>
         )}
@@ -88,7 +88,7 @@ function renderElement(element: SlideUpElement | undefined) {
             }}
           />
           {element.caption && (
-            <p className="mt-2 text-sm text-center text-white/80 drop-shadow-md">
+            <p className="mt-2 text-sm text-center text-slate-600 dark:text-white/80 drop-shadow-md">
               {element.caption}
             </p>
           )}
@@ -127,7 +127,7 @@ function renderElement(element: SlideUpElement | undefined) {
               </video>
             </div>
             {element.caption && (
-              <p className="mt-2 text-sm text-center text-white/80 drop-shadow-md">
+              <p className="mt-2 text-sm text-center text-slate-600 dark:text-white/80 drop-shadow-md">
                 {element.caption}
               </p>
             )}
@@ -157,7 +157,7 @@ function renderElement(element: SlideUpElement | undefined) {
             />
           </div>
           {element.caption && (
-            <p className="mt-2 text-sm text-center text-white/80 drop-shadow-md">
+            <p className="mt-2 text-sm text-center text-slate-600 dark:text-white/80 drop-shadow-md">
               {element.caption}
             </p>
           )}
@@ -275,7 +275,7 @@ export function SlideUpHero({
             <>
               {/* Backdrop overlay when expanded */}
               <div
-                className={`absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-500 ${
+                className={`absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md transition-opacity duration-500 ${
                   isExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 }`}
                 onClick={handleToggle}
@@ -290,23 +290,23 @@ export function SlideUpHero({
                   maxHeight: '85%',
                 }}
               >
-                <div className="relative h-full bg-white/30 dark:bg-gray-900/40 backdrop-blur-3xl rounded-t-3xl shadow-2xl border-t border-white/40 dark:border-white/20">
+                <div className="relative h-full bg-white/80 dark:bg-gray-900/40 backdrop-blur-3xl rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-white/20">
                   {/* Extra glass layer for depth */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent dark:from-white/10 rounded-t-3xl pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-slate-100/50 dark:from-white/10 to-transparent rounded-t-3xl pointer-events-none" />
                   {/* Handle bar */}
-                  <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/50 dark:bg-white/30 rounded-full backdrop-blur-sm" />
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-400/50 dark:bg-white/30 rounded-full backdrop-blur-sm" />
 
                   {/* Copy button - only show for text content */}
                   {element2?.type === 'text' && (
                     <button
                       onClick={handleCopy}
-                      className="absolute top-4 right-16 p-2 rounded-full bg-white/30 dark:bg-white/10 backdrop-blur-xl hover:bg-white/50 dark:hover:bg-white/20 border border-white/40 dark:border-white/20 transition-all hover:scale-105 active:scale-95 shadow-lg"
+                      className="absolute top-4 right-16 p-2 rounded-full bg-slate-200/70 dark:bg-white/10 backdrop-blur-xl hover:bg-slate-300 dark:hover:bg-white/20 border border-slate-300 dark:border-white/20 transition-all hover:scale-105 active:scale-95 shadow-lg"
                       aria-label="Copy text"
                     >
                       {copied ? (
-                        <CheckIcon className="w-5 h-5 text-green-400" />
+                        <CheckIcon className="w-5 h-5 text-green-500 dark:text-green-400" />
                       ) : (
-                        <ClipboardDocumentIcon className="w-5 h-5 text-white" />
+                        <ClipboardDocumentIcon className="w-5 h-5 text-slate-600 dark:text-white" />
                       )}
                     </button>
                   )}
@@ -314,10 +314,10 @@ export function SlideUpHero({
                   {/* Close button */}
                   <button
                     onClick={handleToggle}
-                    className="absolute top-4 right-4 p-2 rounded-full bg-white/30 dark:bg-white/10 backdrop-blur-xl hover:bg-white/50 dark:hover:bg-white/20 border border-white/40 dark:border-white/20 transition-all hover:scale-105 active:scale-95 shadow-lg"
+                    className="absolute top-4 right-4 p-2 rounded-full bg-slate-200/70 dark:bg-white/10 backdrop-blur-xl hover:bg-slate-300 dark:hover:bg-white/20 border border-slate-300 dark:border-white/20 transition-all hover:scale-105 active:scale-95 shadow-lg"
                     aria-label="Close"
                   >
-                    <ChevronUpIcon className="w-5 h-5 text-white rotate-180" />
+                    <ChevronUpIcon className="w-5 h-5 text-slate-600 dark:text-white rotate-180" />
                   </button>
 
                   {/* Content */}
@@ -325,17 +325,17 @@ export function SlideUpHero({
                     {renderElement(element2)}
 
                     {/* Actions and Tools - Single Row */}
-                    <div className="mt-6 pt-6 border-t border-white/30">
+                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-white/30">
                       <div className="flex flex-wrap items-center gap-3">
                         {/* Heart/Like Button */}
                         <button
                           onClick={onLikeToggle}
                           disabled={!isAuthenticated}
-                          className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg group"
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-200/70 dark:bg-white/20 backdrop-blur-md text-slate-700 dark:text-white rounded-full text-sm border border-slate-300 dark:border-white/30 hover:bg-slate-300 dark:hover:bg-white/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg group"
                           aria-label={isLiked ? 'Unlike' : 'Like'}
                         >
                           {isLiked ? (
-                            <HeartIconSolid className="w-5 h-5 text-red-400 group-hover:scale-110 transition-transform" />
+                            <HeartIconSolid className="w-5 h-5 text-red-500 dark:text-red-400 group-hover:scale-110 transition-transform" />
                           ) : (
                             <HeartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
                           )}
@@ -345,7 +345,7 @@ export function SlideUpHero({
                         {/* Comment Button */}
                         <button
                           onClick={onCommentClick}
-                          className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 shadow-lg group"
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-200/70 dark:bg-white/20 backdrop-blur-md text-slate-700 dark:text-white rounded-full text-sm border border-slate-300 dark:border-white/30 hover:bg-slate-300 dark:hover:bg-white/30 transition-all hover:scale-105 active:scale-95 shadow-lg group"
                           aria-label="Comment"
                         >
                           <ChatBubbleLeftIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -353,7 +353,7 @@ export function SlideUpHero({
 
                         {/* Divider */}
                         {tools && tools.length > 0 && (
-                          <div className="h-6 w-px bg-white/30 mx-1" />
+                          <div className="h-6 w-px bg-slate-300 dark:bg-white/30 mx-1" />
                         )}
 
                         {/* Tools pills */}
@@ -361,7 +361,7 @@ export function SlideUpHero({
                           <button
                             key={tool.id}
                             onClick={() => onToolClick?.(tool.slug)}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-md text-white rounded-full text-sm border border-white/30 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-200/70 dark:bg-white/20 backdrop-blur-md text-slate-700 dark:text-white rounded-full text-sm border border-slate-300 dark:border-white/30 hover:bg-slate-300 dark:hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
                           >
                             {tool.logoUrl && (
                               <img
@@ -383,7 +383,7 @@ export function SlideUpHero({
               {!isExpanded && (
                 <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
                   {/* Gradient fade to indicate more content */}
-                  <div className="h-20 bg-gradient-to-t from-black/30 to-transparent" />
+                  <div className="h-20 bg-gradient-to-t from-slate-900/20 dark:from-black/30 to-transparent" />
 
                   {/* Interactive indicator */}
                   <button
@@ -393,10 +393,10 @@ export function SlideUpHero({
                   >
                     {/* Animated chevron */}
                     <div className="animate-bounce">
-                      <ChevronUpIcon className="w-6 h-6 text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
+                      <ChevronUpIcon className="w-6 h-6 text-slate-700 dark:text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
                     </div>
                     {/* Optional text hint */}
-                    <span className="text-xs font-medium text-white/80 group-hover:text-white drop-shadow-md transition-colors">
+                    <span className="text-xs font-medium text-slate-600 dark:text-white/80 group-hover:text-slate-900 dark:group-hover:text-white drop-shadow-md transition-colors">
                       Tap for more
                     </span>
                   </button>

@@ -94,6 +94,12 @@ urlpatterns = [
         views.ExploreLearningPathsView.as_view(),
         name='explore-learning-paths',
     ),
+    # Explore endpoint for individual AI lessons
+    path(
+        'explore/lessons/',
+        views.ExploreLessonsView.as_view(),
+        name='explore-lessons',
+    ),
     # Lesson image endpoint - on-demand image generation
     path(
         'me/saved-paths/<str:slug>/lessons/<int:order>/image/',
@@ -111,5 +117,11 @@ urlpatterns = [
         'lessons/<int:project_id>/rate/',
         views.LessonRatingView.as_view(),
         name='lesson-rating',
+    ),
+    # Admin: Add/remove projects from learning path community section
+    path(
+        'admin/learning-paths/<int:path_id>/add-project/',
+        views.AdminAddProjectToPathView.as_view(),
+        name='admin-add-project-to-path',
     ),
 ]

@@ -16,6 +16,7 @@ import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { TopicTrayProvider } from '@/context/TopicTrayContext';
 import { ProjectPreviewTrayProvider, useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
 import { LearningPathPreviewTrayProvider } from '@/context/LearningPathPreviewTrayContext';
+import { LessonPreviewTrayProvider } from '@/context/LessonPreviewTrayContext';
 import { PointsNotificationProvider } from '@/context/PointsNotificationContext';
 import { GlobalPointsAwardOverlay } from '@/components/thrive-circle/PointsAwardOverlay';
 import { useAuth } from '@/hooks/useAuth';
@@ -363,6 +364,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
     <TopicTrayProvider>
     <ProjectPreviewTrayProvider>
     <LearningPathPreviewTrayProvider>
+    <LessonPreviewTrayProvider>
     <div className="relative h-screen w-full overflow-hidden">
       {/* Background is now handled by CSS in index.css - uses CSS gradients instead of images */}
 
@@ -472,6 +474,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
         )}
       </div>
     </div>
+    </LessonPreviewTrayProvider>
     </LearningPathPreviewTrayProvider>
     </ProjectPreviewTrayProvider>
     </TopicTrayProvider>

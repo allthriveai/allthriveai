@@ -97,6 +97,7 @@ class ContentFinder:
         limit: int = 5,
         user_id: int | None = None,
         member_context: dict | None = None,
+        additional_subjects: list[str] | None = None,
     ) -> ContentFinderResult:
         """
         Find learning content matching the query.
@@ -107,24 +108,39 @@ class ContentFinder:
             limit: Maximum results per category
             user_id: User ID for personalization
             member_context: Injected member context for prioritization
+            additional_subjects: Extra search terms for multi-subject queries
+                                (e.g., ["Playwright", "Claude AI"] for better matching)
 
         Returns:
             ContentFinderResult with tool, projects, quizzes, and games
         """
         logger.info(
             'Finding learning content',
-            extra={'query': query, 'content_type': content_type, 'user_id': user_id},
+            extra={
+                'query': query,
+                'content_type': content_type,
+                'user_id': user_id,
+                'additional_subjects': additional_subjects,
+            },
         )
 
         # Normalize query
         query_normalized = query.lower().strip().replace(' ', '-')
 
+        # Build list of all search terms (primary query + additional subjects)
+        all_search_terms = [query_normalized]
+        if additional_subjects:
+            for subject in additional_subjects:
+                normalized_subject = subject.lower().strip().replace(' ', '-')
+                if normalized_subject and normalized_subject not in all_search_terms:
+                    all_search_terms.append(normalized_subject)
+
         # Get tool info if query matches a tool
         tool_info = cls._find_tool(query_normalized)
 
-        # Get projects
+        # Get projects - search across all terms for better multi-subject matching
         projects = cls._find_projects(
-            query_normalized,
+            all_search_terms,
             content_type,
             limit,
             member_context,
@@ -190,12 +206,19 @@ class ContentFinder:
     @classmethod
     def _find_projects(
         cls,
-        query: str,
+        search_terms: list[str],
         content_type: str,
         limit: int,
         member_context: dict | None,
     ) -> list[ProjectInfo]:
-        """Find learning-eligible projects matching query."""
+        """Find learning-eligible projects matching any of the search terms.
+
+        Args:
+            search_terms: List of normalized search terms to match against
+            content_type: Optional content type filter
+            limit: Maximum number of projects to return
+            member_context: User learning preferences for sorting
+        """
         from core.learning_paths.models import ProjectLearningMetadata
         from core.projects.models import Project
 
@@ -203,14 +226,17 @@ class ContentFinder:
             # Build base query - public, not archived
             base_filter = Q(is_private=False, is_archived=False)
 
-            # Filter by tool slug or topic slug
-            content_filter = (
-                Q(tools__slug=query)
-                | Q(topics__slug=query)
-                | Q(tools__name__icontains=query.replace('-', ' '))
-                | Q(topics__name__icontains=query.replace('-', ' '))
-                | Q(title__icontains=query.replace('-', ' '))
-            )
+            # Build OR filter across all search terms for better multi-subject matching
+            content_filter = Q()
+            for term in search_terms:
+                term_readable = term.replace('-', ' ')
+                content_filter |= (
+                    Q(tools__slug=term)
+                    | Q(topics__slug=term)
+                    | Q(tools__name__icontains=term_readable)
+                    | Q(topics__name__icontains=term_readable)
+                    | Q(title__icontains=term_readable)
+                )
 
             # Use subquery to annotate learning eligibility (avoids loading all IDs)
             eligible_subquery = ProjectLearningMetadata.objects.filter(
@@ -290,7 +316,7 @@ class ContentFinder:
             return projects
 
         except Exception as e:
-            logger.error('Error finding projects', extra={'query': query, 'error': str(e)}, exc_info=True)
+            logger.error('Error finding projects', extra={'search_terms': search_terms, 'error': str(e)}, exc_info=True)
             return []
 
     @classmethod

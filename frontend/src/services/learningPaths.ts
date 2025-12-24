@@ -426,6 +426,56 @@ export async function getExploreLearningPaths(params?: {
   return response.data;
 }
 
+// =============================================================================
+// EXPLORE LESSONS - Public APIs for individual AI lessons
+// =============================================================================
+
+/**
+ * Public lesson for explore feed
+ * Individual AI-generated lessons from published learning paths
+ */
+export interface PublicLesson {
+  id: string;
+  title: string;
+  summary: string;
+  imageUrl: string | null;
+  difficulty: string;
+  estimatedMinutes: number;
+  lessonType: string;
+  pathId: number;
+  pathSlug: string;
+  pathTitle: string;
+  username: string;
+  userFullName: string;
+  userAvatarUrl: string | null;
+  lessonOrder: number;
+  publishedAt: string;
+}
+
+/**
+ * Paginated response for explore lessons endpoint
+ */
+export interface ExploreLessonsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: PublicLesson[];
+}
+
+/**
+ * Get published AI lessons for the explore feed
+ */
+export async function getExploreLessons(params?: {
+  page?: number;
+  search?: string;
+}): Promise<ExploreLessonsResponse> {
+  const response = await api.get<ExploreLessonsResponse>(
+    '/explore/lessons/',
+    { params }
+  );
+  return response.data;
+}
+
 /**
  * Get or generate an AI illustration for a lesson
  * Returns the image URL on success, null on failure
@@ -694,4 +744,53 @@ export async function getMyLessonRating(projectId: number): Promise<LessonRating
   } catch {
     return null;
   }
+}
+
+// =============================================================================
+// ADMIN LEARNING PATH MANAGEMENT
+// =============================================================================
+
+export interface AddProjectResponse {
+  status: string;
+  project: {
+    id: number;
+    title: string;
+    slug: string;
+    description: string;
+    thumbnailUrl: string;
+    username: string;
+    userAvatarUrl: string;
+    category: string;
+    viewCount: number;
+    likeCount: number;
+  };
+  totalProjects: number;
+}
+
+/**
+ * Admin: Add a project to a learning path's community section
+ */
+export async function adminAddProjectToPath(
+  pathId: number,
+  projectId: number
+): Promise<AddProjectResponse> {
+  const response = await api.post<AddProjectResponse>(
+    `/admin/learning-paths/${pathId}/add-project/`,
+    { projectId }
+  );
+  return response.data;
+}
+
+/**
+ * Admin: Remove a project from a learning path's community section
+ */
+export async function adminRemoveProjectFromPath(
+  pathId: number,
+  projectId: number
+): Promise<{ status: string; projectId: number; totalProjects: number }> {
+  const response = await api.delete(
+    `/admin/learning-paths/${pathId}/add-project/`,
+    { data: { projectId } }
+  );
+  return response.data;
 }

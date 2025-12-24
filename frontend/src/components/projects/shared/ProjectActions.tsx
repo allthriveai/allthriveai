@@ -55,10 +55,10 @@ export function ProjectActions({
           id={likeRewardId}
           onClick={onLikeClick}
           disabled={!isAuthenticated || isLiking}
-          className={`group flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base transition-all transform active:scale-95 border border-white/10 ${
+          className={`group flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-base transition-all transform active:scale-95 border border-slate-200 dark:border-white/10 ${
             isLiked
               ? 'bg-gradient-to-r from-pink-500/90 to-rose-500/90 backdrop-blur-xl text-white shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)]'
-              : 'bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white shadow-lg hover:shadow-xl'
+              : 'bg-slate-200/70 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 backdrop-blur-xl text-slate-700 dark:text-white shadow-lg hover:shadow-xl'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {isLiked ? (
@@ -75,7 +75,7 @@ export function ProjectActions({
             target="_blank"
             rel="noopener noreferrer"
             title="View Live Project"
-            className="flex items-center justify-center w-12 h-12 rounded-xl font-bold text-base bg-white/90 hover:bg-white text-gray-900 backdrop-blur-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all transform hover:-translate-y-0.5 active:scale-95 border border-white/50"
+            className="flex items-center justify-center w-12 h-12 rounded-xl font-bold text-base bg-white hover:bg-slate-50 dark:bg-white/90 dark:hover:bg-white text-gray-900 backdrop-blur-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all transform hover:-translate-y-0.5 active:scale-95 border border-slate-200 dark:border-white/50"
           >
             <LinkIcon className="w-5 h-5" />
           </a>
@@ -84,7 +84,7 @@ export function ProjectActions({
         <button
           onClick={onCommentClick}
           title="Share Your Thoughts"
-          className="flex items-center justify-center w-12 h-12 rounded-xl font-bold text-base bg-white/10 hover:bg-white/20 text-white backdrop-blur-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95 border border-white/20"
+          className="flex items-center justify-center w-12 h-12 rounded-xl font-bold text-base bg-slate-200/70 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-700 dark:text-white backdrop-blur-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95 border border-slate-200 dark:border-white/20"
         >
           <ChatBubbleLeftRightIcon className="w-6 h-6" />
         </button>
@@ -92,7 +92,7 @@ export function ProjectActions({
         <button
           onClick={onShareClick}
           title="Share Project"
-          className="flex items-center justify-center w-12 h-12 rounded-xl font-bold text-base bg-white/10 hover:bg-white/20 text-white backdrop-blur-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95 border border-white/20"
+          className="flex items-center justify-center w-12 h-12 rounded-xl font-bold text-base bg-slate-200/70 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-700 dark:text-white backdrop-blur-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95 border border-slate-200 dark:border-white/20"
         >
           <ShareIcon className="w-6 h-6" />
         </button>
@@ -111,7 +111,7 @@ export function ProjectActions({
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all backdrop-blur-md border ${
             isLiked
               ? 'bg-pink-500/90 border-pink-400/50 text-white shadow-[0_0_20px_rgba(236,72,153,0.3)]'
-              : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white'
+              : 'bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/80 hover:text-slate-900 dark:hover:text-white'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {isLiked ? (
@@ -124,14 +124,14 @@ export function ProjectActions({
 
         <button
           onClick={onCommentClick}
-          className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
+          className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/80 hover:text-slate-900 dark:hover:text-white transition-all backdrop-blur-md"
         >
           <ChatBubbleLeftRightIcon className="w-5 h-5" />
         </button>
 
         <button
           onClick={onShareClick}
-          className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-all backdrop-blur-md"
+          className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/80 hover:text-slate-900 dark:hover:text-white transition-all backdrop-blur-md"
         >
           <ShareIcon className="w-5 h-5" />
         </button>

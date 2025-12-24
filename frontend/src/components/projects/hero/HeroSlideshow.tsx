@@ -43,8 +43,8 @@ export function HeroSlideshow({ images }: HeroSlideshowProps) {
       onTouchStart={() => setIsHovered(true)}
     >
       <div className="relative group">
-        <div className="absolute -inset-2 md:-inset-4 bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
-        <div className="relative p-1 md:p-2 bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-white/20 shadow-2xl">
+        <div className="absolute -inset-2 md:-inset-4 bg-slate-200/50 dark:bg-white/5 rounded-2xl md:rounded-3xl blur-lg md:blur-xl opacity-50 transition duration-1000 group-hover:opacity-70 group-hover:blur-2xl" />
+        <div className="relative p-1 md:p-2 bg-slate-200/70 dark:bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-slate-300 dark:border-white/20 shadow-2xl">
           {/* Image */}
           <img
             src={images[currentIndex]}
@@ -86,7 +86,7 @@ export function HeroSlideshow({ images }: HeroSlideshowProps) {
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
                 className={`h-2 md:h-2.5 rounded-full transition-all touch-manipulation ${
-                  idx === currentIndex ? 'bg-white w-6 md:w-8' : 'bg-white/30 hover:bg-white/50 active:bg-white/60 w-2 md:w-2.5'
+                  idx === currentIndex ? 'bg-slate-900 dark:bg-white w-6 md:w-8' : 'bg-slate-900/30 dark:bg-white/30 hover:bg-slate-900/50 dark:hover:bg-white/50 active:bg-slate-900/60 dark:active:bg-white/60 w-2 md:w-2.5'
                 }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
