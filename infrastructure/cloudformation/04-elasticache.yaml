@@ -13,21 +13,21 @@ Parameters:
 
   CacheNodeType:
     Type: String
-    Default: cache.t4g.small
+    Default: cache.t4g.micro  # Smallest instance for testing (~$9/mo vs $25/mo for small)
     AllowedValues:
       - cache.t4g.micro
       - cache.t4g.small
       - cache.t4g.medium
       - cache.r6g.large
       - cache.r6g.xlarge
-    Description: ElastiCache node type
+    Description: ElastiCache node type (use cache.t4g.small+ for production)
 
   NumCacheClusters:
     Type: Number
-    Default: 2
+    Default: 1  # Single node for cost savings during testing (~$25/mo savings)
     MinValue: 1
     MaxValue: 6
-    Description: Number of cache clusters (nodes) in the replication group
+    Description: Number of cache clusters (nodes) - use 2+ for production HA
 
   EngineVersion:
     Type: String
@@ -94,6 +94,8 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ElastiCache Replication Group
+  # NOTE: AutomaticFailover and MultiAZ require NumCacheClusters >= 2
+  # For cost savings during testing, we use a single node configuration
   CacheReplicationGroup:
     Type: AWS::ElastiCache::ReplicationGroup
     Properties:
@@ -103,8 +105,9 @@ Resources:
       EngineVersion: !Ref EngineVersion
       CacheNodeType: !Ref CacheNodeType
       NumCacheClusters: !Ref NumCacheClusters
-      AutomaticFailoverEnabled: true
-      MultiAZEnabled: true
+      # Failover requires 2+ nodes - disabled for single-node cost savings
+      AutomaticFailoverEnabled: false
+      MultiAZEnabled: false
       CacheSubnetGroupName: !Ref CacheSubnetGroup
       CacheParameterGroupName: !Ref CacheParameterGroup
       SecurityGroupIds:

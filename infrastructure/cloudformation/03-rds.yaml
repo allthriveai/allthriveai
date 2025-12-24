@@ -13,7 +13,7 @@ Parameters:
 
   DBInstanceClass:
     Type: String
-    Default: db.t4g.medium
+    Default: db.t4g.micro  # Smallest instance for testing (~$12/mo vs $50/mo for medium)
     AllowedValues:
       - db.t4g.micro
       - db.t4g.small
@@ -21,7 +21,7 @@ Parameters:
       - db.t4g.large
       - db.r6g.large
       - db.r6g.xlarge
-    Description: RDS instance class
+    Description: RDS instance class (use db.t4g.medium+ for production)
 
   DBAllocatedStorage:
     Type: Number
@@ -50,15 +50,15 @@ Parameters:
 
   MultiAZ:
     Type: String
-    Default: 'true'
+    Default: 'false'  # Disabled for cost savings during testing (~$40/mo savings)
     AllowedValues:
       - 'true'
       - 'false'
-    Description: Enable Multi-AZ deployment
+    Description: Enable Multi-AZ deployment (enable for production HA)
 
   BackupRetentionPeriod:
     Type: Number
-    Default: 7
+    Default: 1  # Minimum retention for testing (use 7+ for production)
     MinValue: 1
     MaxValue: 35
     Description: Backup retention period in days
@@ -150,8 +150,8 @@ Resources:
       PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
       AutoMinorVersionUpgrade: true
       DeletionProtection: true
-      EnablePerformanceInsights: true
-      PerformanceInsightsRetentionPeriod: 7
+      # Performance Insights disabled for cost savings during testing
+      EnablePerformanceInsights: false
       EnableCloudwatchLogsExports:
         - postgresql
         - upgrade
