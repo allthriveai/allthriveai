@@ -78,6 +78,15 @@ def create_learning_path(
     - A personalized learning journey
     - Step-by-step guidance on mastering a topic
 
+    IMPORTANT - ASK CLARIFYING QUESTIONS FIRST for vague requests like:
+    - "I want to learn AI" → Ask what they want to BUILD
+    - "teach me to code" → Ask their goal (websites, apps, automation?)
+    - "build an AI app" → Ask if they prefer no-code or coding
+    - "I don't know where to start" → Ask what interests them
+
+    Only call this tool AFTER you have enough context to create a focused path.
+    Vague queries produce vague paths - specific queries produce actionable paths.
+
     CRITICAL: This tool handles multi-topic requests automatically.
     NEVER call this tool multiple times for one user request.
     Pass the COMPLETE query as-is: "git and claude cli" creates ONE unified path.

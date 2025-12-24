@@ -14,6 +14,7 @@ import type {
   StructuredPath,
   LearningGoal,
 } from '@/types/models';
+import type { SkillLevel } from './personalization';
 
 /**
  * Get all learning paths for the current user
@@ -193,6 +194,51 @@ export async function resetLearningSetup(): Promise<void> {
  * AI-generated lesson content structure
  * Contains personalized learning material adapted to user's style and level
  */
+
+/**
+ * Exercise content adapted to different skill levels
+ */
+export interface ExerciseContentByLevel {
+  instructions: string;
+  commandHint?: string;
+  hints: string[];
+}
+
+/**
+ * Interactive exercise for "Try It Yourself" sections
+ */
+export interface LessonExercise {
+  exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review';
+  scenario: string;
+  expectedInputs: string[]; // Regex patterns for validation
+  successMessage: string;
+  expectedOutput: string;
+  contentByLevel: Record<SkillLevel, ExerciseContentByLevel>;
+}
+
+/**
+ * Single quiz question for knowledge check
+ */
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  questionType: 'multiple_choice' | 'true_false';
+  options: string[];
+  correctAnswer: string | string[];
+  explanation: string;
+  hint?: string;
+}
+
+/**
+ * Inline quiz for checking understanding at the end of a lesson
+ */
+export interface LessonQuiz {
+  questions: QuizQuestion[];
+  passingScore: number;
+  encouragementMessage: string;
+  retryMessage: string;
+}
+
 export interface AILessonContent {
   /** 1-2 sentence hook explaining what the learner will understand */
   summary: string;
@@ -210,6 +256,10 @@ export interface AILessonContent {
   practicePrompt?: string;
   /** Optional mermaid diagram code for visual learners */
   mermaidDiagram?: string;
+  /** Interactive exercise for hands-on practice */
+  exercise?: LessonExercise;
+  /** Inline quiz to check understanding */
+  quiz?: LessonQuiz;
 }
 
 /**

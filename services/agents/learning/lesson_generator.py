@@ -132,6 +132,46 @@ def validate_mermaid_syntax(mermaid_code: str | None) -> str | None:
     return code
 
 
+class ExerciseContentByLevel(TypedDict, total=False):
+    """Content for a specific skill level in an exercise."""
+
+    instructions: str
+    command_hint: str | None
+    hints: list[str]
+
+
+class LessonExercise(TypedDict, total=False):
+    """Interactive exercise for hands-on practice."""
+
+    exercise_type: str  # 'terminal' | 'git' | 'ai_prompt' | 'code_review'
+    scenario: str
+    expected_inputs: list[str]  # Regex patterns for validation
+    success_message: str
+    expected_output: str
+    content_by_level: dict[str, ExerciseContentByLevel]
+
+
+class QuizQuestion(TypedDict, total=False):
+    """Single quiz question for knowledge check."""
+
+    id: str  # Unique identifier for the question
+    question: str  # The question text
+    question_type: str  # 'multiple_choice' | 'true_false'
+    options: list[str]  # Answer options (for multiple_choice)
+    correct_answer: str | list[str]  # Correct answer(s)
+    explanation: str  # Why this answer is correct
+    hint: str | None  # Optional hint for struggling learners
+
+
+class LessonQuiz(TypedDict, total=False):
+    """Inline quiz for checking understanding at the end of a lesson."""
+
+    questions: list[QuizQuestion]
+    passing_score: int  # Minimum correct answers to pass (default: all)
+    encouragement_message: str  # Shown when user passes
+    retry_message: str  # Shown when user needs to retry
+
+
 class AILessonContent(TypedDict, total=False):
     """Structure of AI-generated lesson content."""
 
@@ -141,6 +181,8 @@ class AILessonContent(TypedDict, total=False):
     examples: list[dict]
     practice_prompt: str
     mermaid_diagram: str | None
+    exercise: LessonExercise | None
+    quiz: LessonQuiz | None
 
 
 class CurriculumItem(TypedDict, total=False):
@@ -227,10 +269,11 @@ Format your explanation for VISUAL learners:
 """,
     'hands_on': """
 Format your explanation for HANDS-ON learners:
-- Start with a practical code example, then explain what it does
-- Include a "Try This" exercise they can do immediately
+- For TECHNICAL topics: Start with a practical code example, then explain what it does
+- For NON-TECHNICAL topics: Describe a real scenario the learner can relate to, then walk through the steps
+- Include a "Try This" exercise they can do immediately (code for technical, thought exercise for non-technical)
 - Focus on practical application over theory
-- Show real-world use cases they can replicate
+- Show real-world use cases they can replicate or imagine themselves doing
 """,
     'conceptual': """
 Format your explanation for CONCEPTUAL learners:
@@ -242,7 +285,8 @@ Format your explanation for CONCEPTUAL learners:
     'mixed': """
 Provide a BALANCED explanation:
 - Include one visual diagram (mermaid format)
-- Include one practical code example
+- For TECHNICAL topics: Include one practical code example
+- For NON-TECHNICAL topics: Include a detailed scenario or case study
 - Include conceptual explanation connecting ideas
 """,
 }
@@ -257,26 +301,21 @@ Write for BEGINNER level:
 - Avoid jargon or explain it immediately when used
 - Focus on foundational concepts
 
-CODE EXAMPLES FOR BEGINNERS:
+FOR TECHNICAL TOPICS - CODE EXAMPLES FOR BEGINNERS:
 - Add detailed inline comments explaining EVERY line of code
 - Before the code, explain what we're about to do and why
 - After the code, walk through what happened step by step
 - Use descriptive variable names (e.g., `user_message` not `msg`)
 - Keep examples short (5-15 lines max) and focused on ONE concept
-- Example format:
-  ```python
-  # First, we import the library we need
-  import openai
 
-  # This is our message that we'll send to the AI
-  user_message = "Hello, can you help me?"
-
-  # Here we send the message and wait for a response
-  response = openai.chat.completions.create(
-      model="gpt-4",  # The AI model we're using
-      messages=[{"role": "user", "content": user_message}]
-  )
-  ```
+FOR NON-TECHNICAL TOPICS - EXAMPLES FOR BEGINNERS:
+- Use real-world scenarios the learner can visualize
+- Explain CONCEPTS, not UI clicks (they're not in the tool)
+- Use "imagine you're..." framing to make it relatable
+- Focus on WHAT to think about, not WHERE to click
+- Give them questions to ask themselves when using any tool
+- Example: "When building a chatbot, first list your users' top 5 questions" (actionable thinking)
+- NOT: "Click the chatbot button and drag it..." (fake UI instructions)
 
 DIAGRAMS FOR BEGINNERS:
 - If including a mermaid diagram, add a "Reading this diagram" section explaining:
@@ -342,6 +381,57 @@ class AILessonGenerator:
     SYSTEM_PROMPT = """You are Ember, an AI learning assistant for AllThrive AI.
 Your task is to generate educational content that provides real value to learners.
 
+FIRST: Determine if this is a TECHNICAL or NON-TECHNICAL topic:
+
+TECHNICAL topics (involve actual code, commands, or syntax):
+- Programming languages (Python, JavaScript, etc.)
+- CLI tools (Git, Docker, npm, etc.)
+- APIs and SDKs
+- Database queries
+- DevOps and system administration
+→ Include code examples AND may include interactive exercises
+
+NON-TECHNICAL topics (conceptual, strategic, or using visual interfaces):
+- No-code/low-code platforms (Bubble, Zapier, etc.)
+- AI concepts and ethics
+- Design thinking and UX principles
+- Business strategy and soft skills
+- Tool overviews (learning ABOUT a tool, not CLI usage)
+→ Keep explanations SHORT - focus on mental models and decision frameworks
+→ Do NOT describe fake UI actions ("click the button", "drag the component")
+→ Use exercise_type: "ai_prompt" so users can apply concepts to their situation
+→ Use quizzes for knowledge checks
+
+CRITICAL - TEACH HOW TO THINK, NOT HOW TO CLICK:
+Focus on mental models, decision frameworks, and conceptual understanding.
+NOT on describing UI features, button clicks, or tool-specific workflows.
+
+❌ BAD - Describing made-up UI actions:
+"With a low-code platform, you can select a 'Chatbot' component, set up questions and
+answers using simple forms, and connect it to your website—all by clicking and filling out fields."
+This teaches nothing. It's vague, generic, and not actionable.
+
+✅ GOOD - Teach HOW TO THINK about the problem:
+"Before building any chatbot, ask yourself three questions:
+1. What are the 5 most common things users ask? (These become your main flows)
+2. What should happen when the bot doesn't understand? (Your fallback strategy)
+3. When should the bot hand off to a human? (Your escalation criteria)
+
+These questions apply whether you use Intercom, Drift, or build custom."
+
+✅ GOOD - Teach mental models and frameworks:
+"Think of a chatbot like a phone tree: each user message is a branch point. Good chatbots
+have shallow trees (users get answers fast) and clear escape hatches (talk to human).
+Bad chatbots have deep trees where users get lost."
+
+✅ GOOD - Teach decision-making criteria:
+"When choosing a no-code chatbot platform, evaluate: (1) Can it integrate with your
+existing tools? (2) Does it support your channels - web, SMS, WhatsApp? (3) What
+analytics does it provide? (4) How much does it cost per conversation?"
+
+The goal: After the lesson, the learner should THINK DIFFERENTLY about the topic,
+not just know which buttons to click in some tool.
+
 CRITICAL: Adapt your teaching style based on the difficulty level specified:
 
 For BEGINNERS:
@@ -363,6 +453,8 @@ Generate content that:
 2. STRICTLY adapts to the specified difficulty level (this is critical!)
 3. Provides practical value the learner can use immediately
 4. Includes clear structure with key concepts, explanation, and practice
+5. ALWAYS includes a short quiz (2-3 questions) to check understanding
+6. MAY include an interactive exercise IF the topic involves commands/code (see rules below)
 
 IMPORTANT: Return your response as valid JSON matching this exact structure:
 {
@@ -370,10 +462,89 @@ IMPORTANT: Return your response as valid JSON matching this exact structure:
     "key_concepts": ["concept1", "concept2", "concept3"],
     "explanation": "Full markdown explanation with formatting, code blocks if relevant",
     "examples": [
-        {"title": "Example Name", "description": "Brief description", "code": "optional code"}
+        {
+            "title": "Example Name",
+            "description": "Use markdown formatting: paragraphs, **bold**, bullets, lists."
+        }
     ],
-    "practice_prompt": "A question or exercise for the learner to try",
-    "mermaid_diagram": "optional mermaid diagram code if visual style. For beginners, add diagram explanation."
+    "practice_prompt": "An ACTIONABLE exercise the user can do RIGHT NOW. See examples below.",
+    "mermaid_diagram": "optional mermaid diagram code if visual style. For beginners, add diagram explanation.",
+    "exercise": null,
+    "quiz": {
+        "questions": [
+            {
+                "id": "q1",
+                "question": "Clear question testing a key concept from the lesson",
+                "question_type": "multiple_choice",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct_answer": "Option A",
+                "explanation": "Why this is correct, reinforcing the learning",
+                "hint": "Optional hint to guide thinking"
+            },
+            {
+                "id": "q2",
+                "question": "True or false question about an important point",
+                "question_type": "true_false",
+                "options": ["True", "False"],
+                "correct_answer": "True",
+                "explanation": "Explanation of why this is true/false",
+                "hint": null
+            }
+        ],
+        "passing_score": 2,
+        "encouragement_message": "Great job! You understood the key concepts.",
+        "retry_message": "Almost there! Review the explanation and try again."
+    }
+}
+
+EXERCISE RULES - CRITICAL:
+
+FOR NON-TECHNICAL TOPICS: ALWAYS use exercise_type: "ai_prompt"
+The inline AI chat lets users apply concepts to THEIR specific situation.
+This is MORE valuable than a thought exercise because it's personalized and interactive.
+
+Examples of GOOD ai_prompt exercises for non-technical lessons:
+- "Tell me about your business and I'll help identify your top 5 user questions"
+- "Describe your use case and I'll help you decide when to escalate to human"
+- "Let's write your chatbot welcome message together - describe what you want it to say"
+- "Tell me your budget and requirements, and I'll help you evaluate platform options"
+
+FOR TECHNICAL TOPICS: Use the appropriate exercise type:
+- "terminal": For lessons teaching shell commands (cd, ls, mkdir, curl, etc.)
+- "git": For lessons teaching git CLI commands (git add, git commit, git push, etc.)
+- "ai_prompt": For lessons teaching prompt engineering
+- "code_review": For lessons where user identifies bugs in code snippets
+
+EXERCISE VALIDATION (expected_inputs) - only if exercise is not null:
+- Use regex patterns that flexibly match the user's input
+- For git commit: "^git commit -m ['\"].+['\"]$" matches any commit message
+- For mkdir: "^mkdir\\s+\\w+" matches mkdir with any directory name
+- Include variations users might type (with/without spaces, quotes, etc.)
+
+EXERCISE JSON STRUCTURE (only include if topic is technical):
+{
+    "exercise_type": "terminal|git|ai_prompt|code_review",
+    "scenario": "Real-world context for the exercise (1-2 sentences)",
+    "expected_inputs": ["regex pattern to match valid input", "alternate pattern"],
+    "success_message": "Congratulations message when completed",
+    "expected_output": "What the simulated terminal/system shows on success",
+    "content_by_level": {
+        "beginner": {
+            "instructions": "Step-by-step instructions with lots of guidance",
+            "command_hint": "The exact command with placeholders",
+            "hints": ["First hint", "Second hint", "Third hint"]
+        },
+        "intermediate": {
+            "instructions": "Concise instructions",
+            "command_hint": "Partial hint",
+            "hints": ["First hint", "Second hint"]
+        },
+        "advanced": {
+            "instructions": "Brief task description",
+            "command_hint": null,
+            "hints": ["One subtle hint"]
+        }
+    }
 }
 
 MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
@@ -390,6 +561,19 @@ MERMAID DIAGRAM SYNTAX RULES (if including a diagram):
       B --> C{Decision}
       C -->|Yes| D[Output A]
       C -->|No| E[Output B]
+
+QUIZ GENERATION RULES:
+- Generate 2-3 questions that test the KEY CONCEPTS from this specific lesson
+- Use a mix of multiple_choice and true_false question types
+- For multiple_choice: ALWAYS provide exactly 4 options
+- Make wrong options plausible but clearly incorrect (avoid trick questions)
+- The explanation should teach WHY the answer is correct, not just state it
+- Adapt question complexity to the difficulty level:
+  - BEGINNER: Straightforward recall questions, simple scenarios
+  - INTERMEDIATE: Application questions, comparing approaches
+  - ADVANCED: Edge cases, best practices, "when would you use X vs Y"
+- Each question MUST have a unique id (q1, q2, q3)
+- Set passing_score to the number of questions - 1 (allow one mistake)
 """
 
     @classmethod
@@ -1129,6 +1313,14 @@ Remember to return valid JSON matching the required structure."""
             if raw_mermaid and not validated_mermaid:
                 logger.info('Mermaid diagram removed due to validation failure')
 
+            # Parse exercise if present
+            exercise_data = data.get('exercise')
+            validated_exercise = cls._validate_exercise(exercise_data) if exercise_data else None
+
+            # Parse quiz if present
+            quiz_data = data.get('quiz')
+            validated_quiz = cls._validate_quiz(quiz_data) if quiz_data else None
+
             # Build the lesson content
             return AILessonContent(
                 summary=data.get('summary', ''),
@@ -1137,6 +1329,8 @@ Remember to return valid JSON matching the required structure."""
                 examples=data.get('examples', []),
                 practice_prompt=data.get('practice_prompt', ''),
                 mermaid_diagram=validated_mermaid,
+                exercise=validated_exercise,
+                quiz=validated_quiz,
             )
 
         except json.JSONDecodeError as e:
@@ -1146,3 +1340,163 @@ Remember to return valid JSON matching the required structure."""
         except Exception as e:
             logger.error(f'Error parsing AI lesson response: {e}', exc_info=True)
             return None
+
+    @classmethod
+    def _validate_exercise(cls, exercise_data: dict) -> LessonExercise | None:
+        """Validate and normalize exercise data from AI response.
+
+        Args:
+            exercise_data: Raw exercise dict from AI response
+
+        Returns:
+            Validated LessonExercise or None if invalid
+        """
+        if not exercise_data:
+            return None
+
+        # Check required fields
+        required_fields = ['exercise_type', 'scenario', 'expected_inputs', 'content_by_level']
+        for field in required_fields:
+            if field not in exercise_data:
+                logger.warning(f'Missing required exercise field: {field}')
+                return None
+
+        # Validate exercise type
+        valid_types = {'terminal', 'git', 'ai_prompt', 'code_review'}
+        exercise_type = exercise_data.get('exercise_type', '').lower()
+        if exercise_type not in valid_types:
+            logger.warning(f'Invalid exercise type: {exercise_type}')
+            return None
+
+        # Validate expected_inputs is a list with at least one pattern
+        expected_inputs = exercise_data.get('expected_inputs', [])
+        if not isinstance(expected_inputs, list) or len(expected_inputs) == 0:
+            logger.warning('Exercise must have at least one expected_input pattern')
+            return None
+
+        # Validate content_by_level has at least one skill level
+        content_by_level = exercise_data.get('content_by_level', {})
+        if not isinstance(content_by_level, dict) or len(content_by_level) == 0:
+            logger.warning('Exercise must have content_by_level for at least one skill level')
+            return None
+
+        # Validate each level has required fields
+        valid_levels = {'beginner', 'intermediate', 'advanced'}
+        normalized_content = {}
+
+        for level, content in content_by_level.items():
+            if level not in valid_levels:
+                logger.warning(f'Invalid skill level in exercise: {level}')
+                continue
+
+            if not isinstance(content, dict):
+                continue
+
+            # Instructions are required
+            if 'instructions' not in content:
+                logger.warning(f'Missing instructions for {level} level')
+                continue
+
+            # Normalize hints to a list
+            hints = content.get('hints', [])
+            if not isinstance(hints, list):
+                hints = [hints] if hints else []
+
+            # Use None instead of empty string for optional command_hint
+            command_hint = content.get('command_hint')
+            if command_hint == '':
+                command_hint = None
+
+            normalized_content[level] = ExerciseContentByLevel(
+                instructions=content.get('instructions', ''),
+                command_hint=command_hint,
+                hints=hints,
+            )
+
+        if len(normalized_content) == 0:
+            logger.warning('No valid skill levels in exercise content_by_level')
+            return None
+
+        # Build validated exercise
+        return LessonExercise(
+            exercise_type=exercise_type,
+            scenario=exercise_data.get('scenario', ''),
+            expected_inputs=expected_inputs,
+            success_message=exercise_data.get('success_message', 'Great job!'),
+            expected_output=exercise_data.get('expected_output', ''),
+            content_by_level=normalized_content,
+        )
+
+    @classmethod
+    def _validate_quiz(cls, quiz_data: dict) -> LessonQuiz | None:
+        """Validate and normalize quiz data from AI response.
+
+        Args:
+            quiz_data: Raw quiz dict from AI response
+
+        Returns:
+            Validated LessonQuiz or None if invalid
+        """
+        if not quiz_data:
+            return None
+
+        questions = quiz_data.get('questions', [])
+        if not isinstance(questions, list) or len(questions) == 0:
+            logger.warning('Quiz must have at least one question')
+            return None
+
+        validated_questions: list[QuizQuestion] = []
+        valid_question_types = {'multiple_choice', 'true_false'}
+
+        for i, q in enumerate(questions):
+            if not isinstance(q, dict):
+                continue
+
+            # Check required fields
+            if 'question' not in q or 'correct_answer' not in q:
+                logger.warning(f'Quiz question {i} missing required fields')
+                continue
+
+            question_type = q.get('question_type', 'multiple_choice')
+            if question_type not in valid_question_types:
+                question_type = 'multiple_choice'
+
+            # Validate options for multiple choice
+            options = q.get('options', [])
+            if question_type == 'multiple_choice' and (not isinstance(options, list) or len(options) < 2):
+                logger.warning(f'Quiz question {i} has invalid options for multiple_choice')
+                continue
+
+            if question_type == 'true_false':
+                options = ['True', 'False']
+
+            # Normalize hint (None instead of empty string)
+            hint = q.get('hint')
+            if hint == '':
+                hint = None
+
+            validated_questions.append(
+                QuizQuestion(
+                    id=q.get('id', f'q{i + 1}'),
+                    question=q.get('question', ''),
+                    question_type=question_type,
+                    options=options,
+                    correct_answer=q.get('correct_answer'),
+                    explanation=q.get('explanation', ''),
+                    hint=hint,
+                )
+            )
+
+        if len(validated_questions) == 0:
+            logger.warning('No valid questions in quiz')
+            return None
+
+        # Calculate default passing score (allow one mistake)
+        default_passing = max(1, len(validated_questions) - 1)
+
+        return LessonQuiz(
+            questions=validated_questions,
+            passing_score=quiz_data.get('passing_score', default_passing),
+            encouragement_message=quiz_data.get('encouragement_message', 'Great job! You understood the key concepts.'),
+            retry_message=quiz_data.get('retry_message', 'Almost there! Review the lesson and try again.'),
+        )

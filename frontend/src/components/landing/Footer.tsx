@@ -34,7 +34,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="relative bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-white/5" role="contentinfo">
+    <footer className="relative bg-slate-900 border-t border-white/5" role="contentinfo">
       <div className="px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 md:grid-cols-[auto_1fr] gap-8 lg:gap-12">
           {/* All Thrive column */}
@@ -45,13 +45,13 @@ export function Footer() {
                 alt="All Thrive"
                 className="h-7 w-auto"
               />
-              <span className="text-gray-900 dark:text-white font-semibold text-xl">All Thrive</span>
+              <span className="text-white font-semibold text-xl">All Thrive</span>
             </Link>
             <ul className="space-y-3 mb-4">
               <li>
                 <Link
                   to="/about"
-                  className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                  className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
                 >
                   About
                 </Link>
@@ -59,7 +59,7 @@ export function Footer() {
               <li>
                 <Link
                   to="/pricing"
-                  className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                  className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
                 >
                   Pricing
                 </Link>
@@ -69,9 +69,9 @@ export function Footer() {
                   href="https://chat.whatsapp.com/ILi7yNkQB0e7dKbzaHjfZy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm inline-flex items-center gap-2 group"
+                  className="text-gray-400 hover:text-cyan-400 transition-colors text-sm inline-flex items-center gap-2 group"
                 >
-                  <ChatBubbleLeftRightIcon className="w-4 h-4 group-hover:text-cyan-600 dark:group-hover:text-cyan-400" />
+                  <ChatBubbleLeftRightIcon className="w-4 h-4 group-hover:text-cyan-400" />
                   Contact Us
                 </a>
               </li>
@@ -84,7 +84,7 @@ export function Footer() {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-sm bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 hover:border-cyan-400 dark:hover:border-cyan-500/30 transition-all duration-300"
+                  className="w-8 h-8 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all duration-300"
                   aria-label={`Follow us on ${item.name}`}
                 >
                   <FontAwesomeIcon icon={item.icon} className="w-3.5 h-3.5" />
@@ -97,13 +97,13 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1 grid grid-cols-2 md:flex md:justify-between gap-8 md:pl-12">
             {/* Discover links */}
             <nav aria-label="Discover">
-              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Discover</h3>
+              <h3 className="text-white font-semibold text-xl mb-4">Discover</h3>
               <ul className="space-y-3">
                 {navigation.discover.map((item) => (
                   <li key={item.name}>
                     <Link
                       to={item.href}
-                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                      className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
                     >
                       {item.name}
                     </Link>
@@ -114,13 +114,13 @@ export function Footer() {
 
             {/* Learn links */}
             <nav aria-label="Learn">
-              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Learn</h3>
+              <h3 className="text-white font-semibold text-xl mb-4">Learn</h3>
               <ul className="space-y-3">
                 {navigation.learn.map((item) => (
                   <li key={item.name}>
                     <Link
                       to={item.href}
-                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                      className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
                     >
                       {item.name}
                     </Link>
@@ -131,13 +131,13 @@ export function Footer() {
 
             {/* Play links */}
             <nav aria-label="Play">
-              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Play</h3>
+              <h3 className="text-white font-semibold text-xl mb-4">Play</h3>
               <ul className="space-y-3">
                 {navigation.play.map((item) => (
                   <li key={item.name}>
                     <Link
                       to={item.href}
-                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                      className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
                     >
                       {item.name}
                     </Link>
@@ -148,13 +148,13 @@ export function Footer() {
 
             {/* Connect links */}
             <nav aria-label="Connect">
-              <h3 className="text-gray-900 dark:text-white font-semibold text-xl mb-4">Connect</h3>
+              <h3 className="text-white font-semibold text-xl mb-4">Connect</h3>
               <ul className="space-y-3">
                 {navigation.connect.map((item) => (
                   <li key={item.name}>
                     <Link
                       to={item.href}
-                      className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors text-sm"
+                      className="text-gray-400 hover:text-cyan-400 transition-colors text-sm"
                     >
                       {item.name}
                     </Link>
@@ -166,20 +166,20 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-10 pt-8 border-t border-gray-200 dark:border-white/5 flex flex-col lg:flex-row items-center justify-between gap-4">
-          <p className="text-gray-500 dark:text-gray-500 text-sm flex flex-wrap items-center justify-center lg:justify-start gap-x-1">
+        <div className="mt-10 pt-8 border-t border-white/5 flex flex-col lg:flex-row items-center justify-between gap-4">
+          <p className="text-gray-500 text-sm flex flex-wrap items-center justify-center lg:justify-start gap-x-1">
             <span>&copy; {currentYear} All Thrive. All rights reserved.</span>
             <span className="mx-2">·</span>
-            <Link to="/privacy" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
+            <Link to="/privacy" className="hover:text-cyan-400 transition-colors">
               Privacy Policy
             </Link>
             <span className="mx-2">·</span>
-            <Link to="/terms" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
+            <Link to="/terms" className="hover:text-cyan-400 transition-colors">
               Terms of Service
             </Link>
           </p>
-          <p className="text-gray-500 dark:text-gray-500 text-sm text-center">
-            An AI playground to share and learn about AI.
+          <p className="text-gray-500 text-sm text-center">
+            Your AI Living Lab to share, learn, and play with AI.
           </p>
         </div>
       </div>

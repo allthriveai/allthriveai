@@ -100,7 +100,7 @@ class MyLearningPathsViewSet(viewsets.ViewSet):
         Returns recommended topics for the user to explore.
         """
         service = LearningPathService()
-        limit = int(request.query_params.get('limit', 5))
+        limit = safe_int(request.query_params.get('limit'), default=5, max_value=20)
         recommendations = service.get_recommended_topics(request.user, limit=limit)
         serializer = TopicRecommendationSerializer(recommendations, many=True)
         return Response(serializer.data)
@@ -403,7 +403,7 @@ class LearningEventsView(APIView):
 
         Returns recent learning events for the user.
         """
-        limit = int(request.query_params.get('limit', 20))
+        limit = safe_int(request.query_params.get('limit'), default=20, max_value=100)
         events = (
             LearningEvent.objects.filter(user=request.user)
             .select_related('concept', 'lesson')
@@ -458,7 +458,7 @@ class LearningStatsView(APIView):
 
         Returns learning statistics for the user.
         """
-        days = int(request.query_params.get('days', 30))
+        days = safe_int(request.query_params.get('days'), default=30, max_value=365)
         # Run sync since we're in a sync view
         from asgiref.sync import async_to_sync
 
@@ -478,7 +478,7 @@ class ProjectLearningView(APIView):
 
         Returns top learning-eligible projects.
         """
-        limit = int(request.query_params.get('limit', 10))
+        limit = safe_int(request.query_params.get('limit'), default=10, max_value=50)
 
         # Filter by concept
         concept_slug = request.query_params.get('concept')

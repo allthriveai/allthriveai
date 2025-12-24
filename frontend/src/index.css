@@ -175,6 +175,18 @@ body:not(.impersonating) {
     color-scheme: light;
   }
 
+  /* Force dark mode for landing page regardless of system theme */
+  .landing-dark-override {
+    --glass-fill: rgba(255, 255, 255, 0.08);
+    --glass-fill-subtle: rgba(255, 255, 255, 0.05);
+    --glass-fill-strong: rgba(255, 255, 255, 0.12);
+    --glass-border: rgba(148, 163, 184, 0.35);
+    --glass-border-subtle: rgba(255, 255, 255, 0.10);
+    --shadow-neon: 0 0 20px rgba(34, 211, 238, 0.3), 0 0 10px rgba(34, 211, 238, 0.1);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+  }
+
   body {
     @apply antialiased font-sans overflow-x-hidden;
     color: var(--text-primary);
@@ -1581,7 +1593,7 @@ body:not(.impersonating) {
   .learning-prose {
     @apply text-base leading-relaxed;
     color: rgba(255, 255, 255, 0.92);
-    font-size: 1.0625rem; /* 17px - slightly larger than base */
+    font-size: 1.125rem; /* 18px - larger for better readability */
     line-height: 1.75;
   }
 
@@ -1787,7 +1799,7 @@ body:not(.impersonating) {
 @layer components {
   .light .learning-prose {
     color: rgba(15, 23, 42, 0.9);
-    font-size: 1.0625rem;
+    font-size: 1.125rem;
   }
 
   .light .learning-prose h1,
