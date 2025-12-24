@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGripLinesVertical } from '@fortawesome/free-solid-svg-icons';
 import { HeroVideo } from './hero/HeroVideo';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ImageLightbox } from '@/components/ui/ImageLightbox';
@@ -1560,8 +1562,15 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         {/* Resize handle - desktop only */}
         <div
           {...resizeHandleProps}
-          className="hidden md:block absolute left-0 top-0 bottom-0 w-1 hover:w-1.5 bg-transparent hover:bg-primary-500/50 transition-all z-50 cursor-ew-resize"
-        />
+          className="hidden md:flex absolute left-0 top-0 bottom-0 w-3 hover:w-4 bg-transparent hover:bg-primary-500/20 transition-all z-50 cursor-ew-resize items-center justify-center group"
+        >
+          <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <FontAwesomeIcon
+              icon={faGripLinesVertical}
+              className="text-gray-400 dark:text-gray-500 text-xs"
+            />
+          </div>
+        </div>
 
         {/* Mobile drag handle indicator */}
         <div className="md:hidden flex justify-center pt-2 pb-1">
