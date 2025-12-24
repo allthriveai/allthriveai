@@ -2,14 +2,16 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
 import { HeroVideo } from './hero/HeroVideo';
 import { ToolTray } from '@/components/tools/ToolTray';
+import { ImageLightbox } from '@/components/ui/ImageLightbox';
 import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/gameRegistry';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
+import { useResizableTray } from '@/hooks/useResizableTray';
 import { toggleProjectLike, getProjectBySlug } from '@/services/projects';
 import { getOptimizedImageUrl } from '@/utils/imageOptimization';
 import type { Project } from '@/types/models';
@@ -152,6 +154,37 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   const [shouldRender, setShouldRender] = useState(false);
   // Track the visual open state (delayed to allow animation)
   const [visuallyOpen, setVisuallyOpen] = useState(false);
+
+  // Resizable tray - only on desktop
+  const { width: trayWidth, isDragging: isResizing, handleProps: resizeHandleProps } = useResizableTray({
+    minWidth: 380,
+    maxWidth: 900,
+    defaultWidth: 448, // 28rem = 448px
+    storageKey: 'projectPreviewTrayWidth',
+    isOpen,
+  });
+
+  // Image lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string>('');
+  const [lightboxImages, setLightboxImages] = useState<{ url: string; alt?: string }[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const openLightbox = (imageUrl: string, allImages?: { url: string; alt?: string }[], index?: number) => {
+    setLightboxImage(imageUrl);
+    if (allImages && allImages.length > 0) {
+      setLightboxImages(allImages);
+      setLightboxIndex(index ?? 0);
+    } else {
+      setLightboxImages([]);
+      setLightboxIndex(0);
+    }
+    setLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+  };
 
   // Mobile swipe-to-dismiss state
   const [dragOffset, setDragOffset] = useState(0);
@@ -655,11 +688,19 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
               {/* Submission image */}
               <div className="relative rounded-lg overflow-hidden border-2 border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
                 {mySubmission?.imageUrl ? (
-                  <img
-                    src={getOptimizedImageUrl(mySubmission.imageUrl, { width: 600 })}
-                    alt={`${project.username}'s submission`}
-                    className="w-full h-auto object-cover"
-                  />
+                  <button
+                    onClick={() => openLightbox(mySubmission.imageUrl!)}
+                    className="w-full group cursor-zoom-in"
+                  >
+                    <img
+                      src={getOptimizedImageUrl(mySubmission.imageUrl, { width: 600 })}
+                      alt={`${project.username}'s submission`}
+                      className="w-full h-auto object-cover transition-transform group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <MagnifyingGlassPlusIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    </div>
+                  </button>
                 ) : (
                   <div className="w-full aspect-square bg-slate-800 flex items-center justify-center">
                     <span className="text-slate-600 text-sm">No image</span>
@@ -708,11 +749,19 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
               {/* Submission image */}
               <div className="relative rounded-lg overflow-hidden border-2 border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.3)]">
                 {opponentSubmission?.imageUrl ? (
-                  <img
-                    src={getOptimizedImageUrl(opponentSubmission.imageUrl, { width: 600 })}
-                    alt="Opponent's submission"
-                    className="w-full h-auto object-cover"
-                  />
+                  <button
+                    onClick={() => openLightbox(opponentSubmission.imageUrl!)}
+                    className="w-full group cursor-zoom-in"
+                  >
+                    <img
+                      src={getOptimizedImageUrl(opponentSubmission.imageUrl, { width: 600 })}
+                      alt="Opponent's submission"
+                      className="w-full h-auto object-cover transition-transform group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <MagnifyingGlassPlusIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    </div>
+                  </button>
                 ) : (
                   <div className="w-full aspect-square bg-slate-800 flex items-center justify-center">
                     <span className="text-slate-600 text-sm">No image</span>
@@ -1175,13 +1224,19 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 />
               </div>
             ) : displayProject.featuredImageUrl ? (
-              <div className="relative w-full rounded-lg overflow-hidden">
+              <button
+                onClick={() => openLightbox(displayProject.featuredImageUrl!)}
+                className="relative w-full rounded-lg overflow-hidden group cursor-zoom-in"
+              >
                 <img
                   src={getOptimizedImageUrl(displayProject.featuredImageUrl, { width: 600 })}
                   alt={displayProject.title}
-                  className="w-full h-auto object-cover"
+                  className="w-full h-auto object-cover transition-transform group-hover:scale-[1.02]"
                 />
-              </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <MagnifyingGlassPlusIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                </div>
+              </button>
             ) : null}
           </div>
 
@@ -1347,16 +1402,27 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
               </h3>
               <div className={`grid gap-2 ${galleryImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {galleryImages.map((image: any, index: number) => (
-                  <div
+                  <button
                     key={index}
-                    className="relative rounded-lg overflow-hidden aspect-video bg-gray-100 dark:bg-slate-800"
+                    onClick={() => openLightbox(
+                      image.url || image,
+                      galleryImages.map((img: any) => ({
+                        url: img.url || img,
+                        alt: img.caption || `Gallery image`,
+                      })),
+                      index
+                    )}
+                    className="relative rounded-lg overflow-hidden aspect-video bg-gray-100 dark:bg-slate-800 group cursor-zoom-in"
                   >
                     <img
                       src={getOptimizedImageUrl(image.url || image, { width: 300 })}
                       alt={image.caption || `Gallery image ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
-                  </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <MagnifyingGlassPlusIcon className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1468,12 +1534,12 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
       />
 
       {/* Right Sidebar Drawer - Smooth slide animation
-          On desktop: shifts left when topic tray is open to show both side by side
-          On mobile: stays at right-0 (topic tray overlays on top) */}
+          On desktop: resizable width, shifts left when topic tray is open
+          On mobile: full width, stays at right-0 (topic tray overlays on top) */}
       <aside
         ref={trayRef}
-        className={`fixed top-0 right-0 h-full w-full md:w-96 lg:w-[28rem] border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col ${
-          isDragging ? '' : 'transition-all duration-300 ease-in-out'
+        className={`fixed top-0 right-0 h-full w-full border-l border-gray-200 dark:border-white/10 shadow-2xl z-40 overflow-hidden flex flex-col ${
+          isDragging || isResizing ? '' : 'transition-all duration-300 ease-in-out'
         } ${visuallyOpen && dragOffset === 0 ? 'translate-x-0' : ''} ${
           !visuallyOpen && dragOffset === 0 ? 'translate-x-full' : ''
         } ${showToolTray ? 'md:right-[28rem]' : ''}`}
@@ -1485,9 +1551,18 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
           // Apply drag transform on mobile
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+          // Dynamic width on desktop (md breakpoint = 768px)
+          width: typeof window !== 'undefined' && window.innerWidth >= 768 ? `${trayWidth}px` : undefined,
+          maxWidth: typeof window !== 'undefined' && window.innerWidth >= 768 ? '90vw' : undefined,
         }}
         onTransitionEnd={handleTransitionEnd}
       >
+        {/* Resize handle - desktop only */}
+        <div
+          {...resizeHandleProps}
+          className="hidden md:block absolute left-0 top-0 bottom-0 w-1 hover:w-1.5 bg-transparent hover:bg-primary-500/50 transition-all z-50 cursor-ew-resize"
+        />
+
         {/* Mobile drag handle indicator */}
         <div className="md:hidden flex justify-center pt-2 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
@@ -1503,6 +1578,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
           toolSlug={selectedToolSlug}
         />
       )}
+
+      {/* Image Lightbox - Opens when clicking an image */}
+      <ImageLightbox
+        isOpen={lightboxOpen}
+        onClose={closeLightbox}
+        imageUrl={lightboxImage}
+        images={lightboxImages.length > 0 ? lightboxImages : undefined}
+        currentIndex={lightboxIndex}
+        onNavigate={setLightboxIndex}
+      />
     </>,
     document.body
   );
