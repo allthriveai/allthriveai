@@ -881,16 +881,16 @@ export function ContextSnakeCore({ variant, onGameEnd }: ContextSnakeCoreProps) 
                 </p>
               )}
 
-              {/* Play again button (full version) */}
-              {!isMini && (
-                <button
-                  onClick={startGame}
-                  className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl font-semibold flex items-center gap-2 hover:from-cyan-400 hover:to-teal-400 transition-all text-sm"
-                >
-                  <FontAwesomeIcon icon={faRotateRight} />
-                  Play Again
-                </button>
-              )}
+              {/* Play again button */}
+              <button
+                onClick={startGame}
+                className={`bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl font-semibold flex items-center gap-2 hover:from-cyan-400 hover:to-teal-400 transition-all ${
+                  isMini ? 'px-4 py-2 text-xs' : 'px-5 py-2.5 text-sm'
+                }`}
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+                Play Again
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
