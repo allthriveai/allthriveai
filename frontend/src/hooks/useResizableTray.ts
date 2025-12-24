@@ -23,6 +23,10 @@ interface UseResizableTrayReturn {
   width: number;
   /** Whether the user is currently dragging */
   isDragging: boolean;
+  /** Whether the tray is expanded to max width */
+  isExpanded: boolean;
+  /** Toggle between default and max width */
+  toggleExpand: () => void;
   /** Props to spread on the resize handle element */
   handleProps: {
     onMouseDown: (e: React.MouseEvent) => void;
@@ -158,9 +162,23 @@ export function useResizableTray({
     }
   }, [defaultWidth, storageKey]);
 
+  // Check if tray is expanded (within 50px of max)
+  const isExpanded = width >= maxWidth - 50;
+
+  // Toggle between default and max width
+  const toggleExpand = useCallback(() => {
+    if (isExpanded) {
+      setWidth(defaultWidth);
+    } else {
+      setWidth(maxWidth);
+    }
+  }, [isExpanded, defaultWidth, maxWidth]);
+
   return {
     width,
     isDragging,
+    isExpanded,
+    toggleExpand,
     handleProps: {
       onMouseDown: handleMouseDown,
       onTouchStart: handleTouchStart,

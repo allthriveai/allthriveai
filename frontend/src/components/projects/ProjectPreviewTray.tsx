@@ -6,7 +6,7 @@ import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, A
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGripLinesVertical } from '@fortawesome/free-solid-svg-icons';
+import { faGripLinesVertical, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import { HeroVideo } from './hero/HeroVideo';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ImageLightbox } from '@/components/ui/ImageLightbox';
@@ -158,7 +158,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   const [visuallyOpen, setVisuallyOpen] = useState(false);
 
   // Resizable tray - only on desktop
-  const { width: trayWidth, isDragging: isResizing, handleProps: resizeHandleProps } = useResizableTray({
+  const { width: trayWidth, isDragging: isResizing, isExpanded, toggleExpand, handleProps: resizeHandleProps } = useResizableTray({
     minWidth: 380,
     maxWidth: 900,
     defaultWidth: 448, // 28rem = 448px
@@ -654,13 +654,24 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 {challengeText}
               </h1>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-              aria-label="Close"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Expand button - desktop only */}
+              <button
+                onClick={toggleExpand}
+                className="hidden md:flex p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -978,13 +989,24 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 by @{project.username}
               </Link>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-              aria-label="Close"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Expand button - desktop only */}
+              <button
+                onClick={toggleExpand}
+                className="hidden md:flex p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1203,13 +1225,24 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 by @{displayProject.username}
               </Link>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-              aria-label="Close"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Expand button - desktop only */}
+              <button
+                onClick={toggleExpand}
+                className="hidden md:flex p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
