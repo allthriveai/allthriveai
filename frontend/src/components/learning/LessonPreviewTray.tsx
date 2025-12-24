@@ -1,8 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { XMarkIcon, ArrowRightIcon, ClockIcon, LightBulbIcon, SignalIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowRightIcon, ClockIcon, LightBulbIcon, SignalIcon, AcademicCapIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faExpand, faCompress, faGripLinesVertical } from '@fortawesome/free-solid-svg-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { useResizableTray } from '@/hooks/useResizableTray';
+import { ImageLightbox } from '@/components/ui/ImageLightbox';
 import type { PublicLesson } from '@/services/learningPaths';
 
 // Threshold for dismissing the tray (in pixels)
@@ -28,6 +32,18 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
   // Mobile swipe-to-dismiss state
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Lightbox state
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  // Resizable tray
+  const { width: trayWidth, isDragging: isResizing, isExpanded, toggleExpand, handleProps: resizeHandleProps } = useResizableTray({
+    minWidth: 380,
+    maxWidth: 900,
+    defaultWidth: 420,
+    storageKey: 'lessonPreviewTrayWidth',
+    isOpen,
+  });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLElement>(null);
   const touchStartRef = useRef<{ y: number; time: number; scrollTop: number } | null>(null);
@@ -159,21 +175,30 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
         role="dialog"
         aria-modal="true"
         aria-label={`Preview of ${lesson.title}`}
-        className={`fixed z-[9999] bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-300 ease-out
-          md:right-0 md:top-0 md:h-full md:w-[420px] md:max-w-[90vw]
+        className={`fixed z-[9999] bg-white dark:bg-slate-900 shadow-2xl ease-out
+          md:right-0 md:top-0 md:h-full md:max-w-[90vw]
           max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:h-[85vh] max-md:rounded-t-2xl
           ${visuallyOpen ? 'translate-x-0 max-md:translate-y-0' : 'translate-x-full max-md:translate-x-0 max-md:translate-y-full'}
+          ${isResizing ? '' : 'transition-transform duration-300'}
         `}
         style={{
+          width: window.innerWidth >= 768 ? `${trayWidth}px` : undefined,
           transform: isDragging
             ? `translateY(${dragOffset}px)`
             : undefined,
-          transition: isDragging ? 'none' : undefined,
+          transition: isDragging || isResizing ? 'none' : undefined,
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* Resize handle (desktop only) */}
+        <div className="hidden md:block" {...resizeHandleProps}>
+          <FontAwesomeIcon
+            icon={faGripLinesVertical}
+            className="absolute left-1 top-1/2 -translate-y-1/2 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+          />
+        </div>
         {/* Mobile drag handle */}
         <div className="md:hidden flex justify-center pt-3 pb-2">
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
@@ -187,13 +212,23 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
               {formatLessonType(lesson.lessonType)}
             </span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            aria-label="Close preview"
-          >
-            <XMarkIcon className="w-5 h-5 text-gray-500" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleExpand}
+              className="hidden md:flex p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label={isExpanded ? 'Collapse tray' : 'Expand tray'}
+              title={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} className="w-4 h-4 text-gray-500" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Close preview"
+            >
+              <XMarkIcon className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -204,13 +239,19 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
         >
           {/* Cover image */}
           {lesson.imageUrl ? (
-            <div className="relative aspect-video bg-gradient-to-br from-amber-500/20 to-orange-500/20">
+            <button
+              onClick={() => setIsLightboxOpen(true)}
+              className="relative aspect-video bg-gradient-to-br from-amber-500/20 to-orange-500/20 w-full group cursor-pointer"
+            >
               <img
                 src={lesson.imageUrl}
                 alt={lesson.title}
                 className="w-full h-full object-cover"
               />
-            </div>
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <MagnifyingGlassPlusIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+              </div>
+            </button>
           ) : (
             <div className="aspect-video bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
               <LightBulbIcon className="w-16 h-16 text-amber-500/50" />
@@ -279,6 +320,16 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
           </button>
         </div>
       </aside>
+
+      {/* Image Lightbox */}
+      {lesson.imageUrl && (
+        <ImageLightbox
+          isOpen={isLightboxOpen}
+          onClose={() => setIsLightboxOpen(false)}
+          imageUrl={lesson.imageUrl}
+          alt={lesson.title}
+        />
+      )}
     </>
   );
 
