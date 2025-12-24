@@ -100,6 +100,10 @@ class InvitationRequest(models.Model):
         blank=True,
         help_text='Internal notes from reviewer',
     )
+    admin_notes = models.TextField(
+        blank=True,
+        help_text='Free-form admin notes (editable anytime)',
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

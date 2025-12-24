@@ -144,6 +144,7 @@ from .users.invitation_api_views import (
     list_invitations,
     reject_invitation,
     resend_approval_email,
+    update_invitation_notes,
 )
 from .users.invitation_views import request_invitation
 from .users.views import (
@@ -270,6 +271,7 @@ urlpatterns = [
     path(
         'admin/invitations/<int:invitation_id>/resend-email/', resend_approval_email, name='admin_resend_approval_email'
     ),
+    path('admin/invitations/<int:invitation_id>/notes/', update_invitation_notes, name='admin_update_invitation_notes'),
     # Admin Impersonation (Masquerade) endpoints
     path('admin/impersonate/start/', start_impersonation, name='admin_start_impersonation'),
     path('admin/impersonate/stop/', stop_impersonation, name='admin_stop_impersonation'),
