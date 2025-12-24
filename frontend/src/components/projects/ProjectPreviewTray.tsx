@@ -141,6 +141,8 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
   // Game state - lazy load the mini game component
   const [GameComponent, setGameComponent] = useState<React.ComponentType<any> | null>(null);
   const [isLoadingGame, setIsLoadingGame] = useState(false);
+  const [gameKey, setGameKey] = useState(0); // Key to force re-mount for replay
+  const [gameEnded, setGameEnded] = useState(false);
 
   // Enriched project with full content (fetched when tray opens)
   const [enrichedProject, setEnrichedProject] = useState<Project | null>(null);
@@ -341,6 +343,9 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     // Close tool tray when switching to a different project
     setShowToolTray(false);
     setSelectedToolSlug('');
+    // Reset game state for new project
+    setGameKey(0);
+    setGameEnded(false);
   }, [project?.id]);
 
   // Fetch full project content when tray opens (for non-battle projects without rich content)
@@ -877,9 +882,15 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     const gameUrl = project.content?.gameUrl || '';
     const gameType = getGameType(project);
 
-    // Handle game end - navigate to full game
+    // Handle game end - show replay option
     const handleGameEnd = () => {
-      // Game ended in mini mode - could show score or prompt to play full game
+      setGameEnded(true);
+    };
+
+    // Play again - reset game state and increment key to force re-mount
+    const handlePlayAgain = () => {
+      setGameEnded(false);
+      setGameKey(prev => prev + 1);
     };
 
     // Navigate to full game
@@ -930,7 +941,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain pb-10">
           {/* Mini Game Area */}
           <div className="p-4">
-            <div className="rounded-xl overflow-hidden bg-slate-900 border border-gray-700">
+            <div className="relative rounded-xl overflow-hidden bg-slate-900 border border-gray-700">
               {isLoadingGame ? (
                 <div className="flex items-center justify-center h-[300px] bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
                   <div className="flex flex-col items-center gap-3">
@@ -939,7 +950,7 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                   </div>
                 </div>
               ) : GameComponent && gameType ? (
-                <GameComponent variant="mini" onGameEnd={handleGameEnd} />
+                <GameComponent key={gameKey} variant="mini" onGameEnd={handleGameEnd} />
               ) : (
                 // Fallback if game can't be loaded - show featured image or placeholder
                 <div className="flex items-center justify-center h-[300px] bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
@@ -955,6 +966,29 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                       <span className="text-sm">Click below to play</span>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Game ended overlay with replay option */}
+              {gameEnded && (
+                <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                  <h3 className="text-xl font-bold text-white">Game Over!</h3>
+                  <div className="flex flex-col gap-2 w-48">
+                    <button
+                      onClick={handlePlayAgain}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium transition-colors"
+                    >
+                      <PlayIcon className="w-5 h-5" />
+                      Play Again
+                    </button>
+                    <button
+                      onClick={handlePlayFullGame}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors"
+                    >
+                      <ArrowRightIcon className="w-4 h-4" />
+                      Full Game
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
