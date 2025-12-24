@@ -208,11 +208,17 @@ export function EthicsDefenderCore({
       }
 
       const question = questions[questionIndex];
+      // Adjust spacing for mini variant - more vertical separation
+      const xOffset = isMini ? 28 : 25;
+      const xSpacing = isMini ? 44 : 50;
+      const yOffset = isMini ? 16 : 22;
+      const ySpacing = isMini ? 28 : 22;
+
       const targets: AnswerTarget[] = question.options.map((text, i) => ({
         id: i,
         text,
-        x: 25 + (i % 2) * 50,
-        y: 22 + Math.floor(i / 2) * 22,
+        x: xOffset + (i % 2) * xSpacing,
+        y: yOffset + Math.floor(i / 2) * ySpacing,
         isCorrect: i === question.correctIndex,
         hit: false,
       }));
@@ -222,7 +228,7 @@ export function EthicsDefenderCore({
       setGameState('playing');
       setTargetedAnswer(null);
     },
-    [questions]
+    [questions, isMini]
   );
 
   // Handle mouse/touch movement
