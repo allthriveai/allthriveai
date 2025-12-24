@@ -55,6 +55,12 @@ export const GRADIENT_OVERLAY = {
   DEFAULT_TO: 'rgb(79, 70, 229)', // indigo-600
 } as const;
 
+// Prompt card gradient (brand cyan colors)
+export const PROMPT_GRADIENT = {
+  FROM: 'rgb(14, 165, 233)', // cyan-500
+  TO: 'rgb(8, 145, 178)', // cyan-600
+} as const;
+
 // Tool display
 export const TOOL_DISPLAY = {
   ICON_SIZE: 'w-5 h-5',

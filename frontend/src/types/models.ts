@@ -292,6 +292,10 @@ export interface ProjectContent {
   difficulty?: string; // Game difficulty level
   learningOutcomes?: string[]; // What users will learn
   topicTags?: string[]; // Topic tags for the game
+  // Prompt library fields (for prompt type projects)
+  prompt?: {
+    text: string; // The prompt text
+  };
 }
 
 // Base block interface

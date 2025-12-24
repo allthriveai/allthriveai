@@ -34,7 +34,7 @@ import {
   PencilIcon,
 } from '@heroicons/react/24/outline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaperclip } from '@fortawesome/free-solid-svg-icons';
+import { faPaperclip, faLightbulb, faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { getCategoryColors } from '@/utils/categoryColors';
 
 /**
@@ -107,6 +107,9 @@ export function DefaultProjectLayout() {
   const [showHeroEditor, setShowHeroEditor] = useState(false);
   // Pending file from drag-and-drop on hero image
   const [pendingHeroFile, setPendingHeroFile] = useState<File | null>(null);
+
+  // Prompt copy state
+  const [promptCopied, setPromptCopied] = useState(false);
 
   // Toggle between edit and published view
   const toggleEditMode = useCallback(() => {
@@ -717,7 +720,61 @@ export function DefaultProjectLayout() {
         );
       })()}
 
-      {/* Project Details Section - show for owners only when editing and empty, or when there's content */}
+      {/* Prompt Text Section - for prompt type projects, uses heroQuote from hero display */}
+      {project.type === 'prompt' && project.content?.heroQuote && (
+        <div className="max-w-5xl mx-auto px-6 sm:px-8 py-12 md:py-16">
+          {/* Section Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <span className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-[0_0_15px_rgba(14,165,233,0.3)]">
+              <FontAwesomeIcon icon={faLightbulb} className="w-4 h-4" />
+              Prompt
+            </span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+            <button
+              onClick={async () => {
+                const promptText = project.content?.heroQuote || '';
+                await navigator.clipboard.writeText(promptText);
+                setPromptCopied(true);
+                setTimeout(() => setPromptCopied(false), 2000);
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                promptCopied
+                  ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                  : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white shadow-[0_0_15px_rgba(14,165,233,0.3)] hover:shadow-[0_0_20px_rgba(14,165,233,0.4)]'
+              }`}
+            >
+              <FontAwesomeIcon icon={promptCopied ? faCheck : faCopy} className="w-4 h-4" />
+              {promptCopied ? 'Copied!' : 'Copy Prompt'}
+            </button>
+          </div>
+
+          {/* Prompt Text Box */}
+          <div className="relative p-6 rounded-2xl bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-900/20 dark:to-sky-900/20 border border-cyan-200 dark:border-cyan-800/50 shadow-lg">
+            <pre className="whitespace-pre-wrap text-base md:text-lg text-gray-800 dark:text-gray-200 font-mono leading-relaxed">
+              {project.content?.heroQuote}
+            </pre>
+          </div>
+
+          {/* Topics */}
+          {project.topicsDetails && project.topicsDetails.length > 0 && (
+            <div className="mt-6">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Topics:</p>
+              <div className="flex flex-wrap gap-2">
+                {project.topicsDetails.map((topic) => (
+                  <span
+                    key={topic.id}
+                    className="px-3 py-1 text-sm rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                  >
+                    #{topic.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Project Details Section - show when there's content, or when editing non-prompt projects */}
       {hasTemplateSections ? (
         <ProjectSections
           sections={(project.content.sections || []) as import('@/types/sections').ProjectSection[]}
@@ -727,7 +784,7 @@ export function DefaultProjectLayout() {
           onDeleteSection={handleDeleteSection}
           onReorderSections={handleReorderSections}
         />
-      ) : (visibleBlocks.length > 0 || isEditing) && (
+      ) : (visibleBlocks.length > 0 || (isEditing && project.type !== 'prompt')) && (
         <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 md:py-24">
           <div className="flex items-center gap-4 mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Project Details</h2>

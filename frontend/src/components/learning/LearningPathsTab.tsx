@@ -300,7 +300,7 @@ export function LearningPathsTab({ username, isOwnProfile }: LearningPathsTabPro
                 <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center mx-auto mb-2">
                   <FontAwesomeIcon icon={faTrophy} className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
-                <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                <h3 className="font-medium text-gray-900 dark:text-white text-sm">
                   {path.topicDisplay}
                 </h3>
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
@@ -412,7 +412,7 @@ function PathTeaserCard({ path, username }: PathTeaserCardProps) {
 
       {/* Content */}
       <div className="p-3">
-        <h3 className="font-semibold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+        <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
           {path.title}
         </h3>
         <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-gray-400 mt-1">

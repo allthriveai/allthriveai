@@ -75,6 +75,7 @@ const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
 
 // Community pages - lazy loaded
 const LoungePage = lazy(() => import('@/pages/community/LoungePage'));
+const FeedbackPage = lazy(() => import('@/pages/FeedbackPage'));
 
 // Battle pages - lazy loaded
 const BattlesLobbyPage = lazy(() => import('@/pages/battles').then((m) => ({ default: m.BattlesLobbyPage })));
@@ -335,6 +336,24 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <LoungePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Community Feedback - protected */}
+      <Route
+        path="/feedback"
+        element={
+          <ProtectedRoute>
+            <FeedbackPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/feedback/:id"
+        element={
+          <ProtectedRoute>
+            <FeedbackPage />
           </ProtectedRoute>
         }
       />

@@ -466,10 +466,13 @@ THE DIAGRAM MUST:
 Style:
 - Dark slate background (#0F172A to #1E293B)
 {color_scheme}
-- Futuristic, sci-fi aesthetic with sleek lines and subtle metallic accents
-- Clean diagram layout with a high-tech, modern feel
-- Labels and arrows where they aid understanding
+- Futuristic, sci-fi aesthetic with THIN, ELEGANT lines (1-2px weight)
+- Use delicate, refined strokes - NOT thick or heavy lines
+- Clean, minimalist diagram layout with a premium, sophisticated feel
+- Thin arrows and connectors with subtle metallic accents
+- Labels in a refined, lightweight font style
 - High contrast for readability - no excessive glow that reduces legibility
+- The overall aesthetic should feel elevated and classy, like a premium design publication
 """
 
 
@@ -562,3 +565,135 @@ def generate_lesson_image(
     except Exception as exc:
         logger.error(f'Lesson image generation failed: {exc}', exc_info=True)
         return None
+
+
+@shared_task(bind=True, max_retries=1, default_retry_delay=30)
+def generate_lesson_images_for_path(self, saved_path_id: int, user_id: int):
+    """
+    Generate images for all AI lessons in a SavedLearningPath.
+
+    This runs asynchronously after path creation so lessons appear
+    with images in the explore feed.
+
+    Args:
+        saved_path_id: SavedLearningPath ID
+        user_id: User ID for AI usage tracking
+
+    Returns:
+        Dict with generation results
+    """
+    import hashlib
+    import json
+
+    from .models import LessonImage, SavedLearningPath
+
+    logger.info(f'Starting lesson image generation for path {saved_path_id}')
+
+    try:
+        # Get the saved path
+        try:
+            saved_path = SavedLearningPath.objects.get(id=saved_path_id)
+        except SavedLearningPath.DoesNotExist:
+            logger.error(f'SavedLearningPath not found: id={saved_path_id}')
+            return {'status': 'error', 'reason': 'path_not_found'}
+
+        curriculum = saved_path.path_data.get('curriculum', [])
+        ai_lessons = [item for item in curriculum if item.get('type') == 'ai_lesson']
+
+        if not ai_lessons:
+            logger.info(f'No AI lessons in path {saved_path_id}')
+            # Still publish the path even without AI lessons (curated content only)
+            if not saved_path.is_published:
+                from django.utils import timezone
+
+                saved_path.is_published = True
+                saved_path.published_at = timezone.now()
+                saved_path.save(update_fields=['is_published', 'published_at', 'updated_at'])
+                logger.info(f'Published path {saved_path_id} (no AI lessons to generate images for)')
+            return {
+                'status': 'success',
+                'generated': 0,
+                'published': True,
+                'message': 'No AI lessons to generate images for',
+            }
+
+        generated_count = 0
+        failed_count = 0
+
+        for lesson in ai_lessons:
+            lesson_order = lesson.get('order', 0)
+            content = lesson.get('content', {})
+
+            # Calculate content hash for cache
+            content_hash = hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()[:16]
+
+            # Check if image already exists with same content
+            existing = LessonImage.objects.filter(
+                saved_path=saved_path,
+                lesson_order=lesson_order,
+            ).first()
+
+            if existing and existing.content_hash == content_hash:
+                logger.debug(f'Lesson image already exists for order {lesson_order}')
+                continue
+
+            # Generate the image
+            image_url = generate_lesson_image(
+                lesson=lesson,
+                path_title=saved_path.title,
+                user_id=user_id,
+                lesson_order=lesson_order,
+            )
+
+            if image_url:
+                # Save or update the LessonImage record
+                LessonImage.objects.update_or_create(
+                    saved_path=saved_path,
+                    lesson_order=lesson_order,
+                    defaults={
+                        'content_hash': content_hash,
+                        'image_url': image_url,
+                    },
+                )
+                generated_count += 1
+                logger.info(f'Generated image for lesson {lesson_order} in path {saved_path_id}')
+            else:
+                failed_count += 1
+                logger.warning(f'Failed to generate image for lesson {lesson_order} in path {saved_path_id}')
+
+        logger.info(
+            f'Lesson image generation complete for path {saved_path_id}: '
+            f'{generated_count} generated, {failed_count} failed'
+        )
+
+        # Only publish if at least one image was generated successfully
+        # This prevents paths with no images from appearing on explore
+        published = False
+        if generated_count > 0 and not saved_path.is_published:
+            from django.utils import timezone
+
+            saved_path.is_published = True
+            saved_path.published_at = timezone.now()
+            saved_path.save(update_fields=['is_published', 'published_at', 'updated_at'])
+            published = True
+            logger.info(f'Published path {saved_path_id} to explore feed after image generation')
+        elif generated_count == 0 and failed_count > 0:
+            logger.warning(f'Path {saved_path_id} NOT published - all {failed_count} image generations failed')
+
+        return {
+            'status': 'success',
+            'saved_path_id': saved_path_id,
+            'generated': generated_count,
+            'failed': failed_count,
+            'total_lessons': len(ai_lessons),
+            'published': published,
+        }
+
+    except Exception as exc:
+        logger.error(f'Lesson image generation failed for path {saved_path_id}: {exc}', exc_info=True)
+
+        try:
+            raise self.retry(exc=exc)
+        except self.MaxRetriesExceededError:
+            logger.error(f'Lesson image generation failed after max retries: {exc}')
+            return {'status': 'error', 'reason': 'max_retries_exceeded'}

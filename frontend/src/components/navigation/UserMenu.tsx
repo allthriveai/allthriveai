@@ -10,6 +10,10 @@ import {
   ChevronRightIcon,
   GiftIcon,
   EnvelopeIcon,
+  LightBulbIcon,
+  UserCircleIcon,
+  AcademicCapIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { useMessagesTrayOptional } from '@/context/MessagesTrayContext';
 import type { User } from '@/types/models';
@@ -51,9 +55,11 @@ export function UserMenu({ user }: UserMenuProps) {
     }
   };
 
-  const menuItems = [
+  // Group 1: You - Profile & Messages
+  const profileItems = [
     {
       label: 'My Profile',
+      icon: UserCircleIcon,
       onClick: () => {
         navigate(`/${user.username}?tab=playground`);
         setIsOpen(false);
@@ -71,13 +77,10 @@ export function UserMenu({ user }: UserMenuProps) {
           },
         ]
       : []),
-    {
-      label: 'Account Settings',
-      onClick: () => {
-        navigate('/account/settings');
-        setIsOpen(false);
-      },
-    },
+  ];
+
+  // Group 2: Discover - Growth & Engagement
+  const discoverItems = [
     {
       label: 'Onboarding',
       icon: RocketLaunchIcon,
@@ -88,10 +91,42 @@ export function UserMenu({ user }: UserMenuProps) {
       },
     },
     {
+      label: 'Learning Paths',
+      icon: AcademicCapIcon,
+      onClick: () => {
+        navigate('/learn');
+        setIsOpen(false);
+      },
+    },
+    {
       label: 'Membership Perks',
       icon: GiftIcon,
       onClick: () => {
         navigate('/perks');
+        setIsOpen(false);
+      },
+    },
+  ];
+
+  // Group 3: Contribute
+  const contributeItems = [
+    {
+      label: 'Feedback & Ideas',
+      icon: LightBulbIcon,
+      onClick: () => {
+        navigate('/feedback');
+        setIsOpen(false);
+      },
+    },
+  ];
+
+  // Group 4: Settings
+  const settingsItems = [
+    {
+      label: 'Account Settings',
+      icon: Cog6ToothIcon,
+      onClick: () => {
+        navigate('/account/settings');
         setIsOpen(false);
       },
     },
@@ -190,12 +225,24 @@ export function UserMenu({ user }: UserMenuProps) {
             </div>
           </div>
 
-          {/* Menu Items */}
+          {/* Profile & Messages */}
           <div className="py-1">
-            {menuItems.map((item) => {
-              const Icon = 'icon' in item ? item.icon : null;
-              const isHighlight = 'highlight' in item && item.highlight;
+            {profileItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={item.onClick}
+                className="w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10"
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
 
+          {/* Discover */}
+          <div className="border-t border-white/10 dark:border-white/5 py-1">
+            {discoverItems.map((item) => {
+              const isHighlight = 'highlight' in item && item.highlight;
               return (
                 <button
                   key={item.label}
@@ -206,11 +253,39 @@ export function UserMenu({ user }: UserMenuProps) {
                       : 'text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10'
                   }`}
                 >
-                  {Icon && <Icon className="w-4 h-4" />}
+                  <item.icon className="w-4 h-4" />
                   {item.label}
                 </button>
               );
             })}
+          </div>
+
+          {/* Contribute */}
+          <div className="border-t border-white/10 dark:border-white/5 py-1">
+            {contributeItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={item.onClick}
+                className="w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10"
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Settings & Dashboard */}
+          <div className="border-t border-white/10 dark:border-white/5 py-1">
+            {settingsItems.map((item) => (
+              <button
+                key={item.label}
+                onClick={item.onClick}
+                className="w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] backdrop-blur-xl flex items-center gap-2 text-gray-800 dark:text-gray-200 hover:bg-white/20 dark:hover:bg-white/10"
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            ))}
 
             {/* Dashboard Submenu - Only for admins and vendors */}
             {showDashboard && (

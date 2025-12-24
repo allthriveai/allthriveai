@@ -107,6 +107,36 @@ class CreateProductInput(BaseModel):
     state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
+class CreatePromptInput(BaseModel):
+    """Input for create_prompt tool - saves a prompt to user's prompt library."""
+
+    model_config = {'extra': 'allow'}
+
+    title: str = Field(description='A short, descriptive title for the prompt (e.g., "Blog Post Outline Generator")')
+    prompt_text: str = Field(
+        description=(
+            'The full prompt text that the user wants to save. ' 'This is the actual prompt they use with AI tools.'
+        )
+    )
+    description: str = Field(
+        default='',
+        description='Optional description explaining what the prompt does or when to use it',
+    )
+    tool_names: list[str] = Field(
+        default_factory=list,
+        description='AI tools this prompt works well with (e.g., ["ChatGPT", "Claude", "Midjourney"])',
+    )
+    topics: list[str] = Field(
+        default_factory=list,
+        description='Topics/tags for categorizing the prompt (e.g., ["writing", "marketing", "productivity"])',
+    )
+    is_private: bool = Field(
+        default=False,
+        description='Whether the prompt should be private (only visible to the user) or public (shared with community)',
+    )
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
+
+
 class ScrapeWebpageInput(BaseModel):
     """Input for scrape_webpage_for_project tool."""
 
@@ -2807,6 +2837,115 @@ Return ONLY valid JSON in this exact format, no other text:
         return {'success': False, 'error': f'Failed to analyze screenshot: {str(e)}'}
 
 
+@tool(args_schema=CreatePromptInput)
+def create_prompt(
+    title: str,
+    prompt_text: str,
+    description: str = '',
+    tool_names: list[str] | None = None,
+    topics: list[str] | None = None,
+    is_private: bool = False,
+    state: dict | None = None,
+) -> dict:
+    """
+    Save a prompt to the user's personal AI prompt library.
+
+    Use this tool when the user wants to save a prompt they use with ANY AI tool
+    (ChatGPT, Claude, Midjourney, DALL-E, etc.) for later reference or to share
+    with the community.
+
+    Examples of when to use this tool:
+    - "Save this prompt to my library"
+    - "Add this to my prompts"
+    - "I want to save this prompt for later"
+    - "Save this as a prompt called 'Blog Generator'"
+
+    Returns:
+        Dictionary with prompt/project details or error message
+    """
+    from core.projects.models import Project
+    from core.tools.models import Tool
+    from core.users.models import User
+
+    logger.info(f'create_prompt called with title: {title}')
+
+    # Get user from injected state
+    if not state or 'user_id' not in state:
+        logger.error(f'User not authenticated - state: {state}')
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+    username = state.get('username', '')
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # Build content with prompt data
+    content = {
+        'templateVersion': 2,
+        'sections': [],
+        'prompt': {
+            'text': prompt_text,
+        },
+    }
+
+    # Create the prompt project
+    project = Project.objects.create(
+        user=user,
+        title=title,
+        description=description,
+        type=Project.ProjectType.PROMPT,
+        content=content,
+        is_showcased=not is_private,  # If public, show in showcase/feed
+        is_private=is_private,
+        tools_order=[],
+    )
+
+    # Add AI tools if specified
+    if tool_names:
+        tool_names_lower = [name.lower() for name in tool_names]
+        matching_tools = Tool.objects.filter(
+            name__iregex=r'^(' + '|'.join(tool_names_lower) + r')$',
+            is_active=True,
+        )
+        if matching_tools.exists():
+            project.tools.set(matching_tools)
+            project.tools_order = [t.id for t in matching_tools]
+            project.save(update_fields=['tools_order'])
+
+    # Add topics if specified
+    if topics:
+        try:
+            set_project_topics(project, topics[:10])
+            logger.info(f'Added topics to prompt: {topics[:10]}')
+        except Exception as e:
+            logger.warning(f'Failed to add topics: {e}')
+
+    logger.info(
+        f'Successfully created prompt: {project.id}',
+        extra={
+            'project_id': project.id,
+            'title': title,
+            'is_private': is_private,
+        },
+    )
+
+    visibility_msg = (
+        "It's set to private - only you can see it." if is_private else "It's public and can be discovered by others."
+    )
+
+    return {
+        'success': True,
+        'project_id': project.id,
+        'slug': project.slug,
+        'title': project.title,
+        'url': f'/{username}/{project.slug}',
+        'message': f"I saved your prompt '{project.title}' to your library! {visibility_msg}",
+    }
+
+
 # Tool list for agent
 # Note: fetch_github_metadata is kept for potential future use but not exposed to agent
 # GitHub imports require OAuth via import_github_project for ownership verification
@@ -2814,6 +2953,7 @@ PROJECT_TOOLS = [
     create_project,
     create_media_project,  # NEW: Unified media tool (images, videos, generation)
     create_project_from_screenshot,  # Fallback when URL scraping fails
+    create_prompt,  # Save prompts to user's prompt library
     extract_url_info,
     import_from_url,  # Unified URL import tool
     import_github_project,  # Keep for backwards compatibility

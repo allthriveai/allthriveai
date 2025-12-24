@@ -35,6 +35,26 @@ from .metrics import MetricsCollector, llm_response_time, timed_metric
 from .security import PromptInjectionFilter
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_urls(text: str) -> str:
+    """
+    Sanitize URLs in AI responses to use correct domain.
+
+    Replaces incorrect domain variations with the correct one.
+
+    Args:
+        text: The text content to sanitize
+
+    Returns:
+        Text with corrected URLs
+    """
+    if not text:
+        return text
+    # Replace https://allthriveai.com/ or http://allthriveai.com/ with allthrive.ai
+    return re.sub(r'https?://allthriveai\.com/?', 'https://allthrive.ai/', text)
+
+
 User = get_user_model()
 
 
@@ -566,6 +586,8 @@ def _process_with_ember(
                 if event_type == 'token':
                     # Stream text chunk to WebSocket
                     chunk_content = event.get('content', '')
+                    # Sanitize URLs to use correct domain
+                    chunk_content = _sanitize_urls(chunk_content)
                     logger.debug(
                         f'[EMBER] Sending chunk to {channel_name}: {chunk_content[:50]}...'
                         if len(str(chunk_content)) > 50

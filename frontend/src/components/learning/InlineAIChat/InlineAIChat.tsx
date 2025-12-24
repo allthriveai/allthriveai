@@ -386,9 +386,10 @@ export function InlineAIChat({
     return contextParts.join('\n');
   }, [levelContent.instructions, exercise.scenario]);
 
-  // Focus input on mount
+  // Focus input on mount (without scrolling the page)
   useEffect(() => {
-    inputRef.current?.focus();
+    // Use preventScroll to avoid auto-scrolling the page when lesson opens
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   return (

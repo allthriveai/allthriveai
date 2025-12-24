@@ -97,6 +97,7 @@ TOOLS_NEEDING_STATE = (
     # Project tools needing state (all need user context)
     | {
         'create_project',
+        'create_prompt',
         'import_github_project',
         'import_from_url',
         'scrape_webpage_for_project',

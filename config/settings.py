@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     'core.avatars',  # AI-generated user avatars
     'core.games',  # Educational mini-games
     'core.community',  # Community messaging (forums, DMs, circle chat)
+    'core.feedback',  # Member feedback system (feature requests, bug reports)
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

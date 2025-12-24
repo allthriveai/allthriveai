@@ -118,7 +118,7 @@ function PathCard({ path, username, onActivate, onDelete, isActivating, isDeleti
 
         {/* Content */}
         <div className="p-4 pb-2">
-          <h3 className="font-semibold text-slate-900 dark:text-white text-lg mb-2 truncate hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-lg mb-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
             {path.title}
           </h3>
 

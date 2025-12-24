@@ -1134,6 +1134,12 @@ class PublishSavedPathView(APIView):
         # Publish the path
         path.publish()
 
+        # Trigger lesson image generation if not already done
+        # This ensures lessons have images when they appear in the explore feed
+        from .tasks import generate_lesson_images_for_path
+
+        generate_lesson_images_for_path.delay(path.id, request.user.id)
+
         serializer = SavedLearningPathSerializer(path)
         return Response(serializer.data)
 
@@ -1210,16 +1216,35 @@ class ExploreLessonsView(APIView):
 
     permission_classes = [AllowAny]
 
+    def _get_sage_user(self):
+        """Get the Sage user for AI-generated content attribution."""
+        from django.core.cache import cache
+
+        # Cache Sage user lookup to avoid repeated DB queries
+        sage = cache.get('sage_user')
+        if sage is None:
+            sage = User.objects.filter(username='sage').first()
+            if sage:
+                cache.set('sage_user', sage, 3600)  # Cache for 1 hour
+        return sage
+
     def get(self, request):
         """
         GET /api/v1/explore/lessons/
 
         Returns individual AI lessons from published learning paths.
         Each lesson includes its Gemini-generated image if available.
+        AI lessons show Sage as the author instead of the user.
         Supports search filtering.
         """
 
         from .serializers import PublicLessonSerializer
+
+        # Get Sage user for AI lesson attribution
+        sage = self._get_sage_user()
+        sage_username = sage.username if sage else 'sage'
+        sage_full_name = (sage.get_full_name() or sage.username) if sage else 'Sage'
+        sage_avatar_url = getattr(sage, 'avatar_url', None) if sage else None
 
         # Get all published learning paths with their lesson images
         paths = (
@@ -1262,6 +1287,7 @@ class ExploreLessonsView(APIView):
                 lesson_order = item.get('order', idx + 1)
                 image_url = image_lookup.get(lesson_order)
 
+                # AI lessons show Sage as the author
                 lessons.append(
                     {
                         'id': f'{path.id}_{lesson_order}',
@@ -1276,9 +1302,9 @@ class ExploreLessonsView(APIView):
                         'path_id': path.id,
                         'path_slug': path.slug,
                         'path_title': path.title,
-                        'username': path.user.username,
-                        'user_full_name': path.user.get_full_name() or path.user.username,
-                        'user_avatar_url': getattr(path.user, 'avatar_url', None),
+                        'username': sage_username,
+                        'user_full_name': sage_full_name,
+                        'user_avatar_url': sage_avatar_url,
                         'lesson_order': lesson_order,
                         'published_at': path.published_at,
                     }

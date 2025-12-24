@@ -470,7 +470,7 @@ export function HeroDisplaySection({
             Prompt
           </label>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            Share your prompt or project details
+            Share your prompt
           </p>
           <textarea
             value={heroQuote || ''}

@@ -1100,6 +1100,74 @@ def user_clipped_projects(request, username):
     return Response({'results': serializer.data})
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def user_prompt_library(request, username):
+    """Get the user's saved prompts (powers Prompts profile tab).
+
+    Returns:
+    - All prompts (public + private) when user views own profile
+    - Public prompts only (is_private=False) for other users
+
+    Security:
+    - Only returns non-archived prompts
+    - Rate limited via apply_throttle
+    - Optimized with select_related/prefetch_related
+    """
+    apply_throttle(request)
+
+    start_time = time.time()
+
+    try:
+        profile_user = User.objects.get(username=username.lower())
+    except User.DoesNotExist:
+        logger.warning(
+            f'Prompt library access attempt for non-existent user: {username} '
+            f'from IP: {request.META.get("REMOTE_ADDR")}'
+        )
+        elapsed = time.time() - start_time
+        if elapsed < MIN_RESPONSE_TIME_SECONDS:
+            time.sleep(MIN_RESPONSE_TIME_SECONDS - elapsed)
+        return Response({'error': 'User not found', 'results': []}, status=404)
+
+    # Check if viewing own profile
+    is_own_profile = request.user.is_authenticated and request.user.id == profile_user.id
+
+    # Build query for prompt-type projects
+    queryset = Project.objects.filter(
+        user=profile_user,
+        type=Project.ProjectType.PROMPT,
+        is_archived=False,
+    )
+
+    # Filter by visibility - show private prompts only to owner
+    if not is_own_profile:
+        queryset = queryset.filter(is_private=False)
+
+    # Order by created (newest first)
+    queryset = queryset.order_by('-created_at')
+
+    # Optimize queries
+    queryset = queryset.select_related(
+        'user',
+        'content_type_taxonomy',
+        'time_investment',
+        'difficulty_taxonomy',
+        'pricing_taxonomy',
+    ).prefetch_related('tools', 'topics', 'likes')
+
+    # Limit results
+    MAX_PROMPTS = 500
+    queryset = queryset[:MAX_PROMPTS]
+
+    serializer = ProjectCardSerializer(queryset, many=True, context={'request': request})
+
+    duration_ms = (time.time() - start_time) * 1000
+    logger.info(f'user_prompt_library for {username}: {queryset.count()} prompts, {duration_ms:.0f}ms')
+
+    return Response({'results': serializer.data})
+
+
 @extend_schema(
     summary='Explore projects',
     description='Explore public projects with filtering, search, and pagination.',
