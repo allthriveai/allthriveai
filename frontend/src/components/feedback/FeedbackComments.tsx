@@ -135,8 +135,7 @@ export function FeedbackComments({ feedbackId }: FeedbackCommentsProps) {
                     components={{
                       // Use React Router Link for internal links
                       a: ({ href, children }) => {
-                        const isInternal = href?.startsWith('/');
-                        if (isInternal) {
+                        if (href?.startsWith('/')) {
                           return (
                             <Link to={href} className="text-cyan-600 dark:text-cyan-400 hover:underline">
                               {children}

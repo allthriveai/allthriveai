@@ -7,12 +7,14 @@ import { Fragment, useState } from 'react';
 import { Transition } from '@headlessui/react';
 import { XMarkIcon, ChevronUpIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { ChevronUpIcon as ChevronUpIconSolid } from '@heroicons/react/24/solid';
-import type { FeedbackItem, FeedbackCategory } from '@/services/feedback';
+import type { FeedbackItem, FeedbackCategory, AdminUpdateFeedbackData } from '@/services/feedback';
 import { adminUpdateFeedback } from '@/services/feedback';
 import { useFeedbackVote } from '@/hooks/useFeedbackVote';
 import { useAuth } from '@/hooks/useAuth';
 import { FeedbackComments } from './FeedbackComments';
 import { formatRelativeTime } from './utils';
+
+type FeedbackStatus = 'open' | 'in_progress' | 'completed' | 'declined';
 
 const categoryLabels: Record<FeedbackCategory, string> = {
   // Features
@@ -68,13 +70,13 @@ const typeLabels: Record<string, string> = {
 export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate }: FeedbackDetailTrayProps) {
   const { user } = useAuth();
   const isAuthenticated = !!user;
-  const isAdmin = user?.isStaff || false;
+  const isAdmin = user?.isAdminRole || false;
   const isOwnSubmission = user?.username === item?.user?.username;
 
   // Admin state
   const [isUpdating, setIsUpdating] = useState(false);
   const [adminResponse, setAdminResponse] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<FeedbackStatus | ''>('');
 
   const { voted, voteCount, isVoting, toggleVote } = useFeedbackVote({
     itemId: item?.id || 0,
@@ -88,7 +90,7 @@ export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate }: Feedback
     if (!item) return;
     setIsUpdating(true);
     try {
-      const data: { status?: string; adminResponse?: string } = {};
+      const data: AdminUpdateFeedbackData = {};
       if (selectedStatus && selectedStatus !== item.status) {
         data.status = selectedStatus;
       }
@@ -256,7 +258,7 @@ export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate }: Feedback
                     </label>
                     <select
                       value={selectedStatus || item.status}
-                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      onChange={(e) => setSelectedStatus(e.target.value as FeedbackStatus)}
                       className="w-full px-3 py-2 text-sm rounded border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/50"
                     >
                       <option value="open">Open</option>
