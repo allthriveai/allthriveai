@@ -1561,6 +1561,25 @@ def explore_projects(request):
             page_size=page_size,
         )
 
+        # Mix in timeless content (games, evergreen content) periodically
+        # Inject 1-2 timeless items per page, spread throughout the results
+        timeless_projects = list(
+            Project.objects.filter(
+                is_private=False,
+                is_archived=False,
+                is_timeless=True,
+            )
+            .exclude(id__in=[p.id for p in diverse_projects])
+            .order_by('?')[:2]  # Random selection of timeless content
+        )
+
+        if timeless_projects:
+            # Insert timeless content at positions ~1/3 and ~2/3 through the page
+            insert_positions = [len(diverse_projects) // 3, 2 * len(diverse_projects) // 3]
+            for i, timeless_project in enumerate(timeless_projects):
+                if i < len(insert_positions) and insert_positions[i] < len(diverse_projects):
+                    diverse_projects.insert(insert_positions[i] + i, timeless_project)
+
         serializer = ProjectCardSerializer(diverse_projects, many=True)
         results = serializer.data
 

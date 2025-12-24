@@ -124,6 +124,12 @@ class Project(WeaviateSyncMixin, models.Model):
         related_name='promoted_projects',
         help_text='Admin who promoted this project',
     )
+    # Timeless content - appears in feeds regardless of age (games, evergreen content)
+    is_timeless = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Timeless content - mixed into feeds regardless of creation date (e.g., games)',
+    )
     # CharField supports both full URLs and relative paths (e.g., /path/to/image)
     banner_url = models.CharField(max_length=500, blank=True, default='', help_text='Banner image URL')
     # Featured image for cards and social sharing
