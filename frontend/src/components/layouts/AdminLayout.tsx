@@ -39,7 +39,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
   const location = useLocation();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/analytics']);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const prevPathRef = useRef<string>(location.pathname);
   const currentPath = location.pathname;
@@ -57,11 +57,22 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
     const prevPath = prevPathRef.current;
     prevPathRef.current = currentPath;
 
-    // Only auto-expand if we navigated from a different parent section
-    const prevParent = prevPath.startsWith('/admin/analytics') ? '/admin/analytics' :
-                       prevPath.startsWith('/admin/users') ? '/admin/users' : null;
-    const currentParent = currentPath.startsWith('/admin/analytics') ? '/admin/analytics' :
-                          currentPath.startsWith('/admin/users') ? '/admin/users' : null;
+    // Helper to determine parent section from path
+    const getParentSection = (path: string): string | null => {
+      if (path.startsWith('/admin/analytics')) return '/admin/analytics';
+      if (path.startsWith('/admin/users')) return '/admin/users';
+      // Content management items have different base paths, map them to parent
+      if (path.startsWith('/admin/prompt-challenge-prompts') ||
+          path.startsWith('/admin/uat-scenarios') ||
+          path.startsWith('/admin/ember-flows') ||
+          path.startsWith('/admin/lessons')) {
+        return '/admin/content';
+      }
+      return null;
+    };
+
+    const prevParent = getParentSection(prevPath);
+    const currentParent = getParentSection(currentPath);
 
     // If we're entering a new parent section, expand it
     if (currentParent && currentParent !== prevParent) {
@@ -91,6 +102,13 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
     { label: 'Circles', path: '/admin/users/circles', icon: UsersIcon },
   ];
 
+  const contentManagementSubItems: AdminSidebarItem[] = [
+    { label: 'Prompt Library', path: '/admin/prompt-challenge-prompts', icon: SparklesIcon },
+    { label: 'Lesson Library', path: '/admin/lessons', icon: AcademicCapIcon },
+    { label: 'UAT Scenarios', path: '/admin/uat-scenarios', icon: BeakerIcon },
+    { label: 'Ember Flows', path: '/admin/ember-flows', icon: MapIcon },
+  ];
+
   const adminNavItems: AdminSidebarItem[] = [
     {
       label: 'Analytics',
@@ -106,37 +124,38 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       children: userManagementSubItems,
     },
     {
-      label: 'Prompt Library',
-      path: '/admin/prompt-challenge-prompts',
-      icon: SparklesIcon,
+      label: 'Content Management',
+      path: '/admin/content',
+      icon: FolderIcon,
+      children: contentManagementSubItems,
     },
     {
       label: 'Tasks',
       path: '/admin/tasks',
       icon: ClipboardDocumentListIcon,
     },
-    {
-      label: 'UAT Scenarios',
-      path: '/admin/uat-scenarios',
-      icon: BeakerIcon,
-    },
-    {
-      label: 'Ember Flows',
-      path: '/admin/ember-flows',
-      icon: MapIcon,
-    },
-    {
-      label: 'Lesson Library',
-      path: '/admin/lessons',
-      icon: AcademicCapIcon,
-    },
   ];
+
+  // Check if a parent item is active (either direct match or child match)
+  const isParentItemActive = (item: AdminSidebarItem): boolean => {
+    // Check if any child matches the current path
+    if (item.children) {
+      const hasActiveChild = item.children.some(child =>
+        currentPath === child.path || currentPath.startsWith(child.path + '/')
+      );
+      if (hasActiveChild) return true;
+    }
+    // Direct path match
+    return currentPath.startsWith(item.path);
+  };
 
   // Find current active item (including children)
   const findActiveItem = (items: AdminSidebarItem[]): AdminSidebarItem | undefined => {
     for (const item of items) {
       if (item.children) {
-        const childMatch = item.children.find(child => currentPath === child.path);
+        const childMatch = item.children.find(child =>
+          currentPath === child.path || currentPath.startsWith(child.path + '/')
+        );
         if (childMatch) return childMatch;
       }
       if (currentPath.startsWith(item.path)) return item;
@@ -218,7 +237,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
             {isDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-y-auto">
                 {adminNavItems.map((item) => {
-                  const isParentActive = currentPath.startsWith(item.path);
+                  const isParentActive = isParentItemActive(item);
                   const Icon = item.icon;
                   return (
                     <div key={item.path}>
@@ -275,7 +294,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
           <nav className="hidden md:flex md:flex-col gap-1">
             {adminNavItems.map((item) => {
               const Icon = item.icon;
-              const isParentActive = currentPath.startsWith(item.path);
+              const isParentActive = isParentItemActive(item);
               const hasChildren = item.children && item.children.length > 0;
               const isExpanded = expandedItems.includes(item.path);
 

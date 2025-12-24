@@ -47,7 +47,7 @@ export const getMenuSections = (
     items: [
       { label: 'Explore', path: '/explore', icon: faCompass },
       { label: 'Tool Directory', path: '/tools', icon: faWrench },
-      { label: 'Marketplace (Coming Soon)', icon: faStore },
+      { label: 'Marketplace', path: '#', icon: faStore },
     ],
   },
   {
