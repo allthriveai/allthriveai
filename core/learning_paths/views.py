@@ -1134,6 +1134,12 @@ class PublishSavedPathView(APIView):
         # Publish the path
         path.publish()
 
+        # Trigger lesson image generation if not already done
+        # This ensures lessons have images when they appear in the explore feed
+        from .tasks import generate_lesson_images_for_path
+
+        generate_lesson_images_for_path.delay(path.id, request.user.id)
+
         serializer = SavedLearningPathSerializer(path)
         return Response(serializer.data)
 

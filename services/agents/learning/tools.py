@@ -125,7 +125,7 @@ def create_learning_path(
         from django.utils.text import slugify
 
         from core.learning_paths.models import LearnerProfile, SavedLearningPath
-        from core.learning_paths.tasks import generate_learning_path_cover
+        from core.learning_paths.tasks import generate_learning_path_cover, generate_lesson_images_for_path
 
         from .lesson_generator import AILessonGenerator
 
@@ -291,8 +291,9 @@ def create_learning_path(
         # Activate this path (deactivates others)
         saved_path.activate()
 
-        # Trigger async cover image generation
+        # Trigger async image generation for cover and all lessons
         generate_learning_path_cover.delay(saved_path.id, user_id)
+        generate_lesson_images_for_path.delay(saved_path.id, user_id)
 
         # Also update LearnerProfile for backwards compatibility
         profile, _ = LearnerProfile.objects.get_or_create(user_id=user_id)
