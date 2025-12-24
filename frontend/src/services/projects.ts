@@ -249,6 +249,14 @@ export async function getClippedProjects(username: string): Promise<Project[]> {
 }
 
 /**
+ * Get all prompts for a user's prompt library
+ */
+export async function getPromptLibrary(username: string): Promise<Project[]> {
+  const response = await api.get<{ results: ProjectApiResponse[] }>(`/users/${username}/prompt-library/`);
+  return response.data.results.map(transformProject);
+}
+
+/**
  * Delete a redirect for a project
  */
 export async function deleteProjectRedirect(projectId: number, redirectId: number): Promise<void> {

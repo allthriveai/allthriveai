@@ -177,7 +177,7 @@ export function MyBattlesTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">My Battles</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">My Battles</h2>
           <p className="text-sm text-slate-400">
             {viewMode === 'active'
               ? pendingBattles.length === 0

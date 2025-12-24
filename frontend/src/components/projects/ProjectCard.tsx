@@ -311,6 +311,27 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       };
     }
 
+    // For prompt projects, use the beautiful gradient background with prompt text overlay
+    if (project.type === 'prompt') {
+      const promptText = project.content?.heroQuote || project.content?.prompt?.text || '';
+      // Truncate prompt text for display (max ~200 chars for card)
+      const displayText = promptText.length > 200 ? promptText.slice(0, 197) + '...' : promptText;
+
+      // For prompts, always rotate through jewel colors based on project ID (ignore category color)
+      const primaryCategory = project.categoriesDetails?.[0];
+      const { from, to } = getCategoryColors(undefined, project.id);
+
+      return {
+        type: 'gradient' as const,
+        gradientStyle: {},
+        title: project.title,
+        categoryName: primaryCategory?.name,
+        fromColor: from,
+        toColor: to,
+        promptText: displayText, // Carry prompt text to render as overlay
+      };
+    }
+
     // For Reddit threads, check if there's video data in the reddit metadata (fallback)
     if (project.type === 'reddit_thread' && !heroMode) {
       const redditData = project.content?.reddit;
@@ -410,7 +431,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   // Masonry variant - Flexible height for text, portrait for media
   if (variant === 'masonry') {
     const heroElement = getHeroElement();
-    // Treat quote and slideup cards as media cards for styling purposes (dark mode overlay style)
+    // Treat quote, slideup, gradient, and battle cards as media cards for styling purposes (dark mode overlay style)
     const isMediaCard = ['image', 'video', 'slideshow', 'quote', 'slideup', 'gradient', 'battle'].includes(heroElement.type) || (heroElement.type === 'image' && project.type !== 'github_repo');
     const isQuote = heroElement.type === 'quote';
     const isSlideup = heroElement.type === 'slideup';
@@ -546,13 +567,25 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
             })()}
 
             {isGradient && heroElement.type === 'gradient' && (
-              <DynamicGradientCard
-                title={heroElement.title || ''}
-                fromColor={heroElement.fromColor || '#0F52BA'}
-                toColor={heroElement.toColor || '#0a3d8a'}
-                categoryName={heroElement.categoryName}
-                projectId={project.id}
-              />
+              <div className="relative">
+                <DynamicGradientCard
+                  title={heroElement.promptText ? '' : (heroElement.title || '')}
+                  fromColor={heroElement.fromColor || '#0F52BA'}
+                  toColor={heroElement.toColor || '#0a3d8a'}
+                  categoryName={heroElement.promptText ? undefined : heroElement.categoryName}
+                  projectId={project.id}
+                />
+                {/* Prompt text overlay for prompt cards */}
+                {heroElement.promptText && (
+                  <div className="absolute inset-0 flex items-center justify-center p-5 pb-44 md:pb-5 pointer-events-none">
+                    <div className="relative max-w-[92%] backdrop-blur-sm bg-white/10 rounded-2xl px-5 py-4 shadow-xl">
+                      <p className="text-sm md:text-base font-medium leading-relaxed line-clamp-[7] text-white drop-shadow-sm">
+                        "{heroElement.promptText}"
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {heroElement.type === 'video' && (() => {
@@ -790,11 +823,10 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
         {isQuote && (
           <div className="absolute top-0 left-0 right-0 bottom-40 px-6 flex items-center justify-center z-10 pointer-events-none overflow-hidden">
              <p className="text-lg md:text-xl font-medium leading-relaxed tracking-normal drop-shadow-sm font-sans line-clamp-[8] text-white/95 text-center">
-               “{heroElement.text}”
+               "{heroElement.text}"
              </p>
           </div>
         )}
-
 
         {/* Repo Content (Flex Flow for non-media) */}
         {!isMediaCard && (

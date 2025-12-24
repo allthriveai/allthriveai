@@ -602,7 +602,20 @@ def generate_lesson_images_for_path(self, saved_path_id: int, user_id: int):
 
         if not ai_lessons:
             logger.info(f'No AI lessons in path {saved_path_id}')
-            return {'status': 'success', 'generated': 0, 'message': 'No AI lessons to generate images for'}
+            # Still publish the path even without AI lessons (curated content only)
+            if not saved_path.is_published:
+                from django.utils import timezone
+
+                saved_path.is_published = True
+                saved_path.published_at = timezone.now()
+                saved_path.save(update_fields=['is_published', 'published_at', 'updated_at'])
+                logger.info(f'Published path {saved_path_id} (no AI lessons to generate images for)')
+            return {
+                'status': 'success',
+                'generated': 0,
+                'published': True,
+                'message': 'No AI lessons to generate images for',
+            }
 
         generated_count = 0
         failed_count = 0
@@ -653,12 +666,27 @@ def generate_lesson_images_for_path(self, saved_path_id: int, user_id: int):
             f'{generated_count} generated, {failed_count} failed'
         )
 
+        # Only publish if at least one image was generated successfully
+        # This prevents paths with no images from appearing on explore
+        published = False
+        if generated_count > 0 and not saved_path.is_published:
+            from django.utils import timezone
+
+            saved_path.is_published = True
+            saved_path.published_at = timezone.now()
+            saved_path.save(update_fields=['is_published', 'published_at', 'updated_at'])
+            published = True
+            logger.info(f'Published path {saved_path_id} to explore feed after image generation')
+        elif generated_count == 0 and failed_count > 0:
+            logger.warning(f'Path {saved_path_id} NOT published - all {failed_count} image generations failed')
+
         return {
             'status': 'success',
             'saved_path_id': saved_path_id,
             'generated': generated_count,
             'failed': failed_count,
             'total_lessons': len(ai_lessons),
+            'published': published,
         }
 
     except Exception as exc:

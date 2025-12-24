@@ -23,6 +23,7 @@ export function Footer() {
     connect: [
       { name: 'Thrive Circle', href: '/thrive-circle' },
       { name: 'The Lounge', href: '/lounge' },
+      { name: 'Feedback & Ideas', href: '/feedback' },
       { name: 'Sign In', href: '/auth' },
     ],
     allthrive: [

@@ -267,11 +267,15 @@ class SavedLearningPathListSerializer(serializers.ModelSerializer):
 
 
 class PublicLearningPathSerializer(serializers.ModelSerializer):
-    """Serializer for learning paths in the explore feed (public view)."""
+    """Serializer for learning paths in the explore feed (public view).
 
-    username = serializers.CharField(source='user.username', read_only=True)
+    AI-generated learning paths show Sage as the author instead of the user,
+    since Ember (the AI guide) creates these paths.
+    """
+
+    username = serializers.SerializerMethodField()
     user_full_name = serializers.SerializerMethodField()
-    user_avatar_url = serializers.CharField(source='user.avatar_url', read_only=True)
+    user_avatar_url = serializers.SerializerMethodField()
     curriculum_count = serializers.SerializerMethodField()
     curriculum_preview = serializers.SerializerMethodField()
     topics_covered = serializers.SerializerMethodField()
@@ -296,9 +300,48 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def _is_ai_generated(self, obj):
+        """Check if this path contains AI-generated content."""
+        curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
+        return any(item.get('type') == 'ai_lesson' for item in curriculum)
+
+    def _get_sage_user(self):
+        """Get the Sage user for AI-generated content attribution."""
+        from django.core.cache import cache
+
+        from core.users.models import User
+
+        # Cache Sage user lookup to avoid repeated DB queries
+        sage = cache.get('sage_user')
+        if sage is None:
+            sage = User.objects.filter(username='sage').first()
+            if sage:
+                cache.set('sage_user', sage, 3600)  # Cache for 1 hour
+        return sage
+
+    def get_username(self, obj):
+        """Get author username - Sage for AI-generated paths."""
+        if self._is_ai_generated(obj):
+            sage = self._get_sage_user()
+            if sage:
+                return sage.username
+        return obj.user.username
+
     def get_user_full_name(self, obj):
-        """Get user display name."""
+        """Get author display name - Sage for AI-generated paths."""
+        if self._is_ai_generated(obj):
+            sage = self._get_sage_user()
+            if sage:
+                return sage.get_full_name() or sage.username
         return obj.user.get_full_name() or obj.user.username
+
+    def get_user_avatar_url(self, obj):
+        """Get author avatar URL - Sage for AI-generated paths."""
+        if self._is_ai_generated(obj):
+            sage = self._get_sage_user()
+            if sage:
+                return getattr(sage, 'avatar_url', None)
+        return getattr(obj.user, 'avatar_url', None)
 
     def get_curriculum_count(self, obj):
         """Get total curriculum item count."""

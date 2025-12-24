@@ -164,6 +164,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             'tldrBgColor',
             # Tech stack from GitHub analysis
             'techStack',
+            # Prompt library content
+            'prompt',
         }
         provided_keys = set(value.keys())
 
@@ -775,6 +777,16 @@ class ProjectCardSerializer(serializers.ModelSerializer):
             if game_url:
                 return {
                     'gameUrl': game_url,
+                }
+
+        # Prompt projects - return prompt text for card display
+        if obj.type == 'prompt':
+            prompt_data = obj.content.get('prompt', {})
+            if prompt_data:
+                return {
+                    'prompt': {
+                        'text': prompt_data.get('text', ''),
+                    },
                 }
 
         return None

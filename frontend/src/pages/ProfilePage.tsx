@@ -15,6 +15,8 @@ import { getUserAchievements } from '@/services/achievements';
 import type { AchievementProgressData } from '@/types/achievements';
 import { ActivityInsightsTab } from '@/components/profile/ActivityInsightsTab';
 import { ClippedTab } from '@/components/profile/ClippedTab';
+import { PromptsTab } from '@/components/profile/PromptsTab';
+import { PromptFormSidebar } from '@/components/prompts';
 import { MarketplaceTab } from '@/components/profile/MarketplaceTab';
 import { LearningPathsTab } from '@/components/learning';
 import { AchievementBadge } from '@/components/achievements/AchievementBadge';
@@ -234,11 +236,11 @@ export default function ProfilePage() {
   const [userNotFound, setUserNotFound] = useState(false);
 
   // Initialize activeTab from URL or default to 'showcase' (or 'battles' for Pip)
-  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles' | null;
+  const tabFromUrl = searchParams.get('tab') as 'showcase' | 'playground' | 'clipped' | 'prompts' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles' | null;
   const isPipProfile = username?.toLowerCase() === 'pip';
   const defaultTab = isPipProfile ? 'battles' : 'showcase';
-  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles'>(
-    tabFromUrl && ['showcase', 'playground', 'clipped', 'learning', 'activity', 'marketplace', 'battles', 'my-battles'].includes(tabFromUrl) ? tabFromUrl : defaultTab
+  const [activeTab, setActiveTab] = useState<'showcase' | 'playground' | 'clipped' | 'prompts' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles'>(
+    tabFromUrl && ['showcase', 'playground', 'clipped', 'prompts', 'learning', 'activity', 'marketplace', 'battles', 'my-battles'].includes(tabFromUrl) ? tabFromUrl : defaultTab
   );
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<number>>(new Set());
@@ -261,6 +263,10 @@ export default function ProfilePage() {
   const [followError, setFollowError] = useState<string | null>(null);
   const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null);
   const followErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track follow error timeout
+
+  // Prompt form sidebar state
+  const [showPromptForm, setShowPromptForm] = useState(false);
+  const [promptsRefreshKey, setPromptsRefreshKey] = useState(0);
 
   // Message state
   const [isMessageLoading, setIsMessageLoading] = useState<boolean>(false);
@@ -457,7 +463,7 @@ export default function ProfilePage() {
   }, [isOwnProfile, user, username]);
 
   // Update URL when tab changes
-  const handleTabChange = (tab: 'showcase' | 'playground' | 'clipped' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles') => {
+  const handleTabChange = (tab: 'showcase' | 'playground' | 'clipped' | 'prompts' | 'learning' | 'activity' | 'marketplace' | 'battles' | 'my-battles') => {
     setActiveTab(tab);
     setSearchParams({ tab });
     if (selectionMode) {
@@ -1236,6 +1242,7 @@ export default function ProfilePage() {
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'clipped', label: 'Clipped' },
+        { id: 'prompts', label: 'Prompts' },
       ];
       if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
       baseTabs.push({ id: 'my-battles', label: 'My Battles' });
@@ -1256,6 +1263,7 @@ export default function ProfilePage() {
         { id: 'showcase', label: 'Showcase' },
         { id: 'playground', label: 'Playground' },
         { id: 'clipped', label: 'Clipped' },
+        { id: 'prompts', label: 'Prompts' },
       ];
       if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
       return baseTabs as { id: string; label: string }[];
@@ -1271,6 +1279,7 @@ export default function ProfilePage() {
     const baseTabs = [
       { id: 'showcase', label: 'Showcase' },
       { id: 'clipped', label: 'Clipped' },
+      { id: 'prompts', label: 'Prompts' },
     ];
     if (isCreator) baseTabs.push({ id: 'marketplace', label: 'Shop' });
     return baseTabs as { id: string; label: string }[];
@@ -1648,6 +1657,18 @@ export default function ProfilePage() {
                   selectedProjectIds={selectedProjectIds}
                   onSelect={toggleSelection}
                   enableInlinePreview
+                />
+              </div>
+            )}
+
+            {/* Prompts Tab - Full width with padding */}
+            {activeTab === 'prompts' && (
+              <div className="px-4 sm:px-6 lg:px-8 pt-4 pb-20" role="tabpanel" id="tabpanel-prompts" aria-labelledby="tab-prompts">
+                <PromptsTab
+                  key={promptsRefreshKey}
+                  username={username || user?.username || ''}
+                  isOwnProfile={isOwnProfile}
+                  onOpenCreateForm={() => setShowPromptForm(true)}
                 />
               </div>
             )}
@@ -2480,6 +2501,23 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* Prompts Tab - Full width layout */}
+              {activeTab === 'prompts' && (
+                <div
+                  className="pb-20"
+                  role="tabpanel"
+                  id="tabpanel-prompts"
+                  aria-labelledby="tab-prompts"
+                >
+                  <PromptsTab
+                    key={promptsRefreshKey}
+                    username={username || user?.username || ''}
+                    isOwnProfile={isOwnProfile}
+                    onOpenCreateForm={() => setShowPromptForm(true)}
+                  />
+                </div>
+              )}
+
               {/* Learning Tab - Full width layout */}
               {activeTab === 'learning' && (
                 <div
@@ -2633,6 +2671,15 @@ export default function ProfilePage() {
             type={showFollowModal}
           />
         )}
+
+        {/* Prompt Form Sidebar */}
+        <PromptFormSidebar
+          isOpen={showPromptForm}
+          onClose={() => setShowPromptForm(false)}
+          onSave={() => {
+            setPromptsRefreshKey((prev) => prev + 1);
+          }}
+        />
 
         {/* Profile Template Picker Modal */}
         <ProfileTemplatePicker

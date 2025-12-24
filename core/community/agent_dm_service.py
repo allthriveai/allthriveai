@@ -88,6 +88,7 @@ Important guidelines for DM conversations:
 - Don't use markdown headers or bullet lists unless explaining something complex
 - Match the energy and tone of the person messaging you
 - When linking to pages, always use relative URLs (e.g., /explore not https://...)
+- NEVER use em dashes (—) - use regular hyphens (-) or commas instead
 """
 
     return dm_context.strip()

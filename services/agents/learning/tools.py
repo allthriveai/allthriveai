@@ -295,6 +295,7 @@ def create_learning_path(
         }
 
         # Create SavedLearningPath (this is the new multi-path model)
+        # is_published=False until images are generated (set by Celery task)
         saved_path = SavedLearningPath.objects.create(
             user_id=user_id,
             slug=path_slug,
@@ -303,6 +304,7 @@ def create_learning_path(
             difficulty=actual_difficulty,
             estimated_hours=estimated_hours,
             is_active=False,  # Don't auto-activate, let user choose
+            is_published=False,  # Published after images are generated
         )
 
         # Activate this path (deactivates others)
