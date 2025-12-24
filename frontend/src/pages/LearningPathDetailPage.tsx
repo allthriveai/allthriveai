@@ -26,7 +26,6 @@ import {
   faChevronDown,
   faChevronRight,
   faRobot,
-  faComments,
   faUsers,
   faThumbsUp,
   faThumbsDown,
@@ -49,6 +48,10 @@ import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
 import { getLessonImage, rateLesson, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
 import { getToolBySlug } from '@/services/tools';
+import { getTaxonomyPreferences, type SkillLevel } from '@/services/personalization';
+import { SimulatedTerminal } from '@/components/learning/SimulatedTerminal';
+import { InlineAIChat } from '@/components/learning/InlineAIChat';
+import { LessonQuiz } from '@/components/learning/LessonQuiz';
 import type { Tool } from '@/types/models';
 
 /**
@@ -696,10 +699,13 @@ interface AILessonCardProps {
   item: CurriculumItem;
   index: number;
   pathSlug?: string;
+  skillLevel: SkillLevel;
   onOpenChat?: (context: LessonContext) => void;
+  onExerciseComplete?: (lessonOrder: number, stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => void;
+  onQuizComplete?: (lessonOrder: number, score: number, total: number) => void;
 }
 
-function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) {
+function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete }: AILessonCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -817,22 +823,22 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
               Personalized
             </span>
           </div>
-          <h3 className="text-slate-900 dark:text-white font-medium mb-2">{item.title}</h3>
-          <p className="text-slate-600 dark:text-gray-400 text-sm line-clamp-2">{content.summary}</p>
+          <h3 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{item.title}</h3>
+          <p className="text-slate-600 dark:text-gray-400 text-base line-clamp-2">{content.summary}</p>
 
           {/* Key concepts chips */}
           {content.keyConcepts && content.keyConcepts.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
+            <div className="flex flex-wrap gap-2 mt-3">
               {content.keyConcepts.slice(0, 4).map((concept, i) => (
                 <span
                   key={i}
-                  className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 text-xs"
+                  className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 text-sm"
                 >
                   {concept}
                 </span>
               ))}
               {content.keyConcepts.length > 4 && (
-                <span className="px-2 py-0.5 text-slate-500 dark:text-gray-500 text-xs">
+                <span className="px-2.5 py-1 text-slate-500 dark:text-gray-500 text-sm">
                   +{content.keyConcepts.length - 4} more
                 </span>
               )}
@@ -900,8 +906,8 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
               </h4>
               {content.examples.map((example, i) => (
                 <div key={i} className="bg-slate-100 dark:bg-white/5 rounded-lg p-4">
-                  <h5 className="text-slate-900 dark:text-white font-medium mb-2">{example.title}</h5>
-                  <p className="text-slate-600 dark:text-gray-400 text-sm mb-3">{example.description}</p>
+                  <h5 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{example.title}</h5>
+                  <p className="text-slate-600 dark:text-gray-400 text-base mb-3">{example.description}</p>
                   {example.code && (
                     <SyntaxHighlighter
                       language={detectLanguage(example.code)}
@@ -922,24 +928,54 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
             </div>
           )}
 
-          {/* Practice prompt - clickable to open Ember chat */}
-          {content.practicePrompt && (
-            <button
-              onClick={handleOpenChat}
-              className="w-full text-left bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all group"
-            >
-              <h4 className="text-emerald-400 font-medium mb-2 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <FontAwesomeIcon icon={faGamepad} />
-                  Try It Yourself
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-emerald-500/70 dark:text-emerald-400/70 group-hover:text-emerald-600 dark:group-hover:text-emerald-300">
-                  <FontAwesomeIcon icon={faComments} />
-                  Ask Sage
-                </span>
-              </h4>
-              <p className="text-slate-600 dark:text-gray-300 text-sm">{content.practicePrompt}</p>
-            </button>
+          {/* Interactive Exercise */}
+          {content.exercise && content.exercise.exerciseType === 'ai_prompt' ? (
+            /* AI Prompt exercises use inline chat */
+            <InlineAIChat
+              exercise={content.exercise}
+              skillLevel={skillLevel}
+              lessonId={`lesson-${item.order}`}
+              pathSlug={pathSlug}
+              onAskForHelp={handleOpenChat}
+              onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+            />
+          ) : content.exercise ? (
+            /* Terminal/Git/Code exercises use SimulatedTerminal */
+            <SimulatedTerminal
+              exercise={content.exercise}
+              skillLevel={skillLevel}
+              onAskForHelp={handleOpenChat}
+              onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+            />
+          ) : content.practicePrompt && (
+            /* Fallback: convert practicePrompt to inline chat */
+            <InlineAIChat
+              exercise={{
+                exerciseType: 'ai_prompt',
+                scenario: content.practicePrompt,
+                expectedInputs: ['.*'],
+                successMessage: 'Great work!',
+                expectedOutput: '',
+                contentByLevel: {
+                  beginner: { instructions: content.practicePrompt, hints: [] },
+                  intermediate: { instructions: content.practicePrompt, hints: [] },
+                  advanced: { instructions: content.practicePrompt, hints: [] },
+                },
+              }}
+              skillLevel={skillLevel}
+              lessonId={`lesson-${item.order}`}
+              pathSlug={pathSlug}
+              onAskForHelp={handleOpenChat}
+              onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+            />
+          )}
+
+          {/* Inline Quiz - check understanding at the end of the lesson */}
+          {content.quiz && (
+            <LessonQuiz
+              quiz={content.quiz}
+              onComplete={onQuizComplete ? (score, total) => onQuizComplete(item.order, score, total) : undefined}
+            />
           )}
 
           {/* Mermaid diagram */}
@@ -959,12 +995,12 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
           {/* Rating section */}
           <div className="border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
             <div className="flex items-center justify-between">
-              <p className="text-slate-600 dark:text-gray-400 text-sm">Was this lesson helpful?</p>
+              <p className="text-slate-600 dark:text-gray-400 text-base">Was this lesson helpful?</p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleRating('helpful')}
                   disabled={isRating}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-base font-medium transition-all ${
                     userRating === 'helpful'
                       ? 'bg-emerald-500 text-white'
                       : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'
@@ -976,7 +1012,7 @@ function AILessonCard({ item, index, pathSlug, onOpenChat }: AILessonCardProps) 
                 <button
                   onClick={() => handleRating('not_helpful')}
                   disabled={isRating}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-base font-medium transition-all ${
                     userRating === 'not_helpful'
                       ? 'bg-red-500 text-white'
                       : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400'
@@ -1008,15 +1044,18 @@ interface CurriculumItemCardProps {
   pathSlug?: string;
   pathId?: number;
   isAdmin?: boolean;
+  skillLevel: SkillLevel;
   onOpenChat?: (context: LessonContext) => void;
   onProjectAdded?: () => void;
   topicsCovered?: string[];
+  onExerciseComplete?: (lessonOrder: number, stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => void;
+  onQuizComplete?: (lessonOrder: number, score: number, total: number) => void;
 }
 
-function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, onOpenChat, onProjectAdded, topicsCovered }: CurriculumItemCardProps) {
+function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel, onOpenChat, onProjectAdded, topicsCovered, onExerciseComplete, onQuizComplete }: CurriculumItemCardProps) {
   // Use AILessonCard for AI-generated lessons
   if (item.type === 'ai_lesson') {
-    return <AILessonCard item={item} index={index} pathSlug={pathSlug} onOpenChat={onOpenChat} />;
+    return <AILessonCard item={item} index={index} pathSlug={pathSlug} skillLevel={skillLevel} onOpenChat={onOpenChat} onExerciseComplete={onExerciseComplete} onQuizComplete={onQuizComplete} />;
   }
 
   // Use ToolItemCard for expandable tool info
@@ -1158,12 +1197,42 @@ export default function LearningPathDetailPage() {
   // Chat panel state - visible on right side (desktop), bottom sheet (mobile)
   const [currentLessonContext, setCurrentLessonContext] = useState<LessonContext | null>(null);
 
+  // User's skill level for adaptive exercises (default to beginner if not set)
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
+
+  // Fetch user's skill level from personalization preferences
+  useEffect(() => {
+    if (user) {
+      getTaxonomyPreferences()
+        .then((prefs) => {
+          if (prefs.skillLevel) {
+            setSkillLevel(prefs.skillLevel);
+          }
+        })
+        .catch(() => {
+          // Use default skill level on error
+        });
+    }
+  }, [user]);
+
   // Generate conversation ID for this learning path
   const conversationId = `learn-${slug}-${user?.id || 'anon'}`;
 
   // Handle updating lesson context when user clicks "Try It Yourself"
   const handleOpenChat = (context: LessonContext) => {
     setCurrentLessonContext(context);
+  };
+
+  // Handle exercise completion - track stats for analytics
+  const handleExerciseComplete = (lessonOrder: number, stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => {
+    // TODO: Persist to backend when endpoint is available
+    console.log('Exercise completed:', { pathSlug: slug, lessonOrder, stats });
+  };
+
+  // Handle quiz completion - track score for analytics
+  const handleQuizComplete = (lessonOrder: number, score: number, total: number) => {
+    // TODO: Persist to backend when endpoint is available
+    console.log('Quiz completed:', { pathSlug: slug, lessonOrder, score, total, passed: score >= (total - 1) });
   };
 
   // Handle publish/unpublish toggle
@@ -1313,9 +1382,12 @@ export default function LearningPathDetailPage() {
                           pathSlug={slug}
                           pathId={savedPath?.id}
                           isAdmin={isAdmin}
+                          skillLevel={skillLevel}
                           onOpenChat={handleOpenChat}
                           onProjectAdded={refetch}
                           topicsCovered={path.topicsCovered}
+                          onExerciseComplete={handleExerciseComplete}
+                          onQuizComplete={handleQuizComplete}
                         />
                       ))}
                     </div>

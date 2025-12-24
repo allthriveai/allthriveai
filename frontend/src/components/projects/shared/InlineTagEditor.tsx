@@ -318,13 +318,13 @@ export function InlineTagEditor({ project, onProjectUpdate, isAdmin }: InlineTag
           </div>
         ) : (
           <div className={TAG_CONTAINER}>
-            {project.topics && project.topics.length > 0 ? (
-              project.topics.map(topic => (
+            {project.topicsDetails && project.topicsDetails.length > 0 ? (
+              project.topicsDetails.map((topic: Taxonomy) => (
                 <div
-                  key={topic}
+                  key={topic.id}
                   className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm"
                 >
-                  {topic}
+                  {topic.name}
                 </div>
               ))
             ) : (

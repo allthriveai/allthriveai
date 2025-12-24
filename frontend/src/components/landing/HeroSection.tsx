@@ -132,7 +132,7 @@ export function HeroSection({ onRequestInvite, isModalOpen = false }: HeroSectio
                 </span>
               </h1>
               <p className="text-xl sm:text-[1.375rem] text-gray-300 mb-4">
-                Share your work. Level up your skills. Thrive together.
+                Learn by playing. Share your work in progress. Thrive together.
               </p>
             </motion.div>
 

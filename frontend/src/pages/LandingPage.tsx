@@ -30,7 +30,7 @@ function LandingPageContent() {
       <SEO {...SEOPresets.home} />
       <SkipLink />
 
-      <div id="main-content" className="bg-[#020617] text-white overflow-x-hidden">
+      <div id="main-content" className="landing-dark-override bg-[#020617] text-white overflow-x-hidden">
         {/* Section 1: Hero with CTA */}
         <HeroSection onRequestInvite={handleRequestInvite} isModalOpen={isTrayOpen} />
 

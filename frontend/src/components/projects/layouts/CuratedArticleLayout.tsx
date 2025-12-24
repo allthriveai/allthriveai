@@ -489,19 +489,19 @@ export function CuratedArticleLayout() {
           )}
 
           {/* Topics Covered - Clickable to open topic tray */}
-          {project.topics && project.topics.length > 0 && (
+          {project.topicsDetails && project.topicsDetails.length > 0 && (
             <div className="mb-10">
               <h3 className="text-sm font-semibold mb-3 uppercase tracking-wider text-gray-500 dark:text-white/50">
                 Topics
               </h3>
               <div className="flex flex-wrap gap-2">
-                {project.topics.slice(0, 6).map((topic: string, index: number) => (
+                {project.topicsDetails.slice(0, 6).map((topic: Taxonomy) => (
                   <button
-                    key={index}
-                    onClick={() => openTopicTray(topic)}
+                    key={topic.id}
+                    onClick={() => openTopicTray(topic.name)}
                     className="px-3 py-1.5 text-sm rounded-full bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-white/70 border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/20 transition-colors cursor-pointer"
                   >
-                    #{topic}
+                    #{topic.name}
                   </button>
                 ))}
               </div>
