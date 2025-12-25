@@ -386,11 +386,12 @@ jobs:
       # ===== Run E2E Tests =====
       - name: Run Playwright smoke tests
         working-directory: frontend
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: npx playwright test e2e/smoke.spec.ts
         env:
           CI: true
-        # Full e2e suite (including avatar tests) should be run locally before merging
+        # Smoke tests include AI quality checks (45-90s per test)
+        # Full e2e suite should be run locally before merging
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
