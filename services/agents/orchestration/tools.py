@@ -62,7 +62,10 @@ class TriggerActionInput(BaseModel):
     """Input for trigger_action tool."""
 
     action: str = Field(
-        description='Action to trigger: start_battle, create_project, start_quiz, view_profile, or open_project'
+        description=(
+            'Action to trigger: start_battle, create_project, create_avatar, '
+            'start_quiz, view_profile, or open_project'
+        )
     )
     params: dict = Field(default_factory=dict, description='Parameters for the action (e.g., username, quiz_id)')
 
@@ -331,6 +334,11 @@ def trigger_action(action: str, params: dict = None, state: dict = None) -> dict
       - params: {} - no params needed
       - Requires confirmation
 
+    - create_avatar: Open the avatar creation flow
+      - params: {} - no params needed
+      - Use when user asks "make my avatar", "create an avatar", "change my avatar", etc.
+      - Requires confirmation
+
     - start_quiz: Start a specific quiz
       - params: {quiz_id: "123", quiz_name: "AI Basics"}
       - Requires confirmation
@@ -357,7 +365,7 @@ def trigger_action(action: str, params: dict = None, state: dict = None) -> dict
     safe_actions = {'view_profile', 'open_project'}
 
     # Actions that require user confirmation first
-    confirmation_actions = {'start_battle', 'create_project', 'start_quiz'}
+    confirmation_actions = {'start_battle', 'create_project', 'create_avatar', 'start_quiz'}
 
     return {
         'action': 'trigger',

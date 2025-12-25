@@ -95,7 +95,7 @@ export default function EngagementPage() {
 
           {/* Activity Heatmap */}
           <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-2">Activity Heatmap</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Activity Heatmap</h3>
             <p className="text-sm text-slate-400 mb-6">
               Hourly activity distribution across days of the week
             </p>
@@ -104,7 +104,7 @@ export default function EngagementPage() {
 
           {/* Daily Actions Trend */}
           <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-6">Daily Activity Trend</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Daily Activity Trend</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={heatmap.dailyActions}>
@@ -122,14 +122,14 @@ export default function EngagementPage() {
 
           {/* Feature Adoption */}
           <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-6">Feature Adoption</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Feature Adoption</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {features.features.slice(0, 9).map((feature) => (
                 <div
                   key={feature.activityType}
                   className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50"
                 >
-                  <h4 className="text-white font-medium mb-1">{feature.name}</h4>
+                  <h4 className="text-gray-900 dark:text-white font-medium mb-1">{feature.name}</h4>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-bold text-cyan-400">
                       {feature.uniqueUsers.toLocaleString()}
@@ -159,7 +159,7 @@ export default function EngagementPage() {
 
           {/* User Journey Funnel */}
           <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-2">User Journey Funnel</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">User Journey Funnel</h3>
             <p className="text-sm text-slate-400 mb-6">
               Conversion rates from signup through retention
             </p>
@@ -169,7 +169,7 @@ export default function EngagementPage() {
           {/* Retention Cohorts */}
           {retention.retentionCohorts.length > 0 && (
             <div className="glass-card p-8">
-              <h3 className="text-xl font-bold text-white mb-6">Weekly Retention Cohorts</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Weekly Retention Cohorts</h3>
               <RetentionCohortTable cohorts={retention.retentionCohorts} />
             </div>
           )}

@@ -65,7 +65,7 @@ export default function OverviewPage() {
       loading={overviewLoading}
     >
       <div className="glass-card p-8">
-        <h2 className="text-2xl font-bold text-white mb-6">Platform Overview</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Platform Overview</h2>
         <p className="text-slate-400 mb-8">High-level metrics and trends across the platform.</p>
 
         <div className="h-80">

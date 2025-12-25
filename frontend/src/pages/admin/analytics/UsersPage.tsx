@@ -78,7 +78,7 @@ export default function UsersPage() {
           </div>
 
           <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-6">Daily Active Users Trend</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Daily Active Users Trend</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={timeseries}>

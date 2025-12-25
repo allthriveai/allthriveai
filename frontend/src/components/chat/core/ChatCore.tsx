@@ -19,6 +19,7 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import { useIntelligentChat, type OrchestrationAction, type QuotaExceededInfo } from '@/hooks/useIntelligentChat';
 import { useOnboardingChat } from '@/hooks/useOnboardingChat';
 import { useOrchestrationActions } from '@/hooks/useOrchestrationActions';
+import { useStandaloneAvatarCreation } from '@/hooks/useStandaloneAvatarCreation';
 import { useIntegrationFlow } from '../integrations';
 import { uploadImage, uploadFile } from '@/services/upload';
 import { logError } from '@/utils/errorHandler';
@@ -231,6 +232,9 @@ export function ChatCore({
     },
   });
 
+  // Standalone avatar creation hook (listens for 'open-avatar-creation' event)
+  const avatarCreation = useStandaloneAvatarCreation();
+
   // Build onboarding state for children
   const onboardingState = useMemo((): OnboardingState | null => {
     if (!enableOnboarding) return null;
@@ -287,6 +291,9 @@ export function ChatCore({
 
     // Onboarding
     onboarding: onboardingState,
+
+    // Standalone avatar creation
+    avatarCreation,
 
     // Orchestration
     pendingAction,

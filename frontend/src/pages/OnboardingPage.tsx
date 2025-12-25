@@ -247,7 +247,7 @@ export default function OnboardingPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <h1 className="text-xl sm:text-2xl font-bold text-white mb-0.5 sm:mb-1">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
                     Ember's Quest Board
                   </h1>
                   <p className="text-slate-300 text-xs sm:text-sm line-clamp-2 sm:line-clamp-none">

@@ -32,7 +32,7 @@ export default function CheckoutSuccessPage() {
               </div>
 
               {/* Title */}
-              <h1 className="text-3xl font-bold text-white mb-4">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
                 Payment Successful!
               </h1>
 

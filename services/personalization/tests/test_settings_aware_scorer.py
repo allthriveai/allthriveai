@@ -343,3 +343,101 @@ class TestEdgeCases:
 
         # Now loaded
         assert scorer._settings_loaded is True
+
+
+# =============================================================================
+# Skill Level Tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestSkillLevel:
+    """Test skill level matching functionality."""
+
+    def test_should_consider_skill_level_default_true(self, user):
+        """By default, skill level should be considered."""
+        scorer = SettingsAwareScorer(user)
+        assert scorer.should_consider_skill_level() is True
+
+    def test_should_consider_skill_level_false_when_disabled(self, user_with_settings):
+        """should_consider_skill_level returns False when disabled."""
+        user_with_settings.personalization_settings.consider_skill_level = False
+        user_with_settings.personalization_settings.save()
+
+        scorer = SettingsAwareScorer(user_with_settings)
+        assert scorer.should_consider_skill_level() is False
+
+    def test_get_user_skill_level_none_when_no_profile(self, user):
+        """Returns None when user has no LearnerProfile."""
+        scorer = SettingsAwareScorer(user)
+        assert scorer.get_user_skill_level() is None
+
+    def test_get_user_skill_level_from_learner_profile(self, user):
+        """Returns skill level from LearnerProfile when it exists."""
+        from core.learning_paths.models import LearnerProfile
+
+        LearnerProfile.objects.create(user=user, current_difficulty_level='intermediate')
+
+        scorer = SettingsAwareScorer(user)
+        assert scorer.get_user_skill_level() == 'intermediate'
+
+    def test_skill_match_score_exact_match(self, user):
+        """Exact skill level match returns 1.0."""
+        from core.learning_paths.models import LearnerProfile
+
+        LearnerProfile.objects.create(user=user, current_difficulty_level='beginner')
+        PersonalizationSettings.objects.create(user=user, consider_skill_level=True)
+
+        scorer = SettingsAwareScorer(user)
+        assert scorer.calculate_skill_match_score('beginner') == 1.0
+        assert scorer.calculate_skill_match_score('Beginner') == 1.0  # Case insensitive
+
+    def test_skill_match_score_one_level_away(self, user):
+        """One level difference returns 0.5."""
+        from core.learning_paths.models import LearnerProfile
+
+        LearnerProfile.objects.create(user=user, current_difficulty_level='intermediate')
+        PersonalizationSettings.objects.create(user=user, consider_skill_level=True)
+
+        scorer = SettingsAwareScorer(user)
+        assert scorer.calculate_skill_match_score('beginner') == 0.5
+        assert scorer.calculate_skill_match_score('advanced') == 0.5
+
+    def test_skill_match_score_two_levels_away(self, user):
+        """Two level difference returns 0.0."""
+        from core.learning_paths.models import LearnerProfile
+
+        LearnerProfile.objects.create(user=user, current_difficulty_level='beginner')
+        PersonalizationSettings.objects.create(user=user, consider_skill_level=True)
+
+        scorer = SettingsAwareScorer(user)
+        assert scorer.calculate_skill_match_score('advanced') == 0.0
+
+    def test_skill_match_score_neutral_when_disabled(self, user):
+        """Returns 0.5 when skill matching is disabled."""
+        from core.learning_paths.models import LearnerProfile
+
+        LearnerProfile.objects.create(user=user, current_difficulty_level='beginner')
+        PersonalizationSettings.objects.create(user=user, consider_skill_level=False)
+
+        scorer = SettingsAwareScorer(user)
+        # Should return neutral score even for perfect match when disabled
+        assert scorer.calculate_skill_match_score('beginner') == 0.5
+
+    def test_skill_match_score_neutral_when_no_user_skill(self, user):
+        """Returns 0.5 when user has no skill level set."""
+        PersonalizationSettings.objects.create(user=user, consider_skill_level=True)
+
+        scorer = SettingsAwareScorer(user)
+        assert scorer.calculate_skill_match_score('beginner') == 0.5
+
+    def test_skill_match_score_neutral_when_no_content_difficulty(self, user):
+        """Returns 0.5 when content has no difficulty set."""
+        from core.learning_paths.models import LearnerProfile
+
+        LearnerProfile.objects.create(user=user, current_difficulty_level='beginner')
+        PersonalizationSettings.objects.create(user=user, consider_skill_level=True)
+
+        scorer = SettingsAwareScorer(user)
+        assert scorer.calculate_skill_match_score(None) == 0.5
+        assert scorer.calculate_skill_match_score('') == 0.5

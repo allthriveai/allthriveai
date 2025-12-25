@@ -585,6 +585,59 @@ jobs:
     needs: deploy-backend
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit to check for changes
+
+      - name: Check what changed
+        id: changes
+        run: |
+          echo "🔍 Checking for changes that require post-deploy commands..."
+
+          # Check for seed data changes (YAML files, seed commands, fixtures)
+          if git diff --name-only HEAD~1 HEAD | grep -qE "(seed_|fixtures/|data/.*\.ya?ml|management/commands/seed)"; then
+            echo "seed_data_changed=true" >> $GITHUB_OUTPUT
+            echo "  ✅ Seed data files changed - will run AI tagging and Weaviate indexing"
+          else
+            echo "seed_data_changed=false" >> $GITHUB_OUTPUT
+            echo "  ⏭️  No seed data changes"
+          fi
+
+          # Check for Weaviate/search changes
+          if git diff --name-only HEAD~1 HEAD | grep -qE "(weaviate|search|embeddings|vector)"; then
+            echo "weaviate_changed=true" >> $GITHUB_OUTPUT
+            echo "  ✅ Weaviate/search files changed - will setup and reindex"
+          else
+            echo "weaviate_changed=false" >> $GITHUB_OUTPUT
+            echo "  ⏭️  No Weaviate/search changes"
+          fi
+
+          # Check for analytics changes
+          if git diff --name-only HEAD~1 HEAD | grep -qE "(analytics|platform.*stats|PlatformDailyStats)"; then
+            echo "analytics_changed=true" >> $GITHUB_OUTPUT
+            echo "  ✅ Analytics files changed - will backfill stats"
+          else
+            echo "analytics_changed=false" >> $GITHUB_OUTPUT
+            echo "  ⏭️  No analytics changes"
+          fi
+
+          # Check for taxonomy/AI tagging changes
+          if git diff --name-only HEAD~1 HEAD | grep -qE "(taxonomy|ai_tag|backfill_ai_tags)"; then
+            echo "tagging_changed=true" >> $GITHUB_OUTPUT
+            echo "  ✅ Taxonomy/tagging files changed - will run AI tagging"
+          else
+            echo "tagging_changed=false" >> $GITHUB_OUTPUT
+            echo "  ⏭️  No taxonomy/tagging changes"
+          fi
+
+          echo ""
+          echo "📋 Summary:"
+          echo "   Seed data changed:  ${{ steps.changes.outputs.seed_data_changed || 'checking...' }}"
+          echo "   Weaviate changed:   ${{ steps.changes.outputs.weaviate_changed || 'checking...' }}"
+          echo "   Analytics changed:  ${{ steps.changes.outputs.analytics_changed || 'checking...' }}"
+          echo "   Tagging changed:    ${{ steps.changes.outputs.tagging_changed || 'checking...' }}"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -738,6 +791,7 @@ jobs:
           fi
 
       - name: AI tag seeded content (async)
+        if: steps.changes.outputs.seed_data_changed == 'true' || steps.changes.outputs.tagging_changed == 'true'
         run: |
           echo "🏷️ Triggering AI tagging for seeded content..."
 
@@ -772,7 +826,12 @@ jobs:
             echo "⚠️ AI tagging had issues (exit code: $EXIT_CODE) - continuing anyway"
           fi
 
+      - name: Skip AI tagging (no changes)
+        if: steps.changes.outputs.seed_data_changed != 'true' && steps.changes.outputs.tagging_changed != 'true'
+        run: echo "⏭️ Skipping AI tagging - no seed data or taxonomy changes detected"
+
       - name: Backfill platform analytics stats
+        if: steps.changes.outputs.analytics_changed == 'true'
         run: |
           echo "📊 Backfilling platform daily stats for analytics dashboard..."
 
@@ -806,7 +865,12 @@ jobs:
             echo "⚠️ Platform stats backfill had issues (exit code: $EXIT_CODE) - continuing anyway"
           fi
 
+      - name: Skip analytics backfill (no changes)
+        if: steps.changes.outputs.analytics_changed != 'true'
+        run: echo "⏭️ Skipping analytics backfill - no analytics changes detected"
+
       - name: Setup Weaviate collections (idempotent)
+        if: steps.changes.outputs.weaviate_changed == 'true' || steps.changes.outputs.seed_data_changed == 'true'
         run: |
           echo "🔍 Setting up Weaviate collections..."
 
@@ -841,7 +905,12 @@ jobs:
             # Don't fail deploy - Weaviate may not be available yet or collections may exist
           fi
 
+      - name: Skip Weaviate setup (no changes)
+        if: steps.changes.outputs.weaviate_changed != 'true' && steps.changes.outputs.seed_data_changed != 'true'
+        run: echo "⏭️ Skipping Weaviate setup - no Weaviate or seed data changes detected"
+
       - name: Index seeded content to Weaviate (async)
+        if: steps.changes.outputs.weaviate_changed == 'true' || steps.changes.outputs.seed_data_changed == 'true'
         run: |
           echo "📊 Triggering async Weaviate indexing for ALL seeded content..."
 
@@ -876,6 +945,10 @@ jobs:
           else
             echo "⚠️ Weaviate reindex had issues (exit code: $EXIT_CODE) - continuing anyway"
           fi
+
+      - name: Skip Weaviate indexing (no changes)
+        if: steps.changes.outputs.weaviate_changed != 'true' && steps.changes.outputs.seed_data_changed != 'true'
+        run: echo "⏭️ Skipping Weaviate indexing - no Weaviate or seed data changes detected"
 
   # Smoke test OAuth endpoints after deployment
   smoke-test-oauth:

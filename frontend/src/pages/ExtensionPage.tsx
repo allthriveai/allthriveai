@@ -29,7 +29,7 @@ export default function ExtensionPage() {
           </motion.div>
 
           {/* Title */}
-          <h1 className="text-2xl font-bold text-white mb-3">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
             Chrome Extension
           </h1>
 

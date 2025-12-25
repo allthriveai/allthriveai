@@ -93,7 +93,7 @@ export function LoungePage() {
           {/* Sidebar - Room List */}
           <aside className="w-72 flex-shrink-0 border-r border-white/10 glass-panel rounded-none">
             <div className="p-4 border-b border-white/10">
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <FontAwesomeIcon icon={faCouch} className="text-cyan-400" />
                 The Lounge
               </h1>

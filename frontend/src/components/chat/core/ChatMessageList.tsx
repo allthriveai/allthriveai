@@ -21,6 +21,7 @@ import {
   IntegrationCardsMessage,
   ProfileQuestionMessage,
   InlineActionsMessage,
+  AvatarCreationMessage,
 } from '../messages';
 import { GeneratedImageMessage } from '../GeneratedImageMessage';
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
@@ -36,6 +37,7 @@ export function ChatMessageList({
   customEmptyState,
   greetingConfig,
   onboarding,
+  avatarCreation,
   onCreateProjectFromImage,
   onNavigate,
   autoScroll = true,
@@ -224,7 +226,7 @@ export function ChatMessageList({
   };
 
   // Show empty state if no messages and no greeting
-  const showEmptyState = messages.length === 0 && !greetingConfig && !onboarding?.isActive;
+  const showEmptyState = messages.length === 0 && !greetingConfig && !onboarding?.isActive && !avatarCreation?.isActive;
 
   return (
     <div
@@ -235,6 +237,9 @@ export function ChatMessageList({
       <div className="space-y-4">
         {/* Onboarding step - shown when onboarding is active */}
         {onboarding?.isActive && <OnboardingMessage onboarding={onboarding} />}
+
+        {/* Standalone avatar creation - shown when triggered via AI (outside onboarding) */}
+        {avatarCreation?.isActive && <AvatarCreationMessage avatarCreation={avatarCreation} />}
 
         {/* Custom empty state */}
         {showEmptyState && customEmptyState}

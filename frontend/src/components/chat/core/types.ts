@@ -142,6 +142,9 @@ export interface ChatCoreState {
   // Onboarding
   onboarding: OnboardingState | null;
 
+  // Standalone avatar creation (outside onboarding)
+  avatarCreation: import('@/hooks/useStandaloneAvatarCreation').UseStandaloneAvatarCreationReturn | null;
+
   // Orchestration
   pendingAction: PendingAction | null;
   confirmPendingAction: () => void;
@@ -181,6 +184,8 @@ export interface ChatMessageListProps {
   };
   // Onboarding renderer
   onboarding?: OnboardingState | null;
+  // Standalone avatar creation (outside onboarding)
+  avatarCreation?: import('@/hooks/useStandaloneAvatarCreation').UseStandaloneAvatarCreationReturn | null;
   // For rendering generated images
   onCreateProjectFromImage?: (sessionId: number) => Promise<{ projectUrl: string; projectTitle: string }>;
   // Navigation handler for markdown links
@@ -323,4 +328,11 @@ export interface GameMessageProps {
 // Onboarding message props
 export interface OnboardingMessageProps {
   onboarding: OnboardingState;
+}
+
+// Avatar creation message props (standalone, outside onboarding)
+export type { UseStandaloneAvatarCreationReturn as StandaloneAvatarCreationState } from '@/hooks/useStandaloneAvatarCreation';
+
+export interface AvatarCreationMessageProps {
+  avatarCreation: import('@/hooks/useStandaloneAvatarCreation').UseStandaloneAvatarCreationReturn;
 }

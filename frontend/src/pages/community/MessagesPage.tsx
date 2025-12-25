@@ -93,7 +93,7 @@ export function MessagesPage() {
             threadId ? 'hidden md:block' : ''
           }`}>
             <div className="p-4 border-b border-white/10">
-              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <FontAwesomeIcon icon={faEnvelope} className="text-cyan-400" />
                 Messages
               </h1>
