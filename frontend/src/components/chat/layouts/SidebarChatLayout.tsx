@@ -19,6 +19,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { createProjectFromImageSession } from '@/services/projects';
+import { checkGitHubConnection } from '@/services/github';
+import { checkGitLabConnection } from '@/services/gitlab';
+import { checkFigmaConnection } from '@/services/figma';
 import {
   ChatCore,
   ChatMessageList,
@@ -28,6 +31,7 @@ import {
   type ProfileGenerateContext,
   type AvatarGenerateContext,
   type LearningSetupContext,
+  type IntegrationId,
 } from '../core';
 import { ChatPlusMenu, type IntegrationType } from '../ChatPlusMenu';
 import {
@@ -41,6 +45,7 @@ import {
   IntegrationPicker,
 } from '../integrations';
 import { LearningGoalSelectionMessage } from '../onboarding';
+import type { ProjectImportOption } from '@/hooks/useIntelligentChat';
 
 // Context-aware quick actions
 const QUICK_ACTIONS: Record<ChatContext, Array<{ label: string; message: string }>> = {
@@ -226,6 +231,36 @@ export function SidebarChatLayout({
   const [isPanelDragging, setIsPanelDragging] = useState(false);
   const panelDragCounterRef = useRef(0);
 
+  // Connection status for integrations
+  const [connectionStatus, setConnectionStatus] = useState({
+    github: false,
+    gitlab: false,
+    figma: false,
+    youtube: false,
+    loading: false,
+  });
+
+  // Fetch connection statuses
+  const fetchConnectionStatuses = useCallback(async () => {
+    setConnectionStatus((prev) => ({ ...prev, loading: true }));
+    try {
+      const [github, gitlab, figma] = await Promise.all([
+        checkGitHubConnection().catch(() => false),
+        checkGitLabConnection().catch(() => false),
+        checkFigmaConnection().catch(() => false),
+      ]);
+      setConnectionStatus({
+        github,
+        gitlab,
+        figma,
+        youtube: false,
+        loading: false,
+      });
+    } catch {
+      setConnectionStatus((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
   // Close on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -323,6 +358,32 @@ export function SidebarChatLayout({
             projectUrl: result.project.url,
             projectTitle: result.project.title,
           };
+        };
+
+        // Handle project import option selection
+        const handleProjectImportOptionSelect = (option: ProjectImportOption) => {
+          switch (option) {
+            case 'integration':
+              fetchConnectionStatuses();
+              integrationFlow?.actions.startFlow('github');
+              break;
+            case 'describe':
+              state.sendMessage('I want to describe a project idea');
+              break;
+            case 'url':
+              state.sendMessage('I want to import a project from a URL');
+              break;
+            case 'upload':
+              if (triggerFileSelectRef.current) {
+                triggerFileSelectRef.current();
+              }
+              break;
+          }
+        };
+
+        // Handle integration card selection (from inline integration picker)
+        const handleIntegrationCardSelect = (integration: IntegrationId) => {
+          integrationFlow?.actions.startFlow(integration);
         };
 
         // Wrap sendMessage to intercept slash commands
@@ -599,10 +660,15 @@ export function SidebarChatLayout({
                         onCancelProcessing={state.cancelProcessing}
                         userAvatarUrl={user?.avatarUrl}
                         onboarding={state.onboarding}
+                        avatarCreation={state.avatarCreation}
                         onNavigate={handleNavigate}
                         onCreateProjectFromImage={handleCreateProjectFromImage}
+                        onProjectImportOptionSelect={handleProjectImportOptionSelect}
+                        onIntegrationSelect={handleIntegrationCardSelect}
+                        connectionStatus={connectionStatus}
                         onConnectFigma={integrationFlow?.handleConnectFigma}
                         onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
+                        onInlineActionClick={(message) => state.sendMessage(message)}
                       />
                     </div>
 

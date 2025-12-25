@@ -90,7 +90,7 @@ export default function OnboardingPage() {
                   </div>
                   <h4 className="text-slate-400 text-sm font-medium">{data.label}</h4>
                 </div>
-                <p className="text-3xl font-bold text-white">{data.count}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{data.count}</p>
                 <p className="text-sm text-slate-500 mt-1">{data.percentage}% of users</p>
               </div>
             ))}
@@ -98,7 +98,7 @@ export default function OnboardingPage() {
 
           {/* Onboarding Path Distribution Chart */}
           <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-6">Onboarding Path Selection Over Time</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Onboarding Path Selection Over Time</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.timeseries || []}>
@@ -120,7 +120,7 @@ export default function OnboardingPage() {
           {/* Recent Onboarding Completions */}
           {(stats.recent?.length ?? 0) > 0 && (
             <div className="glass-card p-8">
-              <h3 className="text-xl font-bold text-white mb-6">Recent Onboarding Completions</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Recent Onboarding Completions</h3>
               <div className="space-y-3">
                 {stats.recent.map((item, index) => (
                   <div
@@ -135,7 +135,7 @@ export default function OnboardingPage() {
                         {pathIcons[item.path] || '📊'}
                       </div>
                       <div>
-                        <p className="text-white font-medium">{item.username}</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{item.username}</p>
                         <p
                           className="text-xs font-medium"
                           style={{ color: pathColors[item.path] || '#94a3b8' }}

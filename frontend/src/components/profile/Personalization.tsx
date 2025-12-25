@@ -573,13 +573,13 @@ export function Personalization() {
                 What should influence your recommendations?
               </h4>
               <div className="space-y-2 sm:space-y-3">
-                {/* Topic selections toggle */}
+                {/* Detected preferences toggle */}
                 <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <TagIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-500 flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Topic Selections</p>
-                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Use your selected topics above</p>
+                      <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Detected Preferences</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Use tools detected from your projects</p>
                     </div>
                   </div>
                   <button
@@ -657,7 +657,7 @@ export function Personalization() {
                     <AcademicCapIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">Skill Level</p>
-                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Match content to your experience level</p>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Use your skill level from Your Profile above</p>
                     </div>
                   </div>
                   <button

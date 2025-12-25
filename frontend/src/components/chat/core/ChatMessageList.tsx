@@ -21,6 +21,7 @@ import {
   IntegrationCardsMessage,
   ProfileQuestionMessage,
   InlineActionsMessage,
+  AvatarCreationMessage,
 } from '../messages';
 import { GeneratedImageMessage } from '../GeneratedImageMessage';
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
@@ -36,6 +37,7 @@ export function ChatMessageList({
   customEmptyState,
   greetingConfig,
   onboarding,
+  avatarCreation,
   onCreateProjectFromImage,
   onNavigate,
   autoScroll = true,
@@ -104,6 +106,19 @@ export function ChatMessageList({
       }
     }
   }, [messages.length]);
+
+  // Auto-scroll when avatar creation becomes active
+  useEffect(() => {
+    if (avatarCreation?.isActive) {
+      // Small delay to ensure the component has rendered
+      setTimeout(() => {
+        const container = containerRef.current;
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [avatarCreation?.isActive]);
 
   // Render a single message based on its type
   const renderMessage = (message: ChatMessage) => {
@@ -224,7 +239,7 @@ export function ChatMessageList({
   };
 
   // Show empty state if no messages and no greeting
-  const showEmptyState = messages.length === 0 && !greetingConfig && !onboarding?.isActive;
+  const showEmptyState = messages.length === 0 && !greetingConfig && !onboarding?.isActive && !avatarCreation?.isActive;
 
   return (
     <div
@@ -258,6 +273,9 @@ export function ChatMessageList({
             </div>
           );
         })}
+
+        {/* Standalone avatar creation - shown after messages when triggered via AI */}
+        {avatarCreation?.isActive && <AvatarCreationMessage avatarCreation={avatarCreation} />}
 
         {/* Loading indicator */}
         {isLoading && (

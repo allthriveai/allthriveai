@@ -28,7 +28,7 @@ export default function RevenuePage() {
       loading={loading}
     >
       <div className="glass-card p-8">
-        <h3 className="text-xl font-bold text-white mb-4">Revenue Metrics</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Revenue Metrics</h3>
         <p className="text-slate-400">Coming soon - subscription and revenue tracking.</p>
       </div>
     </AnalyticsLayout>

@@ -285,7 +285,7 @@ class SocialAccountLinkingTestCase(TestCase):
     def setUp(self):
         """Set up test user and social app."""
         self.user = User.objects.create_user(username='socialuser', email='social@example.com', password='testpass123')
-        self.site = Site.objects.get(id=1)
+        self.site, _ = Site.objects.get_or_create(id=1, defaults={'domain': 'example.com', 'name': 'Example'})
         self.github_app = SocialApp.objects.create(
             provider='github', name='GitHub Test', client_id='test_client', secret='test_secret'
         )

@@ -108,6 +108,8 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
         return `Start a battle with ${action.params?.opponent_username || 'an opponent'}?`;
       case 'create_project':
         return 'Open the project creation flow?';
+      case 'create_avatar':
+        return 'Open the avatar creation wizard?';
       case 'start_quiz':
         return `Start the quiz "${action.params?.quiz_name || 'quiz'}"?`;
       case 'view_profile':
@@ -131,6 +133,10 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
       case 'create_project':
         // Dispatch event to open project creation
         window.dispatchEvent(new CustomEvent('open-project-creation'));
+        break;
+      case 'create_avatar':
+        // Dispatch event to open avatar creation
+        window.dispatchEvent(new CustomEvent('open-avatar-creation'));
         break;
       case 'start_quiz':
         // Navigate to quiz

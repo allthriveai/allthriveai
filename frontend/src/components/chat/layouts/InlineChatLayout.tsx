@@ -15,12 +15,16 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { createProjectFromImageSession } from '@/services/projects';
+import { checkGitHubConnection } from '@/services/github';
+import { checkGitLabConnection } from '@/services/gitlab';
+import { checkFigmaConnection } from '@/services/figma';
 import {
   ChatCore,
   ChatMessageList,
   ChatInputArea,
   type ChatContext,
   type LearningSetupContext,
+  type IntegrationId,
 } from '../core';
 import { ChatPlusMenu, type IntegrationType } from '../ChatPlusMenu';
 import {
@@ -35,6 +39,7 @@ import {
 } from '../integrations';
 import { LearningGoalSelectionMessage } from '../onboarding';
 import type { ConceptClickContext } from '@/components/learning/StructuredLearningPath';
+import type { ProjectImportOption } from '@/hooks/useIntelligentChat';
 
 // Context-aware quick actions for learning
 const LEARN_QUICK_ACTIONS = [
@@ -71,6 +76,36 @@ export function InlineChatLayout({
   // Panel-level drag-and-drop state
   const [isPanelDragging, setIsPanelDragging] = useState(false);
   const panelDragCounterRef = useRef(0);
+
+  // Connection status for integrations
+  const [connectionStatus, setConnectionStatus] = useState({
+    github: false,
+    gitlab: false,
+    figma: false,
+    youtube: false,
+    loading: false,
+  });
+
+  // Fetch connection statuses
+  const fetchConnectionStatuses = useCallback(async () => {
+    setConnectionStatus((prev) => ({ ...prev, loading: true }));
+    try {
+      const [github, gitlab, figma] = await Promise.all([
+        checkGitHubConnection().catch(() => false),
+        checkGitLabConnection().catch(() => false),
+        checkFigmaConnection().catch(() => false),
+      ]);
+      setConnectionStatus({
+        github,
+        gitlab,
+        figma,
+        youtube: false,
+        loading: false,
+      });
+    } catch {
+      setConnectionStatus((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
 
   // Track if we've sent the concept context message
   const conceptMessageSentRef = useRef<string | null>(null);
@@ -177,6 +212,32 @@ export function InlineChatLayout({
             projectUrl: result.project.url,
             projectTitle: result.project.title,
           };
+        };
+
+        // Handle project import option selection
+        const handleProjectImportOptionSelect = (option: ProjectImportOption) => {
+          switch (option) {
+            case 'integration':
+              fetchConnectionStatuses();
+              integrationFlow?.actions.startFlow('github');
+              break;
+            case 'describe':
+              state.sendMessage('I want to describe a project idea');
+              break;
+            case 'url':
+              state.sendMessage('I want to import a project from a URL');
+              break;
+            case 'upload':
+              if (triggerFileSelectRef.current) {
+                triggerFileSelectRef.current();
+              }
+              break;
+          }
+        };
+
+        // Handle integration card selection
+        const handleIntegrationCardSelect = (integration: IntegrationId) => {
+          integrationFlow?.actions.startFlow(integration);
         };
 
         // Wrap sendMessage to intercept slash commands
@@ -399,10 +460,15 @@ export function InlineChatLayout({
                       onCancelProcessing={state.cancelProcessing}
                       userAvatarUrl={user?.avatarUrl}
                       onboarding={state.onboarding}
+                      avatarCreation={state.avatarCreation}
                       onNavigate={handleNavigate}
                       onCreateProjectFromImage={handleCreateProjectFromImage}
+                      onProjectImportOptionSelect={handleProjectImportOptionSelect}
+                      onIntegrationSelect={handleIntegrationCardSelect}
+                      connectionStatus={connectionStatus}
                       onConnectFigma={integrationFlow?.handleConnectFigma}
                       onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
+                      onInlineActionClick={(message) => state.sendMessage(message)}
                     />
                   </div>
 

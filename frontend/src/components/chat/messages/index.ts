@@ -21,3 +21,4 @@ export { IntegrationCardsMessage } from './IntegrationCardsMessage';
 export { ProfileQuestionMessage } from './ProfileQuestionMessage';
 export type { ProfileQuestionConfig, ProfileQuestionOption } from './ProfileQuestionMessage';
 export { InlineActionsMessage } from './InlineActionsMessage';
+export { AvatarCreationMessage } from './AvatarCreationMessage';

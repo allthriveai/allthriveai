@@ -411,6 +411,7 @@ class PersonalizationEngine:
                         'like_count',
                         'owner_id',
                         'promotion_score',
+                        'difficulty_taxonomy_name',
                     ],
                     enforce_visibility=True,  # Explicit for clarity
                 )
@@ -779,7 +780,15 @@ class PersonalizationEngine:
                 logger.warning(f'Missing promotion_score for project {project_id}, defaulting to 0.0')
                 promotion_score = 0.0
 
+            # 7. Skill level match score
+            # Boost content that matches user's skill level from their profile
+            content_difficulty = candidate.get('difficulty_taxonomy_name')
+            skill_match_score = scorer.calculate_skill_match_score(content_difficulty)
+
             # Combine with settings-adjusted weights
+            # Skill match is applied as a multiplier (0.8 to 1.2) to avoid overwhelming other signals
+            skill_multiplier = 0.8 + (skill_match_score * 0.4)  # Range: 0.8 (mismatch) to 1.2 (perfect match)
+
             total_score = (
                 (vector_score * weights['vector_similarity'])
                 + (explicit_score * weights['explicit_preferences'])
@@ -787,7 +796,7 @@ class PersonalizationEngine:
                 + (collaborative_score * weights['collaborative'])
                 + (popularity_score * weights['popularity'])
                 + (promotion_score * weights['promotion'])
-            )
+            ) * skill_multiplier
 
             scored_projects.append(
                 ScoredProject(

@@ -53,7 +53,7 @@ export function AnalyticsLayout({
         <div className="max-w-6xl mx-auto px-6 py-8">
           {/* Header */}
           <header className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {title}
             </h1>
             {subtitle && (

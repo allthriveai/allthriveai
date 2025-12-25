@@ -227,3 +227,83 @@ class SettingsAwareScorer:
         if not self.settings:
             return True
         return self.settings.allow_scroll_tracking
+
+    def should_consider_skill_level(self) -> bool:
+        """
+        Check if skill level should be considered for recommendations.
+
+        Returns False if user has disabled consider_skill_level.
+        """
+        if not self.settings:
+            return True
+        return self.settings.consider_skill_level
+
+    def get_user_skill_level(self) -> str | None:
+        """
+        Get the user's skill level from their LearnerProfile.
+
+        Returns:
+            'beginner', 'intermediate', 'advanced', or None if not set
+        """
+        try:
+            learner_profile = self.user.learner_profile
+            return learner_profile.current_difficulty_level
+        except Exception:
+            return None
+
+    def calculate_skill_match_score(self, content_difficulty: str | None) -> float:
+        """
+        Calculate a score based on how well content difficulty matches user skill level.
+
+        This score is used as a multiplier in the engine (0.8 to 1.2 range):
+        - Exact match: 1.0 -> 1.2x multiplier (20% boost)
+        - One level away: 0.5 -> 1.0x multiplier (neutral)
+        - Two levels away: 0.0 -> 0.8x multiplier (20% penalty)
+        - No difficulty set: 0.5 -> 1.0x multiplier (neutral)
+
+        The penalty for mismatches helps avoid showing beginners advanced content
+        they can't understand, or experts basic content they already know.
+
+        Args:
+            content_difficulty: The difficulty level of the content ('beginner', 'intermediate', 'advanced')
+
+        Returns:
+            Score from 0.0 to 1.0
+        """
+        if not self.should_consider_skill_level():
+            return 0.5  # Neutral score when disabled
+
+        user_skill = self.get_user_skill_level()
+        if not user_skill:
+            return 0.5  # Neutral if user hasn't set skill level
+
+        if not content_difficulty:
+            return 0.5  # Neutral if content has no difficulty set
+
+        # Normalize to lowercase
+        user_skill = user_skill.lower()
+        content_difficulty = content_difficulty.lower()
+
+        # Map skill levels to numeric values for distance calculation
+        skill_map = {'beginner': 0, 'intermediate': 1, 'advanced': 2}
+
+        user_level = skill_map.get(user_skill)
+        content_level = skill_map.get(content_difficulty)
+
+        if user_level is None or content_level is None:
+            return 0.5  # Neutral for unknown levels
+
+        distance = abs(user_level - content_level)
+
+        if distance == 0:
+            score = 1.0  # Perfect match
+        elif distance == 1:
+            score = 0.5  # Close match
+        else:
+            score = 0.0  # Too far apart
+
+        logger.debug(
+            f'Skill match: user={user_skill}, content={content_difficulty}, '
+            f'distance={distance}, score={score} for user_id={self.user.id}'
+        )
+        return score

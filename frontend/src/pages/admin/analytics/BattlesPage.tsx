@@ -64,7 +64,7 @@ export default function BattlesPage() {
                 </div>
                 <h4 className="text-slate-400 text-sm font-medium">Current Guests</h4>
               </div>
-              <p className="text-3xl font-bold text-white">{metrics.currentGuests}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.currentGuests}</p>
               <p className="text-sm text-slate-500 mt-1">{metrics.totalGuests} created this period</p>
             </div>
 
@@ -75,7 +75,7 @@ export default function BattlesPage() {
                 </div>
                 <h4 className="text-slate-400 text-sm font-medium">Conversion Rate</h4>
               </div>
-              <p className="text-3xl font-bold text-white">{metrics.conversionRate}%</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.conversionRate}%</p>
               <p className="text-sm text-slate-500 mt-1">
                 {metrics.guestsConverted} converted &bull; {metrics.allTimeConversionRate}% all-time
               </p>
@@ -88,7 +88,7 @@ export default function BattlesPage() {
                 </div>
                 <h4 className="text-slate-400 text-sm font-medium">Guest Battles</h4>
               </div>
-              <p className="text-3xl font-bold text-white">{metrics.battlesWithGuests}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.battlesWithGuests}</p>
               <p className="text-sm text-slate-500 mt-1">{metrics.guestBattlePercentage}% of all battles</p>
             </div>
 
@@ -99,7 +99,7 @@ export default function BattlesPage() {
                 </div>
                 <h4 className="text-slate-400 text-sm font-medium">Total Battles</h4>
               </div>
-              <p className="text-3xl font-bold text-white">{metrics.totalBattles}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.totalBattles}</p>
               <p className="text-sm text-slate-500 mt-1">This period</p>
             </div>
           </div>
@@ -107,7 +107,7 @@ export default function BattlesPage() {
           {/* Conversion Funnel */}
           {metrics.conversionFunnel && (
             <div className="glass-card p-8">
-              <h3 className="text-xl font-bold text-white mb-2">Guest Conversion Funnel</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Guest Conversion Funnel</h3>
               <p className="text-sm text-slate-400 mb-6">All-time guest journey from invite to full user</p>
 
               <div className="space-y-4">
@@ -115,7 +115,7 @@ export default function BattlesPage() {
                 <div className="flex items-center gap-4 mb-3">
                   <div className="w-32 text-right">
                     <p className="text-sm text-slate-400">Invited</p>
-                    <p className="text-2xl font-bold text-white">{metrics.conversionFunnel.invited}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics.conversionFunnel.invited}</p>
                   </div>
                   <div className="flex-1 relative">
                     <div className="h-10 bg-cyan-500/20 rounded-lg" style={{ width: '100%' }}>
@@ -141,7 +141,7 @@ export default function BattlesPage() {
                 <div className="flex items-center gap-4 mb-3">
                   <div className="w-32 text-right">
                     <p className="text-sm text-slate-400">Played Battle</p>
-                    <p className="text-2xl font-bold text-white">{metrics.conversionFunnel.joinedBattle}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{metrics.conversionFunnel.joinedBattle}</p>
                   </div>
                   <div className="flex-1 relative">
                     <div
@@ -209,7 +209,7 @@ export default function BattlesPage() {
 
           {/* Guest Win/Loss Stats */}
           <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-6">Guest Battle Performance</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Guest Battle Performance</h3>
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center p-4 rounded-xl bg-green-500/10 border border-green-500/20">
                 <p className="text-3xl font-bold text-green-400">{metrics.guestWins}</p>
@@ -234,7 +234,7 @@ export default function BattlesPage() {
           {/* Recent Guests */}
           {metrics.recentGuests.length > 0 && (
             <div className="glass-card p-8">
-              <h3 className="text-xl font-bold text-white mb-6">Recent Guest Users</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Recent Guest Users</h3>
               <div className="space-y-3">
                 {metrics.recentGuests.map((guest) => (
                   <div
@@ -246,7 +246,7 @@ export default function BattlesPage() {
                         <UserGroupIcon className="w-4 h-4 text-cyan-400" />
                       </div>
                       <div>
-                        <p className="text-white font-medium">{guest.username}</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{guest.username}</p>
                         <p className="text-xs text-slate-500">ID: {guest.id}</p>
                       </div>
                     </div>
