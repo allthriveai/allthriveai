@@ -180,7 +180,7 @@ export function Footer() {
             </Link>
           </p>
           <p className="text-gray-500 text-sm text-center">
-            Your AI Living Lab to share, learn, and play with AI.
+            Your space to share, learn, and play with AI.
           </p>
         </div>
       </div>

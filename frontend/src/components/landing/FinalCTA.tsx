@@ -64,8 +64,7 @@ export function FinalCTA({ onRequestInvite }: FinalCTAProps) {
 
           {/* Subheadline */}
           <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
-            Join our community of AI enthusiasts. Showcase your projects, learn
-            from others, and level up your skills through gamified challenges.
+            Your space to create, learn, and play with AI.
           </p>
 
           {/* CTA Buttons */}
@@ -77,7 +76,7 @@ export function FinalCTA({ onRequestInvite }: FinalCTAProps) {
               whileTap={{ scale: 0.98 }}
             >
               <span className="relative z-10 flex items-center gap-3">
-                Request Invitation
+                Join Waitlist
                 <motion.svg
                   className="w-5 h-5"
                   fill="none"

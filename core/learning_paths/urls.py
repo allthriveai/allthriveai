@@ -124,4 +124,20 @@ urlpatterns = [
         views.AdminAddProjectToPathView.as_view(),
         name='admin-add-project-to-path',
     ),
+    # Lesson progress endpoints
+    path(
+        'learning-paths/<int:path_id>/progress/',
+        views.LessonProgressView.as_view(),
+        name='lesson-progress',
+    ),
+    path(
+        'learning-paths/<int:path_id>/lessons/<int:lesson_order>/complete-exercise/',
+        views.CompleteLessonExerciseView.as_view(),
+        name='complete-lesson-exercise',
+    ),
+    path(
+        'learning-paths/<int:path_id>/lessons/<int:lesson_order>/complete-quiz/',
+        views.CompleteLessonQuizView.as_view(),
+        name='complete-lesson-quiz',
+    ),
 ]

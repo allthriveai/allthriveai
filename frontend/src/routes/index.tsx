@@ -171,6 +171,16 @@ export function AppRoutes() {
         }
       />
 
+      {/* Learning path detail with lesson - must come before /:username/learn/:slug */}
+      <Route
+        path="/:username/learn/:slug/:lessonSlug"
+        element={
+          <ProtectedRoute>
+            <LearningPathDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Learning path detail with username - must come before /:username/:projectSlug */}
       <Route
         path="/:username/learn/:slug"

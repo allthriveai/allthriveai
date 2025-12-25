@@ -398,7 +398,7 @@ export default function AuthPage() {
               className="text-lg text-slate-200 mb-3"
               variants={motionVariants}
             >
-              Join our AI curious community. Showcase your projects, learn from others, and level up your skills through gamified challenges.
+              Ready to build your AI playground?
             </motion.p>
             <motion.p
               className="text-slate-400 text-sm"

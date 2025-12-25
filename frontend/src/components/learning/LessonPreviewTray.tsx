@@ -126,8 +126,9 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
   // Handle "Start Lesson" click
   const handleStartLesson = () => {
     if (lesson) {
-      // Navigate to the learning path page with lesson index
-      navigate(`/${lesson.username}/learn/${lesson.pathSlug}?lesson=${lesson.lessonOrder}`);
+      // Navigate to the learning path page with lesson slug for semantic URL
+      // Use pathUsername (actual owner) not username (Sage for AI lessons)
+      navigate(`/${lesson.pathUsername}/learn/${lesson.pathSlug}/${lesson.lessonSlug}`);
       onClose();
     }
   };
@@ -135,7 +136,8 @@ export function LessonPreviewTray({ isOpen, onClose, lesson }: LessonPreviewTray
   // Handle "View Full Path" click
   const handleViewFullPath = () => {
     if (lesson) {
-      navigate(`/${lesson.username}/learn/${lesson.pathSlug}`);
+      // Use pathUsername (actual owner) not username (Sage for AI lessons)
+      navigate(`/${lesson.pathUsername}/learn/${lesson.pathSlug}`);
       onClose();
     }
   };

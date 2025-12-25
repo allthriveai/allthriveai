@@ -376,10 +376,12 @@ class PublicLessonSerializer(serializers.Serializer):
     path_id = serializers.IntegerField()
     path_slug = serializers.CharField()
     path_title = serializers.CharField()
+    path_username = serializers.CharField()  # Actual path owner for URL navigation
     username = serializers.CharField()
     user_full_name = serializers.CharField()
     user_avatar_url = serializers.URLField(allow_null=True)
     lesson_order = serializers.IntegerField()
+    lesson_slug = serializers.CharField()
     published_at = serializers.DateTimeField()
 
 

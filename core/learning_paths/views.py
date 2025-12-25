@@ -20,6 +20,7 @@ from .models import (
     LearnerProfile,
     LearningEvent,
     LessonImage,
+    LessonProgress,
     LessonRating,
     ProactiveOfferResponse,
     ProjectLearningMetadata,
@@ -1216,6 +1217,16 @@ class ExploreLessonsView(APIView):
 
     permission_classes = [AllowAny]
 
+    def _generate_lesson_slug(self, title: str, lesson_order: int) -> str:
+        """Generate a URL-friendly slug from lesson title."""
+        from django.utils.text import slugify
+
+        base_slug = slugify(title)[:50] if title else 'lesson'
+        # Ensure unique by appending order if slug is empty or generic
+        if not base_slug or base_slug == 'lesson':
+            return f'lesson-{lesson_order}'
+        return base_slug
+
     def _get_sage_user(self):
         """Get the Sage user for AI-generated content attribution."""
         from django.core.cache import cache
@@ -1286,8 +1297,9 @@ class ExploreLessonsView(APIView):
 
                 lesson_order = item.get('order', idx + 1)
                 image_url = image_lookup.get(lesson_order)
+                lesson_slug = self._generate_lesson_slug(title, lesson_order)
 
-                # AI lessons show Sage as the author
+                # AI lessons show Sage as the author, but include path owner for navigation
                 lessons.append(
                     {
                         'id': f'{path.id}_{lesson_order}',
@@ -1302,10 +1314,12 @@ class ExploreLessonsView(APIView):
                         'path_id': path.id,
                         'path_slug': path.slug,
                         'path_title': path.title,
+                        'path_username': path.user.username,  # Actual path owner for URL navigation
                         'username': sage_username,
                         'user_full_name': sage_full_name,
                         'user_avatar_url': sage_avatar_url,
                         'lesson_order': lesson_order,
+                        'lesson_slug': lesson_slug,
                         'published_at': path.published_at,
                     }
                 )
@@ -2103,5 +2117,240 @@ class AdminAddProjectToPathView(APIView):
                 'status': 'removed',
                 'project_id': project_id,
                 'total_projects': len(projects),
+            }
+        )
+
+
+# ============================================================================
+# LESSON PROGRESS VIEWS - Track lesson completion
+# ============================================================================
+
+
+class LessonProgressView(APIView):
+    """View for tracking lesson progress within a learning path."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, path_id):
+        """
+        GET /api/v1/learning-paths/{path_id}/progress/
+
+        Get progress for all lessons in a learning path.
+        Returns completion status for each lesson and overall progress.
+        """
+        # Get the learning path (can be owned by anyone - users can view other users' paths)
+        try:
+            path = SavedLearningPath.objects.get(id=path_id, is_archived=False)
+        except SavedLearningPath.DoesNotExist:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get user's progress for this path
+        progress_records = LessonProgress.objects.filter(
+            user=request.user,
+            saved_path=path,
+        ).values('lesson_order', 'is_completed', 'exercise_completed', 'quiz_completed', 'completed_at')
+
+        # Build a map of lesson_order -> progress
+        progress_map = {p['lesson_order']: p for p in progress_records}
+
+        # Get curriculum to build full progress list
+        curriculum = path.path_data.get('curriculum', [])
+        total_lessons = sum(1 for item in curriculum if item.get('type') == 'ai_lesson')
+        completed_lessons = sum(1 for p in progress_records if p['is_completed'])
+
+        # Build lesson-by-lesson progress
+        lessons_progress = []
+        for item in curriculum:
+            if item.get('type') == 'ai_lesson':
+                order = item.get('order', 0)
+                progress = progress_map.get(order, {})
+                lessons_progress.append(
+                    {
+                        'lessonOrder': order,
+                        'title': item.get('title', 'Untitled'),
+                        'isCompleted': progress.get('is_completed', False),
+                        'exerciseCompleted': progress.get('exercise_completed', False),
+                        'quizCompleted': progress.get('quiz_completed', False),
+                        'completedAt': progress.get('completed_at'),
+                    }
+                )
+
+        percentage = int((completed_lessons / total_lessons * 100) if total_lessons > 0 else 0)
+
+        return Response(
+            {
+                'pathId': path.id,
+                'pathTitle': path.title,
+                'totalLessons': total_lessons,
+                'completedLessons': completed_lessons,
+                'percentage': percentage,
+                'lessons': lessons_progress,
+            }
+        )
+
+
+class CompleteLessonExerciseView(APIView):
+    """View for marking a lesson exercise as completed."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, path_id, lesson_order):
+        """
+        POST /api/v1/learning-paths/{path_id}/lessons/{lesson_order}/complete-exercise/
+
+        Mark a lesson's exercise as completed.
+        Returns updated progress and whether the lesson is now complete.
+
+        Users can only track progress on:
+        - Their own learning paths
+        - Published (shared) learning paths
+        """
+        # Get the learning path
+        try:
+            path = SavedLearningPath.objects.get(id=path_id, is_archived=False)
+        except SavedLearningPath.DoesNotExist:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Security: Only allow progress on own paths or published paths
+        if path.user != request.user and not path.is_published:
+            return Response(
+                {'error': 'You can only track progress on your own paths or shared paths'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        lesson_order = int(lesson_order)
+
+        # Verify the lesson exists in the curriculum
+        curriculum = path.path_data.get('curriculum', [])
+        lesson = next(
+            (item for item in curriculum if item.get('order') == lesson_order and item.get('type') == 'ai_lesson'),
+            None,
+        )
+
+        if not lesson:
+            return Response(
+                {'error': 'Lesson not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get or create progress record
+        progress, created = LessonProgress.objects.get_or_create(
+            user=request.user,
+            saved_path=path,
+            lesson_order=lesson_order,
+        )
+
+        # Mark exercise as complete
+        was_already_completed = progress.is_completed
+        progress.mark_exercise_complete()
+
+        # Get updated overall progress
+        overall = LessonProgress.get_path_progress(request.user.id, path.id)
+
+        return Response(
+            {
+                'lessonOrder': lesson_order,
+                'lessonTitle': lesson.get('title', 'Untitled'),
+                'isCompleted': progress.is_completed,
+                'exerciseCompleted': progress.exercise_completed,
+                'quizCompleted': progress.quiz_completed,
+                'completedAt': progress.completed_at.isoformat() if progress.completed_at else None,
+                'justCompleted': not was_already_completed and progress.is_completed,
+                'overallProgress': overall,
+            }
+        )
+
+
+class CompleteLessonQuizView(APIView):
+    """View for marking a lesson quiz as completed."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, path_id, lesson_order):
+        """
+        POST /api/v1/learning-paths/{path_id}/lessons/{lesson_order}/complete-quiz/
+
+        Mark a lesson's quiz as completed with optional score.
+
+        Users can only track progress on:
+        - Their own learning paths
+        - Published (shared) learning paths
+
+        Request body:
+        {
+            "score": 0.85  // Optional: quiz score as 0.0-1.0
+        }
+        """
+        # Get the learning path
+        try:
+            path = SavedLearningPath.objects.get(id=path_id, is_archived=False)
+        except SavedLearningPath.DoesNotExist:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Security: Only allow progress on own paths or published paths
+        if path.user != request.user and not path.is_published:
+            return Response(
+                {'error': 'You can only track progress on your own paths or shared paths'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        lesson_order = int(lesson_order)
+
+        # Verify the lesson exists in the curriculum
+        curriculum = path.path_data.get('curriculum', [])
+        lesson = next(
+            (item for item in curriculum if item.get('order') == lesson_order and item.get('type') == 'ai_lesson'),
+            None,
+        )
+
+        if not lesson:
+            return Response(
+                {'error': 'Lesson not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get or create progress record
+        progress, created = LessonProgress.objects.get_or_create(
+            user=request.user,
+            saved_path=path,
+            lesson_order=lesson_order,
+        )
+
+        # Get optional score
+        score = request.data.get('score')
+        if score is not None:
+            try:
+                score = float(score)
+                score = max(0.0, min(1.0, score))  # Clamp to 0-1
+            except (ValueError, TypeError):
+                score = None
+
+        # Mark quiz as complete
+        was_already_completed = progress.is_completed
+        progress.mark_quiz_complete(score=score)
+
+        # Get updated overall progress
+        overall = LessonProgress.get_path_progress(request.user.id, path.id)
+
+        return Response(
+            {
+                'lessonOrder': lesson_order,
+                'lessonTitle': lesson.get('title', 'Untitled'),
+                'isCompleted': progress.is_completed,
+                'exerciseCompleted': progress.exercise_completed,
+                'quizCompleted': progress.quiz_completed,
+                'quizScore': progress.quiz_score,
+                'completedAt': progress.completed_at.isoformat() if progress.completed_at else None,
+                'justCompleted': not was_already_completed and progress.is_completed,
+                'overallProgress': overall,
             }
         )

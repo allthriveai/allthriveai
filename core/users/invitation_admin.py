@@ -15,6 +15,7 @@ class InvitationRequestAdmin(admin.ModelAdmin):
     list_display = [
         'name',
         'email',
+        'skill_level_badge',
         'status_badge',
         'email_sent_badge',
         'features_preview',
@@ -22,12 +23,13 @@ class InvitationRequestAdmin(admin.ModelAdmin):
         'created_at',
         'reviewed_by',
     ]
-    list_filter = ['status', 'created_at', 'approval_email_sent_at']
+    list_filter = ['status', 'skill_level', 'created_at', 'approval_email_sent_at']
     search_fields = ['name', 'email', 'reason']
     readonly_fields = [
         'email',
         'name',
         'reason',
+        'skill_level',
         'excited_features_display',
         'desired_integrations_display',
         'ip_address',
@@ -44,7 +46,7 @@ class InvitationRequestAdmin(admin.ModelAdmin):
         (
             'Request Details',
             {
-                'fields': ('name', 'email', 'reason'),
+                'fields': ('name', 'email', 'skill_level', 'reason'),
             },
         ),
         (
@@ -67,6 +69,27 @@ class InvitationRequestAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    @admin.display(
+        description='Skill Level',
+        ordering='skill_level',
+    )
+    def skill_level_badge(self, obj):
+        """Display skill level as a colored badge."""
+        if not obj.skill_level:
+            return format_html('<span style="color: #94a3b8; font-size: 11px;">—</span>')
+        colors = {
+            'beginner': '#22d3ee',  # cyan
+            'intermediate': '#a78bfa',  # purple
+            'advanced': '#22c55e',  # green
+        }
+        color = colors.get(obj.skill_level, '#94a3b8')
+        return format_html(
+            '<span style="background-color: {}; color: #0f172a; padding: 3px 8px; '
+            'border-radius: 4px; font-size: 11px; font-weight: bold;">{}</span>',
+            color,
+            obj.get_skill_level_display(),
+        )
 
     @admin.display(
         description='Status',

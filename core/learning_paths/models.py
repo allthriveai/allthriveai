@@ -1935,3 +1935,153 @@ class LessonRating(models.Model):
 
     def __str__(self):
         return f'{self.user.username} rated {self.project.title} as {self.rating}'
+
+
+# ============================================================================
+# LESSON PROGRESS - Track completion of lessons within learning paths
+# ============================================================================
+
+
+class LessonProgress(models.Model):
+    """
+    Track user progress through individual lessons in a learning path.
+
+    Records when a user completes a lesson (via exercise or quiz completion).
+    Used for:
+    - Showing completion status on lessons
+    - Calculating overall learning path progress
+    - Displaying progress bars in the header
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='lesson_progress',
+    )
+    saved_path = models.ForeignKey(
+        SavedLearningPath,
+        on_delete=models.CASCADE,
+        related_name='lesson_progress',
+    )
+    lesson_order = models.PositiveIntegerField(
+        help_text='Order number of the lesson in the learning path (1-indexed)',
+    )
+
+    # Completion tracking
+    is_completed = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Whether the user has completed this lesson',
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the lesson was completed',
+    )
+
+    # Exercise completion tracking
+    exercise_completed = models.BooleanField(
+        default=False,
+        help_text='Whether the exercise/practice was completed',
+    )
+    exercise_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    # Quiz completion tracking
+    quiz_completed = models.BooleanField(
+        default=False,
+        help_text='Whether the quiz was completed',
+    )
+    quiz_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+    quiz_score = models.FloatField(
+        null=True,
+        blank=True,
+        help_text='Quiz score as percentage (0.0-1.0)',
+    )
+
+    # Timestamps
+    started_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When the user first viewed this lesson',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'saved_path', 'lesson_order']
+        ordering = ['saved_path', 'lesson_order']
+        verbose_name = 'Lesson Progress'
+        verbose_name_plural = 'Lesson Progress'
+        indexes = [
+            models.Index(fields=['user', 'saved_path']),
+            models.Index(fields=['saved_path', 'is_completed']),
+            models.Index(fields=['user', 'is_completed']),
+        ]
+
+    def __str__(self):
+        status = 'completed' if self.is_completed else 'in progress'
+        return f"{self.user.username}'s lesson {self.lesson_order} ({status})"
+
+    def mark_exercise_complete(self):
+        """Mark the exercise as completed."""
+        self.exercise_completed = True
+        self.exercise_completed_at = timezone.now()
+        self._check_lesson_completion()
+        self.save()
+
+    def mark_quiz_complete(self, score: float = None):
+        """Mark the quiz as completed with optional score."""
+        self.quiz_completed = True
+        self.quiz_completed_at = timezone.now()
+        if score is not None:
+            self.quiz_score = score
+        self._check_lesson_completion()
+        self.save()
+
+    def _check_lesson_completion(self):
+        """
+        Check if the lesson should be marked as completed.
+
+        A lesson is complete when:
+        - Exercise is completed (if lesson has exercise), OR
+        - Quiz is completed (if lesson has quiz)
+        """
+        if self.exercise_completed or self.quiz_completed:
+            if not self.is_completed:
+                self.is_completed = True
+                self.completed_at = timezone.now()
+
+    @classmethod
+    def get_path_progress(cls, user_id: int, saved_path_id: int) -> dict:
+        """
+        Get progress statistics for a learning path.
+
+        Returns:
+            dict with completed_count, total_count, percentage
+        """
+        # Get total lessons from path_data (only count ai_lesson items)
+        try:
+            path = SavedLearningPath.objects.get(id=saved_path_id)
+            curriculum = path.path_data.get('curriculum', [])
+            total_count = sum(1 for item in curriculum if item.get('type') == 'ai_lesson')
+        except SavedLearningPath.DoesNotExist:
+            return {'completed_count': 0, 'total_count': 0, 'percentage': 0}
+
+        # Get completed count
+        completed_count = cls.objects.filter(
+            user_id=user_id,
+            saved_path_id=saved_path_id,
+            is_completed=True,
+        ).count()
+
+        percentage = int((completed_count / total_count * 100) if total_count > 0 else 0)
+
+        return {
+            'completed_count': completed_count,
+            'total_count': total_count,
+            'percentage': percentage,
+        }

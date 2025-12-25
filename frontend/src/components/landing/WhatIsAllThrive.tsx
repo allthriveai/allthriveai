@@ -8,7 +8,7 @@ import { PuzzlePieceIcon, AcademicCapIcon, UserGroupIcon } from '@heroicons/reac
 const features = [
   {
     icon: PuzzlePieceIcon,
-    title: 'Post the messy middle',
+    title: 'Share the messy middle',
     description: 'Share and get feedback on what you\'re working on at any stage. This is a playground, not a portfolio.',
   },
   {
@@ -79,6 +79,10 @@ export function WhatIsAllThrive() {
               at any level.
             </span>
           </h2>
+
+          <p className="mt-6 text-xl text-gray-400">
+            All Thrive is your space to share, learn, and play with AI.
+          </p>
         </motion.div>
 
         {/* Feature cards */}
