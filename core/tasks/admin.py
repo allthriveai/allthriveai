@@ -10,6 +10,11 @@ class TaskOptionAdmin(admin.ModelAdmin):
     search_fields = ['name', 'slug']
     ordering = ['option_type', 'order']
     prepopulated_fields = {'slug': ('name',)}
+    actions = ['delete_selected']
+
+    def has_delete_permission(self, request, obj=None):
+        """Allow deletion of TaskOptions that aren't in use."""
+        return request.user.is_superuser
 
 
 @admin.register(Task)
