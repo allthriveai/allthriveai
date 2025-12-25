@@ -12,3 +12,8 @@ class CoreConfig(AppConfig):
         import core.admin_site  # noqa - Apply custom admin configuration
         import services.weaviate.signals  # noqa - Connect Weaviate sync signals
         import core.taxonomy.signals  # noqa - Auto-tag from search interactions
+
+        # Initialize Phoenix LLM observability (traces at localhost:6006)
+        from services.ai.phoenix import initialize_phoenix
+
+        initialize_phoenix()

@@ -97,19 +97,22 @@
     <h1>🤖 AI Analytics Dashboard</h1>
     <p>Real-time monitoring of AI gateway performance, costs, and usage</p>
 
-    <!-- LangSmith Health -->
+    <!-- Phoenix Health -->
     <div class="dashboard-section">
-        <h2>🔗 LangSmith Status</h2>
+        <h2>🔗 Phoenix Status</h2>
         <div class="stat-card">
             <h3>Connection Status</h3>
-            {% if langsmith_health.connected %}
-                <span class="health-status health-connected">✓ Connected</span>
+            {% if phoenix_health.enabled %}
+                <span class="health-status health-connected">✓ Enabled</span>
             {% else %}
-                <span class="health-status health-disconnected">✗ Disconnected</span>
+                <span class="health-status health-disconnected">✗ Disabled</span>
             {% endif %}
             <div class="stat-subtitle">
-                Project: {{ langsmith_health.project }}<br>
-                Tracing: {{ langsmith_health.enabled|yesno:"Enabled,Disabled" }}
+                {% if phoenix_health.local_url %}
+                    Local UI: <a href="{{ phoenix_health.local_url }}" target="_blank">{{ phoenix_health.local_url }}</a>
+                {% else %}
+                    Cloud: <a href="{{ phoenix_health.cloud_url }}" target="_blank">Arize Cloud</a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -222,7 +225,7 @@
         <p>
             <a href="{% url 'admin:ai_system_dashboard' %}" class="button">📈 Detailed System Metrics</a>
             <a href="{% url 'admin:ai_user_dashboard' %}" class="button">👤 User Spend Monitoring</a>
-            <a href="https://smith.langchain.com" target="_blank" class="button">🔍 View in LangSmith</a>
+            <a href="{% if phoenix_health.local_url %}{{ phoenix_health.local_url }}{% else %}{{ phoenix_health.cloud_url }}{% endif %}" target="_blank" class="button">🔍 View in Phoenix</a>
         </p>
     </div>
 </div>

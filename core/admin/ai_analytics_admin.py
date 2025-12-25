@@ -5,7 +5,7 @@ Provides:
 - Real-time cost tracking dashboard
 - User spend monitoring
 - System-wide metrics
-- LangSmith health status
+- Phoenix health status
 - Interactive charts
 """
 
@@ -19,7 +19,6 @@ from django.urls import path
 
 from core.projects.models import Project
 from core.users.models import User
-from services.ai.langsmith import langsmith_service
 
 
 class AIAnalyticsDashboard:
@@ -42,33 +41,22 @@ class AIAnalyticsDashboard:
 
     def analytics_dashboard(self, request):
         """Main AI analytics dashboard."""
-        # Get system analytics for last 7 days
-        try:
-            if langsmith_service.enabled:
-                system_stats = langsmith_service.get_system_analytics(days=7)
-            else:
-                system_stats = {
-                    'period_days': 7,
-                    'total_cost_usd': 0.0,
-                    'total_tokens': 0,
-                    'total_requests': 0,
-                    'error_count': 0,
-                    'error_rate': 0.0,
-                    'providers': {},
-                }
-        except Exception as e:
-            system_stats = {'error': str(e)}
+        from services.ai.phoenix import get_phoenix_url, is_phoenix_enabled
+
+        # System stats placeholder - detailed analytics available in Phoenix UI
+        system_stats = {
+            'period_days': 7,
+            'message': 'View detailed traces in Phoenix UI',
+        }
 
         # Get top users by spend
         top_users = self.get_top_users_by_spend(days=7)
 
-        # Get LangSmith health
-        from django.conf import settings
-
-        langsmith_health = {
-            'enabled': settings.LANGSMITH_TRACING_ENABLED,
-            'project': settings.LANGSMITH_PROJECT,
-            'connected': langsmith_service.enabled,
+        # Get Phoenix health
+        phoenix_health = {
+            'enabled': is_phoenix_enabled(),
+            'local_url': get_phoenix_url(),
+            'cloud_url': 'https://app.phoenix.arize.com',
         }
 
         # Get recent AI activity (project chats)
@@ -79,7 +67,7 @@ class AIAnalyticsDashboard:
             'title': 'AI Analytics Dashboard',
             'system_stats': system_stats,
             'top_users': top_users,
-            'langsmith_health': langsmith_health,
+            'phoenix_health': phoenix_health,
             'recent_activity': recent_activity,
             'has_permission': True,
         }
@@ -88,20 +76,17 @@ class AIAnalyticsDashboard:
 
     def system_dashboard(self, request):
         """Detailed system metrics."""
+        from services.ai.phoenix import get_phoenix_url, is_phoenix_enabled
+
         days = int(request.GET.get('days', 30))
 
-        try:
-            if langsmith_service.enabled:
-                system_stats = langsmith_service.get_system_analytics(days=days)
-
-                # Calculate daily breakdown
-                daily_costs = self.get_daily_cost_breakdown(days=days)
-            else:
-                system_stats = {'error': 'LangSmith not enabled'}
-                daily_costs = []
-        except Exception as e:
-            system_stats = {'error': str(e)}
-            daily_costs = []
+        system_stats = {
+            'period_days': days,
+            'phoenix_enabled': is_phoenix_enabled(),
+            'phoenix_url': get_phoenix_url() or 'https://app.phoenix.arize.com',
+            'message': 'View detailed traces and metrics in Phoenix UI',
+        }
+        daily_costs = []
 
         context = {
             **self.admin_site.each_context(request),
@@ -206,9 +191,8 @@ class AIAnalyticsDashboard:
         return users_with_spend
 
     def get_daily_cost_breakdown(self, days=30):
-        """Get daily cost breakdown (mock data - would come from LangSmith)."""
-        # This would query LangSmith for actual daily costs
-        # For now, return empty list
+        """Get daily cost breakdown."""
+        # Detailed cost breakdown available in Phoenix UI
         return []
 
     def get_recent_ai_activity(self, limit=10):

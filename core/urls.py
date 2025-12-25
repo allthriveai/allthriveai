@@ -165,7 +165,7 @@ from .users.views import (
     track_onboarding_path,
     update_profile_sections,
 )
-from .views import ai_analytics_views, csp_report, db_health
+from .views import ai_analytics_views, client_logs, csp_report, db_health
 
 # Main router for public/general endpoints
 main_router = DefaultRouter()
@@ -211,12 +211,13 @@ events_router.register(r'events', EventViewSet, basename='event')
 urlpatterns = [
     path('db/health/', db_health, name='db-health'),
     path('csp-report/', csp_report, name='csp_report'),  # CSP violation reporting
+    path('system/client-logs/', client_logs, name='client_logs'),  # Frontend logging
     # AI Analytics endpoints
     path('ai/analytics/user/', ai_analytics_views.user_ai_analytics, name='user_ai_analytics'),
     path('ai/analytics/user/spend-limit/', ai_analytics_views.check_user_spend_limit, name='check_user_spend_limit'),
     path('ai/analytics/system/', ai_analytics_views.system_ai_analytics, name='system_ai_analytics'),
     path('ai/analytics/user/<int:user_id>/reset/', ai_analytics_views.reset_user_spend, name='reset_user_spend'),
-    path('ai/analytics/langsmith/health/', ai_analytics_views.langsmith_health, name='langsmith_health'),
+    path('ai/analytics/phoenix/health/', ai_analytics_views.phoenix_health, name='phoenix_health'),
     # Admin Analytics Dashboard endpoints (admin-only)
     path('admin/analytics/overview/', admin_analytics_views.dashboard_overview, name='admin_dashboard_overview'),
     path('admin/analytics/timeseries/', admin_analytics_views.dashboard_timeseries, name='admin_dashboard_timeseries'),

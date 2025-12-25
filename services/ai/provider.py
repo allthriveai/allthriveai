@@ -1,7 +1,7 @@
 """
 AI Provider Service
 Supports OpenAI, Anthropic, and Gemini with easy switching between providers.
-Includes LangSmith tracing and cost tracking.
+Includes Phoenix tracing (auto-instrumented) and cost tracking.
 """
 
 import logging
@@ -9,7 +9,6 @@ import time
 from enum import Enum
 
 from django.conf import settings
-from langsmith.run_helpers import traceable
 
 from core.logging_utils import StructuredLogger
 
@@ -453,7 +452,6 @@ class AIProvider:
         genai.configure(api_key=api_key)
         return genai
 
-    @traceable(name='ai_provider_complete', run_type='llm')
     def complete(
         self,
         prompt: str,
@@ -1069,7 +1067,6 @@ class AIProvider:
                 **kwargs,
             )
 
-    @traceable(name='ai_provider_generate_image', run_type='llm')
     def generate_image(
         self,
         prompt: str,
@@ -1144,9 +1141,10 @@ class AIProvider:
         try:
             # Create client with API key and timeout
             # Configure HTTP timeout to prevent hanging on slow Gemini responses
+            # Note: http_options.timeout is in MILLISECONDS, not seconds
             client = genai.Client(
                 api_key=api_key,
-                http_options={'timeout': timeout},  # Use the timeout parameter (default 120s)
+                http_options={'timeout': timeout * 1000},  # Convert seconds to milliseconds
             )
 
             # Build content parts for the request
@@ -1289,7 +1287,6 @@ class AIProvider:
             )
             raise
 
-    @traceable(name='ai_provider_generate_image_openai', run_type='llm')
     def generate_image_openai(
         self,
         prompt: str,
@@ -1415,7 +1412,6 @@ class AIProvider:
             )
             raise
 
-    @traceable(name='ai_provider_complete_with_image', run_type='llm')
     def complete_with_image(
         self,
         prompt: str,

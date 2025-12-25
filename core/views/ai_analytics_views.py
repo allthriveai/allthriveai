@@ -10,6 +10,7 @@ Provides endpoints for:
 
 from datetime import datetime
 
+from django.conf import settings
 from django.core.cache import cache
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -18,7 +19,6 @@ from rest_framework.response import Response
 
 from core.billing.permissions import RequiresAnalytics
 from core.permissions import IsAdminRole
-from services.ai.langsmith import langsmith_service
 
 
 @api_view(['GET'])
@@ -34,11 +34,6 @@ def user_ai_analytics(request):
         {
             'user_id': int,
             'period_days': int,
-            'total_cost_usd': float,
-            'total_tokens': int,
-            'total_requests': int,
-            'avg_latency_ms': float,
-            'avg_cost_per_request': float,
             'daily_spend': float,
             'monthly_spend': float,
             'daily_limit': float,
@@ -50,9 +45,6 @@ def user_ai_analytics(request):
     user_id = request.user.id
 
     try:
-        # Get analytics from LangSmith
-        analytics = langsmith_service.get_user_analytics(user_id, days=days)
-
         # Get current spend from cache
         today = datetime.utcnow().strftime('%Y-%m-%d')
         month = datetime.utcnow().strftime('%Y-%m')
@@ -62,13 +54,14 @@ def user_ai_analytics(request):
         daily_spend = cache.get(daily_key, 0.0)
         monthly_spend = cache.get(monthly_key, 0.0)
 
-        # Add current spend info
-        from django.conf import settings
-
-        analytics['daily_spend'] = round(daily_spend, 4)
-        analytics['monthly_spend'] = round(monthly_spend, 4)
-        analytics['daily_limit'] = settings.AI_USER_DAILY_SPEND_LIMIT_USD
-        analytics['monthly_limit'] = settings.AI_MONTHLY_SPEND_LIMIT_USD
+        analytics = {
+            'user_id': user_id,
+            'period_days': days,
+            'daily_spend': round(daily_spend, 4),
+            'monthly_spend': round(monthly_spend, 4),
+            'daily_limit': settings.AI_USER_DAILY_SPEND_LIMIT_USD,
+            'monthly_limit': settings.AI_MONTHLY_SPEND_LIMIT_USD,
+        }
 
         # Determine limit status
         daily_pct = (daily_spend / settings.AI_USER_DAILY_SPEND_LIMIT_USD) * 100
@@ -99,27 +92,24 @@ def system_ai_analytics(request):
     Returns:
         {
             'period_days': int,
-            'total_cost_usd': float,
-            'total_tokens': int,
-            'total_requests': int,
-            'error_count': int,
-            'error_rate': float,
-            'avg_cost_per_request': float,
-            'providers': {
-                'azure': {'cost': float, 'requests': int},
-                'openai': {'cost': float, 'requests': int},
-                'anthropic': {'cost': float, 'requests': int}
-            }
+            'phoenix_enabled': bool,
+            'phoenix_url': str,
+            'message': str
         }
     """
     days = int(request.query_params.get('days', 7))
 
-    try:
-        analytics = langsmith_service.get_system_analytics(days=days)
-        return Response(analytics)
+    # Phoenix handles detailed analytics via its UI
+    from services.ai.phoenix import get_phoenix_url, is_phoenix_enabled
 
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response(
+        {
+            'period_days': days,
+            'phoenix_enabled': is_phoenix_enabled(),
+            'phoenix_url': get_phoenix_url() or 'https://app.phoenix.arize.com',
+            'message': 'View detailed traces and analytics in Phoenix UI',
+        }
+    )
 
 
 @api_view(['GET'])
@@ -152,8 +142,6 @@ def check_user_spend_limit(request):
 
     daily_spend = cache.get(daily_key, 0.0)
     monthly_spend = cache.get(monthly_key, 0.0)
-
-    from django.conf import settings
 
     daily_limit = settings.AI_USER_DAILY_SPEND_LIMIT_USD
     monthly_limit = settings.AI_MONTHLY_SPEND_LIMIT_USD
@@ -218,35 +206,23 @@ def reset_user_spend(request, user_id):
 
 @api_view(['GET'])
 @permission_classes([IsAdminRole])
-def langsmith_health(request):
+def phoenix_health(request):
     """
-    Check LangSmith integration health (admin only).
+    Check Phoenix integration health (admin only).
 
     Returns:
         {
             'enabled': bool,
-            'project': str,
-            'endpoint': str,
-            'connected': bool,
-            'error': str | null
+            'local_url': str | null,
+            'cloud_url': str
         }
     """
-    from django.conf import settings
+    from services.ai.phoenix import get_phoenix_url, is_phoenix_enabled
 
-    health = {
-        'enabled': settings.LANGSMITH_TRACING_ENABLED,
-        'project': settings.LANGSMITH_PROJECT,
-        'endpoint': settings.LANGSMITH_ENDPOINT,
-        'connected': False,
-        'error': None,
-    }
-
-    if langsmith_service.enabled and langsmith_service.client:
-        try:
-            # Try to ping LangSmith
-            list(langsmith_service.client.list_runs(project_name=settings.LANGSMITH_PROJECT, limit=1))
-            health['connected'] = True
-        except Exception as e:
-            health['error'] = str(e)
-
-    return Response(health)
+    return Response(
+        {
+            'enabled': is_phoenix_enabled(),
+            'local_url': get_phoenix_url(),
+            'cloud_url': 'https://app.phoenix.arize.com',
+        }
+    )

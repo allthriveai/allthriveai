@@ -111,6 +111,7 @@ INSTALLED_APPS = [
     'core.games',  # Educational mini-games
     'core.community',  # Community messaging (forums, DMs, circle chat)
     'core.feedback',  # Member feedback system (feature requests, bug reports)
+    'core.admin_logs',  # Admin log streaming dashboard
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -516,11 +517,13 @@ IMAGE_ANALYSIS_PROVIDER = config('IMAGE_ANALYSIS_PROVIDER', default='gemini')
 # Fallback provider if primary fails (set to same as primary to disable fallback)
 IMAGE_ANALYSIS_FALLBACK_PROVIDER = config('IMAGE_ANALYSIS_FALLBACK_PROVIDER', default='openai')
 
-# LangSmith Configuration (AI Gateway Observability)
-LANGSMITH_API_KEY = config('LANGSMITH_API_KEY', default='')
-LANGSMITH_PROJECT = config('LANGSMITH_PROJECT', default='allthrive-ai-gateway')
-LANGSMITH_ENDPOINT = config('LANGSMITH_ENDPOINT', default='https://api.smith.langchain.com')
-LANGSMITH_TRACING_ENABLED = config('LANGSMITH_TRACING_ENABLED', default=True, cast=bool)
+# Phoenix Configuration (LLM Observability & Evaluation)
+# Local: Traces appear at http://localhost:6006
+# Production: Traces go to Arize Cloud (requires PHOENIX_API_KEY)
+PHOENIX_ENABLED = config('PHOENIX_ENABLED', default=True, cast=bool)
+PHOENIX_API_KEY = config('PHOENIX_API_KEY', default='')  # Arize Cloud API key for production
+PHOENIX_COLLECTOR_ENDPOINT = config('PHOENIX_COLLECTOR_ENDPOINT', default='')  # Custom endpoint
+PHOENIX_PROJECT_NAME = config('PHOENIX_PROJECT_NAME', default='allthrive-ai')
 
 # AI Gateway Cost Tracking
 AI_COST_TRACKING_ENABLED = config('AI_COST_TRACKING_ENABLED', default=True, cast=bool)

@@ -363,27 +363,30 @@ class GitHubRateLimitSettings:
 
 
 @dataclass(frozen=True)
-class LangSmithSettings:
-    """LangSmith observability configuration."""
+class PhoenixSettings:
+    """Phoenix observability configuration."""
 
     api_key: str
-    project: str
-    endpoint: str
-    tracing_enabled: bool
+    project_name: str
+    enabled: bool
 
     @property
     def is_configured(self) -> bool:
-        """Check if LangSmith is properly configured."""
-        return bool(self.api_key and self.tracing_enabled)
+        """Check if Phoenix is properly configured."""
+        return self.enabled
+
+    @property
+    def is_cloud(self) -> bool:
+        """Check if using Arize Cloud."""
+        return bool(self.api_key)
 
     @classmethod
-    def from_django_settings(cls) -> 'LangSmithSettings':
+    def from_django_settings(cls) -> 'PhoenixSettings':
         """Create from Django settings."""
         return cls(
-            api_key=getattr(django_settings, 'LANGSMITH_API_KEY', ''),
-            project=getattr(django_settings, 'LANGSMITH_PROJECT', 'allthrive-ai-gateway'),
-            endpoint=getattr(django_settings, 'LANGSMITH_ENDPOINT', 'https://api.smith.langchain.com'),
-            tracing_enabled=getattr(django_settings, 'LANGSMITH_TRACING_ENABLED', True),
+            api_key=getattr(django_settings, 'PHOENIX_API_KEY', ''),
+            project_name=getattr(django_settings, 'PHOENIX_PROJECT_NAME', 'allthrive-ai'),
+            enabled=getattr(django_settings, 'PHOENIX_ENABLED', True),
         )
 
 
@@ -392,19 +395,18 @@ class FeatureFlags:
     """Feature flags for enabling/disabling functionality."""
 
     weaviate_enabled: bool
-    langsmith_enabled: bool
+    phoenix_enabled: bool
     cost_tracking_enabled: bool
 
     @classmethod
     def from_django_settings(cls) -> 'FeatureFlags':
         """Create from Django settings."""
         weaviate_url = getattr(django_settings, 'WEAVIATE_URL', '')
-        langsmith_key = getattr(django_settings, 'LANGSMITH_API_KEY', '')
-        langsmith_enabled = getattr(django_settings, 'LANGSMITH_TRACING_ENABLED', True)
+        phoenix_enabled = getattr(django_settings, 'PHOENIX_ENABLED', True)
 
         return cls(
             weaviate_enabled=bool(weaviate_url),
-            langsmith_enabled=bool(langsmith_key and langsmith_enabled),
+            phoenix_enabled=phoenix_enabled,
             cost_tracking_enabled=getattr(django_settings, 'AI_COST_TRACKING_ENABLED', True),
         )
 
@@ -468,9 +470,9 @@ class AppSettings:
         return GitHubRateLimitSettings.from_django_settings()
 
     @cached_property
-    def langsmith(self) -> LangSmithSettings:
-        """LangSmith observability settings."""
-        return LangSmithSettings.from_django_settings()
+    def phoenix(self) -> PhoenixSettings:
+        """Phoenix observability settings."""
+        return PhoenixSettings.from_django_settings()
 
     @cached_property
     def features(self) -> FeatureFlags:
@@ -541,7 +543,7 @@ class AppSettings:
             'points',
             'cache_ttl',
             'github_rate_limit',
-            'langsmith',
+            'phoenix',
             'features',
         ]
         for attr in cached_attrs:
