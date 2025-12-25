@@ -196,7 +196,8 @@ class AIProviderType(Enum):
 # - vision: Image analysis/understanding
 # - tagging: Bulk content tagging (cheap model for high volume)
 # - tagging_premium: High-quality tagging for important content
-VALID_PURPOSES = ('default', 'reasoning', 'image', 'vision', 'tagging', 'tagging_premium')
+# - avatar: Fast avatar generation (uses gemini-2.5-flash-image)
+VALID_PURPOSES = ('default', 'reasoning', 'image', 'avatar', 'vision', 'tagging', 'tagging_premium')
 
 
 def get_model_for_purpose(provider: str, purpose: str = 'default') -> str:
@@ -1075,10 +1076,11 @@ class AIProvider:
         conversation_history: list[dict] | None = None,
         reference_images: list[bytes] | None = None,
         model: str | None = None,
-        timeout: int = 120,
+        purpose: str = 'image',
+        timeout: int = 60,
     ) -> tuple[bytes | None, str | None, str | None]:
         """
-        Generate an image using Gemini 2.0 Flash native image generation.
+        Generate an image using Gemini native image generation.
 
         This method uses Gemini's native image generation capabilities to create
         images from text prompts. It supports multi-turn conversations for
@@ -1090,8 +1092,9 @@ class AIProvider:
                                  Each turn should have 'role' ('user'/'model')
                                  and 'parts' (list with text/image content)
             reference_images: List of reference image bytes for this turn
-            model: Model override (default: settings.GEMINI_IMAGE_MODEL)
-            timeout: Request timeout in seconds (default: 120)
+            model: Model override (default based on purpose)
+            purpose: 'image' for high quality, 'avatar' for fast generation
+            timeout: Request timeout in seconds (default: 60)
 
         Returns:
             Tuple of (image_bytes, mime_type, text_response) or (None, None, None) on error
@@ -1121,15 +1124,15 @@ class AIProvider:
         if not api_key:
             raise ValueError('Google API key not configured. Set GOOGLE_API_KEY in settings.')
 
-        # Use the configured image generation model from AI_MODELS
-        model_name = model or get_model_for_purpose('gemini', 'image')
+        # Use the configured model based on purpose (avatar uses faster flash model)
+        model_name = model or get_model_for_purpose('gemini', purpose)
 
         logger.info(
-            f'AI image generation started: model={model_name}',
+            f'AI image generation started: model={model_name}, purpose={purpose}',
             extra={
                 'provider': 'gemini',
                 'model': model_name,
-                'purpose': 'image',
+                'purpose': purpose,
                 'user_id': self.user_id,
                 'prompt_length': len(prompt),
                 'has_reference_images': bool(reference_images),
@@ -1139,8 +1142,12 @@ class AIProvider:
         )
 
         try:
-            # Create client with API key
-            client = genai.Client(api_key=api_key)
+            # Create client with API key and timeout
+            # Configure HTTP timeout to prevent hanging on slow Gemini responses
+            client = genai.Client(
+                api_key=api_key,
+                http_options={'timeout': timeout},  # Use the timeout parameter (default 120s)
+            )
 
             # Build content parts for the request
             contents = []

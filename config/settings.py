@@ -403,8 +403,10 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 # Get your keys from: https://www.google.com/recaptcha/admin
 RECAPTCHA_SECRET_KEY = config('RECAPTCHA_SECRET_KEY', default='')
 GEMINI_MODEL_NAME = config('GEMINI_MODEL_NAME', default='gemini-2.0-flash')
-# Image generation model - gemini-3-pro-image-preview is the best quality
+# Image generation model - gemini-3-pro-image-preview is best quality but slow
+# For avatars, use gemini-2.5-flash-image (faster, still good quality)
 GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview')
+GEMINI_AVATAR_MODEL = config('GEMINI_AVATAR_MODEL', default='gemini-2.5-flash-image')
 
 # Weaviate Vector Database Configuration
 WEAVIATE_HOST = config('WEAVIATE_HOST', default='localhost')
@@ -498,6 +500,7 @@ AI_MODELS = {
     'gemini': {
         'default': config('GEMINI_MODEL_DEFAULT', default='gemini-2.0-flash'),
         'image': config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-preview'),
+        'avatar': GEMINI_AVATAR_MODEL,  # Fast image model for avatar generation
         'vision': config('GEMINI_MODEL_VISION', default='gemini-2.0-flash'),
         'tagging': config('GEMINI_MODEL_TAGGING', default='gemini-2.0-flash'),
         'tagging_premium': config('GEMINI_MODEL_TAGGING_PREMIUM', default='gemini-2.0-flash'),

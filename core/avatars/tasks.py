@@ -195,12 +195,13 @@ def process_avatar_generation_task(
             except Exception as e:
                 logger.warning(f'Failed to download reference image: {e}', exc_info=True)
 
-        # Generate image using Gemini
+        # Generate image using Gemini (use 'avatar' purpose for faster flash model)
         start_time = time.time()
         ai = AIProvider(provider='gemini', user_id=user_id)
         image_bytes, mime_type, text_response = ai.generate_image(
             prompt=full_prompt,
             reference_images=[reference_bytes] if reference_bytes else None,
+            purpose='avatar',  # Uses gemini-2.5-flash-image for speed
         )
         latency_ms = int((time.time() - start_time) * 1000)
 
@@ -258,7 +259,8 @@ def process_avatar_generation_task(
 
         # Track AI usage
         try:
-            gemini_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-3-pro-image-preview')
+            # Use the avatar-specific model (gemini-2.5-flash-image)
+            gemini_model = getattr(settings, 'GEMINI_AVATAR_MODEL', 'gemini-2.5-flash-image')
             estimated_input_tokens = len(full_prompt) // 4
             estimated_output_tokens = len(text_response) // 4 if text_response else 0
 

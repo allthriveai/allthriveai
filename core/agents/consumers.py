@@ -195,25 +195,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     await self.send_error('session_id is required for avatar generation')
                     return
 
-                # Queue the Celery task - use sync_to_async since delay() is synchronous
-                @database_sync_to_async
-                def queue_avatar_task():
-                    return process_avatar_generation_task.delay(
+                # Queue the Celery task directly (like chat messages)
+                # Note: .delay() is synchronous but fast, no need for async wrapper
+                try:
+                    task = process_avatar_generation_task.delay(
                         session_id=session_id,
                         prompt=message,
                         user_id=self.user.id,
                         channel_name=self.group_name,
                         reference_image_url=reference_image_url,
                     )
+                    logger.info(f'Avatar generation queued: task_id={task.id}, session_id={session_id}')
 
-                task = await queue_avatar_task()
-
-                await self.send(
-                    text_data=json.dumps(
-                        {'event': 'avatar_task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                    await self.send(
+                        text_data=json.dumps(
+                            {'event': 'avatar_task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
+                        )
                     )
-                )
-                logger.info(f'Avatar generation queued: task_id={task.id}, session_id={session_id}')
+                except Exception as e:
+                    logger.error(f'Failed to queue avatar task: {e}', exc_info=True)
+                    await self.send_error(f'Failed to start avatar generation: {e}')
             else:
                 # Queue message for async processing via Celery
                 # Circuit breaker is checked in the Celery task

@@ -1,5 +1,6 @@
 """API views for avatars."""
 
+import logging
 import time
 from urllib.parse import urlparse
 
@@ -17,6 +18,8 @@ from .serializers import (
     SetCurrentAvatarSerializer,
     UserAvatarSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AvatarGenerationThrottle(UserRateThrottle):
@@ -261,6 +264,8 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
 
         POST data: { "iteration_id": 123 }
         """
+        logger.info(f'Avatar accept called: session_pk={pk}, user={request.user.id}, data={request.data}')
+
         iteration_id = request.data.get('iteration_id')
         if not iteration_id:
             return Response({'detail': 'iteration_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -273,56 +278,71 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
         except (TypeError, ValueError):
             return Response({'detail': 'iteration_id must be a positive integer.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        with transaction.atomic():
-            # Lock the session to prevent race conditions
-            try:
-                session = AvatarGenerationSession.objects.select_for_update().get(
-                    pk=pk, user=request.user, deleted_at__isnull=True
+        try:
+            with transaction.atomic():
+                # Lock the session to prevent race conditions
+                try:
+                    session = AvatarGenerationSession.objects.select_for_update().get(
+                        pk=pk, user=request.user, deleted_at__isnull=True
+                    )
+                except AvatarGenerationSession.DoesNotExist:
+                    logger.warning(f'Avatar accept: session not found pk={pk} user={request.user.id}')
+                    return Response({'detail': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+                logger.info(f'Avatar accept: session found, status={session.status}')
+
+                if session.status not in ['generating', 'ready']:
+                    logger.warning(f'Avatar accept: invalid status {session.status}')
+                    return Response(
+                        {'detail': 'Session is not in an active state.'}, status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                try:
+                    iteration = session.iterations.get(id=iteration_id)
+                except AvatarGenerationIteration.DoesNotExist:
+                    logger.warning(f'Avatar accept: iteration not found id={iteration_id}')
+                    return Response(
+                        {'detail': 'Iteration not found in this session.'}, status=status.HTTP_404_NOT_FOUND
+                    )
+
+                logger.info(f'Avatar accept: iteration found, image_url={iteration.image_url}')
+
+                # Mark iteration as selected
+                iteration.is_selected = True
+                iteration.save(update_fields=['is_selected'])
+
+                # Unset current from all existing avatars
+                UserAvatar.objects.filter(user=request.user, is_current=True, deleted_at__isnull=True).update(
+                    is_current=False
                 )
-            except AvatarGenerationSession.DoesNotExist:
-                return Response({'detail': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-            if session.status not in ['generating', 'ready']:
-                return Response({'detail': 'Session is not in an active state.'}, status=status.HTTP_400_BAD_REQUEST)
+                # Create the avatar
+                avatar = UserAvatar.objects.create(
+                    user=request.user,
+                    image_url=iteration.image_url,
+                    creation_mode=session.creation_mode,
+                    template_used=session.template_used,
+                    original_prompt=iteration.prompt,
+                    is_current=True,
+                )
+                logger.info(f'Avatar accept: avatar created id={avatar.id}')
 
-            try:
-                iteration = session.iterations.get(id=iteration_id)
-            except AvatarGenerationIteration.DoesNotExist:
-                return Response({'detail': 'Iteration not found in this session.'}, status=status.HTTP_404_NOT_FOUND)
+                # Update session
+                session.status = 'accepted'
+                session.saved_avatar = avatar
+                session.save(update_fields=['status', 'saved_avatar', 'updated_at'])
 
-            # Mark iteration as selected
-            iteration.is_selected = True
-            iteration.save(update_fields=['is_selected'])
+                # Update user's avatar_url and increment counter
+                request.user.avatar_url = avatar.image_url
+                request.user.ai_avatars_created = (request.user.ai_avatars_created or 0) + 1
+                request.user.save(update_fields=['avatar_url', 'ai_avatars_created'])
 
-            # Unset current from all existing avatars
-            UserAvatar.objects.filter(user=request.user, is_current=True, deleted_at__isnull=True).update(
-                is_current=False
-            )
+            logger.info('Avatar accept: success, user avatar_url updated')
+            return Response(AvatarGenerationSessionSerializer(session).data)
 
-            # Create the avatar
-            avatar = UserAvatar.objects.create(
-                user=request.user,
-                image_url=iteration.image_url,
-                creation_mode=session.creation_mode,
-                template_used=session.template_used,
-                original_prompt=iteration.prompt,
-                is_current=True,
-            )
-
-            # Update session
-            session.status = 'accepted'
-            session.saved_avatar = avatar
-            session.save(update_fields=['status', 'saved_avatar', 'updated_at'])
-
-            # Update user's avatar_url and increment counter
-            request.user.avatar_url = avatar.image_url
-            request.user.ai_avatars_created = (request.user.ai_avatars_created or 0) + 1
-            request.user.save(update_fields=['avatar_url', 'ai_avatars_created'])
-
-        # Check for achievement (handled by achievement system's check_and_award_achievements)
-        # The tracking_field 'ai_avatars_created' will be checked automatically
-
-        return Response(AvatarGenerationSessionSerializer(session).data)
+        except Exception as e:
+            logger.error(f'Avatar accept failed: {e}', exc_info=True)
+            return Response({'detail': f'Failed to save avatar: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'])
     def abandon(self, request, pk=None):
