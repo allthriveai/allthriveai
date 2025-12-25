@@ -64,3 +64,6 @@ test-results/
 # Speckit/Specify
 .speckit/
 .specify/
+
+# E2E test results
+e2e-results/
