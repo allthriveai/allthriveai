@@ -181,21 +181,21 @@ export function useIntegrationFlow({
           });
           return;
         }
+        // Keep activeFlow as 'github' so the error UI is displayed
         setGithubState({
           step: 'idle',
           message: '',
           error: getErrorMessage(repoError) || 'Failed to load repositories.',
         });
-        setActiveFlow(null);
       }
     } catch (error) {
       logError('useIntegrationFlow.startGitHubFlow', error);
+      // Keep activeFlow as 'github' so the error UI is displayed
       setGithubState({
         step: 'idle',
         message: '',
         error: 'Something went wrong. Please try again.',
       });
-      setActiveFlow(null);
     }
   }, [onHasInteracted]);
 
@@ -255,21 +255,21 @@ export function useIntegrationFlow({
           error: null,
         });
       } catch (projectError) {
+        // Keep activeFlow as 'gitlab' so the error UI is displayed
         setGitlabState({
           step: 'idle',
           message: '',
           error: getErrorMessage(projectError) || 'Failed to load projects.',
         });
-        setActiveFlow(null);
       }
     } catch (error) {
       logError('useIntegrationFlow.startGitLabFlow', error);
+      // Keep activeFlow as 'gitlab' so the error UI is displayed
       setGitlabState({
         step: 'idle',
         message: '',
         error: 'Something went wrong. Please try again.',
       });
-      setActiveFlow(null);
     }
   }, [onHasInteracted]);
 

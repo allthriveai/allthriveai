@@ -281,34 +281,51 @@ def analyze_image_for_template(
 def _generate_creative_title(tool_hint: str, filename: str) -> str:
     """Generate a creative title when AI doesn't provide one.
 
-    Uses the tool hint to create something more interesting than just the filename.
+    Creates unique titles by combining the tool with a random creative suffix,
+    or falling back to a cleaned-up filename. This avoids slug collisions
+    from generic titles like "Midjourney Creation".
     """
-    # Tool-specific creative titles
-    tool_titles = {
-        'midjourney': 'Midjourney Creation',
-        'dall-e': 'DALL-E Artwork',
-        'dalle': 'DALL-E Artwork',
-        'stable diffusion': 'Stable Diffusion Art',
-        'sd': 'Stable Diffusion Art',
-        'photoshop': 'Digital Artwork',
-        'illustrator': 'Vector Design',
-        'leonardo': 'Leonardo AI Art',
-        'firefly': 'Firefly Creation',
-        'canva': 'Canva Design',
-        'figma': 'Figma Design',
-        'procreate': 'Procreate Illustration',
-    }
+    import random
 
+    # Creative suffixes to make titles more unique
+    creative_suffixes = [
+        'Artwork',
+        'Creation',
+        'Vision',
+        'Dream',
+        'Masterpiece',
+        'Composition',
+        'Design',
+        'Piece',
+        'Work',
+        'Art',
+        'Expression',
+        'Study',
+        'Exploration',
+        'Project',
+        'Render',
+    ]
+
+    # First, try to get a meaningful title from the filename
+    filename_title = _generate_title_from_filename(filename)
+
+    # If filename gives us something meaningful (not just "Untitled" or "Image")
+    if filename_title and filename_title.lower() not in ('untitled project', 'untitled', 'image', 'img', 'photo'):
+        # Use the filename as the base, optionally with tool prefix
+        if tool_hint:
+            return f'{filename_title}'  # Just use filename - it's more descriptive
+        return filename_title
+
+    # If we have a tool hint, create a unique combination
     if tool_hint:
-        tool_lower = tool_hint.lower()
-        for key, title in tool_titles.items():
-            if key in tool_lower:
-                return title
-        # If tool not in our map, use it directly
-        return f'{tool_hint} Creation'
+        suffix = random.choice(creative_suffixes)  # noqa: S311 - not used for security
+        # Clean up the tool name
+        tool_name = tool_hint.strip().title()
+        return f'{tool_name} {suffix}'
 
-    # Fallback to filename-based title
-    return _generate_title_from_filename(filename)
+    # Last resort: generic but with random suffix for uniqueness
+    suffix = random.choice(creative_suffixes)  # noqa: S311 - not used for security
+    return f'Digital {suffix}'
 
 
 def _fallback_analysis(title: str, filename: str, tool_hint: str = '') -> dict:

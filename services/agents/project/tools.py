@@ -1200,6 +1200,13 @@ def create_media_project(
     is_private: bool = False,
     state: dict | None = None,
 ) -> dict:
+    # Log ALL input parameters for debugging
+    logger.info(
+        f'🎬 create_media_project called with: '
+        f'file_url={file_url!r}, filename={filename!r}, title={title!r}, '
+        f'tool_hint={tool_hint!r}, video_url={video_url!r}, generate_prompt={generate_prompt!r}, '
+        f'is_owned={is_owned}, user_id={state.get("user_id") if state else None}'
+    )
     """
     Unified tool for creating media projects - handles generation AND import.
 
@@ -1271,6 +1278,51 @@ def create_media_project(
                 'filename': filename,
                 'message': 'What tool did you use to create this? (e.g., Runway, Midjourney, DALL-E, Photoshop)',
             }
+
+        # Sanitize title: reject tool names or ownership phrases as titles
+        # These indicate the LLM misunderstood the user's response
+        if title:
+            title_lower = title.lower().strip()
+            # Common tool names that shouldn't be titles
+            tool_names = {
+                'midjourney',
+                'dall-e',
+                'dalle',
+                'stable diffusion',
+                'sd',
+                'leonardo',
+                'firefly',
+                'photoshop',
+                'illustrator',
+                'canva',
+                'figma',
+                'procreate',
+                'runway',
+                'pika',
+                'kling',
+                'sora',
+                'gen-2',
+                'gen2',
+                'luma',
+                'haiper',
+            }
+            # Ownership phrases that aren't titles
+            ownership_phrases = {
+                'my own',
+                'my own project',
+                'mine',
+                'my project',
+                'i made it',
+                'i created it',
+                'my work',
+                'my creation',
+                'yes',
+                'yep',
+                'yeah',
+            }
+            if title_lower in tool_names or title_lower in ownership_phrases:
+                logger.info(f'Rejecting invalid title "{title}" - looks like tool name or ownership phrase')
+                title = None  # Let AI generate from image
 
         # For videos, use the existing video import logic
         if media_type == 'video':
@@ -1485,7 +1537,11 @@ def _create_image_project_internal(
     from core.integrations.image.ai_analyzer import analyze_image_for_template
     from core.projects.models import Project
 
-    logger.info(f'Creating image project from {filename} (title={title}, is_owned={is_owned})')
+    logger.info(
+        f'🖼️ _create_image_project_internal called: '
+        f'filename={filename!r}, title={title!r}, tool_hint={tool_hint!r}, '
+        f'is_owned={is_owned}, user={user.username}'
+    )
 
     # Run AI analysis on the image to generate rich content (including title)
     try:
@@ -1527,30 +1583,41 @@ def _create_image_project_internal(
     project_type = Project.ProjectType.IMAGE_COLLECTION if is_owned else Project.ProjectType.CLIPPED
 
     # Create project with the uploaded image as featured image
-    project = Project.objects.create(
-        user=user,
-        title=final_title,
-        description=analysis.get('description', ''),
-        type=project_type,
-        featured_image_url=image_url,
-        content=content,
-        is_showcased=is_showcase,
-        is_private=is_private,
-        tools_order=[],
-    )
+    logger.info(f'📝 Creating Project: title={final_title!r}, type={project_type}, user={user.username}')
+    try:
+        project = Project.objects.create(
+            user=user,
+            title=final_title,
+            description=analysis.get('description', ''),
+            type=project_type,
+            featured_image_url=image_url,
+            content=content,
+            is_showcased=is_showcase,
+            is_private=is_private,
+            tools_order=[],
+        )
+        logger.info(f'✅ Project created successfully: id={project.id}, slug={project.slug}, title={project.title}')
+    except Exception as e:
+        logger.error(f'❌ Failed to create project: {e}', exc_info=True)
+        return {
+            'success': False,
+            'error': f'Failed to create project: {e}',
+        }
 
     # Apply AI-suggested categories, topics, and tools
     apply_ai_metadata(project, analysis, content=content)
 
     action_word = 'created' if is_owned else 'clipped'
-    return {
+    result = {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
         'url': f'/{user.username}/{project.slug}',
-        'message': f"Image project '{project.title}' {action_word} successfully!",
+        'message': f"SUCCESS! Project '{project.title}' {action_word}. URL: /{user.username}/{project.slug}",
     }
+    logger.info(f'🎉 Returning success result: {result}')
+    return result
 
 
 def _generate_title_from_filename(filename: str) -> str:
