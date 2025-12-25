@@ -194,6 +194,15 @@ class UserLearningPathBySlugView(APIView):
             is_archived=False,
         ).first()
 
+        # If not found by user, check for a published path with this slug
+        # (published paths are accessible to anyone regardless of URL username)
+        if not saved_path:
+            saved_path = SavedLearningPath.objects.filter(
+                slug=slug,
+                is_published=True,
+                is_archived=False,
+            ).first()
+
         if saved_path:
             # Build response from SavedLearningPath
             # path_data contains curriculum, topics_covered, etc.

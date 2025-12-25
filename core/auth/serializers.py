@@ -227,15 +227,53 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        """Ensure the user instance will pass model-level validation."""
-        # Create a copy of the instance with new values for validation
-        if self.instance:
-            instance_copy = self.instance
-            for attr, value in attrs.items():
-                setattr(instance_copy, attr, value)
-            # This will trigger the User.clean() method for XSS prevention
+        """Validate only the fields being updated.
+
+        Only validates fields present in attrs rather than running full model
+        validation. This prevents unrelated fields (like avatar_url) from
+        blocking updates to other fields (like first_name, last_name).
+        """
+        import bleach
+
+        # Sanitize bio to prevent XSS attacks (if being updated)
+        if 'bio' in attrs and attrs['bio']:
+            allowed_tags = ['p', 'br', 'strong', 'em', 'a', 'ul', 'ol', 'li']
+            allowed_attrs = {'a': ['href', 'title']}
+            attrs['bio'] = bleach.clean(attrs['bio'], tags=allowed_tags, attributes=allowed_attrs, strip=True)
+            if len(attrs['bio']) > 5000:
+                raise serializers.ValidationError({'bio': 'Bio must be less than 5000 characters.'})
+
+        # Validate avatar_url if being updated (not existing avatar)
+        if 'avatar_url' in attrs and attrs['avatar_url']:
+            from urllib.parse import urlparse
+
+            from django.conf import settings
+
+            # Get allowed domains
+            minio_endpoint = getattr(settings, 'MINIO_ENDPOINT', '')
+            minio_endpoint_public = getattr(settings, 'MINIO_ENDPOINT_PUBLIC', '')
+            allowed_domains = [
+                'githubusercontent.com',
+                'gravatar.com',
+                'googleusercontent.com',
+                'github.com',
+                'avatars.githubusercontent.com',
+                'api.dicebear.com',
+                minio_endpoint,
+                minio_endpoint_public,
+            ]
+            allowed_domains = [d for d in allowed_domains if d]
+
             try:
-                instance_copy.clean()
+                parsed = urlparse(attrs['avatar_url'])
+                domain = parsed.netloc
+                if not any(allowed in domain for allowed in allowed_domains):
+                    raise serializers.ValidationError(
+                        {'avatar_url': f'Avatar URL must be from an allowed domain: {", ".join(allowed_domains)}'}
+                    )
+            except serializers.ValidationError:
+                raise
             except Exception as e:
-                raise serializers.ValidationError(str(e)) from e
+                raise serializers.ValidationError({'avatar_url': f'Invalid avatar URL: {str(e)}'}) from e
+
         return attrs

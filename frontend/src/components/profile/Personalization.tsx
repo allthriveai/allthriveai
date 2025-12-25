@@ -35,6 +35,7 @@ import {
   CalendarDaysIcon,
   CurrencyDollarIcon,
   LinkIcon,
+  TagIcon,
 } from '@heroicons/react/24/outline';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -261,9 +262,7 @@ export function Personalization() {
       await deletePersonalizationData();
 
       // Clear local state
-      setManualTags([]);
       setAutoTags([]);
-      setSelectedTopicIds(new Set());
       setSettings(null);
       setShowDeleteConfirm(false);
 

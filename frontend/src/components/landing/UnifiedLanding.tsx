@@ -492,8 +492,8 @@ function EmberChatPanel({ activeSection, isGamePlaying, onStartGame }: { activeS
 
 function HeroContent({ onRequestInvite }: { onRequestInvite: () => void }) {
   return (
-    <div className="h-screen flex items-center justify-center">
-      <div className="text-left max-w-2xl px-6">
+    <div className="h-screen flex items-center">
+      <div className="text-left max-w-2xl">
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
           <h1 className="font-bold tracking-tight mb-8">
             <span className="block text-6xl sm:text-7xl md:text-8xl leading-tight">
@@ -927,7 +927,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
 
       {/* Main sticky container */}
       <div className="sticky top-0 h-screen overflow-hidden pt-16">
-        <div className="max-w-7xl mx-auto h-full flex">
+        <div className="max-w-7xl mx-auto px-6 h-full flex">
         {/* Left side - scrolling content */}
         <div className="flex-1 overflow-hidden">
           <motion.div

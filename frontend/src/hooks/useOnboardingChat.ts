@@ -238,7 +238,10 @@ export function useOnboardingChat({
   }, [dismissOnboarding, disconnectAvatar, onComplete]);
 
   // Check if we should show onboarding
-  const isOnboardingActive = shouldShowOnboarding && state.step !== 'complete';
+  // Once onboarding starts (shouldShowModal was true initially), keep it active
+  // until the step is 'complete', even after markModalSeen is called.
+  // The hasSeenModal flag only prevents onboarding from showing on *future* visits.
+  const isOnboardingActive = (shouldShowOnboarding || state.step !== 'intro') && state.step !== 'complete';
 
   // Username for greeting
   const username = user?.firstName || user?.username || '';

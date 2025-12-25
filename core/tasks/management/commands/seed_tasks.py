@@ -130,7 +130,13 @@ class Command(BaseCommand):
     def seed_options(self, option_type, options_data, stats, dry_run):
         """Seed task options from YAML data."""
         type_label = option_type.title() + ('es' if option_type == 'status' else 's')
-        stats_key = f'{option_type}s' if option_type != 'status' else 'statuses'
+        # Handle irregular plurals for stats keys
+        if option_type == 'status':
+            stats_key = 'statuses'
+        elif option_type == 'priority':
+            stats_key = 'priorities'
+        else:
+            stats_key = f'{option_type}s'
 
         self.stdout.write('\n' + '=' * 60)
         self.stdout.write(self.style.HTTP_INFO(f'SEEDING {type_label.upper()}'))

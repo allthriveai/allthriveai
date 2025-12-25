@@ -62,7 +62,6 @@ class OAuthProviderConfig:
                 'file_content:read',
                 'file_metadata:read',
                 'library_content:read',
-                'team_library_content:read',
                 'file_dev_resources:read',
                 'projects:read',
             ],
