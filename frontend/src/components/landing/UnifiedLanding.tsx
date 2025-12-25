@@ -362,7 +362,7 @@ function ChatConversation({ messages, isGamePlaying, onStartGame, activeSection 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <ChatBubble type="user"><p className="text-sm">{message.text}</p></ChatBubble>
+                <ChatBubble type="user"><p className="text-base">{message.text}</p></ChatBubble>
               </motion.div>
             );
           }
@@ -376,7 +376,7 @@ function ChatConversation({ messages, isGamePlaying, onStartGame, activeSection 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <ChatBubble type="ember" showAvatar={shouldShowAvatar}><p className="text-sm">{message.text}</p></ChatBubble>
+                <ChatBubble type="ember" showAvatar={shouldShowAvatar}><p className="text-base">{message.text}</p></ChatBubble>
               </motion.div>
             );
           }
@@ -641,7 +641,7 @@ function MobileChatMessages({ messages, isGamePlaying, onStartGame }: { messages
           return (
             <div key={key} className="flex justify-end">
               <div className="max-w-[85%] px-3 py-2 rounded-2xl bg-cyan-600 text-white rounded-tr-sm">
-                <p className="text-sm">{message.text}</p>
+                <p className="text-base">{message.text}</p>
               </div>
             </div>
           );
@@ -651,7 +651,7 @@ function MobileChatMessages({ messages, isGamePlaying, onStartGame }: { messages
             <div key={key} className="flex gap-2">
               <img src="/ember-avatar.png" alt="Ember" className="w-6 h-6 rounded-full border border-cyan-500/50 flex-shrink-0" />
               <div className="max-w-[85%] px-3 py-2 rounded-2xl bg-white/10 border border-white/10 text-white rounded-tl-sm">
-                <p className="text-sm">{message.text}</p>
+                <p className="text-base">{message.text}</p>
               </div>
             </div>
           );
