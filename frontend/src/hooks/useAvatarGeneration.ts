@@ -74,6 +74,20 @@ export function useAvatarGeneration({
   // Use ref for session to avoid stale closures in reconnection logic
   const sessionRef = useRef<AvatarGenerationSession | null>(null);
 
+  // Use refs for callbacks to ensure WebSocket handlers always have latest versions
+  const onErrorRef = useRef(onError);
+  const onAvatarGeneratedRef = useRef(onAvatarGenerated);
+  const onAvatarSavedRef = useRef(onAvatarSaved);
+  const onAchievementUnlockedRef = useRef(onAchievementUnlocked);
+
+  // Keep refs in sync with props
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onAvatarGeneratedRef.current = onAvatarGenerated;
+    onAvatarSavedRef.current = onAvatarSaved;
+    onAchievementUnlockedRef.current = onAchievementUnlocked;
+  }, [onError, onAvatarGenerated, onAvatarSaved, onAchievementUnlocked]);
+
   // Keep sessionRef in sync with state
   useEffect(() => {
     sessionRef.current = state.session;
@@ -153,12 +167,12 @@ export function useAvatarGeneration({
                   isConnecting: false,
                   error: 'Connection timeout',
                 }));
-                onError?.('Connection timeout. Please try again.');
+                onErrorRef.current?.('Connection timeout. Please try again.');
                 reject(new Error('Connection timeout'));
               }
             }, CONNECTION_TIMEOUT);
 
-            ws.onopen = () => {
+            ws.onopen = async () => {
               if (connectionTimeoutRef.current) {
                 clearTimeout(connectionTimeoutRef.current);
                 connectionTimeoutRef.current = null;
@@ -170,12 +184,34 @@ export function useAvatarGeneration({
               }));
               reconnectAttemptsRef.current = 0;
               startHeartbeat();
+
+              // Check if session status changed while we were disconnected
+              // (e.g., task completed but we missed the WebSocket event)
+              try {
+                const refreshedSession = await sessionService.getSession(session.id);
+                if (refreshedSession.status === 'ready' && refreshedSession.iterations.length > 0) {
+                  const latestIteration = refreshedSession.iterations[refreshedSession.iterations.length - 1];
+                  setState((prev) => ({
+                    ...prev,
+                    session: refreshedSession,
+                    currentIteration: latestIteration,
+                    isGenerating: false,
+                  }));
+                  onAvatarGeneratedRef.current?.(latestIteration);
+                }
+              } catch (e) {
+                console.warn('Failed to refresh session status:', e);
+              }
+
               resolve(); // Resolve when connected
             };
 
             ws.onmessage = (event) => {
               try {
                 const data: AvatarWebSocketMessage = JSON.parse(event.data);
+
+                // Debug logging for avatar WebSocket messages
+                console.log('[Avatar WS] Received message:', data.event, data);
 
                 if (data.event === 'pong') return;
 
@@ -194,6 +230,11 @@ export function useAvatarGeneration({
 
                   case 'avatar_generated':
                     // New iteration generated
+                    console.log('[Avatar WS] avatar_generated:', {
+                      imageUrl: data.imageUrl,
+                      iterationId: data.iterationId,
+                      hasCallback: !!onAvatarGeneratedRef.current,
+                    });
                     if (data.imageUrl && data.iterationId) {
                       const iteration: AvatarGenerationIteration = {
                         id: data.iterationId,
@@ -218,7 +259,11 @@ export function useAvatarGeneration({
                           : null,
                       }));
 
-                      onAvatarGenerated?.(iteration);
+                      console.log('[Avatar WS] Calling onAvatarGenerated callback');
+                      onAvatarGeneratedRef.current?.(iteration);
+                      console.log('[Avatar WS] Callback called successfully');
+                    } else {
+                      console.warn('[Avatar WS] Missing imageUrl or iterationId, skipping callback');
                     }
                     break;
 
@@ -228,7 +273,7 @@ export function useAvatarGeneration({
                       isGenerating: false,
                       error: data.error || 'Generation failed',
                     }));
-                    onError?.(data.error || 'Generation failed. Please try again.');
+                    onErrorRef.current?.(data.error || 'Generation failed. Please try again.');
                     break;
 
                   case 'error':
@@ -237,7 +282,7 @@ export function useAvatarGeneration({
                       isGenerating: false,
                       error: data.error || 'An error occurred',
                     }));
-                    onError?.(data.error || 'An error occurred');
+                    onErrorRef.current?.(data.error || 'An error occurred');
                     break;
 
                   default:
@@ -296,15 +341,15 @@ export function useAvatarGeneration({
               isConnecting: false,
               error: 'Failed to connect. Please try again.',
             }));
-            onError?.('Failed to connect. Please try again.');
+            onErrorRef.current?.('Failed to connect. Please try again.');
             reject(error);
           });
       });
     },
-    [isAuthenticated, authLoading, clearTimers, startHeartbeat, onError, onAvatarGenerated]
+    [isAuthenticated, authLoading, clearTimers, startHeartbeat]
   );
 
-  // Start a new avatar generation session
+  // Start a new avatar generation session (or resume existing one)
   const startSession = useCallback(
     async (
       creationMode: CreationMode,
@@ -314,6 +359,22 @@ export function useAvatarGeneration({
       try {
         setState((prev) => ({ ...prev, error: null, isConnecting: true }));
 
+        // First check if there's an existing "generating" session we should reconnect to
+        // (Don't reuse "ready" sessions - user may want a new template)
+        const existingSession = await sessionService.getActiveSession();
+
+        if (existingSession && existingSession.status === 'generating') {
+          // Reconnect to the in-progress session's WebSocket
+          setState((prev) => ({
+            ...prev,
+            session: existingSession,
+            currentIteration: null,
+          }));
+          await connectWebSocket(existingSession);
+          return existingSession;
+        }
+
+        // No active session, create a new one
         const session = await sessionService.startSession({
           creationMode,
           templateUsed,
@@ -338,24 +399,24 @@ export function useAvatarGeneration({
           error: message,
           isConnecting: false,
         }));
-        onError?.(message);
+        onErrorRef.current?.(message);
         return null;
       }
     },
-    [connectWebSocket, onError]
+    [connectWebSocket]
   );
 
   // Send a prompt to generate an avatar
   const generateAvatar = useCallback(
     (prompt: string, referenceImageUrl?: string) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        onError?.('Not connected. Please try again.');
+        onErrorRef.current?.('Not connected. Please try again.');
         return;
       }
 
       const currentSession = sessionRef.current;
       if (!currentSession) {
-        onError?.('No active session');
+        onErrorRef.current?.('No active session');
         return;
       }
 
@@ -372,10 +433,10 @@ export function useAvatarGeneration({
       } catch (error) {
         console.error('Failed to send message:', error);
         setState((prev) => ({ ...prev, isGenerating: false }));
-        onError?.('Failed to send prompt');
+        onErrorRef.current?.('Failed to send prompt');
       }
     },
-    [onError]
+    []
   );
 
   // Accept an iteration and save it as the user's avatar
@@ -383,7 +444,7 @@ export function useAvatarGeneration({
     async (iterationId: number) => {
       const currentSession = sessionRef.current;
       if (!currentSession) {
-        onError?.('No active session');
+        onErrorRef.current?.('No active session');
         return null;
       }
 
@@ -402,11 +463,11 @@ export function useAvatarGeneration({
         }));
 
         if (updatedSession.savedAvatar) {
-          onAvatarSaved?.(updatedSession.savedAvatar);
+          onAvatarSavedRef.current?.(updatedSession.savedAvatar);
 
           // Check if this is the user's first AI avatar (for achievement)
           if (user && (user.aiAvatarsCreated === 0 || user.aiAvatarsCreated === 1)) {
-            onAchievementUnlocked?.('prompt_engineer');
+            onAchievementUnlockedRef.current?.('prompt_engineer');
           }
         }
 
@@ -415,11 +476,11 @@ export function useAvatarGeneration({
         const message =
           error instanceof Error ? error.message : 'Failed to save avatar';
         setState((prev) => ({ ...prev, error: message, isSaving: false }));
-        onError?.(message);
+        onErrorRef.current?.(message);
         return null;
       }
     },
-    [user, onError, onAvatarSaved, onAchievementUnlocked]
+    [user]
   );
 
   // Abandon the current session

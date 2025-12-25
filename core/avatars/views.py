@@ -248,7 +248,7 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
             conversation_id=conversation_id,
             creation_mode=serializer.validated_data['creation_mode'],
             template_used=serializer.validated_data.get('template_used', ''),
-            reference_image_url=serializer.validated_data.get('reference_image_url'),
+            reference_image_url=serializer.validated_data.get('reference_image_url') or '',
             status='generating',
         )
 

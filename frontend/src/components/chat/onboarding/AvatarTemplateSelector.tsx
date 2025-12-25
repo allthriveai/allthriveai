@@ -139,7 +139,7 @@ function DialogueBubble({ children }: { children: React.ReactNode }) {
       initial={{ opacity: 0, x: -10, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="glass-subtle px-5 py-4 rounded bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20"
+      className="glass-subtle px-5 py-4 rounded bg-gradient-to-br from-orange-500/10 to-amber-500/5 dark:from-orange-500/10 dark:to-amber-500/5 border border-orange-500/30 dark:border-orange-500/20"
     >
       {children}
     </motion.div>
@@ -329,9 +329,9 @@ export function AvatarTemplateSelector({
         <div className="flex-1 max-w-2xl space-y-3">
           {/* Line 1: Let's create your avatar! */}
           <DialogueBubble>
-            <p className="text-orange-100 text-lg leading-relaxed">
+            <p className="text-orange-800 dark:text-orange-100 text-lg leading-relaxed">
               {line1.displayedText}
-              {!line1.isComplete && <span className="animate-pulse text-orange-400 ml-0.5">|</span>}
+              {!line1.isComplete && <span className="animate-pulse text-orange-500 dark:text-orange-400 ml-0.5">|</span>}
             </p>
           </DialogueBubble>
 
@@ -339,10 +339,10 @@ export function AvatarTemplateSelector({
           <AnimatePresence>
             {dialogueStep >= 1 && (
               <DialogueBubble>
-                <p className="text-orange-100/90 text-lg leading-relaxed">
+                <p className="text-orange-700 dark:text-orange-100/90 text-lg leading-relaxed">
                   {line2.displayedText}
                   {!line2.isComplete && dialogueStep === 1 && (
-                    <span className="animate-pulse text-orange-400 ml-0.5">|</span>
+                    <span className="animate-pulse text-orange-500 dark:text-orange-400 ml-0.5">|</span>
                   )}
                 </p>
               </DialogueBubble>
@@ -353,19 +353,19 @@ export function AvatarTemplateSelector({
           <AnimatePresence>
             {dialogueStep >= 2 && (
               <DialogueBubble>
-                <p className="text-orange-100/80 text-lg leading-relaxed">
+                <p className="text-orange-600 dark:text-orange-100/80 text-lg leading-relaxed">
                   {line3.displayedText.split('prompt engineering').map((part, i) =>
                     i === 0 ? (
                       part
                     ) : (
                       <span key={i}>
-                        <span className="text-orange-300 font-semibold">prompt engineering</span>
+                        <span className="text-orange-700 dark:text-orange-300 font-semibold">prompt engineering</span>
                         {part}
                       </span>
                     )
                   )}
                   {!line3.isComplete && dialogueStep === 2 && (
-                    <span className="animate-pulse text-orange-400 ml-0.5">|</span>
+                    <span className="animate-pulse text-orange-500 dark:text-orange-400 ml-0.5">|</span>
                   )}
                 </p>
               </DialogueBubble>
@@ -393,7 +393,7 @@ export function AvatarTemplateSelector({
 
             {/* Template shortcuts */}
             <div>
-              <p className="text-orange-200/60 text-base mb-3">Quick start with a template:</p>
+              <p className="text-orange-700/80 dark:text-orange-200/60 text-base mb-3">Quick start with a template:</p>
               <div className="flex gap-3 flex-wrap">
                 {templates.map((template) => {
                   const icon = iconMap[template.icon] || faRobot;
@@ -421,7 +421,7 @@ export function AvatarTemplateSelector({
                         ${
                           selectedTemplate === template.id
                             ? `bg-gradient-to-r ${template.color} text-white shadow-lg`
-                            : 'bg-slate-800/50 text-orange-200/80 hover:text-white hover:bg-slate-700/50 border border-orange-500/20'
+                            : 'bg-slate-200 dark:bg-slate-800/50 text-slate-700 dark:text-orange-200/80 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300 dark:hover:bg-slate-700/50 border border-slate-300 dark:border-orange-500/20'
                         }
                       `}
                     >
@@ -435,7 +435,7 @@ export function AvatarTemplateSelector({
 
             {/* Photo upload section */}
             <div>
-              <p className="text-orange-200/60 text-base mb-3">Or upload your photo:</p>
+              <p className="text-orange-700/80 dark:text-orange-200/60 text-base mb-3">Or upload your photo:</p>
               {previewUrl ? (
                 <div className="flex items-center gap-4">
                   <div className="relative">
@@ -453,8 +453,8 @@ export function AvatarTemplateSelector({
                     </button>
                   </div>
                   <div className="flex-1">
-                    <p className="text-orange-100 text-base">Photo uploaded!</p>
-                    <p className="text-orange-200/60 text-sm">We'll create an avatar based on your photo</p>
+                    <p className="text-orange-800 dark:text-orange-100 text-base">Photo uploaded!</p>
+                    <p className="text-orange-600/80 dark:text-orange-200/60 text-sm">We'll create an avatar based on your photo</p>
                   </div>
                 </div>
               ) : (
@@ -469,31 +469,31 @@ export function AvatarTemplateSelector({
                     flex flex-col items-center justify-center gap-3
                     ${isDragging
                       ? 'border-orange-500 bg-orange-500/10'
-                      : 'border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-500/5'
+                      : 'border-orange-400 dark:border-orange-500/30 hover:border-orange-500 dark:hover:border-orange-500/50 hover:bg-orange-500/5'
                     }
                     ${isUploading ? 'opacity-50 pointer-events-none' : ''}
                   `}
                 >
                   {isUploading ? (
                     <>
-                      <ArrowPathIcon className="w-8 h-8 text-orange-400 animate-spin" />
-                      <p className="text-orange-200/80 text-base">Uploading...</p>
+                      <ArrowPathIcon className="w-8 h-8 text-orange-500 dark:text-orange-400 animate-spin" />
+                      <p className="text-orange-700 dark:text-orange-200/80 text-base">Uploading...</p>
                     </>
                   ) : (
                     <>
-                      <FontAwesomeIcon icon={faCamera} className="text-2xl text-orange-400" />
+                      <FontAwesomeIcon icon={faCamera} className="text-2xl text-orange-500 dark:text-orange-400" />
                       <div className="text-center">
-                        <p className="text-orange-100 text-base">
+                        <p className="text-orange-800 dark:text-orange-100 text-base">
                           {isDragging ? 'Drop your photo here' : 'Drag & drop your photo'}
                         </p>
-                        <p className="text-orange-200/60 text-sm mt-1">or click to browse</p>
+                        <p className="text-orange-600/80 dark:text-orange-200/60 text-sm mt-1">or click to browse</p>
                       </div>
                     </>
                   )}
                 </div>
               )}
               {uploadError && (
-                <p className="text-red-400 text-sm mt-2">{uploadError}</p>
+                <p className="text-red-500 dark:text-red-400 text-sm mt-2">{uploadError}</p>
               )}
             </div>
 
@@ -506,7 +506,7 @@ export function AvatarTemplateSelector({
                   ? `Edit to customize your ${selectedTemplate}...`
                   : 'Describe your avatar (e.g., "a friendly robot with glowing green eyes")'
               }
-              className="w-full h-28 px-4 py-3 rounded bg-slate-800/50 border border-orange-500/20 focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/30 text-orange-100 text-lg placeholder:text-orange-200/40 resize-none transition-all"
+              className="w-full h-28 px-4 py-3 rounded bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-orange-500/20 focus:border-orange-500 dark:focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/30 text-slate-800 dark:text-orange-100 text-lg placeholder:text-slate-500 dark:placeholder:text-orange-200/40 resize-none transition-all"
             />
 
             {/* Error message */}

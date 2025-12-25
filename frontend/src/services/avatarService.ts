@@ -81,9 +81,10 @@ export const sessionService = {
       return response.data;
     } catch (error: unknown) {
       // 404 means no active session
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { status?: number } };
-        if (axiosError.response?.status === 404) {
+      // Note: API interceptor transforms errors to ApiError with statusCode property
+      if (error && typeof error === 'object') {
+        const apiError = error as { statusCode?: number; response?: { status?: number } };
+        if (apiError.statusCode === 404 || apiError.response?.status === 404) {
           return null;
         }
       }

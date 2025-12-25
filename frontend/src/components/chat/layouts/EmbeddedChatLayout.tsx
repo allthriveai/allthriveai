@@ -893,6 +893,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                     onCancelProcessing={state.cancelProcessing}
                     userAvatarUrl={user?.avatarUrl}
                     onboarding={state.onboarding}
+                    avatarCreation={state.avatarCreation}
                     onNavigate={handleNavigate}
                     onCreateProjectFromImage={handleCreateProjectFromImage}
                     onProjectImportOptionSelect={handleProjectImportOptionSelect}

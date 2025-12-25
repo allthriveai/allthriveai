@@ -107,6 +107,19 @@ export function ChatMessageList({
     }
   }, [messages.length]);
 
+  // Auto-scroll when avatar creation becomes active
+  useEffect(() => {
+    if (avatarCreation?.isActive) {
+      // Small delay to ensure the component has rendered
+      setTimeout(() => {
+        const container = containerRef.current;
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [avatarCreation?.isActive]);
+
   // Render a single message based on its type
   const renderMessage = (message: ChatMessage) => {
     const metadata = message.metadata;
@@ -238,9 +251,6 @@ export function ChatMessageList({
         {/* Onboarding step - shown when onboarding is active */}
         {onboarding?.isActive && <OnboardingMessage onboarding={onboarding} />}
 
-        {/* Standalone avatar creation - shown when triggered via AI (outside onboarding) */}
-        {avatarCreation?.isActive && <AvatarCreationMessage avatarCreation={avatarCreation} />}
-
         {/* Custom empty state */}
         {showEmptyState && customEmptyState}
 
@@ -263,6 +273,9 @@ export function ChatMessageList({
             </div>
           );
         })}
+
+        {/* Standalone avatar creation - shown after messages when triggered via AI */}
+        {avatarCreation?.isActive && <AvatarCreationMessage avatarCreation={avatarCreation} />}
 
         {/* Loading indicator */}
         {isLoading && (

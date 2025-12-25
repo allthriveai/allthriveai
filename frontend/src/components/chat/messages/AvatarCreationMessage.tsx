@@ -53,9 +53,9 @@ function AvatarPreview({
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-subtle px-5 py-4 rounded bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20"
+            className="glass-subtle px-5 py-4 rounded bg-gradient-to-br from-orange-500/10 to-amber-500/5 dark:from-orange-500/10 dark:to-amber-500/5 border border-orange-500/30 dark:border-orange-500/20"
           >
-            <p className="text-orange-100 text-lg leading-relaxed">
+            <p className="text-orange-800 dark:text-orange-100 text-lg leading-relaxed">
               Here's your avatar! What do you think? You can accept it, or try refining your prompt
               for a different result.
             </p>
@@ -81,8 +81,8 @@ function AvatarPreview({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-slate-800 flex items-center justify-center">
-                    <ArrowPathIcon className="w-8 h-8 text-slate-600 animate-spin" />
+                  <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                    <ArrowPathIcon className="w-8 h-8 text-slate-400 dark:text-slate-600 animate-spin" />
                   </div>
                 )}
               </div>
@@ -104,10 +104,10 @@ function AvatarPreview({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="px-5 py-4 rounded-xl bg-orange-500/10 border border-orange-500/20"
+            className="px-5 py-4 rounded-xl bg-orange-500/10 border border-orange-500/30 dark:border-orange-500/20"
           >
-            <p className="text-orange-200 text-base">
-              <span className="font-semibold text-orange-300">Pro tip:</span> If your avatar isn't quite right, try
+            <p className="text-orange-700 dark:text-orange-200 text-base">
+              <span className="font-semibold text-orange-800 dark:text-orange-300">Pro tip:</span> If your avatar isn't quite right, try
               being more specific about what you want to change. Good prompts lead to better results!
             </p>
           </motion.div>
