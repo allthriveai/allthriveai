@@ -40,6 +40,13 @@ class InvitationRequest(models.Model):
         ('url', 'Paste any URL'),
     ]
 
+    # Skill level choices (matches User profile skill levels)
+    SKILL_LEVEL_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
     # Requester info (not linked to User since they don't have account yet)
     email = models.EmailField(
         unique=True,
@@ -69,6 +76,14 @@ class InvitationRequest(models.Model):
         max_length=200,
         blank=True,
         help_text='Other integration specified by user',
+    )
+
+    # Skill level self-assessment
+    skill_level = models.CharField(
+        max_length=20,
+        choices=SKILL_LEVEL_CHOICES,
+        blank=True,
+        help_text='Self-reported AI skill level',
     )
 
     # Request metadata

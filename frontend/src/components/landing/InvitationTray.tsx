@@ -25,7 +25,7 @@ type FormState = 'idle' | 'submitting' | 'success' | 'error';
 
 // Feature options for "What feature are you most excited about?"
 const FEATURE_OPTIONS = [
-  { key: 'portfolio', label: 'AI Portfolio', description: 'Auto-showcase your work', icon: BriefcaseIcon },
+  { key: 'portfolio', label: 'Share Projects', description: 'Share what I\'m working on', icon: BriefcaseIcon },
   { key: 'battles', label: 'Prompt Battles', description: 'Compete with AI prompts', icon: BoltIcon },
   { key: 'microlearning', label: 'Explore', description: 'See what others are building', icon: PuzzlePieceIcon },
   { key: 'learning', label: 'Learning Paths', description: 'Structured AI education', icon: AcademicCapIcon },
@@ -43,10 +43,18 @@ const INTEGRATION_OPTIONS = [
   { key: 'url', label: 'Paste any URL' },
 ];
 
+// Skill level options (matches user profile settings)
+const SKILL_LEVEL_OPTIONS = [
+  { key: 'beginner', label: 'Beginner', description: 'New to AI - want clear explanations and step-by-step guidance' },
+  { key: 'intermediate', label: 'Intermediate', description: 'Comfortable with basics - ready for more depth' },
+  { key: 'advanced', label: 'Advanced', description: 'Experienced - prefer concise, technical content' },
+];
+
 interface FormData {
   name: string;
   email: string;
   reason: string;
+  skill_level: string;
   excited_features: string[];
   desired_integrations: string[];
   desired_integrations_other: string;
@@ -65,6 +73,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
     name: '',
     email: '',
     reason: '',
+    skill_level: '',
     excited_features: [],
     desired_integrations: [],
     desired_integrations_other: '',
@@ -94,6 +103,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
         name: '',
         email: '',
         reason: '',
+        skill_level: '',
         excited_features: [],
         desired_integrations: [],
         desired_integrations_other: '',
@@ -193,7 +203,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-white">
-                  {formState === 'success' ? 'Request Received!' : 'Request an Invitation'}
+                  {formState === 'success' ? 'You\'re on the list!' : 'Join the Waitlist'}
                 </h2>
                 <p className="text-xs text-gray-400">
                   Join the AllThrive AI community
@@ -279,6 +289,43 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
                   placeholder="you@example.com"
                   disabled={formState === 'submitting'}
                 />
+              </div>
+
+              {/* Skill level question */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  What's your AI skill level?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {SKILL_LEVEL_OPTIONS.map((level) => {
+                    const isSelected = formData.skill_level === level.key;
+                    return (
+                      <button
+                        key={level.key}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, skill_level: level.key })}
+                        disabled={formState === 'submitting'}
+                        className={`relative p-3 rounded-xl text-left transition-all ${
+                          isSelected
+                            ? 'bg-gradient-to-br from-cyan-500/20 to-green-500/20 border-2 border-cyan-400'
+                            : 'bg-white/5 border border-gray-700 hover:border-gray-500'
+                        } disabled:opacity-50`}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-2 right-2">
+                            <CheckIcon className="w-4 h-4 text-cyan-400" />
+                          </div>
+                        )}
+                        <div className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-gray-200'}`}>
+                          {level.label}
+                        </div>
+                        <div className="text-xs text-gray-500 line-clamp-2 mt-1">
+                          {level.description}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Feature interest question */}
@@ -414,7 +461,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
                   </>
                 ) : (
                   <>
-                    Request Invitation
+                    Join Waitlist
                     <ArrowRightIcon className="w-4 h-4" />
                   </>
                 )}
