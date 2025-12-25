@@ -33,8 +33,9 @@ cp .env.example .env
 make up              # Backend (Docker)
 make frontend        # Frontend (separate terminal)
 
-# 3. Seed data
-make seed-all
+# 3. Seed data (choose one)
+make seed-all        # Fresh seed data
+make pull-prod-db    # Pull production database (anonymizes PII)
 ```
 
 - Frontend: http://localhost:3000

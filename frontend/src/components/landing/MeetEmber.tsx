@@ -140,7 +140,7 @@ function MiniProjectCard({ project, index }: { project: typeof exampleProjects[0
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.1 }}
-      className="group relative overflow-hidden rounded-xl bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-all duration-300"
+      className="group relative overflow-hidden rounded bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-all duration-300"
     >
       <div className="aspect-[4/3] overflow-hidden">
         <img
@@ -168,10 +168,10 @@ function GameCard({ onPlay }: { onPlay?: () => void }) {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 p-4"
+      className="relative overflow-hidden rounded bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 p-4"
     >
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
+        <div className="w-12 h-12 rounded bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
           <FontAwesomeIcon icon={faWorm} className="w-6 h-6 text-white" />
         </div>
         <div className="flex-1">
@@ -180,8 +180,11 @@ function GameCard({ onPlay }: { onPlay?: () => void }) {
         </div>
         {onPlay && (
           <button
-            onClick={onPlay}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium flex items-center gap-2 hover:from-emerald-400 hover:to-cyan-400 transition-all"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPlay();
+            }}
+            className="px-4 py-2 rounded bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium flex items-center gap-2 hover:from-emerald-400 hover:to-cyan-400 transition-all"
           >
             <FontAwesomeIcon icon={faPlay} className="w-3 h-3" />
             Play
@@ -220,7 +223,7 @@ function LearningPathCTA() {
     >
       <Link
         to="/learn"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-green-500 text-white font-medium hover:shadow-neon transition-all duration-300 hover:scale-105"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-gradient-to-r from-cyan-500 to-green-500 text-white font-medium hover:shadow-neon transition-all duration-300 hover:scale-105"
       >
         <AcademicCapIcon className="w-5 h-5" />
         AI Fundamentals Learning Path
@@ -238,7 +241,7 @@ function ShareCTA() {
     >
       <Link
         to="/explore"
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium hover:shadow-neon transition-all duration-300 hover:scale-105"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium hover:shadow-neon transition-all duration-300 hover:scale-105"
       >
         <ShareIcon className="w-5 h-5" />
         Share Your Project
@@ -255,11 +258,11 @@ function UrlInput() {
       transition={{ duration: 0.4 }}
       className="flex justify-end gap-3"
     >
-      <div className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 max-w-[80%]">
+      <div className="bg-white/10 border border-white/20 rounded px-4 py-3 flex items-center gap-3 max-w-[80%]">
         <div className="flex-1 text-sm text-cyan-400 truncate">
           https://github.com/sarah/my-first-chatbot
         </div>
-        <div className="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded bg-cyan-500 flex items-center justify-center flex-shrink-0">
           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
@@ -282,12 +285,12 @@ function ProjectPreview() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30"
+      className="relative overflow-hidden rounded bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30"
     >
       {/* Project card preview */}
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl flex-shrink-0">
+          <div className="w-16 h-16 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl flex-shrink-0">
             🤖
           </div>
           <div className="flex-1 min-w-0">
@@ -338,10 +341,10 @@ function ChatBubble({
       )}
       {isEmber && !showAvatar && <div className="w-8" />}
       <div
-        className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+        className={`max-w-[85%] px-4 py-3 rounded ${
           isEmber
-            ? 'bg-white/10 border border-white/10 text-white rounded-tl-sm'
-            : 'bg-cyan-600 text-white rounded-tr-sm'
+            ? 'bg-white/10 border border-white/10 text-white'
+            : 'bg-cyan-600 text-white'
         }`}
       >
         {children}
@@ -498,7 +501,7 @@ function ScenarioSection({ scenario, isActive }: { scenario: Scenario; isActive:
         transition={{ duration: 0.3 }}
         className="text-center max-w-md px-8"
       >
-        <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20">
+        <div className="w-20 h-20 mx-auto mb-6 rounded bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20">
           <Icon className="w-10 h-10 text-cyan-400" />
         </div>
         <h3 className="text-3xl font-bold text-white mb-3">{scenario.title}</h3>
@@ -513,7 +516,7 @@ function EmberChatPanel({ activeScenario }: { activeScenario: ScenarioId }) {
   const currentScenario = scenarios.find((s) => s.id === activeScenario);
 
   return (
-    <div className="h-full flex flex-col glass-card rounded-2xl border border-white/10 overflow-hidden">
+    <div className="h-full flex flex-col glass-card rounded border border-white/10 overflow-hidden">
       {/* Chat header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-white/5">
         <img
@@ -597,12 +600,12 @@ function MobileScenarioCards() {
         return (
           <motion.div
             key={scenario.id}
-            className="glass-card rounded-xl border border-white/10 overflow-hidden cursor-pointer"
+            className="glass-card rounded border border-white/10 overflow-hidden cursor-pointer"
             onClick={() => setExpandedId(isExpanded ? null : scenario.id)}
             whileTap={{ scale: 0.98 }}
           >
             <div className="flex items-center gap-4 p-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20 flex-shrink-0">
+              <div className="w-12 h-12 rounded bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20 flex-shrink-0">
                 <Icon className="w-6 h-6 text-cyan-400" />
               </div>
               <div className="flex-1">

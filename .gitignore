@@ -60,3 +60,10 @@ test-results/
 
 # Local development config
 .pull-prod-db.conf
+
+# Speckit/Specify
+.speckit/
+.specify/
+
+# E2E test results
+e2e-results/

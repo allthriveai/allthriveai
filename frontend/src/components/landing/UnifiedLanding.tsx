@@ -93,7 +93,7 @@ function MiniProjectCard({ project, index }: { project: typeof exampleProjects[0
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.1 }}
-      className="group relative overflow-hidden rounded-xl bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-all duration-300"
+      className="group relative overflow-hidden rounded bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-all duration-300"
     >
       <div className="aspect-[4/3] overflow-hidden">
         <img src={project.image} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -113,10 +113,10 @@ function GameCard({ onPlay }: { onPlay?: () => void }) {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: [1, 1.02, 1] }}
       transition={{ duration: 0.4, scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" } }}
-      className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 p-4 cursor-pointer shadow-lg shadow-emerald-500/20"
+      className="relative overflow-hidden rounded bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 p-4 cursor-pointer shadow-lg shadow-emerald-500/20"
     >
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
+        <div className="w-12 h-12 rounded bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
           <FontAwesomeIcon icon={faWorm} className="w-6 h-6 text-white" />
         </div>
         <div className="flex-1">
@@ -126,7 +126,7 @@ function GameCard({ onPlay }: { onPlay?: () => void }) {
         {onPlay && (
           <button
             onClick={onPlay}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium flex items-center gap-2 hover:from-emerald-400 hover:to-cyan-400 transition-all shadow-lg shadow-emerald-500/25"
+            className="px-4 py-2 rounded bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-medium flex items-center gap-2 hover:from-emerald-400 hover:to-cyan-400 transition-all shadow-lg shadow-emerald-500/25"
           >
             <FontAwesomeIcon icon={faPlay} className="w-3 h-3" />
             Play
@@ -144,7 +144,7 @@ function PlayableGame({ isPlaying, onPlay }: { isPlaying: boolean; onPlay: () =>
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="rounded-xl border-2 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)] p-1"
+      className="rounded border-2 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)] p-1"
     >
       <ContextSnakeCore variant="mini" />
     </motion.div>
@@ -170,7 +170,7 @@ function GameCarousel({ onPlayContextSnake }: { onPlayContextSnake: () => void }
           <img
             src={games[activeIndex].image}
             alt={games[activeIndex].name}
-            className="rounded-xl border border-white/10 shadow-lg w-full"
+            className="rounded border border-white/10 shadow-lg w-full"
           />
         </button>
         <div className="flex justify-center gap-2 mt-3">
@@ -198,9 +198,9 @@ function GameCarousel({ onPlayContextSnake }: { onPlayContextSnake: () => void }
 function UrlInput() {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex justify-end gap-3">
-      <div className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 max-w-[80%]">
+      <div className="bg-white/10 border border-white/20 rounded px-4 py-3 flex items-center gap-3 max-w-[80%]">
         <div className="flex-1 text-sm text-cyan-400 truncate">https://github.com/sarah/my-first-chatbot</div>
-        <div className="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded bg-cyan-500 flex items-center justify-center flex-shrink-0">
           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
@@ -221,11 +221,11 @@ function ProjectPreview() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30"
+      className="relative overflow-hidden rounded bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30"
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl flex-shrink-0">🤖</div>
+          <div className="w-16 h-16 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl flex-shrink-0">🤖</div>
           <div className="flex-1 min-w-0">
             <h4 className="text-white font-semibold truncate">My First Chatbot</h4>
             <p className="text-sm text-gray-400 line-clamp-2 mt-1">A simple chatbot built with Python and the OpenAI API.</p>
@@ -252,7 +252,7 @@ function BattlePreview() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded-xl bg-slate-900/80 border border-white/10"
+      className="relative overflow-hidden rounded bg-slate-900/80 border border-white/10"
     >
       {/* Challenge prompt header */}
       <div className="p-3 border-b border-white/10 bg-gradient-to-r from-rose-500/10 to-purple-500/10">
@@ -264,7 +264,7 @@ function BattlePreview() {
       <div className="flex gap-2 p-3">
         {/* Player 1 - Winner */}
         <div className="flex-1 relative">
-          <div className="aspect-square rounded-lg overflow-hidden bg-slate-800 mb-2 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] relative">
+          <div className="aspect-square rounded overflow-hidden bg-slate-800 mb-2 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] relative">
             <img
               src="/battle-robot-cat-1.png"
               alt="Robot cat chef making pizza"
@@ -296,7 +296,7 @@ function BattlePreview() {
 
         {/* Player 2 */}
         <div className="flex-1">
-          <div className="aspect-square rounded-lg overflow-hidden bg-slate-800 mb-2">
+          <div className="aspect-square rounded overflow-hidden bg-slate-800 mb-2">
             <img
               src="/battle-robot-cat-2.png"
               alt="Robot cat chef with pizza"
@@ -326,7 +326,7 @@ function ChatBubble({ type, children, showAvatar = false }: { type: 'user' | 'em
         </div>
       )}
       {isEmber && !showAvatar && <div className="w-8" />}
-      <div className={`max-w-[85%] px-4 py-3 rounded-2xl ${isEmber ? 'bg-white/10 border border-white/10 text-white rounded-tl-sm' : 'bg-cyan-600 text-white rounded-tr-sm'}`}>
+      <div className={`max-w-[85%] px-4 py-3 rounded ${isEmber ? 'bg-white/10 border border-white/10 text-white' : 'bg-cyan-600 text-white'}`}>
         {children}
       </div>
       {!isEmber && (
@@ -462,7 +462,7 @@ function EmberChatPanel({ activeSection, isGamePlaying, onStartGame }: { activeS
   }, [activeSection]);
 
   return (
-    <div className="h-full flex flex-col glass-card rounded-2xl border border-white/10 overflow-hidden">
+    <div className="h-full flex flex-col glass-card rounded border border-white/10 overflow-hidden">
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-white/5">
         <img src="/ember-avatar.png" alt="Ember" className="w-10 h-10 rounded-full border-2 border-cyan-500/50" />
         <div>
@@ -512,7 +512,7 @@ function HeroContent({ onRequestInvite }: { onRequestInvite: () => void }) {
           <p className="text-2xl text-gray-300 mb-10">Learn through games. Share your work in progress. See what others are creating.</p>
           <button
             onClick={onRequestInvite}
-            className="px-8 py-4 rounded-lg bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300 hover:scale-105"
+            className="px-8 py-4 rounded bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300 hover:scale-105"
           >
             Join Waitlist
           </button>
@@ -533,7 +533,7 @@ function FeatureContent({ icon: Icon, title, description, children }: { icon: Re
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20 mb-6">
+          <div className="w-16 h-16 rounded bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20 mb-6">
             <Icon className="w-8 h-8 text-cyan-400" />
           </div>
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">{title}</h2>
@@ -570,7 +570,7 @@ function MobileHeroContent({ onRequestInvite }: { onRequestInvite: () => void })
         <p className="text-lg sm:text-xl text-gray-300 mb-8">Learn through games. Share your work in progress. See what others are creating.</p>
         <button
           onClick={onRequestInvite}
-          className="px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-base shadow-neon hover:shadow-neon-strong transition-all duration-300"
+          className="px-6 py-3 rounded bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-base shadow-neon hover:shadow-neon-strong transition-all duration-300"
         >
           Join Waitlist
         </button>
@@ -608,7 +608,7 @@ function MobileFeatureSection({
         viewport={{ once: true, margin: '-50px' }}
         transition={{ duration: 0.5 }}
       >
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20 mb-4">
+        <div className="w-12 h-12 rounded bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20 mb-4">
           <Icon className="w-6 h-6 text-cyan-400" />
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">{title}</h2>
@@ -621,7 +621,7 @@ function MobileFeatureSection({
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-8 p-4 rounded-2xl bg-white/5 border border-white/10"
+          className="mt-8 p-4 rounded bg-white/5 border border-white/10"
         >
           {chatContent}
         </motion.div>
@@ -640,7 +640,7 @@ function MobileChatMessages({ messages, isGamePlaying, onStartGame }: { messages
         if (message.type === 'user') {
           return (
             <div key={key} className="flex justify-end">
-              <div className="max-w-[85%] px-3 py-2 rounded-2xl bg-cyan-600 text-white rounded-tr-sm">
+              <div className="max-w-[85%] px-3 py-2 rounded bg-cyan-600 text-white">
                 <p className="text-base">{message.text}</p>
               </div>
             </div>
@@ -650,7 +650,7 @@ function MobileChatMessages({ messages, isGamePlaying, onStartGame }: { messages
           return (
             <div key={key} className="flex gap-2">
               <img src="/ember-avatar.png" alt="Ember" className="w-6 h-6 rounded-full border border-cyan-500/50 flex-shrink-0" />
-              <div className="max-w-[85%] px-3 py-2 rounded-2xl bg-white/10 border border-white/10 text-white rounded-tl-sm">
+              <div className="max-w-[85%] px-3 py-2 rounded bg-white/10 border border-white/10 text-white">
                 <p className="text-base">{message.text}</p>
               </div>
             </div>
@@ -760,7 +760,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
               </a>
               <div className="flex items-center gap-3">
                 <a href="/explore" className="text-white/70 font-medium text-sm hover:text-white transition-colors">Explore</a>
-                <a href="/auth" className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-green-500 text-white font-medium text-sm">Sign In</a>
+                <a href="/auth" className="px-3 py-1.5 rounded bg-gradient-to-r from-cyan-500 to-green-500 text-white font-medium text-sm">Sign In</a>
               </div>
             </div>
           </div>
@@ -866,7 +866,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
             <img
               src="/games/game-prompt-battle-promo.png"
               alt="Prompt Battle"
-              className="w-full max-w-sm mx-auto rounded-2xl"
+              className="w-full max-w-sm mx-auto rounded"
             />
           </div>
         </div>
@@ -919,7 +919,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
             </a>
             <div className="flex items-center gap-4">
               <a href="/explore" className="text-white/70 font-medium text-sm hover:text-white transition-colors">Explore</a>
-              <a href="/auth" className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-green-500 text-white font-medium text-sm">Sign In</a>
+              <a href="/auth" className="px-4 py-2 rounded bg-gradient-to-r from-cyan-500 to-green-500 text-white font-medium text-sm">Sign In</a>
             </div>
           </div>
         </div>
@@ -955,23 +955,23 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
               </p>
               {/* URL input mock with integration icons */}
               <div className="max-w-md">
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex items-center gap-3 px-4 py-3 rounded bg-white/5 border border-white/10">
                   <FontAwesomeIcon icon={faLink} className="w-4 h-4 text-gray-500" />
                   <span className="text-gray-500 text-sm">Paste a URL...</span>
                 </div>
                 <div className="flex items-center gap-4 mt-4">
                   <span className="text-sm text-gray-500">Import from</span>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center">
                       <FontAwesomeIcon icon={faGithub} className="w-4 h-4 text-white" />
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center">
                       <FontAwesomeIcon icon={faGitlab} className="w-4 h-4 text-orange-400" />
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center">
                       <FontAwesomeIcon icon={faFigma} className="w-4 h-4 text-purple-400" />
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center">
                       <FontAwesomeIcon icon={faYoutube} className="w-4 h-4 text-red-500" />
                     </div>
                   </div>
@@ -1009,15 +1009,15 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
               {/* Project and Learning Path examples */}
               <div className="flex gap-4 max-w-md">
                 {/* User project */}
-                <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-3">
-                  <img src="/weave-cli.png" alt="weave-cli" className="w-full aspect-video rounded-lg border border-white/10 object-cover mb-2" />
+                <div className="flex-1 rounded border border-white/10 bg-white/5 p-3">
+                  <img src="/weave-cli.png" alt="weave-cli" className="w-full aspect-video rounded border border-white/10 object-cover mb-2" />
                   <p className="text-white font-medium text-sm">weave-cli</p>
                   <p className="text-gray-500 text-xs">by @mmaximilien</p>
                   <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">Project</span>
                 </div>
                 {/* Learning path */}
-                <div className="flex-1 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
-                  <img src="/vector-database-promo.png" alt="Vector DB Comparison" className="w-full aspect-video rounded-lg border border-white/10 object-cover mb-2" />
+                <div className="flex-1 rounded border border-purple-500/30 bg-purple-500/10 p-3">
+                  <img src="/vector-database-promo.png" alt="Vector DB Comparison" className="w-full aspect-video rounded border border-white/10 object-cover mb-2" />
                   <p className="text-white font-medium text-sm">Vector DB Comparison</p>
                   <p className="text-gray-500 text-xs">4 lessons · 20 min</p>
                   <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">Learning Path</span>
@@ -1042,7 +1042,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
         <div className="w-[420px] xl:w-[480px] h-full p-6 pl-0 relative hidden lg:block">
           {/* Logo cloud - visible on hero */}
           <motion.div
-            className="absolute inset-6 inset-l-0 flex items-center justify-center"
+            className="absolute inset-6 inset-l-0 flex items-center justify-center pointer-events-none"
             style={{ opacity: logoCloudOpacity }}
           >
             <div className="relative w-full max-w-[400px] aspect-square">
@@ -1071,7 +1071,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
 
           {/* Prompt Battle promo - visible on connect section */}
           <motion.div
-            className="absolute inset-6 inset-l-0 flex items-center justify-center"
+            className={`absolute inset-6 inset-l-0 flex items-center justify-center ${activeSection !== 'connect' ? 'pointer-events-none' : ''}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: activeSection === 'connect' ? 1 : 0 }}
             transition={{ duration: 0.3 }}
@@ -1079,7 +1079,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
             <img
               src="/games/game-prompt-battle-promo.png"
               alt="Prompt Battle"
-              className="max-w-full max-h-full object-contain rounded-2xl"
+              className="max-w-full max-h-full object-contain rounded"
             />
           </motion.div>
         </div>
