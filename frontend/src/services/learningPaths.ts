@@ -495,10 +495,12 @@ export interface PublicLesson {
   pathId: number;
   pathSlug: string;
   pathTitle: string;
-  username: string;
+  pathUsername: string;  // Actual path owner for URL navigation
+  username: string;      // Display username (Sage for AI lessons)
   userFullName: string;
   userAvatarUrl: string | null;
   lessonOrder: number;
+  lessonSlug: string;
   publishedAt: string;
 }
 
@@ -841,6 +843,86 @@ export async function adminRemoveProjectFromPath(
   const response = await api.delete(
     `/admin/learning-paths/${pathId}/add-project/`,
     { data: { projectId } }
+  );
+  return response.data;
+}
+
+// =============================================================================
+// LESSON PROGRESS TRACKING APIs
+// =============================================================================
+
+/**
+ * Individual lesson progress info
+ */
+export interface LessonProgressInfo {
+  lessonOrder: number;
+  title: string;
+  isCompleted: boolean;
+  exerciseCompleted: boolean;
+  quizCompleted: boolean;
+  completedAt: string | null;
+}
+
+/**
+ * Overall progress for a learning path
+ */
+export interface PathProgress {
+  pathId: number;
+  pathTitle: string;
+  totalLessons: number;
+  completedLessons: number;
+  percentage: number;
+  lessons: LessonProgressInfo[];
+}
+
+/**
+ * Response from completing an exercise or quiz
+ */
+export interface CompletionResponse {
+  lessonOrder: number;
+  lessonTitle: string;
+  isCompleted: boolean;
+  exerciseCompleted: boolean;
+  quizCompleted: boolean;
+  quizScore?: number;
+  completedAt: string | null;
+  justCompleted: boolean;
+  overallProgress: {
+    completedCount: number;
+    totalCount: number;
+    percentage: number;
+  };
+}
+
+/**
+ * Get progress for all lessons in a learning path
+ */
+export async function getLessonProgress(pathId: number): Promise<PathProgress> {
+  const response = await api.get<PathProgress>(`/learning-paths/${pathId}/progress/`);
+  return response.data;
+}
+
+/**
+ * Mark a lesson's exercise as completed
+ */
+export async function completeExercise(pathId: number, lessonOrder: number): Promise<CompletionResponse> {
+  const response = await api.post<CompletionResponse>(
+    `/learning-paths/${pathId}/lessons/${lessonOrder}/complete-exercise/`
+  );
+  return response.data;
+}
+
+/**
+ * Mark a lesson's quiz as completed
+ */
+export async function completeQuiz(
+  pathId: number,
+  lessonOrder: number,
+  score?: number
+): Promise<CompletionResponse> {
+  const response = await api.post<CompletionResponse>(
+    `/learning-paths/${pathId}/lessons/${lessonOrder}/complete-quiz/`,
+    score !== undefined ? { score } : {}
   );
   return response.data;
 }

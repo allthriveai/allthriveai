@@ -271,14 +271,14 @@ export function TaxonomyPreferences() {
         <div className="border border-primary-200 dark:border-primary-700 rounded-lg overflow-hidden bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20">
           <div className="p-3 sm:p-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center">
-                <AcademicCapIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-300" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary-500 dark:bg-primary-900/50 flex items-center justify-center">
+                <AcademicCapIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white dark:text-primary-300" />
               </div>
               <div>
                 <h4 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">
                   Skill Level
                 </h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-primary-700 dark:text-gray-400">
                   {preferences?.skillLevel
                     ? SKILL_LEVEL_OPTIONS.find((o) => o.value === preferences.skillLevel)?.label
                     : 'Not set'}
@@ -305,12 +305,20 @@ export function TaxonomyPreferences() {
                     } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm text-gray-900 dark:text-white">
+                      <span className={`font-medium text-sm ${
+                        isSelected
+                          ? 'text-primary-800 dark:text-white'
+                          : 'text-gray-900 dark:text-white'
+                      }`}>
                         {option.label}
                       </span>
-                      {isSelected && <CheckIcon className="w-4 h-4 text-primary-600 dark:text-primary-400" />}
+                      {isSelected && <CheckIcon className="w-4 h-4 text-primary-700 dark:text-primary-400" />}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className={`text-xs ${
+                      isSelected
+                        ? 'text-primary-700 dark:text-gray-400'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}>
                       {option.description}
                     </p>
                   </button>

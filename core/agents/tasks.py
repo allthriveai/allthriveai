@@ -39,20 +39,23 @@ logger = logging.getLogger(__name__)
 
 def _sanitize_urls(text: str) -> str:
     """
-    Sanitize URLs in AI responses to use correct domain.
+    Sanitize URLs in AI responses to use relative paths.
 
-    Replaces incorrect domain variations with the correct one.
+    AI agents sometimes output absolute URLs with various domain variations.
+    We convert these to relative URLs so they work in all environments
+    (localhost, staging, production).
 
     Args:
         text: The text content to sanitize
 
     Returns:
-        Text with corrected URLs
+        Text with relative URLs (no domain prefix)
     """
     if not text:
         return text
-    # Replace https://allthriveai.com/ or http://allthriveai.com/ with allthrive.ai
-    return re.sub(r'https?://allthriveai\.com/?', 'https://allthrive.ai/', text)
+    # Convert all AllThrive domain URLs to relative paths
+    # Matches: https://allthriveai.com/, https://allthrive.ai/, http://www.allthrive.ai/, etc.
+    return re.sub(r'https?://(?:www\.)?(?:allthriveai\.com|allthrive\.ai)/?', '/', text)
 
 
 User = get_user_model()

@@ -1095,6 +1095,13 @@ body:not(.impersonating) {
   .bg-primary-700 { background-color: #0f766e; }
   .bg-primary-900 { background-color: #134e4a; }
 
+  /* Dark mode override for primary-100 - use darker shade for better contrast */
+  /* This ensures light teal background has proper contrast with white text in dark mode */
+  html.dark .bg-primary-100,
+  .dark .bg-primary-100 {
+    background-color: #115e59 !important; /* teal-800 - dark enough for white text */
+  }
+
   /* Accent scale */
   .bg-accent-100 { background-color: #dbeafe; }
   .bg-accent-300 { background-color: #93c5fd; }

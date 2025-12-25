@@ -35,6 +35,9 @@ import {
   faLock,
   faSpinner,
   faPlus,
+  faCheck,
+  faCheckCircle,
+  faTrophy,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -46,7 +49,7 @@ import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/ga
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
-import { getLessonImage, rateLesson, type CurriculumItem, type RelatedProject } from '@/services/learningPaths';
+import { getLessonImage, rateLesson, getLessonProgress, completeExercise, completeQuiz, type CurriculumItem, type RelatedProject, type PathProgress } from '@/services/learningPaths';
 import { getToolBySlug } from '@/services/tools';
 import { getTaxonomyPreferences, type SkillLevel } from '@/services/personalization';
 import { SimulatedTerminal } from '@/components/learning/SimulatedTerminal';
@@ -703,10 +706,14 @@ interface AILessonCardProps {
   onOpenChat?: (context: LessonContext) => void;
   onExerciseComplete?: (lessonOrder: number, stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => void;
   onQuizComplete?: (lessonOrder: number, score: number, total: number) => void;
+  autoExpand?: boolean;
+  cardRef?: (el: HTMLDivElement | null) => void;
+  isCompleted?: boolean;
+  showCelebration?: boolean;
 }
 
-function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete }: AILessonCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete, autoExpand, cardRef: externalCardRef, isCompleted, showCelebration }: AILessonCardProps) {
+  const [isExpanded, setIsExpanded] = useState(autoExpand ?? false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -714,8 +721,23 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   const [userRating, setUserRating] = useState<'helpful' | 'not_helpful' | null>(null);
   const [isRating, setIsRating] = useState(false);
   const [hasStartedLoading, setHasStartedLoading] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const internalCardRef = useRef<HTMLDivElement>(null);
   const content = item.content;
+
+  // Auto-expand when autoExpand prop changes to true
+  useEffect(() => {
+    if (autoExpand) {
+      setIsExpanded(true);
+    }
+  }, [autoExpand]);
+
+  // Combined ref callback for both internal and external refs
+  const setCardRef = (el: HTMLDivElement | null) => {
+    (internalCardRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    if (externalCardRef) {
+      externalCardRef(el);
+    }
+  };
 
   // Start loading image when card comes into view (preload before user clicks)
   useEffect(() => {
@@ -746,7 +768,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
       }
     );
 
-    const currentRef = cardRef.current;
+    const currentRef = internalCardRef.current;
     if (currentRef) {
       observer.observe(currentRef);
     }
@@ -800,15 +822,19 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   };
 
   return (
-    <div ref={cardRef} className="glass-strong rounded overflow-hidden">
+    <div ref={setCardRef} className={`glass-strong rounded overflow-hidden ${isCompleted ? 'ring-2 ring-emerald-500/30' : ''}`}>
       {/* Header - always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full p-4 flex items-start gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left"
       >
-        {/* Order number */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-sm font-bold text-emerald-400">
-          {index + 1}
+        {/* Order number - show checkmark if completed */}
+        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+          isCompleted
+            ? 'bg-emerald-500 text-white'
+            : 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
+        }`}>
+          {isCompleted ? <FontAwesomeIcon icon={faCheck} /> : index + 1}
         </div>
 
         {/* Content */}
@@ -822,6 +848,13 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
               <FontAwesomeIcon icon={faRobot} className="text-[10px]" />
               Personalized
             </span>
+            {/* Completed badge */}
+            {isCompleted && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" />
+                Completed
+              </span>
+            )}
           </div>
           <h3 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{item.title}</h3>
           <p className="text-slate-600 dark:text-gray-400 text-base line-clamp-2">{content.summary}</p>
@@ -992,6 +1025,32 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
             </div>
           )}
 
+          {/* Completion celebration - shows when lesson is just completed */}
+          {showCelebration && (
+            <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-xl p-6 text-center animate-in fade-in zoom-in duration-300">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                <FontAwesomeIcon icon={faTrophy} className="text-3xl text-emerald-400" />
+              </div>
+              <h4 className="text-xl font-bold text-emerald-400 mb-2">Lesson Complete!</h4>
+              <p className="text-slate-600 dark:text-gray-300">
+                Great work! You've completed this lesson. Keep up the momentum!
+              </p>
+            </div>
+          )}
+
+          {/* Static completed banner - shows for already completed lessons */}
+          {isCompleted && !showCelebration && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-lg text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-emerald-400 font-medium">Lesson Completed</p>
+                <p className="text-slate-500 dark:text-gray-400 text-sm">You've already completed this lesson.</p>
+              </div>
+            </div>
+          )}
+
           {/* Rating section */}
           <div className="border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
             <div className="flex items-center justify-between">
@@ -1050,12 +1109,16 @@ interface CurriculumItemCardProps {
   topicsCovered?: string[];
   onExerciseComplete?: (lessonOrder: number, stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => void;
   onQuizComplete?: (lessonOrder: number, score: number, total: number) => void;
+  isCompleted?: boolean;
+  showCelebration?: boolean;
+  autoExpand?: boolean;
+  cardRef?: (el: HTMLDivElement | null) => void;
 }
 
-function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel, onOpenChat, onProjectAdded, topicsCovered, onExerciseComplete, onQuizComplete }: CurriculumItemCardProps) {
+function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel, onOpenChat, onProjectAdded, topicsCovered, onExerciseComplete, onQuizComplete, autoExpand, cardRef, isCompleted, showCelebration }: CurriculumItemCardProps) {
   // Use AILessonCard for AI-generated lessons
   if (item.type === 'ai_lesson') {
-    return <AILessonCard item={item} index={index} pathSlug={pathSlug} skillLevel={skillLevel} onOpenChat={onOpenChat} onExerciseComplete={onExerciseComplete} onQuizComplete={onQuizComplete} />;
+    return <AILessonCard item={item} index={index} pathSlug={pathSlug} skillLevel={skillLevel} onOpenChat={onOpenChat} onExerciseComplete={onExerciseComplete} onQuizComplete={onQuizComplete} autoExpand={autoExpand} cardRef={cardRef} isCompleted={isCompleted} showCelebration={showCelebration} />;
   }
 
   // Use ToolItemCard for expandable tool info
@@ -1174,12 +1237,34 @@ function LoadingState() {
 }
 
 /**
+ * Generate a slug from lesson title (must match backend logic)
+ */
+function generateLessonSlug(title: string, lessonOrder: number): string {
+  const baseSlug = title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .trim()
+    .substring(0, 50);
+
+  if (!baseSlug || baseSlug === 'lesson') {
+    return `lesson-${lessonOrder}`;
+  }
+  return baseSlug;
+}
+
+/**
  * Main learning path detail page
  */
 export default function LearningPathDetailPage() {
-  const { username, slug } = useParams<{ username: string; slug: string }>();
+  const { username, slug, lessonSlug } = useParams<{ username: string; slug: string; lessonSlug?: string }>();
   const { data: path, isLoading, error, refetch } = useLearningPathBySlug(username || '', slug || '');
   const { user } = useAuth();
+
+  // Track which lesson to auto-expand (from URL param)
+  const [targetLessonIndex, setTargetLessonIndex] = useState<number | null>(null);
+  const lessonRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Check if current user is the owner of this path
   const isOwner = !!(user && username && user.username === username);
@@ -1200,6 +1285,18 @@ export default function LearningPathDetailPage() {
   // User's skill level for adaptive exercises (default to beginner if not set)
   const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
 
+  // Progress tracking state
+  const [progressData, setProgressData] = useState<PathProgress | null>(null);
+  const [justCompletedLesson, setJustCompletedLesson] = useState<number | null>(null);
+
+  // Auto-dismiss celebration after 5 seconds (with proper cleanup to prevent memory leaks)
+  useEffect(() => {
+    if (justCompletedLesson !== null) {
+      const timer = setTimeout(() => setJustCompletedLesson(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [justCompletedLesson]);
+
   // Fetch user's skill level from personalization preferences
   useEffect(() => {
     if (user) {
@@ -1215,24 +1312,119 @@ export default function LearningPathDetailPage() {
     }
   }, [user]);
 
+  // Fetch lesson progress when path loads
+  useEffect(() => {
+    if (savedPath?.id && user) {
+      getLessonProgress(savedPath.id)
+        .then(setProgressData)
+        .catch(() => {
+          // Progress not available - may be viewing someone else's path
+        });
+    }
+  }, [savedPath?.id, user]);
+
   // Generate conversation ID for this learning path
   const conversationId = `learn-${slug}-${user?.id || 'anon'}`;
+
+  // Find target lesson from URL slug and scroll to it
+  useEffect(() => {
+    if (!lessonSlug || !path?.curriculum) return;
+
+    // Find the lesson index that matches the slug
+    const lessonIndex = path.curriculum.findIndex((item, idx) => {
+      if (item.type !== 'ai_lesson') return false;
+      const order = item.order ?? idx + 1;
+      const itemSlug = generateLessonSlug(item.title || '', order);
+      return itemSlug === lessonSlug;
+    });
+
+    if (lessonIndex !== -1) {
+      setTargetLessonIndex(lessonIndex);
+
+      // Scroll to the lesson after a short delay to allow rendering
+      setTimeout(() => {
+        const lessonEl = lessonRefs.current.get(lessonIndex);
+        if (lessonEl) {
+          lessonEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    }
+  }, [lessonSlug, path?.curriculum]);
 
   // Handle updating lesson context when user clicks "Try It Yourself"
   const handleOpenChat = (context: LessonContext) => {
     setCurrentLessonContext(context);
   };
 
-  // Handle exercise completion - track stats for analytics
-  const handleExerciseComplete = (lessonOrder: number, stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => {
-    // TODO: Persist to backend when endpoint is available
-    console.log('Exercise completed:', { pathSlug: slug, lessonOrder, stats });
+  // Handle exercise completion - persist to backend and update progress
+  const handleExerciseComplete = async (lessonOrder: number, stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => {
+    if (!savedPath?.id) {
+      console.log('Exercise completed (not persisted - no saved path):', { lessonOrder, stats });
+      return;
+    }
+
+    try {
+      const result = await completeExercise(savedPath.id, lessonOrder);
+      console.log('Exercise completed:', { lessonOrder, stats, result });
+
+      // If this just completed the lesson, trigger celebration (auto-dismissed by useEffect)
+      if (result.justCompleted) {
+        setJustCompletedLesson(lessonOrder);
+      }
+
+      // Update progress data
+      setProgressData(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          completedLessons: result.overallProgress.completedCount,
+          percentage: result.overallProgress.percentage,
+          lessons: prev.lessons.map(lesson =>
+            lesson.lessonOrder === lessonOrder
+              ? { ...lesson, isCompleted: result.isCompleted, exerciseCompleted: result.exerciseCompleted }
+              : lesson
+          ),
+        };
+      });
+    } catch (error) {
+      console.error('Failed to persist exercise completion:', error);
+    }
   };
 
-  // Handle quiz completion - track score for analytics
-  const handleQuizComplete = (lessonOrder: number, score: number, total: number) => {
-    // TODO: Persist to backend when endpoint is available
-    console.log('Quiz completed:', { pathSlug: slug, lessonOrder, score, total, passed: score >= (total - 1) });
+  // Handle quiz completion - persist to backend and update progress
+  const handleQuizComplete = async (lessonOrder: number, score: number, total: number) => {
+    if (!savedPath?.id) {
+      console.log('Quiz completed (not persisted - no saved path):', { lessonOrder, score, total });
+      return;
+    }
+
+    try {
+      const scorePercentage = total > 0 ? score / total : 0;
+      const result = await completeQuiz(savedPath.id, lessonOrder, scorePercentage);
+      console.log('Quiz completed:', { lessonOrder, score, total, result });
+
+      // If this just completed the lesson, trigger celebration (auto-dismissed by useEffect)
+      if (result.justCompleted) {
+        setJustCompletedLesson(lessonOrder);
+      }
+
+      // Update progress data
+      setProgressData(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          completedLessons: result.overallProgress.completedCount,
+          percentage: result.overallProgress.percentage,
+          lessons: prev.lessons.map(lesson =>
+            lesson.lessonOrder === lessonOrder
+              ? { ...lesson, isCompleted: result.isCompleted, quizCompleted: result.quizCompleted }
+              : lesson
+          ),
+        };
+      });
+    } catch (error) {
+      console.error('Failed to persist quiz completion:', error);
+    }
   };
 
   // Handle publish/unpublish toggle
@@ -1293,6 +1485,21 @@ export default function LearningPathDetailPage() {
 
                       {/* Title - stays white because it's over a cover image */}
                       <h1 className="text-2xl font-bold text-white mb-2">{path.title}</h1>
+
+                      {/* Progress bar - shows when user has made progress */}
+                      {progressData && progressData.percentage > 0 && (
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-500"
+                              style={{ width: `${progressData.percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-emerald-300 font-medium whitespace-nowrap">
+                            {progressData.completedLessons}/{progressData.totalLessons} lessons ({progressData.percentage}%)
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Meta info row with Share button on right - over cover image */}
@@ -1374,22 +1581,40 @@ export default function LearningPathDetailPage() {
                   <div className="px-4 sm:px-6 py-4">
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Curriculum</h2>
                     <div className="space-y-3">
-                      {path.curriculum?.map((item, index) => (
-                        <CurriculumItemCard
-                          key={`${item.type}-${item.order}`}
-                          item={item}
-                          index={index}
-                          pathSlug={slug}
-                          pathId={savedPath?.id}
-                          isAdmin={isAdmin}
-                          skillLevel={skillLevel}
-                          onOpenChat={handleOpenChat}
-                          onProjectAdded={refetch}
-                          topicsCovered={path.topicsCovered}
-                          onExerciseComplete={handleExerciseComplete}
-                          onQuizComplete={handleQuizComplete}
-                        />
-                      ))}
+                      {path.curriculum?.map((item, index) => {
+                        // Get progress for this lesson
+                        const lessonProgress = progressData?.lessons.find(
+                          l => l.lessonOrder === (item.order ?? index + 1)
+                        );
+                        const showCelebration = justCompletedLesson === (item.order ?? index + 1);
+
+                        return (
+                          <CurriculumItemCard
+                            key={`${item.type}-${item.order}`}
+                            item={item}
+                            index={index}
+                            pathSlug={slug}
+                            pathId={savedPath?.id}
+                            isAdmin={isAdmin}
+                            skillLevel={skillLevel}
+                            onOpenChat={handleOpenChat}
+                            onProjectAdded={refetch}
+                            topicsCovered={path.topicsCovered}
+                            onExerciseComplete={handleExerciseComplete}
+                            onQuizComplete={handleQuizComplete}
+                            autoExpand={targetLessonIndex === index || showCelebration}
+                            cardRef={(el) => {
+                              if (el) {
+                                lessonRefs.current.set(index, el);
+                              } else {
+                                lessonRefs.current.delete(index);
+                              }
+                            }}
+                            isCompleted={lessonProgress?.isCompleted || showCelebration}
+                            showCelebration={showCelebration}
+                          />
+                        );
+                      })}
                     </div>
 
                     {(path.curriculum?.length ?? 0) === 0 && (

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pre-commit hook to check for hardcoded URLs in Python files."""
+"""Pre-commit hook to check for hardcoded URLs in Python and TypeScript files."""
 
 import re
 import sys
@@ -12,18 +12,33 @@ URL_PATTERNS = [
     r'http://127\.0\.0\.1:\d+',
     r'https://127\.0\.0\.1:\d+',
     r'getattr\(settings,\s*[\'"][A-Z_]+[\'"]\s*,\s*[\'"]https?://',  # getattr with URL default
+    # Production domain URLs (should use relative paths or settings.FRONTEND_URL)
+    r'[\'"]https?://(?:www\.)?allthriveai\.com[/\'"?]',  # allthriveai.com URLs
+    r'[\'"]https?://(?:www\.)?allthrive\.ai[/\'"?]',  # allthrive.ai URLs (when in string literals)
 ]
 
-# Allowed patterns (exceptions)
+# Allowed patterns (exceptions) - order matters, checked first
 ALLOWED_PATTERNS = [
-    r'#.*http',  # Comments
-    r'""".*http.*"""',  # Docstrings
-    r"'''.*http.*'''",  # Docstrings
+    r'#.*http',  # Python comments
+    r'""".*http.*"""',  # Python docstrings (single line)
+    r"'''.*http.*'''",  # Python docstrings (single line)
     r'//.*http',  # JS/TS single-line comments
     r'/\*.*http.*\*/',  # JS/TS multi-line comments
     r'import\.meta\.env\.\w+\s*\|\|\s*[\'"]http',  # Vite env var fallback
     r'process\.env\.\w+\s*\|\|\s*[\'"]http',  # Node env var fallback
     r'VITE_\w+.*http',  # Vite config with env vars
+    r're\.sub\(.*allthrive',  # Regex patterns for URL sanitization
+    r'❌',  # Example text showing what NOT to do (in prompts/docs)
+    r'WRONG',  # Example text showing what NOT to do
+    r'mailto:',  # Email addresses are OK
+    r'@allthrive\.ai',  # Email addresses
+]
+
+# Files to skip entirely (contain intentional domain references)
+SKIP_FILES = [
+    'check_no_hardcoded_urls.py',  # This file itself
+    'prompts.py',  # AI agent prompts with examples
+    'platform_knowledge.py',  # Agent platform knowledge
 ]
 
 
@@ -33,6 +48,10 @@ def check_file(filepath: Path) -> list[tuple[int, str]]:
     Returns:
         List of (line_number, line_content) tuples for violations
     """
+    # Skip files that intentionally contain domain references
+    if filepath.name in SKIP_FILES:
+        return []
+
     violations = []
 
     try:
