@@ -599,6 +599,7 @@ export function SidebarChatLayout({
                         onCancelProcessing={state.cancelProcessing}
                         userAvatarUrl={user?.avatarUrl}
                         onboarding={state.onboarding}
+                        avatarCreation={state.avatarCreation}
                         onNavigate={handleNavigate}
                         onCreateProjectFromImage={handleCreateProjectFromImage}
                         onConnectFigma={integrationFlow?.handleConnectFigma}
