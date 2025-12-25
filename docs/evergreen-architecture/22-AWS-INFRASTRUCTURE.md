@@ -100,3 +100,21 @@ Run `make aws-validate` to check:
 | Check deployments | ECS → Clusters → allthriveai-production |
 | Database metrics | RDS → Performance Insights |
 | SSL expiration | ACM → Certificates |
+
+## ECS Resources & Costs
+
+| Service | CPU | Memory | Tasks | Concurrency | Monthly Cost |
+|---------|-----|--------|-------|-------------|--------------|
+| Web (Django) | 512 | 1024 MB | 1 | - | ~$18 |
+| Celery Worker | 512 | 1024 MB | 1 | 4 | ~$18 |
+| Celery Beat | 256 | 512 MB | 1 | - | ~$9 |
+| Weaviate | 512 | 1024 MB | 1 | - | ~$18 |
+| **ECS Subtotal** | | | | | **~$63** |
+| RDS (db.t3.micro) | - | - | - | - | ~$15 |
+| ElastiCache | - | - | - | - | ~$12 |
+| ALB | - | - | - | - | ~$20 |
+| NAT Gateway | - | - | - | - | ~$35 |
+| CloudFront + S3 | - | - | - | - | ~$15 |
+| **Total** | | | | | **~$160** |
+
+**Scaling**: To add Celery capacity, increase `CeleryDesiredCount` in CloudFormation (~$18/worker/month).

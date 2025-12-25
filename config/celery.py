@@ -44,6 +44,11 @@ app.conf.worker_prefetch_multiplier = 1  # Fetch one task at a time (fair distri
 app.conf.task_time_limit = 300  # 5 minutes hard limit
 app.conf.task_soft_time_limit = 240  # 4 minutes soft limit (task should handle gracefully)
 
+# Default task expiration - discard stale tasks that haven't been picked up
+# This prevents queue backlog from causing wasted AI credits on abandoned sessions
+# Individual tasks can override with apply_async(expires=...) for shorter timeouts
+app.conf.task_default_expires = 3600  # 1 hour default (lenient for background tasks)
+
 # Configure task queues for priority handling
 app.conf.task_queues = (
     Queue('celery', routing_key='celery'),  # Default Celery queue
@@ -52,18 +57,20 @@ app.conf.task_queues = (
     Queue('youtube_import', routing_key='youtube.import'),
     Queue('battles', routing_key='battles'),  # Prompt battles queue
     Queue('engagement', routing_key='engagement'),  # Engagement processing queue
+    Queue('weaviate', routing_key='weaviate'),  # Low-priority Weaviate sync (background)
 )
 
 # Route tasks to specific queues
 app.conf.task_routes = {
-    # WebSocket chat tasks
+    # WebSocket chat tasks (high priority - user facing)
     'core.agents.tasks.process_chat_message_task': {'queue': 'default'},
+    'core.avatars.tasks.process_avatar_generation_task': {'queue': 'default'},
     # YouTube tasks
     'core.integrations.youtube.tasks.sync_single_content_source': {'queue': 'youtube_sync'},
     'core.integrations.youtube.tasks.sync_content_sources': {'queue': 'youtube_sync'},
     'core.integrations.youtube.tasks.import_youtube_video_task': {'queue': 'youtube_import'},
     'core.integrations.youtube.tasks.import_youtube_channel_task': {'queue': 'youtube_import'},
-    # Prompt battles tasks (using default queue for now)
+    # Prompt battles tasks (high priority - user facing)
     'core.battles.tasks.generate_submission_image_task': {'queue': 'default'},
     'core.battles.tasks.judge_battle_task': {'queue': 'default'},
     'core.battles.tasks.complete_battle_task': {'queue': 'default'},
@@ -74,10 +81,30 @@ app.conf.task_routes = {
     'core.battles.tasks.send_async_battle_reminders': {'queue': 'default'},
     'core.battles.tasks.start_async_turn_task': {'queue': 'default'},
     'core.battles.tasks.handle_async_turn_timeout_task': {'queue': 'default'},
-    # Engagement tasks
+    # Engagement tasks (background)
     'core.engagement.tasks.process_engagement_batch': {'queue': 'engagement'},
     'core.engagement.tasks.update_user_profile_from_events': {'queue': 'engagement'},
     'core.engagement.tasks.apply_recency_decay': {'queue': 'engagement'},
+    # Weaviate sync tasks (low priority - background, can be delayed)
+    'services.weaviate.tasks.sync_project_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_user_profile_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_quiz_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_tool_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_micro_lesson_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_learning_path_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_concept_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_knowledge_state_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.remove_project_from_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.remove_user_profile_from_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.remove_learning_path_from_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.update_engagement_metrics': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_projects': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_users': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_quizzes': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_tools': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_concepts': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_micro_lessons': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_learning_paths': {'queue': 'weaviate'},
 }
 
 # Periodic tasks schedule (Celery Beat)

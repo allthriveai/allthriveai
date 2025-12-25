@@ -115,6 +115,56 @@ def robots_txt(request):
     return HttpResponse('\n'.join(lines), content_type='text/plain')
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def client_logs(request):
+    """Receive frontend client logs and write to backend logging.
+
+    Accepts a batch of log entries from the frontend logger service.
+    Logs are written to the 'frontend' logger which appears in admin log stream.
+    """
+    frontend_logger = logging.getLogger('frontend')
+
+    try:
+        logs = request.data.get('logs', [])
+
+        for entry in logs:
+            level = entry.get('level', 'info').upper()
+            message = entry.get('message', '')
+            context = entry.get('context', {})
+            url = entry.get('url', '')
+            user_agent = entry.get('userAgent', '')
+
+            # Add user ID if authenticated
+            user_id = None
+            if request.user and request.user.is_authenticated:
+                user_id = request.user.id
+
+            extra = {
+                'url': url,
+                'user_agent': user_agent,
+                'user_id': user_id,
+                'context': context,
+            }
+
+            log_message = f'[CLIENT] {message}'
+
+            if level == 'ERROR':
+                frontend_logger.error(log_message, extra=extra)
+            elif level == 'WARN':
+                frontend_logger.warning(log_message, extra=extra)
+            elif level == 'INFO':
+                frontend_logger.info(log_message, extra=extra)
+            else:
+                frontend_logger.debug(log_message, extra=extra)
+
+        return Response({'status': 'ok', 'received': len(logs)})
+
+    except Exception as e:
+        logger.error(f'Error processing client logs: {str(e)}')
+        return Response({'status': 'error'}, status=400)
+
+
 def ai_plugin_manifest(request):
     """AI plugin manifest with privacy boundaries."""
     manifest = {

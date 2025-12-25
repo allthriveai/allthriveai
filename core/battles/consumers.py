@@ -297,7 +297,10 @@ class BattleConsumer(AsyncWebsocketConsumer):
         # Pip's image is already generating from battle start
         from core.battles.tasks import generate_submission_image_task
 
-        generate_submission_image_task.delay(submission.id)
+        generate_submission_image_task.apply_async(
+            args=[submission.id],
+            expires=600,  # Expire after 10 min if not picked up (user likely left)
+        )
         logger.info(f'Started image generation immediately for submission {submission.id}')
 
         # For async turn-based battles, transition to opponent's turn when challenger submits
@@ -416,6 +419,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 handle_battle_timeout_task.apply_async(
                     args=[self.battle_id],
                     countdown=timeout_seconds,
+                    expires=timeout_seconds + 600,  # Expire 10 min after timeout
                 )
 
         except Exception as e:
@@ -443,7 +447,10 @@ class BattleConsumer(AsyncWebsocketConsumer):
             # Trigger AI image generation for all submissions
             for submission in submissions:
                 if not submission.generated_output_url:
-                    generate_submission_image_task.delay(submission.id)
+                    generate_submission_image_task.apply_async(
+                        args=[submission.id],
+                        expires=600,  # Expire after 10 min if not picked up
+                    )
 
     @database_sync_to_async
     def _get_battle(self) -> PromptBattle | None:
@@ -511,7 +518,10 @@ class BattleConsumer(AsyncWebsocketConsumer):
         # Trigger Pip's submission creation
         from core.battles.tasks import create_pip_submission_task
 
-        create_pip_submission_task.delay(battle.id)
+        create_pip_submission_task.apply_async(
+            args=[battle.id],
+            expires=600,  # Expire after 10 min if not picked up
+        )
         logger.info(
             f'Triggered Pip submission on user typing for battle {battle.id}',
             extra={'battle_id': battle.id, 'user_id': self.user.id},

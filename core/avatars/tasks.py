@@ -16,6 +16,7 @@ from asgiref.sync import async_to_sync
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 from channels.layers import get_channel_layer
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from core.ai_usage.tracker import AIUsageTracker
@@ -194,16 +195,17 @@ def process_avatar_generation_task(
             except Exception as e:
                 logger.warning(f'Failed to download reference image: {e}', exc_info=True)
 
-        # Generate image using OpenAI gpt-image-1.5 (fast and reliable)
-        # Note: OpenAI doesn't support reference images, so "Make Me" mode
-        # uses the prompt description only
+        # Generate image using OpenAI
+        # - Production: gpt-image-1.5 (fast, requires org verification)
+        # - Local dev: dall-e-3 (works without verification)
         start_time = time.time()
         ai = AIProvider(provider='openai', user_id=user_id)
+        image_model = 'dall-e-3' if settings.DEBUG else 'gpt-image-1.5'
         image_bytes, mime_type = ai.generate_image_openai(
             prompt=full_prompt,
-            model='gpt-image-1.5',
+            model=image_model,
             size='1024x1024',
-            quality='medium',  # Balance speed and quality
+            quality='standard' if settings.DEBUG else 'medium',  # DALL-E 3 uses standard/hd
         )
         latency_ms = int((time.time() - start_time) * 1000)
         text_response = None  # OpenAI doesn't return text with images
@@ -262,8 +264,8 @@ def process_avatar_generation_task(
 
         # Track AI usage
         try:
-            # Use the OpenAI avatar model (gpt-image-1.5)
-            openai_model = 'gpt-image-1.5'
+            # Use the actual model that was used for generation
+            openai_model = image_model
             estimated_input_tokens = len(full_prompt) // 4
             estimated_output_tokens = 0  # Image generation doesn't have output tokens
 

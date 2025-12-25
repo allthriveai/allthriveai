@@ -115,8 +115,8 @@ export function useAvatarGeneration({
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         try {
           wsRef.current.send(JSON.stringify({ type: 'ping' }));
-        } catch (error) {
-          console.error('Failed to send heartbeat:', error);
+        } catch {
+          // Heartbeat failure is expected when connection is closing
         }
       }
     }, HEARTBEAT_INTERVAL);
@@ -199,8 +199,8 @@ export function useAvatarGeneration({
                   }));
                   onAvatarGeneratedRef.current?.(latestIteration);
                 }
-              } catch (e) {
-                console.warn('Failed to refresh session status:', e);
+              } catch {
+                // Session refresh failure - not critical, will retry on next operation
               }
 
               resolve(); // Resolve when connected
@@ -209,9 +209,6 @@ export function useAvatarGeneration({
             ws.onmessage = (event) => {
               try {
                 const data: AvatarWebSocketMessage = JSON.parse(event.data);
-
-                // Debug logging for avatar WebSocket messages
-                console.log('[Avatar WS] Received message:', data.event, data);
 
                 if (data.event === 'pong') return;
 
@@ -230,11 +227,6 @@ export function useAvatarGeneration({
 
                   case 'avatar_generated':
                     // New iteration generated
-                    console.log('[Avatar WS] avatar_generated:', {
-                      imageUrl: data.imageUrl,
-                      iterationId: data.iterationId,
-                      hasCallback: !!onAvatarGeneratedRef.current,
-                    });
                     if (data.imageUrl && data.iterationId) {
                       const iteration: AvatarGenerationIteration = {
                         id: data.iterationId,
@@ -259,11 +251,7 @@ export function useAvatarGeneration({
                           : null,
                       }));
 
-                      console.log('[Avatar WS] Calling onAvatarGenerated callback');
                       onAvatarGeneratedRef.current?.(iteration);
-                      console.log('[Avatar WS] Callback called successfully');
-                    } else {
-                      console.warn('[Avatar WS] Missing imageUrl or iterationId, skipping callback');
                     }
                     break;
 
@@ -288,13 +276,12 @@ export function useAvatarGeneration({
                   default:
                     break;
                 }
-              } catch (error) {
-                console.error('Failed to parse WebSocket message:', error);
+              } catch {
+                // Parse error - message format unexpected
               }
             };
 
-            ws.onerror = (error) => {
-              console.error('Avatar WebSocket error:', error);
+            ws.onerror = () => {
               setState((prev) => ({
                 ...prev,
                 isConnected: false,
@@ -335,7 +322,6 @@ export function useAvatarGeneration({
             wsRef.current = ws;
           })
           .catch((error) => {
-            console.error('[Avatar WebSocket] Failed to fetch connection token:', error);
             setState((prev) => ({
               ...prev,
               isConnecting: false,
@@ -430,8 +416,7 @@ export function useAvatarGeneration({
             reference_image_url: referenceImageUrl,
           })
         );
-      } catch (error) {
-        console.error('Failed to send message:', error);
+      } catch {
         setState((prev) => ({ ...prev, isGenerating: false }));
         onErrorRef.current?.('Failed to send prompt');
       }
@@ -499,8 +484,8 @@ export function useAvatarGeneration({
       // Close WebSocket
       intentionalCloseRef.current = true;
       wsRef.current?.close();
-    } catch (error) {
-      console.error('Failed to abandon session:', error);
+    } catch {
+      // Abandon failure - session will be cleaned up by backend
     }
   }, []);
 

@@ -19,6 +19,10 @@ import {
   CurrencyDollarIcon,
   ChevronDownIcon,
   AcademicCapIcon,
+  CommandLineIcon,
+  ServerIcon,
+  ArrowTopRightOnSquareIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarItem {
@@ -27,6 +31,7 @@ interface AdminSidebarItem {
   icon: typeof ChartBarIcon;
   badge?: number;
   children?: AdminSidebarItem[];
+  external?: boolean;
 }
 
 interface AdminLayoutProps {
@@ -63,11 +68,13 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       if (path.startsWith('/admin/users')) return '/admin/users';
       // Content management items have different base paths, map them to parent
       if (path.startsWith('/admin/prompt-challenge-prompts') ||
-          path.startsWith('/admin/uat-scenarios') ||
           path.startsWith('/admin/ember-flows') ||
           path.startsWith('/admin/lessons')) {
         return '/admin/content';
       }
+      // System section (includes UAT scenarios)
+      if (path.startsWith('/admin/system') ||
+          path.startsWith('/admin/uat-scenarios')) return '/admin/system';
       return null;
     };
 
@@ -105,8 +112,16 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
   const contentManagementSubItems: AdminSidebarItem[] = [
     { label: 'Prompt Library', path: '/admin/prompt-challenge-prompts', icon: SparklesIcon },
     { label: 'Lesson Library', path: '/admin/lessons', icon: AcademicCapIcon },
-    { label: 'UAT Scenarios', path: '/admin/uat-scenarios', icon: BeakerIcon },
     { label: 'Ember Flows', path: '/admin/ember-flows', icon: MapIcon },
+  ];
+
+  const phoenixUrl = import.meta.env.VITE_PHOENIX_URL;
+
+  const systemSubItems: AdminSidebarItem[] = [
+    { label: 'Logs', path: '/admin/system/logs', icon: CommandLineIcon },
+    { label: 'UAT Scenarios', path: '/admin/uat-scenarios', icon: BeakerIcon },
+    // Phoenix only shown when VITE_PHOENIX_URL is configured (local dev only)
+    ...(phoenixUrl ? [{ label: 'Phoenix', path: phoenixUrl, icon: EyeIcon, external: true }] : []),
   ];
 
   const adminNavItems: AdminSidebarItem[] = [
@@ -128,6 +143,12 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       path: '/admin/content',
       icon: FolderIcon,
       children: contentManagementSubItems,
+    },
+    {
+      label: 'System',
+      path: '/admin/system',
+      icon: ServerIcon,
+      children: systemSubItems,
     },
     {
       label: 'Tasks',
@@ -266,6 +287,24 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
                           {item.children.map((child) => {
                             const isChildActive = currentPath === child.path;
                             const ChildIcon = child.icon;
+
+                            // External link
+                            if (child.external) {
+                              return (
+                                <a
+                                  key={child.path}
+                                  href={child.path}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-full flex items-center gap-3 pl-10 pr-4 py-2.5 text-sm transition-colors border-b last:border-0 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                >
+                                  <ChildIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                  {child.label}
+                                  <ArrowTopRightOnSquareIcon className="w-3 h-3 ml-auto text-slate-400" />
+                                </a>
+                              );
+                            }
+
                             return (
                               <button
                                 key={child.path}
@@ -366,6 +405,25 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
                     <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-slate-700">
                       {item.children!.map((child) => {
                         const ChildIcon = child.icon;
+
+                        // External link - use <a> tag
+                        if (child.external) {
+                          return (
+                            <a
+                              key={child.path}
+                              href={child.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2.5 pl-4 pr-3 py-2 text-sm transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 rounded-r-lg"
+                            >
+                              <ChildIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                              <span>{child.label}</span>
+                              <ArrowTopRightOnSquareIcon className="w-3 h-3 ml-auto text-slate-400" />
+                            </a>
+                          );
+                        }
+
+                        // Internal link - use NavLink
                         return (
                           <NavLink
                             key={child.path}

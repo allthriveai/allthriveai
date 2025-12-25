@@ -328,6 +328,19 @@ Focus on visual impact and artistic interpretation."""
 
         try:
             # Use Gemini for image generation
+            gemini_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-3-pro-image-preview')
+            logger.info(
+                f'Starting image generation for submission {submission.id}',
+                extra={
+                    'submission_id': submission.id,
+                    'battle_id': battle.id,
+                    'user_id': user.id,
+                    'provider': 'gemini',
+                    'model': gemini_model,
+                    'prompt_length': len(enhanced_prompt),
+                    'is_pip': is_pip_submission,
+                },
+            )
             ai = AIProvider(provider='gemini', user_id=submission.user_id)
             image_bytes, mime_type, text_response = ai.generate_image(
                 prompt=enhanced_prompt,
@@ -335,7 +348,17 @@ Focus on visual impact and artistic interpretation."""
             )
 
             if not image_bytes:
-                logger.error(f'No image generated for submission {submission.id}')
+                logger.error(
+                    f'No image generated for submission {submission.id}',
+                    extra={
+                        'submission_id': submission.id,
+                        'battle_id': battle.id,
+                        'user_id': user.id,
+                        'prompt_length': len(enhanced_prompt),
+                        'text_response': text_response[:500] if text_response else None,
+                        'has_text_response': bool(text_response),
+                    },
+                )
                 return None
 
             # Track AI usage for human users (not Pip)
@@ -409,7 +432,18 @@ Focus on visual impact and artistic interpretation."""
             return url
 
         except Exception as e:
-            logger.error(f'Error generating image for submission {submission.id}: {e}', exc_info=True)
+            logger.error(
+                f'Error generating image for submission {submission.id}: {e}',
+                exc_info=True,
+                extra={
+                    'submission_id': submission.id,
+                    'battle_id': battle.id,
+                    'user_id': user.id,
+                    'error_type': type(e).__name__,
+                    'error_message': str(e),
+                    'is_pip': is_pip_submission,
+                },
+            )
             return None
 
     def judge_battle(self, battle: PromptBattle) -> dict[str, Any]:

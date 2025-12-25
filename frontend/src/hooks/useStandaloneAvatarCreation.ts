@@ -80,8 +80,8 @@ export function useStandaloneAvatarCreation(): UseStandaloneAvatarCreationReturn
       await refreshUser();
       handleClose();
     },
-    onError: (err) => {
-      console.error('[StandaloneAvatarCreation] Error:', err);
+    onError: () => {
+      // Error handling is done via state - backend logs details
     },
   });
 

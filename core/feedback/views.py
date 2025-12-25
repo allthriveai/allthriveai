@@ -90,7 +90,10 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         instance = serializer.save(user=request.user)
 
         # Trigger Haven's auto-comment (async via Celery)
-        generate_haven_response.delay(instance.id, request.user.id)
+        generate_haven_response.apply_async(
+            args=[instance.id, request.user.id],
+            expires=600,  # Expire after 10 min if not picked up
+        )
 
         # Return the full serialized object with user data
         response_serializer = FeedbackItemSerializer(instance, context={'request': request})
@@ -145,7 +148,10 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         comment = serializer.save(user=request.user, feedback_item=item)
 
         # Trigger Haven's reply (async via Celery)
-        generate_haven_comment_reply.delay(item.id, comment.id)
+        generate_haven_comment_reply.apply_async(
+            args=[item.id, comment.id],
+            expires=600,  # Expire after 10 min if not picked up
+        )
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

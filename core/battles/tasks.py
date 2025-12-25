@@ -215,6 +215,7 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
         complete_battle_task.apply_async(
             args=[battle_id],
             countdown=2,
+            expires=300,  # Expire after 5 min if not picked up
         )
 
         logger.info(f'Battle {battle_id} judged: winner={results.get("winner_id")}')
@@ -291,7 +292,10 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
         )
 
         # Generate OG image for social sharing (async, non-blocking)
-        generate_og_image_task.delay(battle_id)
+        generate_og_image_task.apply_async(
+            args=[battle_id],
+            expires=1800,  # Expire after 30 min (not user-facing)
+        )
 
         logger.info(f'Battle {battle_id} completed')
         return {'status': 'success', 'auto_save': save_results}
@@ -360,7 +364,10 @@ def create_pip_submission_task(self, battle_id: int) -> dict[str, Any]:
         )
 
         # Trigger image generation for Pip's submission
-        generate_submission_image_task.delay(submission.id)
+        generate_submission_image_task.apply_async(
+            args=[submission.id],
+            expires=600,  # Expire after 10 min if not picked up
+        )
 
         logger.info(f'Pip submitted to battle {battle_id}: submission {submission.id}')
         return {'status': 'success', 'submission_id': submission.id}
@@ -462,7 +469,10 @@ def handle_battle_timeout_task(battle_id: int) -> dict[str, Any]:
         # Trigger image generation for any submissions without images
         for submission in submissions:
             if not submission.generated_output_url:
-                generate_submission_image_task.delay(submission.id)
+                generate_submission_image_task.apply_async(
+                    args=[submission.id],
+                    expires=600,  # Expire after 10 min if not picked up
+                )
 
         logger.info(f'Battle {battle_id} timeout: proceeding to generation')
         return {'status': 'proceeding', 'phase': BattlePhase.GENERATING}
@@ -511,7 +521,10 @@ def _check_and_trigger_judging(battle_id: int) -> None:
             logger.info(f'Both submissions have images for battle {battle_id}, triggering judging')
 
         # Trigger judging task OUTSIDE the transaction (after commit)
-        judge_battle_task.delay(battle_id)
+        judge_battle_task.apply_async(
+            args=[battle_id],
+            expires=600,  # Expire after 10 min if not picked up
+        )
 
     except PromptBattle.DoesNotExist:
         logger.warning(f'Battle {battle_id} not found in _check_and_trigger_judging')
@@ -608,7 +621,10 @@ def cleanup_stale_battles() -> dict[str, Any]:
         # Try to complete judging if both submissions have images
         submissions = list(battle.submissions.all())
         if len(submissions) == 2 and all(s.generated_output_url for s in submissions):
-            judge_battle_task.delay(battle.id)
+            judge_battle_task.apply_async(
+                args=[battle.id],
+                expires=600,  # Expire after 10 min if not picked up
+            )
             logger.info(f'Cleanup: Triggering judging for stuck GENERATING battle {battle.id}')
         else:
             battles_to_cancel.append(battle.id)
@@ -643,7 +659,10 @@ def cleanup_stale_battles() -> dict[str, Any]:
         else:
             # Increment retry count and retry judging
             PromptBattle.objects.filter(id=battle.id).update(judging_retry_count=battle.judging_retry_count + 1)
-            judge_battle_task.delay(battle.id)
+            judge_battle_task.apply_async(
+                args=[battle.id],
+                expires=600,  # Expire after 10 min if not picked up
+            )
             logger.info(
                 f'Cleanup: Retrying judging for stuck battle {battle.id} (attempt {battle.judging_retry_count + 1})'
             )
@@ -1159,6 +1178,7 @@ def start_async_turn_task(self, battle_id: int, user_id: int) -> dict[str, Any]:
     handle_async_turn_timeout_task.apply_async(
         args=[battle_id],
         countdown=185,  # 3 min 5 sec (5 sec buffer)
+        expires=600,  # Expire after 10 min if not picked up
     )
 
     # Notify via WebSocket AFTER transaction commits

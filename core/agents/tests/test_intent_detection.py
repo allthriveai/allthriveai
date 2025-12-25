@@ -201,21 +201,18 @@ class TestIntentDetectionService:
 class TestIntentDetectionIntegration:
     """Integration tests with real LLM (requires API keys)"""
 
-    @pytest.mark.skip(reason='Real LLM tests require API keys and cost money')
     def test_real_llm_support_query(self):
         """Test real LLM with support query"""
         service = get_intent_service()
         intent = service.detect_intent('How do I add a new project?')
         assert intent == 'support'
 
-    @pytest.mark.skip(reason='Real LLM tests require API keys and cost money')
     def test_real_llm_project_creation(self):
         """Test real LLM with project creation query"""
         service = get_intent_service()
         intent = service.detect_intent('Create a new project from my GitHub repository')
         assert intent == 'project-creation'
 
-    @pytest.mark.skip(reason='Real LLM tests require API keys and cost money')
     def test_real_llm_discovery(self):
         """Test real LLM with discovery query"""
         service = get_intent_service()

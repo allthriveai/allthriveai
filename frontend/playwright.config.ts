@@ -44,6 +44,18 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // Deep E2E tests - run nightly with extended timeouts for real AI calls
+    {
+      name: 'deep',
+      testMatch: '**/deep/**/*.spec.ts',
+      timeout: 300 * 1000, // 5 minutes per test
+      retries: 1,
+      use: {
+        ...devices['Desktop Chrome'],
+        video: 'on',
+        trace: 'on',
+      },
+    },
   ],
 
   /* Run your local dev server before starting the tests */

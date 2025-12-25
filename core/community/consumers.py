@@ -680,10 +680,13 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
                 logger.info(
                     f'Triggering agent DM response from consumer: ' f'message={message.id}, agent={agent.username}'
                 )
-                process_agent_dm_task.delay(
-                    message_id=str(message.id),
-                    thread_id=str(thread.id),
-                    agent_user_id=agent.id,
+                process_agent_dm_task.apply_async(
+                    kwargs={
+                        'message_id': str(message.id),
+                        'thread_id': str(thread.id),
+                        'agent_user_id': agent.id,
+                    },
+                    expires=600,  # Expire after 10 min if not picked up
                 )
 
         return message

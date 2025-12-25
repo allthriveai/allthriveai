@@ -196,14 +196,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     return
 
                 # Queue the Celery task directly (like chat messages)
-                # Note: .delay() is synchronous but fast, no need for async wrapper
+                # Note: .apply_async() is synchronous but fast, no need for async wrapper
                 try:
-                    task = process_avatar_generation_task.delay(
-                        session_id=session_id,
-                        prompt=message,
-                        user_id=self.user.id,
-                        channel_name=self.group_name,
-                        reference_image_url=reference_image_url,
+                    task = process_avatar_generation_task.apply_async(
+                        kwargs={
+                            'session_id': session_id,
+                            'prompt': message,
+                            'user_id': self.user.id,
+                            'channel_name': self.group_name,
+                            'reference_image_url': reference_image_url,
+                        },
+                        expires=600,  # Expire after 10 min if not picked up
                     )
                     logger.info(f'Avatar generation queued: task_id={task.id}, session_id={session_id}')
 
@@ -221,12 +224,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 # Optional image_url for multimodal messages (e.g., LinkedIn screenshot for profile)
                 image_url = data.get('image_url')
 
-                task = process_chat_message_task.delay(
-                    conversation_id=self.conversation_id,
-                    message=message,
-                    user_id=self.user.id,
-                    channel_name=self.group_name,  # Redis group name for broadcasting
-                    image_url=image_url,
+                task = process_chat_message_task.apply_async(
+                    kwargs={
+                        'conversation_id': self.conversation_id,
+                        'message': message,
+                        'user_id': self.user.id,
+                        'channel_name': self.group_name,  # Redis group name for broadcasting
+                        'image_url': image_url,
+                    },
+                    expires=600,  # Expire after 10 min if not picked up
                 )
 
                 # Send task queued confirmation
