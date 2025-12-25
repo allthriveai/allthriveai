@@ -64,9 +64,12 @@ help:
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test            - Run all tests (backend + frontend)"
+	@echo "  make test            - Run unit tests (backend + frontend)"
+	@echo "  make test-all        - Run ALL tests (unit + E2E + AI integration)"
 	@echo "  make test-backend    - Run all backend tests"
 	@echo "  make test-frontend   - Run all frontend tests"
+	@echo "  make test-backend-e2e - Run backend E2E tests (prompt battles)"
+	@echo "  make test-intent-detection - Run intent detection tests (LLM)"
 	@echo "  make test-username   - Run username/user isolation tests"
 	@echo "  make test-websocket  - Run WebSocket unit tests"
 	@echo "  make test-websocket-e2e - Run WebSocket end-to-end test"
@@ -85,6 +88,11 @@ help:
 	@echo "  make test-e2e-battles-critical - Run Prompt Battles tests with full AI judging (~90s)"
 	@echo "  make test-e2e-ui     - Run E2E tests with browser UI (headed)"
 	@echo "  make test-e2e-debug  - Run E2E tests in debug mode"
+	@echo "  make test-e2e-deep   - Run DEEP E2E tests with real AI (~20-30 min, nightly)"
+	@echo "  make test-e2e-deep-ai - Run deep AI chat tests only"
+	@echo "  make test-e2e-deep-battles - Run deep battle tests only"
+	@echo "  make test-e2e-deep-community - Run deep community tests only"
+	@echo "  make test-e2e-deep-learning - Run deep learning tests only"
 	@echo "  make setup-test-login - Set password for test user (for Chrome DevTools MCP)"
 	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
 	@echo "  make stop-impersonation - Print JS to stop admin impersonation (run in browser console)"
@@ -428,32 +436,57 @@ test-all:
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════════════╗"
 	@echo "║                    RUNNING ALL TESTS                             ║"
-	@echo "║  Backend + Frontend + All E2E (Smoke + Full Suite)               ║"
+	@echo "║  Backend + Frontend + E2E + AI Integration (Full Suite)          ║"
 	@echo "╚══════════════════════════════════════════════════════════════════╝"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "STEP 1/4: Backend Unit Tests"
+	@echo "STEP 1/7: Backend Unit Tests"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@make test-backend
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "STEP 2/4: Frontend Unit Tests"
+	@echo "STEP 2/7: Frontend Unit Tests"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@make test-frontend
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "STEP 3/4: Smoke Tests (AI Quality)"
+	@echo "STEP 3/7: Backend E2E Tests (Prompt Battles, etc.)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-backend-e2e
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 4/7: AI Integration Tests (GitHub + Chat)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-all-ai-integration
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 5/7: Smoke Tests (AI Quality)"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@make test-e2e-smoke
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "STEP 4/4: Full E2E Test Suite"
+	@echo "STEP 6/7: Frontend E2E Test Suite"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@make test-e2e
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 7/7: Intent Detection Tests (LLM)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-intent-detection
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════════════╗"
 	@echo "║                    ✅ ALL TESTS PASSED                            ║"
 	@echo "╚══════════════════════════════════════════════════════════════════╝"
+
+# Backend E2E tests (prompt battles, etc.) - requires RUN_E2E_TESTS=1
+test-backend-e2e:
+	@echo "Running backend E2E tests (prompt battles, sharing, etc.)..."
+	docker-compose exec -T -e RUN_E2E_TESTS=1 web python manage.py test core.tests.e2e.test_prompt_battles --verbosity=2 --noinput --keepdb
+
+# Intent detection tests (uses real LLM calls) - must use pytest, not Django test runner
+test-intent-detection:
+	@echo "Running intent detection tests (real LLM calls)..."
+	docker-compose exec -T web python -m pytest core/agents/tests/test_intent_detection.py -v --no-header -p no:warnings
 
 test-e2e-smoke:
 	@echo "Running Smoke Tests (includes AI quality checks)..."
@@ -587,6 +620,38 @@ test-e2e-debug:
 	@echo "Running E2E tests in debug mode..."
 	@echo "Note: Make sure backend is running (make up)"
 	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test --debug
+
+# Deep E2E tests - Nightly/weekly regression tests with real AI calls
+test-e2e-deep:
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║         DEEP E2E TESTS - Real AI Calls (~20-30 min)              ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "Note: Make sure backend is running (make up)"
+	@echo "These tests use REAL AI calls and may cost ~\$$1-5 per run."
+	@echo ""
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test --project=deep
+
+test-e2e-deep-ai:
+	@echo "Running Deep AI Chat tests (sidebar/home parity, multi-turn, routing)..."
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/chat*.spec.ts
+
+test-e2e-deep-battles:
+	@echo "Running Deep Battles tests (full lifecycle with real AI judging)..."
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/battles*.spec.ts
+
+test-e2e-deep-community:
+	@echo "Running Deep Community tests (messaging, presence, WebSocket)..."
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/community*.spec.ts
+
+test-e2e-deep-learning:
+	@echo "Running Deep Learning tests (progression, quizzes, skill levels)..."
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/learning*.spec.ts
+
+test-e2e-deep-headed:
+	@echo "Running Deep E2E tests with UI (headed mode)..."
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test --project=deep --headed
 
 # Docker sync commands (for when automatic volume sync isn't working)
 sync-backend:
@@ -973,6 +1038,138 @@ aws-validate:
 	else \
 		echo "   ⚠️  api.allthrive.ai and ws.allthrive.ai resolve to same endpoint"; \
 		echo "      If both go through CloudFront, WebSocket may fail (HTTP/2 issue)"; \
+	fi; \
+	echo ""; \
+	echo "[ ] Frontend Bundle WebSocket URL:"; \
+	BUNDLE_FILE=$$(curl -sL "https://allthrive.ai" 2>/dev/null | grep -o 'src="/assets/index-[^"]*\.js"' | head -1 | sed 's/src="//;s/"//'); \
+	if [ -n "$$BUNDLE_FILE" ]; then \
+		BUNDLE_WS_URL=$$(curl -sL "https://allthrive.ai$$BUNDLE_FILE" 2>/dev/null | grep -o 'wss://[^"'\'']*allthrive[^"'\'']*' | head -1); \
+		if [ "$$BUNDLE_WS_URL" = "wss://ws.allthrive.ai" ]; then \
+			echo "   ✅ Frontend bundle uses wss://ws.allthrive.ai (correct)"; \
+		elif [ -n "$$BUNDLE_WS_URL" ]; then \
+			echo "   ❌ Frontend bundle uses $$BUNDLE_WS_URL (WRONG!)"; \
+			echo "      Expected: wss://ws.allthrive.ai"; \
+			echo "      Fix: Update GitHub variable WS_URL and redeploy"; \
+		else \
+			echo "   ⚠️  Could not find WebSocket URL in bundle"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not fetch frontend bundle"; \
+	fi; \
+	echo ""; \
+	echo "=== Health & Performance Checks ==="; \
+	echo ""; \
+	echo "[ ] API Health:"; \
+	API_STATUS=$$(curl -s -o /dev/null -w "%{http_code}" "https://api.allthrive.ai/api/v1/health/" --max-time 10 2>/dev/null); \
+	if [ "$$API_STATUS" = "200" ]; then \
+		echo "   ✅ API responding (HTTP 200)"; \
+	elif [ -n "$$API_STATUS" ]; then \
+		echo "   ❌ API returned HTTP $$API_STATUS"; \
+	else \
+		echo "   ❌ API not responding (timeout)"; \
+	fi; \
+	echo ""; \
+	echo "[ ] SSL Certificate Expiration:"; \
+	for CERT_ARN in $$(aws acm list-certificates --region $$AWS_REGION --query 'CertificateSummaryList[?contains(DomainName, `allthrive`)].CertificateArn' --output text 2>/dev/null); do \
+		if [ -n "$$CERT_ARN" ] && [ "$$CERT_ARN" != "None" ]; then \
+			CERT_EXPIRY=$$(aws acm describe-certificate --certificate-arn $$CERT_ARN --region $$AWS_REGION \
+				--query 'Certificate.NotAfter' --output text 2>/dev/null); \
+			CERT_DOMAIN=$$(aws acm describe-certificate --certificate-arn $$CERT_ARN --region $$AWS_REGION \
+				--query 'Certificate.DomainName' --output text 2>/dev/null); \
+			if [ -n "$$CERT_EXPIRY" ]; then \
+				EXPIRY_EPOCH=$$(date -j -f "%Y-%m-%dT%H:%M:%S" "$${CERT_EXPIRY%Z*}" "+%s" 2>/dev/null || date -d "$$CERT_EXPIRY" "+%s" 2>/dev/null); \
+				NOW_EPOCH=$$(date "+%s"); \
+				DAYS_LEFT=$$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 )); \
+				if [ "$$DAYS_LEFT" -lt 30 ]; then \
+					echo "   ⚠️  $$CERT_DOMAIN expires in $$DAYS_LEFT days!"; \
+				else \
+					echo "   ✅ $$CERT_DOMAIN expires in $$DAYS_LEFT days"; \
+				fi; \
+			fi; \
+		fi; \
+	done; \
+	echo ""; \
+	echo "[ ] Recent Errors (Last Hour):"; \
+	ERROR_COUNT=$$(aws logs filter-log-events \
+		--log-group-name "/ecs/$$ENVIRONMENT-allthrive-web" \
+		--start-time $$(( $$(date +%s) * 1000 - 3600000 )) \
+		--filter-pattern "ERROR" \
+		--max-items 100 \
+		--region $$AWS_REGION \
+		--query 'length(events)' --output text 2>/dev/null | head -1); \
+	if [ -n "$$ERROR_COUNT" ] && [ "$$ERROR_COUNT" != "None" ] && [ "$$ERROR_COUNT" -eq "$$ERROR_COUNT" ] 2>/dev/null; then \
+		if [ "$$ERROR_COUNT" -gt 50 ]; then \
+			echo "   ❌ $$ERROR_COUNT errors in last hour (high!)"; \
+		elif [ "$$ERROR_COUNT" -gt 10 ]; then \
+			echo "   ⚠️  $$ERROR_COUNT errors in last hour"; \
+		else \
+			echo "   ✅ $$ERROR_COUNT errors in last hour"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not fetch error count"; \
+	fi; \
+	echo ""; \
+	echo "[ ] Last Deployment:"; \
+	LAST_DEPLOY=$$(aws ecs describe-services --cluster $$ENVIRONMENT-allthrive-cluster --region $$AWS_REGION \
+		--services $$ENVIRONMENT-allthrive-web \
+		--query 'services[0].deployments[?status==`PRIMARY`].createdAt | [0]' --output text 2>/dev/null); \
+	if [ -n "$$LAST_DEPLOY" ] && [ "$$LAST_DEPLOY" != "None" ]; then \
+		DEPLOY_EPOCH=$$(date -j -f "%Y-%m-%dT%H:%M:%S" "$${LAST_DEPLOY%.*Z}" "+%s" 2>/dev/null || date -d "$$LAST_DEPLOY" "+%s" 2>/dev/null); \
+		NOW_EPOCH=$$(date "+%s"); \
+		HOURS_AGO=$$(( (NOW_EPOCH - DEPLOY_EPOCH) / 3600 )); \
+		if [ "$$HOURS_AGO" -gt 168 ]; then \
+			echo "   ⚠️  Last deploy: $$HOURS_AGO hours ago (over a week)"; \
+		else \
+			echo "   ✅ Last deploy: $$HOURS_AGO hours ago"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not determine last deployment"; \
+	fi; \
+	echo ""; \
+	echo "[ ] Redis Memory Usage:"; \
+	REDIS_MEMORY=$$(aws cloudwatch get-metric-statistics \
+		--namespace AWS/ElastiCache \
+		--metric-name DatabaseMemoryUsageCountedForEvictPercentage \
+		--dimensions Name=ReplicationGroupId,Value=$$ENVIRONMENT-allthrive-redis \
+		--start-time $$(date -u -v-5M "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -d "5 minutes ago" "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) \
+		--end-time $$(date -u "+%Y-%m-%dT%H:%M:%SZ") \
+		--period 300 \
+		--statistics Average \
+		--region $$AWS_REGION \
+		--query 'Datapoints[0].Average' --output text 2>/dev/null); \
+	if [ -n "$$REDIS_MEMORY" ] && [ "$$REDIS_MEMORY" != "None" ]; then \
+		REDIS_MEM_INT=$${REDIS_MEMORY%.*}; \
+		if [ "$$REDIS_MEM_INT" -gt 80 ]; then \
+			echo "   ❌ Redis at $${REDIS_MEM_INT}% memory (critical!)"; \
+		elif [ "$$REDIS_MEM_INT" -gt 60 ]; then \
+			echo "   ⚠️  Redis at $${REDIS_MEM_INT}% memory"; \
+		else \
+			echo "   ✅ Redis at $${REDIS_MEM_INT}% memory"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not fetch Redis memory"; \
+	fi; \
+	echo ""; \
+	echo "[ ] RDS Connections:"; \
+	RDS_CONNECTIONS=$$(aws cloudwatch get-metric-statistics \
+		--namespace AWS/RDS \
+		--metric-name DatabaseConnections \
+		--dimensions Name=DBInstanceIdentifier,Value=$$ENVIRONMENT-allthrive-postgres \
+		--start-time $$(date -u -v-5M "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -d "5 minutes ago" "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) \
+		--end-time $$(date -u "+%Y-%m-%dT%H:%M:%SZ") \
+		--period 300 \
+		--statistics Average \
+		--region $$AWS_REGION \
+		--query 'Datapoints[0].Average' --output text 2>/dev/null); \
+	if [ -n "$$RDS_CONNECTIONS" ] && [ "$$RDS_CONNECTIONS" != "None" ]; then \
+		RDS_CONN_INT=$${RDS_CONNECTIONS%.*}; \
+		if [ "$$RDS_CONN_INT" -gt 80 ]; then \
+			echo "   ⚠️  RDS has $$RDS_CONN_INT active connections (high)"; \
+		else \
+			echo "   ✅ RDS has $$RDS_CONN_INT active connections"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not fetch RDS connections"; \
 	fi; \
 	echo ""; \
 	echo "=== Seed Data Status ==="; \

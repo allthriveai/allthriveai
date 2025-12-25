@@ -2,7 +2,7 @@
 Celery tasks for avatar generation.
 
 Handles:
-- Avatar image generation with Gemini 2.0 Flash
+- Avatar image generation with OpenAI gpt-image-1
 - Streaming progress via Redis Pub/Sub to WebSockets
 - Session and iteration tracking
 """
@@ -16,7 +16,6 @@ from asgiref.sync import async_to_sync
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 from channels.layers import get_channel_layer
-from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from core.ai_usage.tracker import AIUsageTracker
@@ -102,7 +101,7 @@ def process_avatar_generation_task(
     reference_image_url: str | None = None,
 ):
     """
-    Process avatar generation asynchronously using Gemini 2.0 Flash.
+    Process avatar generation asynchronously using OpenAI gpt-image-1.
 
     Streams results to WebSocket via Redis Pub/Sub.
 
@@ -195,15 +194,19 @@ def process_avatar_generation_task(
             except Exception as e:
                 logger.warning(f'Failed to download reference image: {e}', exc_info=True)
 
-        # Generate image using Gemini (use 'avatar' purpose for faster flash model)
+        # Generate image using OpenAI gpt-image-1.5 (fast and reliable)
+        # Note: OpenAI doesn't support reference images, so "Make Me" mode
+        # uses the prompt description only
         start_time = time.time()
-        ai = AIProvider(provider='gemini', user_id=user_id)
-        image_bytes, mime_type, text_response = ai.generate_image(
+        ai = AIProvider(provider='openai', user_id=user_id)
+        image_bytes, mime_type = ai.generate_image_openai(
             prompt=full_prompt,
-            reference_images=[reference_bytes] if reference_bytes else None,
-            purpose='avatar',  # Uses gemini-2.5-flash-image for speed
+            model='gpt-image-1.5',
+            size='1024x1024',
+            quality='medium',  # Balance speed and quality
         )
         latency_ms = int((time.time() - start_time) * 1000)
+        text_response = None  # OpenAI doesn't return text with images
 
         if not image_bytes:
             # No image was generated
@@ -259,16 +262,16 @@ def process_avatar_generation_task(
 
         # Track AI usage
         try:
-            # Use the avatar-specific model (gemini-2.5-flash-image)
-            gemini_model = getattr(settings, 'GEMINI_AVATAR_MODEL', 'gemini-2.5-flash-image')
+            # Use the OpenAI avatar model (gpt-image-1.5)
+            openai_model = 'gpt-image-1.5'
             estimated_input_tokens = len(full_prompt) // 4
-            estimated_output_tokens = len(text_response) // 4 if text_response else 0
+            estimated_output_tokens = 0  # Image generation doesn't have output tokens
 
             AIUsageTracker.track_usage(
                 user=user,
                 feature='avatar_generation',
-                provider='gemini',
-                model=gemini_model,
+                provider='openai',
+                model=openai_model,
                 input_tokens=estimated_input_tokens,
                 output_tokens=estimated_output_tokens,
                 latency_ms=latency_ms,

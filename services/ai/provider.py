@@ -1077,7 +1077,7 @@ class AIProvider:
         reference_images: list[bytes] | None = None,
         model: str | None = None,
         purpose: str = 'image',
-        timeout: int = 60,
+        timeout: int = 120,  # Increased timeout for slow Gemini API
     ) -> tuple[bytes | None, str | None, str | None]:
         """
         Generate an image using Gemini native image generation.
@@ -1286,6 +1286,132 @@ class AIProvider:
                     'duration_ms': round(duration_ms, 2),
                 },
                 logger_instance=logger,
+            )
+            raise
+
+    @traceable(name='ai_provider_generate_image_openai', run_type='llm')
+    def generate_image_openai(
+        self,
+        prompt: str,
+        model: str = 'gpt-image-1',
+        size: str = '1024x1024',
+        quality: str = 'medium',
+        timeout: int = 60,
+    ) -> tuple[bytes | None, str | None]:
+        """
+        Generate an image using OpenAI's gpt-image-1 model.
+
+        This is faster and more reliable than Gemini for avatar generation.
+
+        Args:
+            prompt: Text description of the image to generate
+            model: Model name (gpt-image-1, gpt-image-1.5, dall-e-3)
+            size: Image size (1024x1024, 1536x1024, 1024x1536)
+            quality: Quality level (low, medium, high)
+            timeout: Request timeout in seconds
+
+        Returns:
+            Tuple of (image_bytes, mime_type) or (None, None) on error
+        """
+        import base64
+
+        import httpx
+
+        start_time = time.time()
+
+        logger.info(
+            f'OpenAI image generation started: model={model}',
+            extra={
+                'provider': 'openai',
+                'model': model,
+                'purpose': 'avatar',
+                'user_id': self.user_id,
+                'prompt_length': len(prompt),
+                'size': size,
+                'quality': quality,
+            },
+        )
+
+        try:
+            # Use OpenAI client for image generation
+            client = self._initialize_openai_client()
+
+            # gpt-image-1 and gpt-image-1.5 don't support response_format parameter
+            # They only return URLs. DALL-E 3 supports b64_json.
+            if model.startswith('gpt-image'):
+                response = client.images.generate(
+                    model=model,
+                    prompt=prompt,
+                    size=size,
+                    quality=quality,
+                    n=1,
+                )
+            else:
+                # DALL-E 3 and older models support b64_json
+                response = client.images.generate(
+                    model=model,
+                    prompt=prompt,
+                    size=size,
+                    quality=quality,
+                    n=1,
+                    response_format='b64_json',
+                )
+
+            duration_ms = (time.time() - start_time) * 1000
+
+            if response.data and len(response.data) > 0:
+                image_data = response.data[0]
+
+                # Check for b64_json first (DALL-E 3)
+                if hasattr(image_data, 'b64_json') and image_data.b64_json:
+                    image_bytes = base64.b64decode(image_data.b64_json)
+                    logger.info(
+                        f'OpenAI image generation completed in {duration_ms:.0f}ms (b64_json)',
+                        extra={
+                            'provider': 'openai',
+                            'model': model,
+                            'duration_ms': duration_ms,
+                            'image_size_bytes': len(image_bytes),
+                        },
+                    )
+                    return image_bytes, 'image/png'
+
+                # For gpt-image-1.x models, download from URL
+                if hasattr(image_data, 'url') and image_data.url:
+                    logger.info(f'Downloading image from OpenAI URL: {image_data.url[:100]}...')
+                    img_response = httpx.get(image_data.url, timeout=30)
+                    if img_response.status_code == 200:
+                        image_bytes = img_response.content
+                        logger.info(
+                            f'OpenAI image generation completed in {duration_ms:.0f}ms (url download)',
+                            extra={
+                                'provider': 'openai',
+                                'model': model,
+                                'duration_ms': duration_ms,
+                                'image_size_bytes': len(image_bytes),
+                            },
+                        )
+                        return image_bytes, 'image/png'
+                    else:
+                        logger.error(f'Failed to download image from URL: HTTP {img_response.status_code}')
+                        return None, None
+
+            logger.warning('OpenAI image generation returned no image data')
+            return None, None
+
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            logger.error(
+                f'OpenAI image generation failed: {e}',
+                extra={
+                    'provider': 'openai',
+                    'model': model,
+                    'purpose': 'avatar',
+                    'user_id': self.user_id,
+                    'duration_ms': duration_ms,
+                    'error': str(e),
+                },
+                exc_info=True,
             )
             raise
 
