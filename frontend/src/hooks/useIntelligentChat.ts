@@ -199,7 +199,7 @@ export interface LearningContentItem {
 }
 
 // Project import option types
-export type ProjectImportOption = 'integration' | 'url' | 'upload' | 'chrome-extension';
+export type ProjectImportOption = 'integration' | 'url' | 'upload' | 'chrome-extension' | 'describe';
 
 // Profile question option type
 export interface ProfileQuestionOption {
