@@ -395,6 +395,208 @@ test.describe('Battles - Concurrent Users', () => {
   });
 });
 
+test.describe('Battles - Pip Battle Load Tests', () => {
+  test.setTimeout(CONCURRENT_TIMEOUT);
+
+  test('10 concurrent Pip battles complete without errors', async ({ browser }) => {
+    // Stress test: 10 users starting Pip battles simultaneously
+    const contextCount = 10;
+    const contexts = await Promise.all(
+      Array(contextCount).fill(null).map(() => browser.newContext())
+    );
+
+    const pages = await Promise.all(contexts.map((ctx) => ctx.newPage()));
+
+    try {
+      console.log(`Starting ${contextCount} concurrent Pip battles...`);
+
+      // Login all users
+      await Promise.all(pages.map((page) => loginViaAPI(page)));
+
+      // All navigate to battles
+      await Promise.all(
+        pages.map((page) =>
+          page.goto('/play/prompt-battles').then(() => page.waitForLoadState('domcontentloaded'))
+        )
+      );
+
+      await Promise.all(pages.map((page) => page.waitForTimeout(2000)));
+
+      // All click Pip simultaneously
+      const battleResults = await Promise.all(
+        pages.map(async (page, i) => {
+          const pipButton = page
+            .locator('button:has-text("Pip"), button:has-text("AI")')
+            .first();
+
+          if (await pipButton.isVisible({ timeout: 10000 })) {
+            await pipButton.click();
+            await page.waitForURL(/\/play\/prompt-battles\/\d+|\/battles\/\d+/, { timeout: 30000 });
+
+            const content = await getPageContent(page);
+            const hasError = /error|failed|exception/i.test(content);
+
+            return {
+              userIndex: i,
+              battleId: page.url().match(/\/(\d+)/)?.[1],
+              success: !hasError,
+            };
+          }
+          return { userIndex: i, success: false };
+        })
+      );
+
+      const successCount = battleResults.filter((r) => r.success).length;
+      const uniqueBattleIds = new Set(battleResults.filter((r) => r.battleId).map((r) => r.battleId));
+
+      console.log(`${successCount}/${contextCount} battles created successfully`);
+      console.log(`${uniqueBattleIds.size} unique battle IDs`);
+
+      // At least 80% should succeed under load
+      expect(successCount).toBeGreaterThanOrEqual(Math.floor(contextCount * 0.8));
+
+      // All successful battles should have unique IDs
+      expect(uniqueBattleIds.size).toBe(successCount);
+    } finally {
+      await Promise.all(contexts.map((ctx) => ctx.close()));
+    }
+  });
+
+  test('Pip battles maintain WebSocket connection under load', async ({ browser }) => {
+    // Test WebSocket stability with multiple active Pip battles
+    const contextCount = 5;
+    const contexts = await Promise.all(
+      Array(contextCount).fill(null).map(() => browser.newContext())
+    );
+
+    const pages = await Promise.all(contexts.map((ctx) => ctx.newPage()));
+
+    try {
+      // Login and start battles
+      await Promise.all(pages.map((page) => loginViaAPI(page)));
+
+      await Promise.all(
+        pages.map((page) =>
+          page.goto('/play/prompt-battles').then(() => page.waitForLoadState('domcontentloaded'))
+        )
+      );
+
+      await Promise.all(pages.map((page) => page.waitForTimeout(2000)));
+
+      // Start all Pip battles
+      await Promise.all(
+        pages.map(async (page) => {
+          const pipButton = page.locator('button:has-text("Pip")').first();
+          if (await pipButton.isVisible({ timeout: 10000 })) {
+            await pipButton.click();
+            await page.waitForURL(/\/play\/prompt-battles\/\d+/, { timeout: 30000 });
+          }
+        })
+      );
+
+      // Wait for active phase on all
+      await Promise.all(pages.map((page) => page.waitForTimeout(15000)));
+
+      // All submit prompts simultaneously
+      await Promise.all(
+        pages.map(async (page, i) => {
+          const promptInput = page.locator('textarea').first();
+          if (await promptInput.isVisible({ timeout: 30000 })) {
+            await promptInput.fill(`Load test prompt from user ${i + 1}: A cosmic landscape with nebulae`);
+
+            const submitBtn = page.locator('button:has-text("Submit")').first();
+            if (await submitBtn.isVisible()) {
+              await submitBtn.click();
+            }
+          }
+        })
+      );
+
+      // Wait and check all are progressing
+      await Promise.all(pages.map((page) => page.waitForTimeout(10000)));
+
+      const statusChecks = await Promise.all(
+        pages.map(async (page, i) => {
+          const content = await getPageContent(page);
+          assertNoTechnicalErrors(content, `load test battle ${i + 1}`);
+
+          // Should show some progress indicator
+          const isProgressing = /submit|generat|wait|judg|creat/i.test(content);
+          return isProgressing;
+        })
+      );
+
+      const progressingCount = statusChecks.filter((r) => r).length;
+      console.log(`${progressingCount}/${contextCount} battles progressing after submission`);
+
+      expect(progressingCount).toBeGreaterThanOrEqual(contextCount - 1); // Allow 1 flaky
+    } finally {
+      await Promise.all(contexts.map((ctx) => ctx.close()));
+    }
+  });
+
+  test('Pip battle handles reconnection during image generation', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await loginViaAPI(page);
+
+      await page.goto('/play/prompt-battles');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      const pipButton = page.locator('button:has-text("Pip")').first();
+      if (!(await pipButton.isVisible({ timeout: 10000 }))) {
+        test.skip();
+        return;
+      }
+
+      await pipButton.click();
+      await page.waitForURL(/\/play\/prompt-battles\/\d+/, { timeout: 30000 });
+
+      // Wait for active phase
+      await page.waitForTimeout(12000);
+
+      // Submit prompt
+      const promptInput = page.locator('textarea').first();
+      if (await promptInput.isVisible({ timeout: 30000 })) {
+        await promptInput.fill('A stunning mountain range with aurora borealis');
+
+        const submitBtn = page.locator('button:has-text("Submit")').first();
+        if (await submitBtn.isVisible()) {
+          await submitBtn.click();
+        }
+      }
+
+      // Wait for generating phase to start
+      await page.waitForTimeout(5000);
+
+      // Simulate network disconnect during generation
+      await page.context().setOffline(true);
+      await page.waitForTimeout(3000);
+
+      // Reconnect
+      await page.context().setOffline(false);
+      await page.waitForTimeout(5000);
+
+      // Should recover and continue or show reconnection status
+      const content = await getPageContent(page);
+
+      // Should NOT have technical errors
+      assertNoTechnicalErrors(content, 'after reconnection');
+
+      // Should show either progress or reconnection status
+      const hasValidState = /generat|judg|result|winner|reconnect|submit/i.test(content);
+      expect(hasValidState).toBe(true);
+
+      console.log('Battle recovered after network interruption');
+    } finally {
+      await context.close();
+    }
+  });
+});
+
 test.describe('Battles - Concurrent Submission Stress', () => {
   test.setTimeout(CONCURRENT_TIMEOUT);
 

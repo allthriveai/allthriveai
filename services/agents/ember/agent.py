@@ -13,7 +13,10 @@ Scalability considerations:
 """
 
 import asyncio
+import base64
 import logging
+import os
+import re
 import time
 import uuid
 from collections import OrderedDict
@@ -21,6 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Annotated, TypedDict
 
+import httpx
 from django.conf import settings
 from django.core.cache import cache
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
@@ -53,6 +57,106 @@ end
 """
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Image URL to Base64 Conversion
+# =============================================================================
+
+
+def _convert_url_for_docker(url: str) -> str:
+    """
+    Convert localhost URLs to Docker-internal hostnames when running inside Docker.
+
+    MinIO URLs stored as localhost:9000 won't work from inside containers.
+    This converts them to use the Docker service name (minio:9000).
+    """
+    # Check if we're running inside Docker (this file exists in Docker containers)
+    if os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER'):
+        # Convert localhost MinIO URLs to use Docker service name
+        if 'localhost:9000' in url:
+            return url.replace('localhost:9000', 'minio:9000')
+        if '127.0.0.1:9000' in url:
+            return url.replace('127.0.0.1:9000', 'minio:9000')
+    return url
+
+
+def _is_s3_url(url: str) -> bool:
+    """Check if URL is an AWS S3 URL that needs IAM authentication."""
+    return 's3.amazonaws.com' in url or 's3.us-east-1.amazonaws.com' in url
+
+
+async def _fetch_image_as_base64(image_url: str) -> tuple[str, str]:
+    """
+    Fetch an image from URL and return as base64 data URL.
+
+    OpenAI's API cannot access local URLs (localhost, MinIO, internal Docker).
+    This function fetches the image locally and converts it to a base64 data URL
+    that OpenAI can process directly.
+
+    Args:
+        image_url: URL of the image (can be localhost, MinIO, S3, or public URL)
+
+    Returns:
+        Tuple of (base64_data_url, mime_type)
+        e.g., ('data:image/png;base64,iVBORw0K...', 'image/png')
+
+    Raises:
+        Exception: If image cannot be fetched or is too large
+    """
+    # Maximum image size (10MB to avoid excessive memory/token usage)
+    MAX_IMAGE_SIZE = 10 * 1024 * 1024
+
+    try:
+        if _is_s3_url(image_url):
+            # Use storage service for S3 URLs (requires IAM auth)
+            from services.integrations.storage.storage_service import get_storage_service
+
+            # Parse S3 URL to extract bucket and key
+            match = re.match(r'https?://s3[.\w-]*\.amazonaws\.com/([^/]+)/(.+)', image_url)
+            if not match:
+                raise ValueError(f'Invalid S3 URL format: {image_url}')
+
+            bucket_name = match.group(1)
+            object_key = match.group(2)
+
+            storage = get_storage_service()
+            response = storage.client.get_object(bucket_name, object_key)
+            image_data = response.read()
+            content_type = response.headers.get('Content-Type', 'image/png')
+            response.close()
+            response.release_conn()
+        else:
+            # Fetch from URL (convert localhost to Docker hostname if needed)
+            fetch_url = _convert_url_for_docker(image_url)
+            logger.info(f'Fetching image from: {fetch_url[:80]}...')
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(fetch_url)
+                response.raise_for_status()
+                image_data = response.content
+                content_type = response.headers.get('content-type', 'image/png')
+
+        # Check size limit
+        if len(image_data) > MAX_IMAGE_SIZE:
+            raise ValueError(f'Image too large: {len(image_data)} bytes (max {MAX_IMAGE_SIZE})')
+
+        # Encode as base64
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+
+        # Create data URL
+        data_url = f'data:{content_type};base64,{base64_image}'
+        logger.info(f'Successfully converted image to base64: {len(image_data)} bytes, {content_type}')
+
+        return data_url, content_type
+
+    except httpx.HTTPError as e:
+        logger.error(f'Failed to fetch image from {image_url}: {e}')
+        raise
+    except Exception as e:
+        logger.error(f'Error processing image {image_url}: {e}')
+        raise
+
 
 # =============================================================================
 # Configuration (with sensible defaults, overridable via Django settings)
@@ -1149,13 +1253,28 @@ async def stream_ember_response(
                     if image_url:
                         # Multimodal message with image
                         # OpenAI format: [{"type": "image_url", ...}, {"type": "text", ...}]
-                        human_message = HumanMessage(
-                            content=[
-                                {'type': 'image_url', 'image_url': {'url': image_url}},
-                                {'type': 'text', 'text': user_message},
-                            ]
-                        )
-                        logger.info(f'Created multimodal HumanMessage with image: {image_url[:50]}...')
+                        # IMPORTANT: OpenAI cannot access local URLs (localhost, MinIO, Docker)
+                        # We must convert the image to a base64 data URL
+                        try:
+                            base64_data_url, mime_type = await _fetch_image_as_base64(image_url)
+                            logger.info(f'Converted image to base64 for OpenAI: {mime_type}')
+                        except Exception as e:
+                            # If image fetch fails, fall back to text-only with error message
+                            logger.error(f'Failed to fetch image for multimodal message: {e}')
+                            human_message = HumanMessage(
+                                content=f"{user_message}\n\n(Note: I tried to view the image but couldn't access it. "
+                                f"Please describe what you'd like me to know about the image.)"
+                            )
+                            base64_data_url = None
+
+                        if base64_data_url:
+                            human_message = HumanMessage(
+                                content=[
+                                    {'type': 'image_url', 'image_url': {'url': base64_data_url}},
+                                    {'type': 'text', 'text': user_message},
+                                ]
+                            )
+                            logger.info(f'Created multimodal HumanMessage with base64 image from: {image_url[:50]}...')
                     else:
                         # Text-only message
                         human_message = HumanMessage(content=user_message)
