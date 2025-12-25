@@ -17,6 +17,8 @@ import {
   CheckIcon,
   ChevronDownIcon,
   AcademicCapIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 interface TaxonomyOption {
@@ -103,6 +105,7 @@ export function TaxonomyPreferences() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadData();
@@ -381,28 +384,79 @@ export function TaxonomyPreferences() {
                       No options available yet
                     </p>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {available.map((taxonomy) => {
-                        const isSelected = selectedIds.includes(taxonomy.id);
-                        return (
-                          <button
-                            key={taxonomy.id}
-                            onClick={() =>
-                              handleSelect(option.type, taxonomy.id, option.isMultiSelect)
+                    <>
+                      {/* Search filter - show when there are 10+ options */}
+                      {available.length >= 10 && (
+                        <div className="relative mb-3">
+                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder={`Search ${option.label.toLowerCase()}...`}
+                            value={searchQueries[option.type] || ''}
+                            onChange={(e) =>
+                              setSearchQueries((prev) => ({
+                                ...prev,
+                                [option.type]: e.target.value,
+                              }))
                             }
-                            disabled={saving}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                              isSelected
-                                ? 'bg-primary-500 text-white'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            {taxonomy.name}
-                            {isSelected && <CheckIcon className="w-4 h-4" />}
-                          </button>
-                        );
-                      })}
-                    </div>
+                            className="w-full pl-9 pr-8 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          />
+                          {searchQueries[option.type] && (
+                            <button
+                              onClick={() =>
+                                setSearchQueries((prev) => ({
+                                  ...prev,
+                                  [option.type]: '',
+                                }))
+                              }
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                            >
+                              <XMarkIcon className="w-4 h-4 text-gray-400" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Taxonomy options - scrollable container */}
+                      <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto p-2 -m-2 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+                        {available
+                          .filter((taxonomy) => {
+                            const query = searchQueries[option.type]?.toLowerCase() || '';
+                            if (!query) return true;
+                            return taxonomy.name.toLowerCase().includes(query);
+                          })
+                          .map((taxonomy) => {
+                            const isSelected = selectedIds.includes(taxonomy.id);
+                            return (
+                              <button
+                                key={taxonomy.id}
+                                onClick={() =>
+                                  handleSelect(option.type, taxonomy.id, option.isMultiSelect)
+                                }
+                                disabled={saving}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                  isSelected
+                                    ? 'bg-primary-500 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                {taxonomy.name}
+                                {isSelected && <CheckIcon className="w-4 h-4" />}
+                              </button>
+                            );
+                          })}
+                      </div>
+
+                      {/* No results message */}
+                      {searchQueries[option.type] &&
+                        available.filter((t) =>
+                          t.name.toLowerCase().includes(searchQueries[option.type]?.toLowerCase() || '')
+                        ).length === 0 && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-2">
+                            No matches found
+                          </p>
+                        )}
+                    </>
                   )}
                 </div>
               )}
