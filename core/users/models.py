@@ -372,6 +372,7 @@ class User(AbstractUser):
                 'googleusercontent.com',
                 'github.com',
                 'avatars.githubusercontent.com',
+                'api.dicebear.com',
                 minio_endpoint,
                 minio_endpoint_public,
             ]

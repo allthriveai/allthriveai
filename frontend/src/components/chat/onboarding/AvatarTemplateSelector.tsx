@@ -535,7 +535,7 @@ export function AvatarTemplateSelector({
                 {isGenerating || isConnecting ? (
                   <>
                     <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                    {isConnecting ? 'Connecting...' : 'Generating...'}
+                    {isConnecting ? 'Connecting...' : 'Creating your avatar...'}
                   </>
                 ) : (
                   <>
@@ -545,6 +545,16 @@ export function AvatarTemplateSelector({
                 )}
               </motion.button>
             </div>
+            {/* Time estimate shown during generation */}
+            {isGenerating && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center text-slate-500 dark:text-slate-400 text-sm mt-3"
+              >
+                This usually takes 15-20 seconds
+              </motion.p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
