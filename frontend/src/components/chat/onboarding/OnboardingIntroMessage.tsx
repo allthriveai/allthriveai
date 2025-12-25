@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon, faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
+import { faWandMagicSparkles } from '@fortawesome/free-solid-svg-icons';
 
 // Typewriter hook for video game dialogue effect
 // enabled: controls when typing starts (for sequencing multiple lines)
@@ -72,20 +72,17 @@ function EmberAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
         transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-orange-500/20 rounded-full blur-xl pointer-events-none"
       />
-      {/* Avatar background */}
-      <div className="absolute inset-[-4px] bg-black/60 rounded-full blur-md" />
-      <div className="absolute inset-[-2px] bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 rounded-full" />
-      <div className="relative w-12 h-12 flex items-center justify-center bg-slate-900/80 rounded-full border border-cyan-500/30">
-        <motion.div
-          animate={isSpeaking ? { scale: [1, 1.05, 1] } : {}}
-          transition={{ duration: 0.5, repeat: Infinity }}
-        >
-          <FontAwesomeIcon
-            icon={faDragon}
-            className="text-2xl text-cyan-500 drop-shadow-[0_0_12px_rgba(6,182,212,0.6)]"
-          />
-        </motion.div>
-      </div>
+      {/* Avatar image */}
+      <motion.div
+        animate={isSpeaking ? { scale: [1, 1.05, 1] } : {}}
+        transition={{ duration: 0.5, repeat: Infinity }}
+      >
+        <img
+          src="/ember-avatar.png"
+          alt="Ember"
+          className="w-12 h-12 rounded-full border-2 border-cyan-500/50"
+        />
+      </motion.div>
     </motion.div>
   );
 }
