@@ -60,3 +60,7 @@ test-results/
 
 # Local development config
 .pull-prod-db.conf
+
+# Speckit/Specify
+.speckit/
+.specify/
