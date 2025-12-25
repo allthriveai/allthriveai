@@ -422,7 +422,43 @@ reset-db:
 
 # Testing commands
 test: test-backend test-frontend
-	@echo "All tests completed!"
+	@echo "Unit tests completed!"
+
+test-all:
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║                    RUNNING ALL TESTS                             ║"
+	@echo "║  Backend + Frontend + All E2E (Smoke + Full Suite)               ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 1/4: Backend Unit Tests"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-backend
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 2/4: Frontend Unit Tests"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-frontend
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 3/4: Smoke Tests (AI Quality)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-e2e-smoke
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 4/4: Full E2E Test Suite"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-e2e
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║                    ✅ ALL TESTS PASSED                            ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+
+test-e2e-smoke:
+	@echo "Running Smoke Tests (includes AI quality checks)..."
+	@echo "Note: Make sure backend is running (make up)"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/smoke.spec.ts
 
 test-backend:
 	@echo "Running backend tests..."
