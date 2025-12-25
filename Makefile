@@ -462,7 +462,7 @@ test-e2e-smoke:
 
 test-backend:
 	@echo "Running backend tests..."
-	docker-compose exec web python manage.py test --verbosity=2 --noinput --keepdb
+	docker-compose exec -T web python manage.py test --verbosity=2 --noinput --keepdb
 
 # Mission Critical E2E Tests - These should NEVER fail
 test-e2e-github:
@@ -508,20 +508,20 @@ test-ai-integration-clean:
 
 test-frontend:
 	@echo "Running frontend tests..."
-	docker-compose exec frontend npm test
+	docker-compose exec -T frontend npm test
 
 test-username:
 	@echo "Running username and user isolation tests..."
-	docker-compose exec web python manage.py test core.tests.test_user_username --verbosity=2 --noinput --keepdb
+	docker-compose exec -T web python manage.py test core.tests.test_user_username --verbosity=2 --noinput --keepdb
 
 test-websocket:
 	@echo "Running WebSocket unit tests..."
-	docker-compose exec web python manage.py test core.agents.tests.test_websocket --verbosity=2 --noinput --keepdb
+	docker-compose exec -T web python manage.py test core.agents.tests.test_websocket --verbosity=2 --noinput --keepdb
 
 test-websocket-e2e:
 	@echo "Running WebSocket end-to-end connectivity test..."
 	@echo "Testing from backend container to verify WebSocket infrastructure..."
-	docker-compose exec web python scripts/test_websocket.py testuser testpass123
+	docker-compose exec -T web python scripts/test_websocket.py testuser testpass123
 
 test-proxy:
 	@echo "=== Testing Docker Network Connectivity ==="
@@ -542,9 +542,9 @@ test-proxy:
 
 test-coverage:
 	@echo "Running backend tests with coverage..."
-	docker-compose exec web coverage run --source='.' manage.py test --noinput --keepdb
-	docker-compose exec web coverage report
-	docker-compose exec web coverage html
+	docker-compose exec -T web coverage run --source='.' manage.py test --noinput --keepdb
+	docker-compose exec -T web coverage report
+	docker-compose exec -T web coverage html
 	@echo "Coverage report generated in htmlcov/index.html"
 
 test-e2e:
