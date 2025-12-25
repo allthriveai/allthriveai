@@ -142,6 +142,13 @@ jobs:
           npx tsc --noEmit
           echo "✅ TypeScript compilation passed"
 
+      - name: Frontend build check
+        working-directory: frontend
+        run: |
+          echo "Running production build..."
+          npm run build
+          echo "✅ Frontend build successful"
+
       - name: Frontend unit tests
         working-directory: frontend
         run: npm test -- --run --coverage
