@@ -77,7 +77,22 @@ class ContentItem(TypedDict, total=False):
     thumbnail: str
     questionCount: int
     difficulty: str
-    matchReason: str  # NEW: Why this was returned
+    matchReason: str  # Why this was returned
+
+    # Tool comparison fields (only for type='toolInfo')
+    tagline: str
+    category: str
+    pricingModel: str
+    startingPrice: str
+    hasFreeTier: bool
+    keyFeatures: list[dict]  # [{title, description}]
+    useCases: list[dict]  # [{title, description, example}]
+    limitations: list[str]
+    gameStats: dict  # {power, speed, versatility, ease_of_use, value}
+    alternatives: list[str]  # Alternative tool slugs
+    synergyTools: list[str]  # Tools that combo well
+    logoUrl: str
+    company: str  # Company name
 
 
 class ProjectItem(TypedDict, total=False):
@@ -407,36 +422,172 @@ def _find_games(query: str, context: SearchContext) -> list[ContentItem]:
         return []
 
 
-def _find_tool_info(query: str) -> ContentItem | None:
-    """Find tool info for the query."""
+def _parse_tool_names(query: str) -> list[str]:
+    """
+    Parse multiple tool names from a query.
+
+    Handles patterns like:
+    - "Midjourney vs DALL-E"
+    - "Midjourney and DALL-E"
+    - "Midjourney or DALL-E"
+    - "Midjourney, DALL-E, Stable Diffusion"
+    - "compare Midjourney DALL-E"
+    - "help me decide between X and Y"
+    """
+    # Remove common comparison phrases
+    cleaned = query.lower()
+    for phrase in [
+        'help me decide between',
+        'help me choose between',
+        'compare',
+        'difference between',
+        'which is better',
+        'should i use',
+        'what should i use',
+    ]:
+        cleaned = cleaned.replace(phrase, '')
+
+    # Split on common separators
+    separators = [' vs ', ' versus ', ' or ', ' and ', ', ', ' v ', ' compared to ']
+    parts = [cleaned]
+    for sep in separators:
+        new_parts = []
+        for part in parts:
+            new_parts.extend(part.split(sep))
+        parts = new_parts
+
+    # Clean up each part
+    tool_names = []
+    for part in parts:
+        # Strip punctuation and whitespace
+        name = part.strip().strip('?:;.!').strip()
+        # Skip empty or too short
+        if len(name) >= 2:
+            tool_names.append(name)
+
+    return tool_names[:5]  # Limit to 5 tools max
+
+
+def _serialize_tool(tool: 'Tool') -> ContentItem:  # noqa: F821 - Tool imported inside function
+    """Serialize a Tool model to ContentItem with comparison fields."""
+    # Safely get display values
+    try:
+        category_display = tool.get_category_display() if tool.category else ''
+    except (AttributeError, ValueError):
+        category_display = tool.category or ''
+
+    try:
+        pricing_display = tool.get_pricing_model_display() if tool.pricing_model else ''
+    except (AttributeError, ValueError):
+        pricing_display = tool.pricing_model or ''
+
+    return {
+        'type': 'toolInfo',
+        'id': str(tool.id),
+        'title': tool.name,
+        'tagline': tool.tagline or '',
+        'description': tool.overview or tool.description or '',
+        'url': f'/tools/{tool.slug}',
+        'logoUrl': tool.logo_url or '',
+        'category': category_display,
+        'company': tool.company.name if tool.company else '',
+        'pricingModel': pricing_display,
+        'startingPrice': tool.starting_price or '',
+        'hasFreeTier': tool.has_free_tier,
+        'keyFeatures': tool.key_features[:5] if tool.key_features else [],
+        'useCases': tool.use_cases[:3] if tool.use_cases else [],
+        'limitations': tool.limitations[:5] if tool.limitations else [],
+        'gameStats': tool.game_stats or {},
+        'alternatives': tool.alternatives[:5] if tool.alternatives else [],
+        'synergyTools': tool.synergy_tools[:5] if tool.synergy_tools else [],
+        'matchReason': 'Official tool information',
+    }
+
+
+def _find_tool_info(query: str) -> list[ContentItem]:
+    """
+    Find tool info for the query.
+
+    Supports multiple tools for comparison queries like:
+    - "Midjourney vs DALL-E"
+    - "help me decide between ChatGPT and Claude"
+
+    Returns a list of tool info items with comparison-friendly fields.
+    """
     if not query:
-        return None
+        return []
 
     try:
         from core.tools.models import Tool
 
-        query_normalized = query.lower().strip().replace(' ', '-')
+        # Parse potential tool names from query
+        tool_names = _parse_tool_names(query)
 
-        tool = Tool.objects.filter(
-            Q(slug=query_normalized) | Q(name__iexact=query.replace('-', ' ')),
-            is_active=True,
-        ).first()
+        if not tool_names:
+            return []
 
-        if not tool:
-            return None
+        # Build query for multiple tools - prioritize exact matches
+        # First try exact matches only
+        exact_query = Q()
+        for name in tool_names:
+            name_normalized = name.replace(' ', '-')
+            exact_query |= Q(slug__iexact=name_normalized)
+            exact_query |= Q(name__iexact=name)
 
-        return {
-            'type': 'toolInfo',
-            'id': str(tool.id),
-            'title': tool.name,
-            'description': tool.overview or tool.description or '',
-            'url': f'/tools/{tool.slug}',
-            'matchReason': 'Official tool information',
-        }
+        tools = list(
+            Tool.objects.filter(exact_query, is_active=True).select_related('company').order_by('name').distinct()[:5]
+        )
+
+        # If we didn't find enough exact matches, try partial matches
+        # but only for longer queries (3+ chars) to avoid over-matching
+        if len(tools) < len(tool_names):
+            partial_query = Q()
+            for name in tool_names:
+                if len(name) >= 3:  # Only partial match for longer names
+                    name_normalized = name.replace(' ', '-')
+                    partial_query |= Q(name__icontains=name)
+                    partial_query |= Q(slug__icontains=name_normalized)
+
+            if partial_query:
+                existing_ids = [t.id for t in tools]
+                partial_tools = (
+                    Tool.objects.filter(partial_query, is_active=True)
+                    .exclude(id__in=existing_ids)
+                    .select_related('company')
+                    .order_by('name')
+                    .distinct()[: 5 - len(tools)]
+                )
+                tools.extend(partial_tools)
+
+        if not tools:
+            # Fallback: try single tool lookup with original query
+            query_normalized = query.lower().strip().replace(' ', '-')
+            tool = (
+                Tool.objects.filter(
+                    Q(slug=query_normalized) | Q(name__iexact=query.replace('-', ' ')),
+                    is_active=True,
+                )
+                .select_related('company')
+                .first()
+            )
+
+            if tool:
+                return [_serialize_tool(tool)]
+            return []
+
+        # Serialize all found tools
+        results = [_serialize_tool(tool) for tool in tools]
+
+        # Update match reasons for comparison
+        if len(results) > 1:
+            for i, result in enumerate(results):
+                result['matchReason'] = f'Tool {i + 1} of {len(results)} for comparison'
+
+        return results
 
     except Exception as e:
         logger.warning(f'Tool finder failed: {e}')
-        return None
+        return []
 
 
 def _find_quizzes(query: str, context: SearchContext, limit: int = 2) -> list[ContentItem]:
@@ -1048,11 +1199,11 @@ def find_content(
     except Exception as e:
         logger.warning(f'Game finder failed: {e}')
 
-    # 2. Find tool info
+    # 2. Find tool info (supports multiple tools for comparison)
     try:
-        tool_info = _find_tool_info(query)
-        if tool_info:
-            response['content'].append(tool_info)
+        tool_infos = _find_tool_info(query)
+        if tool_infos:
+            response['content'].extend(tool_infos)
     except Exception as e:
         logger.warning(f'Tool finder failed: {e}')
 
@@ -1115,10 +1266,17 @@ def find_content(
         parts = []
         if any(c.get('type') == 'inlineGame' for c in response['content']):
             parts.append('an interactive game')
-        if any(c.get('type') == 'toolInfo' for c in response['content']):
+
+        # Count tools for comparison message
+        tool_count = sum(1 for c in response['content'] if c.get('type') == 'toolInfo')
+        if tool_count > 1:
+            tool_names = [c.get('title') for c in response['content'] if c.get('type') == 'toolInfo']
+            parts.append(f'comparison info for {", ".join(tool_names)}')
+        elif tool_count == 1:
             parts.append('tool information')
+
         if project_count > 0:
-            parts.append(f'{project_count} projects matched to your level')
+            parts.append(f'{project_count} community projects')
         if any(c.get('type') == 'quizCard' for c in response['content']):
             parts.append('quizzes')
 

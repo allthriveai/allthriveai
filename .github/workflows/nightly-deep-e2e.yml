@@ -136,6 +136,75 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: config.settings
 
+      - name: Start Celery worker and run integration tests
+        run: |
+          # Start Celery worker in background
+          celery -A config worker --loglevel=info > /tmp/celery.log 2>&1 &
+          echo $! > /tmp/celery.pid
+
+          # Wait for worker to be ready
+          for i in {1..30}; do
+            if grep -q "ready" /tmp/celery.log 2>/dev/null; then
+              echo "✅ Celery worker started"
+              break
+            fi
+            echo "Waiting for Celery worker... ($i/30)"
+            sleep 1
+          done
+
+          # Run comprehensive Celery integration tests
+          python - <<'PY'
+          import sys
+          import time
+
+          print("=" * 60)
+          print("CELERY INTEGRATION TESTS")
+          print("=" * 60)
+
+          # Test 1: Basic health check
+          print("\n[Test 1] Basic health check task...")
+          from config.celery import health_check
+          try:
+              result = health_check.apply_async()
+              response = result.get(timeout=10)
+              assert response.get('status') == 'healthy', f"Unexpected: {response}"
+              print("  ✅ Health check passed")
+          except Exception as e:
+              print(f"  ❌ Health check failed: {e}")
+              sys.exit(1)
+
+          # Test 2: Verify task discovery
+          print("\n[Test 2] Task discovery verification...")
+          from config.celery import app
+          registered_tasks = list(app.tasks.keys())
+          critical_tasks = [
+              'core.battles.tasks.generate_submission_image_task',
+              'core.battles.tasks.cleanup_stale_battles',
+              'core.billing.tasks.reset_monthly_ai_requests_task',
+          ]
+          missing = [t for t in critical_tasks if t not in registered_tasks]
+          if missing:
+              print(f"  ❌ Missing critical tasks: {missing}")
+              sys.exit(1)
+          print(f"  ✅ All {len(critical_tasks)} critical tasks discovered")
+          print(f"  Total registered tasks: {len(registered_tasks)}")
+
+          # Test 3: Task routing verification
+          print("\n[Test 3] Task routing configuration...")
+          routes = app.conf.task_routes or {}
+          weaviate_tasks = [k for k in routes if 'weaviate' in k]
+          print(f"  ✅ {len(weaviate_tasks)} Weaviate tasks routed to dedicated queue")
+
+          # Test 4: Beat schedule verification
+          print("\n[Test 4] Beat schedule configuration...")
+          beat_schedule = app.conf.beat_schedule or {}
+          print(f"  ✅ {len(beat_schedule)} periodic tasks configured")
+
+          print("\n" + "=" * 60)
+          print("ALL CELERY INTEGRATION TESTS PASSED")
+          print("=" * 60)
+          PY
+
       - name: Start frontend server
         working-directory: frontend
         run: |

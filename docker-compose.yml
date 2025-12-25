@@ -134,7 +134,7 @@ services:
         condition: service_healthy
       weaviate:
         condition: service_healthy
-    command: celery -A config worker --pool=prefork --concurrency=4 --loglevel=info -Q celery,default,youtube_sync,youtube_import,battles,engagement,weaviate
+    command: celery -A config worker --pool=prefork --concurrency=4 --loglevel=info -Q celery,weaviate
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME"]
       interval: 10s

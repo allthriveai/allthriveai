@@ -1,11 +1,15 @@
 """
-Tests for async turn-based battle functionality.
+Tests for async turn-based battle functionality and Pip (AI opponent) battles.
 
-These tests cover the async battle flow including:
+These tests cover:
 - Turn validation (challenger/opponent turn)
 - Turn timeout behavior
 - Deadline expiration
 - Phase transitions for async battles
+- Pip battle complete flow (critical path)
+- Submission validation
+- Image generation mocking
+- Judging flow
 """
 
 from datetime import timedelta
@@ -22,6 +26,7 @@ from core.battles.models import (
     PromptChallengePrompt,
 )
 from core.battles.phase_utils import can_submit_prompt, is_users_turn
+from core.battles.services import BattleService
 from core.battles.state_machine import is_valid_transition
 from core.users.models import User
 
@@ -497,3 +502,105 @@ class AsyncBattleSerializerTestCase(TestCase):
         request.user = self.challenger
         serializer = PromptBattleSerializer(self.battle, context={'request': request})
         self.assertFalse(serializer.data['can_submit'])
+
+
+class SubmitPromptValidationTestCase(TestCase):
+    """Tests for submit_prompt validation including copy-paste prevention."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.challenger = User.objects.create_user(
+            username='challenger_validation',
+            email='challenger_validation@test.com',
+            password='testpass123',
+        )
+        self.opponent = User.objects.create_user(
+            username='opponent_validation',
+            email='opponent_validation@test.com',
+            password='testpass123',
+        )
+
+        self.prompt = PromptChallengePrompt.objects.create(
+            prompt_text='Create a mystical forest scene',
+            difficulty='medium',
+            is_active=True,
+        )
+
+        self.battle = PromptBattle.objects.create(
+            challenger=self.challenger,
+            opponent=self.opponent,
+            challenge_text='Create a mystical forest scene',
+            prompt=self.prompt,
+            status=BattleStatus.ACTIVE,
+            phase=BattlePhase.ACTIVE,
+            battle_mode=BattleMode.SYNC,
+            duration_minutes=10,
+        )
+
+        self.service = BattleService()
+
+    def test_copy_paste_challenge_rejected(self):
+        """Test that copying the challenge text exactly is rejected."""
+        with self.assertRaises(ValueError) as context:
+            self.service.submit_prompt(
+                battle=self.battle,
+                user=self.challenger,
+                prompt_text='Create a mystical forest scene',
+            )
+
+        self.assertIn('creative', str(context.exception).lower())
+
+    def test_copy_paste_with_different_case_rejected(self):
+        """Test that copying with different case is rejected."""
+        with self.assertRaises(ValueError) as context:
+            self.service.submit_prompt(
+                battle=self.battle,
+                user=self.challenger,
+                prompt_text='CREATE A MYSTICAL FOREST SCENE',
+            )
+
+        self.assertIn('creative', str(context.exception).lower())
+
+    def test_copy_paste_with_extra_whitespace_rejected(self):
+        """Test that copying with extra whitespace is rejected."""
+        with self.assertRaises(ValueError) as context:
+            self.service.submit_prompt(
+                battle=self.battle,
+                user=self.challenger,
+                prompt_text='  Create a mystical forest scene  ',
+            )
+
+        self.assertIn('creative', str(context.exception).lower())
+
+    def test_unique_prompt_accepted(self):
+        """Test that a unique creative prompt is accepted."""
+        submission = self.service.submit_prompt(
+            battle=self.battle,
+            user=self.challenger,
+            prompt_text='A glowing enchanted woodland with fireflies and ancient trees',
+        )
+
+        self.assertIsNotNone(submission)
+        self.assertEqual(submission.user, self.challenger)
+
+    def test_prompt_too_short_rejected(self):
+        """Test that prompts under 10 characters are rejected."""
+        with self.assertRaises(ValueError) as context:
+            self.service.submit_prompt(
+                battle=self.battle,
+                user=self.challenger,
+                prompt_text='short',
+            )
+
+        self.assertIn('10 characters', str(context.exception))
+
+    def test_prompt_too_long_rejected(self):
+        """Test that prompts over 5000 characters are rejected."""
+        with self.assertRaises(ValueError) as context:
+            self.service.submit_prompt(
+                battle=self.battle,
+                user=self.challenger,
+                prompt_text='x' * 5001,
+            )
+
+        self.assertIn('5000 characters', str(context.exception))

@@ -9,6 +9,7 @@ Handles async operations:
 """
 
 import logging
+import uuid
 from typing import Any
 
 from asgiref.sync import async_to_sync
@@ -21,6 +22,54 @@ from core.battles.models import BattleMode, BattlePhase, BattleStatus, BattleSub
 from core.battles.services import BattleService, PipBattleAI
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_trace_id() -> str:
+    """Generate a short trace ID for request tracing."""
+    return uuid.uuid4().hex[:8]
+
+
+def _log_task_event(
+    trace_id: str,
+    event: str,
+    battle_id: int | str | None = None,
+    submission_id: int | str | None = None,
+    extra: dict | None = None,
+    level: str = 'info',
+) -> None:
+    """
+    Structured logging for task events with trace ID.
+
+    Args:
+        trace_id: Unique identifier for tracing the request flow
+        event: Event name (e.g., 'image_generation_start', 'judging_complete')
+        battle_id: Battle ID (if applicable)
+        submission_id: Submission ID (if applicable)
+        extra: Additional context data
+        level: Log level ('debug', 'info', 'warning', 'error')
+    """
+    log_data = {
+        'trace_id': trace_id,
+        'event': event,
+    }
+    if battle_id is not None:
+        log_data['battle_id'] = battle_id
+    if submission_id is not None:
+        log_data['submission_id'] = submission_id
+    if extra:
+        log_data.update(extra)
+
+    message = f'[TASK:{trace_id}] {event}'
+    if battle_id:
+        message += f' | battle={battle_id}'
+    if submission_id:
+        message += f' submission={submission_id}'
+    if extra:
+        extra_str = ' '.join(f'{k}={v}' for k, v in extra.items())
+        message += f' | {extra_str}'
+
+    log_fn = getattr(logger, level)
+    log_fn(message, extra=log_data)
 
 
 @shared_task(
@@ -43,18 +92,53 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
     Returns:
         Dict with generation result
     """
+    trace_id = _generate_trace_id()
+
+    _log_task_event(
+        trace_id,
+        'image_generation_start',
+        submission_id=submission_id,
+        extra={'task_id': self.request.id, 'retry_count': self.request.retries},
+    )
+
     try:
         submission = BattleSubmission.objects.select_related('battle', 'user').get(id=submission_id)
     except BattleSubmission.DoesNotExist:
-        logger.error(f'Submission not found: {submission_id}')
+        _log_task_event(
+            trace_id,
+            'image_generation_error',
+            submission_id=submission_id,
+            extra={'reason': 'submission_not_found'},
+            level='error',
+        )
         return {'status': 'error', 'reason': 'submission_not_found'}
+
+    battle = submission.battle
+
+    _log_task_event(
+        trace_id,
+        'image_generation_submission_found',
+        battle_id=battle.id,
+        submission_id=submission_id,
+        extra={
+            'user_id': submission.user_id,
+            'prompt_length': len(submission.prompt_text or ''),
+            'phase': battle.phase,
+            'match_source': battle.match_source,
+        },
+    )
 
     # Idempotency check: skip if already has generated image
     if submission.generated_output_url:
-        logger.info(f'Submission {submission_id} already has image, skipping generation')
+        _log_task_event(
+            trace_id,
+            'image_generation_skipped',
+            battle_id=battle.id,
+            submission_id=submission_id,
+            extra={'reason': 'already_generated'},
+        )
         return {'status': 'skipped', 'reason': 'already_generated', 'image_url': submission.generated_output_url}
 
-    battle = submission.battle
     channel_layer = get_channel_layer()
     group_name = f'battle_{battle.id}'
 
@@ -70,11 +154,27 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
     )
 
     try:
+        _log_task_event(
+            trace_id,
+            'image_generation_calling_service',
+            battle_id=battle.id,
+            submission_id=submission_id,
+        )
+
         service = BattleService()
         image_url = service.generate_image_for_submission(submission)
 
         if image_url:
-            logger.info(f'Image generated for submission {submission_id}: {image_url}')
+            _log_task_event(
+                trace_id,
+                'image_generation_success',
+                battle_id=battle.id,
+                submission_id=submission_id,
+                extra={
+                    'user_id': submission.user_id,
+                    'image_url_prefix': image_url[:50] if image_url else None,
+                },
+            )
 
             # Notify success
             async_to_sync(channel_layer.group_send)(
@@ -89,11 +189,24 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
             )
 
             # Check if both submissions now have images - trigger judging
-            _check_and_trigger_judging(battle.id)
+            _log_task_event(
+                trace_id,
+                'image_generation_checking_judging',
+                battle_id=battle.id,
+                submission_id=submission_id,
+            )
+            _check_and_trigger_judging(battle.id, trace_id)
 
             return {'status': 'success', 'image_url': image_url}
         else:
-            logger.error(f'Image generation failed for submission {submission_id}')
+            _log_task_event(
+                trace_id,
+                'image_generation_failed',
+                battle_id=battle.id,
+                submission_id=submission_id,
+                extra={'reason': 'service_returned_none'},
+                level='error',
+            )
 
             # Notify failure
             async_to_sync(channel_layer.group_send)(
@@ -109,6 +222,14 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
             return {'status': 'error', 'reason': 'generation_failed'}
 
     except Exception as e:
+        _log_task_event(
+            trace_id,
+            'image_generation_exception',
+            battle_id=battle.id,
+            submission_id=submission_id,
+            extra={'error': str(e), 'error_type': type(e).__name__},
+            level='error',
+        )
         logger.error(f'Error generating image for submission {submission_id}: {e}', exc_info=True)
 
         # Notify error
@@ -146,14 +267,48 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
     Returns:
         Dict with judging results
     """
+    trace_id = _generate_trace_id()
+
+    _log_task_event(
+        trace_id,
+        'judging_start',
+        battle_id=battle_id,
+        extra={'task_id': self.request.id, 'retry_count': self.request.retries},
+    )
+
     try:
         battle = PromptBattle.objects.select_related('challenger', 'opponent').get(id=battle_id)
     except PromptBattle.DoesNotExist:
-        logger.error(f'Battle not found: {battle_id}')
+        _log_task_event(
+            trace_id,
+            'judging_error',
+            battle_id=battle_id,
+            extra={'reason': 'battle_not_found'},
+            level='error',
+        )
         return {'status': 'error', 'reason': 'battle_not_found'}
 
+    _log_task_event(
+        trace_id,
+        'judging_battle_found',
+        battle_id=battle_id,
+        extra={
+            'phase': battle.phase,
+            'status': battle.status,
+            'challenger_id': battle.challenger_id,
+            'opponent_id': battle.opponent_id,
+            'match_source': battle.match_source,
+        },
+    )
+
     if battle.phase not in [BattlePhase.GENERATING, BattlePhase.JUDGING]:
-        logger.warning(f'Battle {battle_id} not in judgeable phase: {battle.phase}')
+        _log_task_event(
+            trace_id,
+            'judging_skipped',
+            battle_id=battle_id,
+            extra={'reason': 'invalid_phase', 'current_phase': battle.phase},
+            level='warning',
+        )
         return {'status': 'skipped', 'reason': 'invalid_phase'}
 
     channel_layer = get_channel_layer()
@@ -161,6 +316,13 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
 
     # Transition to judging phase and track the time
     battle.set_phase(BattlePhase.JUDGING)
+
+    _log_task_event(
+        trace_id,
+        'judging_phase_set',
+        battle_id=battle_id,
+        extra={'phase': BattlePhase.JUDGING},
+    )
 
     async_to_sync(channel_layer.group_send)(
         group_name,
@@ -172,12 +334,38 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
     )
 
     try:
+        _log_task_event(
+            trace_id,
+            'judging_calling_service',
+            battle_id=battle_id,
+        )
+
         service = BattleService()
         results = service.judge_battle(battle)
 
         if 'error' in results:
-            logger.error(f'Judging failed for battle {battle_id}: {results["error"]}')
+            _log_task_event(
+                trace_id,
+                'judging_service_error',
+                battle_id=battle_id,
+                extra={'error': results['error']},
+                level='error',
+            )
             return {'status': 'error', 'reason': results['error']}
+
+        winner_id = results.get('winner_id')
+        submission_results = results.get('results', [])
+
+        _log_task_event(
+            trace_id,
+            'judging_complete',
+            battle_id=battle_id,
+            extra={
+                'winner_id': winner_id,
+                'result_count': len(submission_results),
+                'scores': [r.get('score') for r in submission_results],
+            },
+        )
 
         # Send judging results to room with full submission data
         async_to_sync(channel_layer.group_send)(
@@ -185,13 +373,20 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
             {
                 'type': 'battle_event',
                 'event': 'judging_complete',
-                'winner_id': results.get('winner_id'),
-                'results': results.get('results', []),
+                'winner_id': winner_id,
+                'results': submission_results,
             },
         )
 
         # Transition to reveal phase - SAVE TO DATABASE so state refresh includes opponent submission
         battle.set_phase(BattlePhase.REVEAL)
+
+        _log_task_event(
+            trace_id,
+            'judging_reveal_phase',
+            battle_id=battle_id,
+            extra={'phase': BattlePhase.REVEAL},
+        )
 
         async_to_sync(channel_layer.group_send)(
             group_name,
@@ -212,16 +407,36 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
         )
 
         # Schedule battle completion after reveal period (2 seconds - enough for UI transition)
+        _log_task_event(
+            trace_id,
+            'judging_scheduling_completion',
+            battle_id=battle_id,
+            extra={'countdown': 2},
+        )
+
         complete_battle_task.apply_async(
             args=[battle_id],
             countdown=2,
             expires=300,  # Expire after 5 min if not picked up
         )
 
-        logger.info(f'Battle {battle_id} judged: winner={results.get("winner_id")}')
-        return {'status': 'success', 'winner_id': results.get('winner_id')}
+        _log_task_event(
+            trace_id,
+            'judging_success',
+            battle_id=battle_id,
+            extra={'winner_id': winner_id},
+        )
+
+        return {'status': 'success', 'winner_id': winner_id}
 
     except Exception as e:
+        _log_task_event(
+            trace_id,
+            'judging_exception',
+            battle_id=battle_id,
+            extra={'error': str(e), 'error_type': type(e).__name__},
+            level='error',
+        )
         logger.error(f'Error judging battle {battle_id}: {e}', exc_info=True)
         raise self.retry(exc=e) from e
 
@@ -326,32 +541,93 @@ def create_pip_submission_task(self, battle_id: int) -> dict[str, Any]:
     Returns:
         Dict with submission result
     """
+    trace_id = _generate_trace_id()
+
+    _log_task_event(
+        trace_id,
+        'pip_submission_start',
+        battle_id=battle_id,
+        extra={'task_id': self.request.id, 'retry_count': self.request.retries},
+    )
+
     try:
-        battle = PromptBattle.objects.select_related('opponent').get(id=battle_id)
+        battle = PromptBattle.objects.select_related('opponent', 'challenger').get(id=battle_id)
     except PromptBattle.DoesNotExist:
-        logger.error(f'Battle not found: {battle_id}')
+        _log_task_event(
+            trace_id,
+            'pip_submission_error',
+            battle_id=battle_id,
+            extra={'reason': 'battle_not_found'},
+            level='error',
+        )
         return {'status': 'error', 'reason': 'battle_not_found'}
+
+    _log_task_event(
+        trace_id,
+        'pip_submission_battle_found',
+        battle_id=battle_id,
+        extra={
+            'phase': battle.phase,
+            'status': battle.status,
+            'opponent_username': battle.opponent.username if battle.opponent else None,
+            'challenger_id': battle.challenger_id,
+            'challenge_text_length': len(battle.challenge_text or ''),
+        },
+    )
 
     # Verify this is a Pip battle
     if not battle.opponent or battle.opponent.username != 'pip':
-        logger.warning(f'Battle {battle_id} is not a Pip battle')
+        _log_task_event(
+            trace_id,
+            'pip_submission_skipped',
+            battle_id=battle_id,
+            extra={'reason': 'not_pip_battle', 'opponent': battle.opponent.username if battle.opponent else None},
+            level='warning',
+        )
         return {'status': 'skipped', 'reason': 'not_pip_battle'}
 
     # Check if Pip already submitted
-    if BattleSubmission.objects.filter(battle=battle, user=battle.opponent).exists():
-        logger.info(f'Pip already submitted to battle {battle_id}')
+    existing_submission = BattleSubmission.objects.filter(battle=battle, user=battle.opponent).first()
+    if existing_submission:
+        _log_task_event(
+            trace_id,
+            'pip_submission_skipped',
+            battle_id=battle_id,
+            extra={'reason': 'already_submitted', 'existing_submission_id': existing_submission.id},
+        )
         return {'status': 'already_submitted'}
 
     channel_layer = get_channel_layer()
     group_name = f'battle_{battle_id}'
 
     try:
+        _log_task_event(
+            trace_id,
+            'pip_submission_creating',
+            battle_id=battle_id,
+            extra={'challenge_text': battle.challenge_text[:100] if battle.challenge_text else None},
+        )
+
         pip_ai = PipBattleAI()
         submission = pip_ai.create_pip_submission(battle)
 
         if not submission:
-            logger.error(f'Failed to create Pip submission for battle {battle_id}')
+            _log_task_event(
+                trace_id,
+                'pip_submission_failed',
+                battle_id=battle_id,
+                extra={'reason': 'ai_returned_none'},
+                level='error',
+            )
             return {'status': 'error', 'reason': 'submission_failed'}
+
+        _log_task_event(
+            trace_id,
+            'pip_submission_created',
+            battle_id=battle_id,
+            submission_id=submission.id,
+            extra={'prompt_length': len(submission.prompt_text or '')},
+        )
 
         # Notify that Pip submitted
         async_to_sync(channel_layer.group_send)(
@@ -364,15 +640,35 @@ def create_pip_submission_task(self, battle_id: int) -> dict[str, Any]:
         )
 
         # Trigger image generation for Pip's submission
+        _log_task_event(
+            trace_id,
+            'pip_submission_queueing_image_gen',
+            battle_id=battle_id,
+            submission_id=submission.id,
+        )
+
         generate_submission_image_task.apply_async(
             args=[submission.id],
             expires=600,  # Expire after 10 min if not picked up
         )
 
-        logger.info(f'Pip submitted to battle {battle_id}: submission {submission.id}')
+        _log_task_event(
+            trace_id,
+            'pip_submission_complete',
+            battle_id=battle_id,
+            submission_id=submission.id,
+        )
+
         return {'status': 'success', 'submission_id': submission.id}
 
     except Exception as e:
+        _log_task_event(
+            trace_id,
+            'pip_submission_exception',
+            battle_id=battle_id,
+            extra={'error': str(e), 'error_type': type(e).__name__},
+            level='error',
+        )
         logger.error(f'Error creating Pip submission for battle {battle_id}: {e}', exc_info=True)
         raise self.retry(exc=e) from e
 
@@ -478,7 +774,7 @@ def handle_battle_timeout_task(battle_id: int) -> dict[str, Any]:
         return {'status': 'proceeding', 'phase': BattlePhase.GENERATING}
 
 
-def _check_and_trigger_judging(battle_id: int) -> None:
+def _check_and_trigger_judging(battle_id: int, trace_id: str | None = None) -> None:
     """
     Check if both submissions have images and trigger judging if so.
 
@@ -488,29 +784,85 @@ def _check_and_trigger_judging(battle_id: int) -> None:
 
     Args:
         battle_id: ID of the battle to check
+        trace_id: Optional trace ID for logging continuity
     """
     from django.db import transaction
+
+    if not trace_id:
+        trace_id = _generate_trace_id()
+
+    _log_task_event(
+        trace_id,
+        'check_judging_start',
+        battle_id=battle_id,
+    )
 
     try:
         with transaction.atomic():
             # Lock the battle row to prevent concurrent judging triggers
             battle = PromptBattle.objects.select_for_update().get(id=battle_id)
 
+            _log_task_event(
+                trace_id,
+                'check_judging_battle_locked',
+                battle_id=battle_id,
+                extra={'phase': battle.phase, 'status': battle.status},
+            )
+
             # Only check if in generating phase
             if battle.phase != BattlePhase.GENERATING:
-                logger.debug(f'Battle {battle_id} not in generating phase, skipping judging check')
+                _log_task_event(
+                    trace_id,
+                    'check_judging_skipped',
+                    battle_id=battle_id,
+                    extra={'reason': 'not_generating_phase', 'current_phase': battle.phase},
+                    level='debug',
+                )
                 return
 
             submissions = list(battle.submissions.all())
+            submission_count = len(submissions)
+            submissions_with_images = [s for s in submissions if s.generated_output_url]
+
+            _log_task_event(
+                trace_id,
+                'check_judging_submission_status',
+                battle_id=battle_id,
+                extra={
+                    'total_submissions': submission_count,
+                    'with_images': len(submissions_with_images),
+                    'submission_ids': [s.id for s in submissions],
+                    'has_images': [bool(s.generated_output_url) for s in submissions],
+                },
+            )
 
             # Need exactly 2 submissions with images
-            if len(submissions) != 2:
-                logger.debug(f'Battle {battle_id} has {len(submissions)} submissions, need 2')
+            if submission_count != 2:
+                _log_task_event(
+                    trace_id,
+                    'check_judging_waiting',
+                    battle_id=battle_id,
+                    extra={'reason': 'need_2_submissions', 'current_count': submission_count},
+                    level='debug',
+                )
                 return
 
             if not all(s.generated_output_url for s in submissions):
-                logger.debug(f'Battle {battle_id} not all submissions have images yet')
+                _log_task_event(
+                    trace_id,
+                    'check_judging_waiting',
+                    battle_id=battle_id,
+                    extra={'reason': 'not_all_have_images', 'with_images': len(submissions_with_images)},
+                    level='debug',
+                )
                 return
+
+            _log_task_event(
+                trace_id,
+                'check_judging_ready',
+                battle_id=battle_id,
+                extra={'transitioning_to': BattlePhase.JUDGING},
+            )
 
             # Transition to judging phase ATOMICALLY before triggering task
             # This prevents duplicate judging tasks
@@ -518,16 +870,39 @@ def _check_and_trigger_judging(battle_id: int) -> None:
             battle.phase_changed_at = timezone.now()
             battle.save(update_fields=['phase', 'phase_changed_at'])
 
-            logger.info(f'Both submissions have images for battle {battle_id}, triggering judging')
+            _log_task_event(
+                trace_id,
+                'check_judging_phase_updated',
+                battle_id=battle_id,
+                extra={'new_phase': BattlePhase.JUDGING},
+            )
 
         # Trigger judging task OUTSIDE the transaction (after commit)
+        _log_task_event(
+            trace_id,
+            'check_judging_queueing_task',
+            battle_id=battle_id,
+        )
+
         judge_battle_task.apply_async(
             args=[battle_id],
             expires=600,  # Expire after 10 min if not picked up
         )
 
+        _log_task_event(
+            trace_id,
+            'check_judging_task_queued',
+            battle_id=battle_id,
+        )
+
     except PromptBattle.DoesNotExist:
-        logger.warning(f'Battle {battle_id} not found in _check_and_trigger_judging')
+        _log_task_event(
+            trace_id,
+            'check_judging_error',
+            battle_id=battle_id,
+            extra={'reason': 'battle_not_found'},
+            level='warning',
+        )
         return
 
 

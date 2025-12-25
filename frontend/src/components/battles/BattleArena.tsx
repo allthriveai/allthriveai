@@ -49,6 +49,8 @@ interface BattleArenaProps {
   onSignupClick?: () => void;
   /** Whether it's currently the user's turn (for async battles) */
   isMyTurn?: boolean;
+  /** Error message to display near the submit button */
+  submitError?: string | null;
 }
 
 export function BattleArena({
@@ -71,6 +73,7 @@ export function BattleArena({
   isGuestUser = false,
   onSignupClick,
   isMyTurn = true,
+  submitError,
 }: BattleArenaProps) {
   // Determine the appropriate message after submission
   const getSubmittedMessage = (): React.ReactNode => {
@@ -321,6 +324,7 @@ export function BattleArena({
               timerResetKey={timerResetKey}
               minLength={10}
               maxLength={2000}
+              error={submitError}
             />
           )}
         </motion.div>

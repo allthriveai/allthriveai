@@ -24,6 +24,8 @@ interface PromptEditorProps {
   timeRemaining?: number | null;
   /** Key that changes when timer should be reset (e.g., after challenge refresh) */
   timerResetKey?: number;
+  /** Error message to display near the submit button */
+  error?: string | null;
 }
 
 export function PromptEditor({
@@ -35,6 +37,7 @@ export function PromptEditor({
   placeholder = "Engineer your winning prompt! Be specific: describe the subject, art style (e.g. watercolor, 3D render), mood, lighting, composition, and camera angle. Detailed prompts score higher!",
   timeRemaining: serverTimeRemaining,
   timerResetKey,
+  error,
 }: PromptEditorProps) {
   const [prompt, setPrompt] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -218,6 +221,20 @@ export function PromptEditor({
           </motion.button>
         </div>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30"
+        >
+          <p className="text-sm text-rose-400 flex items-start gap-2">
+            <ExclamationTriangleIcon className="w-4 h-4 mt-0.5 shrink-0" />
+            {error}
+          </p>
+        </motion.div>
+      )}
 
       {/* Tips */}
       <p id="prompt-hint" className="mt-2 text-xs text-slate-400 dark:text-slate-500 hidden md:block">

@@ -1609,14 +1609,30 @@ class AIProvider:
         """OpenAI vision completion."""
         import base64
 
+        import httpx
+
         model_name = model or 'gpt-4o'
 
-        # Build image content
+        # Build image content - always fetch and encode as base64 to avoid URL access issues
+        # OpenAI servers can't access localhost/internal Docker URLs
         if image_bytes:
             base64_image = base64.b64encode(image_bytes).decode('utf-8')
-            image_content = {'type': 'image_url', 'image_url': {'url': f'data:image/png;base64,{base64_image}'}}
+            media_type = 'image/png'
+        elif image_url:
+            # Fetch image locally (convert localhost to Docker hostname if needed)
+            if _is_s3_url(image_url):
+                image_data, media_type = _fetch_s3_image(image_url)
+            else:
+                fetch_url = _convert_url_for_docker(image_url)
+                response = httpx.get(fetch_url, timeout=30)
+                response.raise_for_status()
+                image_data = response.content
+                media_type = response.headers.get('content-type', 'image/png')
+            base64_image = base64.b64encode(image_data).decode('utf-8')
         else:
-            image_content = {'type': 'image_url', 'image_url': {'url': image_url}}
+            raise ValueError('Either image_url or image_bytes must be provided')
+
+        image_content = {'type': 'image_url', 'image_url': {'url': f'data:{media_type};base64,{base64_image}'}}
 
         messages = [
             {

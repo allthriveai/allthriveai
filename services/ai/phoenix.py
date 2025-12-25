@@ -24,7 +24,7 @@ _phoenix_initialized = False
 _phoenix_session = None
 
 # Phoenix configuration from environment
-PHOENIX_HOST = os.getenv('PHOENIX_HOST', '0.0.0.0')  # noqa: S104 - bind all interfaces for Docker
+PHOENIX_HOST = os.getenv('PHOENIX_HOST', '0.0.0.0')  # noqa: S104  # nosec B104 - bind all for Docker
 PHOENIX_PORT = os.getenv('PHOENIX_PORT', '6006')
 PHOENIX_CLOUD_ENDPOINT = 'https://app.phoenix.arize.com/v1/traces'
 
