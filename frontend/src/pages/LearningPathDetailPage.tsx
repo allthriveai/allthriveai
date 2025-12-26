@@ -1672,19 +1672,24 @@ export default function LearningPathDetailPage() {
 
               {/* Split-pane: Curriculum left, Chat right - fixed height with inner scroll */}
               <div className="flex-1 flex min-h-0 overflow-hidden">
-                {/* LEFT: Curriculum (scrollable) - expands to full width when fullscreen */}
-                <div className={`flex-1 overflow-y-auto min-h-0 ${isFullscreen ? 'max-w-4xl mx-auto' : ''}`}>
-                  <div className="px-4 sm:px-6 py-4">
+                {/* LEFT: Curriculum (scrollable) - full width in focus mode */}
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  <div className={`px-4 sm:px-6 lg:px-8 py-4 ${isFullscreen ? 'max-w-5xl mx-auto' : ''}`}>
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Curriculum</h2>
-                      <button
-                        onClick={() => setIsFullscreen(!isFullscreen)}
-                        className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                        title={isFullscreen ? 'Exit fullscreen' : 'Expand to fullscreen'}
-                      >
-                        <FontAwesomeIcon icon={isFullscreen ? faCompress : faExpand} className="text-xs" />
-                        <span>{isFullscreen ? 'Exit Focus' : 'Focus Mode'}</span>
-                      </button>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                        {isFullscreen ? 'Lessons' : 'Curriculum'}
+                      </h2>
+                      {/* Focus Mode button - only show when NOT in focus mode */}
+                      {!isFullscreen && (
+                        <button
+                          onClick={() => setIsFullscreen(true)}
+                          className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                          title="Enter Focus Mode"
+                        >
+                          <FontAwesomeIcon icon={faExpand} className="text-xs" />
+                          <span>Focus Mode</span>
+                        </button>
+                      )}
                     </div>
                     <div className="space-y-3">
                       {path.curriculum?.map((item, index) => {
