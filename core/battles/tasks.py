@@ -677,31 +677,37 @@ def create_pip_submission_task(self, battle_id: int) -> dict[str, Any]:
             )
 
             # Queue image generation for ALL submissions that don't have images
+            # Use unique task_id to prevent duplicate queueing from multiple code paths
             for sub in all_submissions:
                 if not sub.generated_output_url:
+                    task_id = f'image_gen_battle_{battle_id}_sub_{sub.id}'
                     _log_task_event(
                         trace_id,
                         'pip_queueing_image_gen',
                         battle_id=battle_id,
                         submission_id=sub.id,
-                        extra={'user_id': sub.user_id},
+                        extra={'user_id': sub.user_id, 'task_id': task_id},
                     )
                     generate_submission_image_task.apply_async(
                         args=[sub.id],
+                        task_id=task_id,  # Unique ID prevents duplicate tasks
                         expires=600,  # Expire after 10 min if not picked up
                     )
         else:
             # Only Pip submitted so far - queue Pip's image generation
             # User's submission will trigger the phase transition when it comes
+            task_id = f'image_gen_battle_{battle_id}_sub_{submission.id}'
             _log_task_event(
                 trace_id,
                 'pip_submission_queueing_image_gen',
                 battle_id=battle_id,
                 submission_id=submission.id,
+                extra={'task_id': task_id},
             )
 
             generate_submission_image_task.apply_async(
                 args=[submission.id],
+                task_id=task_id,  # Unique ID prevents duplicate tasks
                 expires=600,  # Expire after 10 min if not picked up
             )
 
@@ -816,10 +822,13 @@ def handle_battle_timeout_task(battle_id: int) -> dict[str, Any]:
         )
 
         # Trigger image generation for any submissions without images
+        # Use unique task_id to prevent duplicate queueing
         for submission in submissions:
             if not submission.generated_output_url:
+                task_id = f'image_gen_battle_{battle_id}_sub_{submission.id}'
                 generate_submission_image_task.apply_async(
                     args=[submission.id],
+                    task_id=task_id,  # Unique ID prevents duplicate tasks
                     expires=600,  # Expire after 10 min if not picked up
                 )
 

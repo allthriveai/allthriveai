@@ -581,8 +581,11 @@ class BattleConsumer(AsyncWebsocketConsumer):
         # Pip's image is already generating from battle start
         from core.battles.tasks import generate_submission_image_task
 
+        # Use unique task_id to prevent duplicate queueing from multiple code paths
+        task_id = f'image_gen_battle_{battle.id}_sub_{submission.id}'
         generate_submission_image_task.apply_async(
             args=[submission.id],
+            task_id=task_id,  # Unique ID prevents duplicate tasks
             expires=600,  # Expire after 10 min if not picked up (user likely left)
         )
 
@@ -591,7 +594,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             'image_generation_queued',
             self.battle_id,
             user_id=self.user.id,
-            extra={'submission_id': submission.id},
+            extra={'submission_id': submission.id, 'task_id': task_id},
         )
 
         # For async turn-based battles, transition to opponent's turn when challenger submits
@@ -853,8 +856,10 @@ class BattleConsumer(AsyncWebsocketConsumer):
             )
 
             # Trigger AI image generation for all submissions
+            # Use unique task_id to prevent duplicate queueing from multiple code paths
             for submission in submissions:
                 if not submission.generated_output_url:
+                    task_id = f'image_gen_battle_{battle.id}_sub_{submission.id}'
                     _log_battle_event(
                         trace_id,
                         'image_generation_queued_fallback',
@@ -863,10 +868,12 @@ class BattleConsumer(AsyncWebsocketConsumer):
                             'submission_id': submission.id,
                             'user_id': submission.user_id,
                             'reason': 'both_submitted',
+                            'task_id': task_id,
                         },
                     )
                     generate_submission_image_task.apply_async(
                         args=[submission.id],
+                        task_id=task_id,  # Unique ID prevents duplicate tasks
                         expires=600,  # Expire after 10 min if not picked up
                     )
                 else:
