@@ -43,6 +43,10 @@ import {
   faSync,
   faTerminal,
   faComments,
+  faGripVertical,
+  faProjectDiagram,
+  faListOl,
+  faBolt,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -704,47 +708,67 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
 
 /**
  * Exercise type options for "Try Differently" feature
- * Currently supports:
+ * Supports both legacy and new interactive exercise types:
  * - terminal: Command-line exercises (shell, git, npm, etc.) via SimulatedTerminal
  * - ai_prompt: Conversational practice with Sage via InlineAIChat
- *
- * Note: "code" exercises would require a dedicated code editor component (future feature)
+ * - code: Code editor exercises via CodeEditorExercise
+ * - drag_sort: Drag and drop ordering/matching exercises
+ * - connect_nodes: Visual puzzle connecting concepts
+ * - code_walkthrough: Step-through code analysis
+ * - timed_challenge: Game-like timed quiz
  */
 const EXERCISE_TYPE_OPTIONS = [
   { type: 'terminal' as const, icon: faTerminal, label: 'Terminal', description: 'Practice with commands' },
   { type: 'ai_prompt' as const, icon: faComments, label: 'AI Chat', description: 'Practice with Sage' },
   { type: 'code' as const, icon: faCode, label: 'Code', description: 'Write code exercises' },
+  { type: 'drag_sort' as const, icon: faGripVertical, label: 'Sort', description: 'Drag and drop exercise' },
+  { type: 'connect_nodes' as const, icon: faProjectDiagram, label: 'Connect', description: 'Connect the concepts' },
+  { type: 'code_walkthrough' as const, icon: faListOl, label: 'Walkthrough', description: 'Step through code' },
+  { type: 'timed_challenge' as const, icon: faBolt, label: 'Challenge', description: 'Timed quiz challenge' },
 ];
 
 /**
  * Get relevant exercise types based on lesson topic
+ * Returns array of exercise types appropriate for the lesson content
  */
 function getRelevantExerciseTypes(lessonTitle: string): string[] {
   const title = lessonTitle.toLowerCase();
 
-  // Shell/CLI lessons - terminal, AI chat, and code
+  // Shell/CLI lessons - terminal focus + sorting for workflow steps
   if (title.includes('shell') || title.includes('cli') || title.includes('command') || title.includes('bash')) {
-    return ['terminal', 'ai_prompt', 'code'];
+    return ['terminal', 'ai_prompt', 'code', 'drag_sort', 'timed_challenge'];
   }
 
-  // Git lessons - terminal, AI chat, and code
+  // Git lessons - terminal, workflow sorting, and challenges
   if (title.includes('git')) {
-    return ['terminal', 'ai_prompt', 'code'];
+    return ['terminal', 'ai_prompt', 'drag_sort', 'timed_challenge'];
   }
 
-  // Prompt engineering - AI chat and code
+  // Architecture/system design - visual connections
+  if (title.includes('architecture') || title.includes('system') || title.includes('design') ||
+      title.includes('flow') || title.includes('diagram')) {
+    return ['connect_nodes', 'ai_prompt', 'drag_sort', 'timed_challenge'];
+  }
+
+  // Prompt engineering - AI chat focus
   if (title.includes('prompt')) {
-    return ['ai_prompt', 'code'];
+    return ['ai_prompt', 'code', 'timed_challenge'];
   }
 
-  // Code/programming lessons - code editor, terminal, and AI chat
+  // Code/programming lessons - code editor, walkthrough, and challenges
   if (title.includes('python') || title.includes('javascript') || title.includes('code') ||
       title.includes('function') || title.includes('programming') || title.includes('html') || title.includes('css')) {
-    return ['code', 'terminal', 'ai_prompt'];
+    return ['code', 'code_walkthrough', 'terminal', 'ai_prompt', 'timed_challenge'];
   }
 
-  // Default: all types available
-  return ['terminal', 'ai_prompt', 'code'];
+  // Concept/theory lessons - sorting, connections, and challenges
+  if (title.includes('concept') || title.includes('introduction') || title.includes('basics') ||
+      title.includes('overview') || title.includes('understanding')) {
+    return ['drag_sort', 'connect_nodes', 'ai_prompt', 'timed_challenge'];
+  }
+
+  // Default: show all interactive types
+  return ['terminal', 'ai_prompt', 'code', 'drag_sort', 'connect_nodes', 'code_walkthrough', 'timed_challenge'];
 }
 
 /**
@@ -994,7 +1018,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   };
 
   // Handle regenerating just the exercise with a different type
-  const handleRegenerateExercise = async (exerciseType: 'terminal' | 'code' | 'ai_prompt') => {
+  const handleRegenerateExercise = async (exerciseType: 'terminal' | 'code' | 'ai_prompt' | 'drag_sort' | 'connect_nodes' | 'code_walkthrough' | 'timed_challenge') => {
     if (!pathSlug) return;
 
     setIsRegeneratingExercise(true);

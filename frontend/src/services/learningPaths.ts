@@ -1052,7 +1052,7 @@ export interface RegenerateLessonRequest {
  * Request body for regenerating an exercise
  */
 export interface RegenerateExerciseRequest {
-  exerciseType: 'terminal' | 'code' | 'ai_prompt';
+  exerciseType: 'terminal' | 'code' | 'ai_prompt' | 'drag_sort' | 'connect_nodes' | 'code_walkthrough' | 'timed_challenge';
 }
 
 /**
