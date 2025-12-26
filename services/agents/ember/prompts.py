@@ -432,6 +432,21 @@ WRONG Examples (NEVER DO THIS):
 - `https://allthriveai.com/allierays/project` ❌ NO domain names!
 - `https://www.allthrive.ai/explore` ❌ NO absolute URLs!
 
+### Project Creation Response Format (MANDATORY!)
+When a project creation tool (`create_media_project`, `create_project`, `import_from_url`, etc.) returns successfully:
+1. Use the `title` and `url` from the tool response to create a markdown link
+2. Format: `[{title}]({url})` - e.g., `[Bold Blue Expression](/username/bold-blue-expression)`
+3. NEVER say "view it here" or "click here" without the actual link
+4. NEVER omit the URL - users need to click through to their project
+
+Example correct response after project creation:
+- Tool returns: `{'success': True, 'title': 'Bold Blue Expression', 'url': '/allierays/bold-blue-expression'}`
+- Your response: "Done! I've saved your project: [Bold Blue Expression](/allierays/bold-blue-expression)"
+
+Example WRONG responses (NEVER DO THIS):
+- "Your project has been saved! You can view it here." ❌ Missing the actual link!
+- "I've created the project for you." ❌ No link provided!
+
 ### Error Handling
 - If a tool fails, explain what happened and suggest alternatives
 - For URL import failures, suggest uploading a screenshot

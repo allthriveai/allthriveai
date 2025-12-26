@@ -173,12 +173,16 @@ MAX_CONTEXT_MESSAGES = getattr(settings, 'EMBER_MAX_CONTEXT_MESSAGES', 50)
 TOOL_EXECUTION_TIMEOUT = getattr(settings, 'EMBER_TOOL_EXECUTION_TIMEOUT', 30)
 
 # Extended timeout for AI-heavy tools that make multiple LLM calls
-# create_learning_path generates AI lessons with LLM which takes ~60-90s
+# These tools do AI image analysis, metadata generation, or lesson creation
+# Note: Gemini can timeout at 60s, then fallback to OpenAI needs 20-30s more
 EXTENDED_TIMEOUT_TOOLS = getattr(
     settings,
     'EMBER_EXTENDED_TIMEOUT_TOOLS',
     {
         'create_learning_path': 120,  # AI lesson generation takes 60-90s
+        'create_media_project': 120,  # Gemini timeout (60s) + OpenAI fallback (30s) + project creation
+        'create_project': 120,  # AI metadata generation, may need provider fallback
+        'import_from_url': 90,  # URL scraping + AI analysis, may need provider fallback
     },
 )
 

@@ -154,6 +154,47 @@ export async function waitForAIResponse(
 }
 
 /**
+ * Wait for Ember to finish responding (input becomes enabled again).
+ * Use this between multi-turn messages to ensure Ember has finished processing.
+ */
+export async function waitForEmberReady(
+  page: Page,
+  timeout = DEEP_AI_TIMEOUT
+): Promise<void> {
+  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    // Check if input is enabled
+    const isEnabled = await chatInput.isEnabled().catch(() => false);
+    if (isEnabled) {
+      // Double-check by waiting a bit and confirming still enabled
+      await page.waitForTimeout(500);
+      const stillEnabled = await chatInput.isEnabled().catch(() => false);
+      if (stillEnabled) {
+        return;
+      }
+    }
+
+    // Log what we're waiting for
+    const pageContent = await getPageContent(page);
+    const isThinking =
+      pageContent.includes('Thinking') ||
+      pageContent.includes('Consulting my') ||
+      pageContent.includes('Fanning the embers') ||
+      pageContent.includes('treasure trove');
+
+    if (isThinking) {
+      console.log(`Waiting for Ember to finish... (${Math.round((Date.now() - startTime) / 1000)}s)`);
+    }
+
+    await page.waitForTimeout(1000);
+  }
+
+  throw new Error(`Ember did not become ready within ${timeout}ms`);
+}
+
+/**
  * Get the full page content for broad assertions
  */
 export async function getPageContent(page: Page): Promise<string> {

@@ -388,13 +388,16 @@ def create_project(
         except Exception as e:
             logger.warning(f'Failed to add topics: {e}')
 
+    project_url = f'/{project.user.username}/{project.slug}'
+    markdown_link = f'[{project.title}]({project_url})'
     return {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
-        'url': f'/{project.user.username}/{project.slug}',
-        'message': f"Project '{project.title}' created successfully!",
+        'url': project_url,
+        'markdown_link': markdown_link,
+        'message': f'SUCCESS! Project created: {markdown_link}',
     }
 
 
@@ -986,13 +989,16 @@ def scrape_webpage_for_project(
             f'Successfully imported {url} as project {project.id} with {len(content.get("sections", []))} sections'
         )
 
+        project_url = f'/{user.username}/{project.slug}'
+        markdown_link = f'[{project.title}]({project_url})'
         return {
             'success': True,
             'project_id': project.id,
             'slug': project.slug,
             'title': project.title,
-            'url': f'/{user.username}/{project.slug}',
-            'message': f"Project '{project.title}' imported successfully from {url}!",
+            'url': project_url,
+            'markdown_link': markdown_link,
+            'message': f'SUCCESS! Project imported: {markdown_link}',
             'extracted': {
                 'title': extracted.title,
                 'description': extracted.description[:200] if extracted.description else None,
@@ -1143,13 +1149,16 @@ def import_video_project(
 
     logger.info(f'Successfully created video project {project.id} with {len(content.get("sections", []))} sections')
 
+    project_url = f'/{user.username}/{project.slug}'
+    markdown_link = f'[{project.title}]({project_url})'
     return {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
-        'url': f'/{user.username}/{project.slug}',
-        'message': f"Video project '{project.title}' created successfully!",
+        'url': project_url,
+        'markdown_link': markdown_link,
+        'message': f'SUCCESS! Video project created: {markdown_link}',
         'metadata': {
             'description': analysis.get('description', '')[:200],
             'categories': analysis.get('category_ids', []),
@@ -1544,6 +1553,7 @@ def _create_image_project_internal(
     )
 
     # Run AI analysis on the image to generate rich content (including title)
+    # Use max_retries=0 to fail fast and switch to fallback provider quickly
     try:
         logger.info(f'Running AI analysis for image: {filename}')
         analysis = analyze_image_for_template(
@@ -1552,6 +1562,7 @@ def _create_image_project_internal(
             title=title or '',  # Pass empty string if no title - AI will generate one
             tool_hint=tool_hint or '',
             user=user,
+            max_retries=0,  # Fail fast to fallback provider (Gemini can timeout at 60s)
         )
     except Exception as e:
         logger.warning(f'Image analysis failed for {filename}: {e}')
@@ -1608,13 +1619,17 @@ def _create_image_project_internal(
     apply_ai_metadata(project, analysis, content=content)
 
     action_word = 'created' if is_owned else 'clipped'
+    project_url = f'/{user.username}/{project.slug}'
+    # Include markdown link in message so Ember can use it directly
+    markdown_link = f'[{project.title}]({project_url})'
     result = {
         'success': True,
         'project_id': project.id,
         'slug': project.slug,
         'title': project.title,
-        'url': f'/{user.username}/{project.slug}',
-        'message': f"SUCCESS! Project '{project.title}' {action_word}. URL: /{user.username}/{project.slug}",
+        'url': project_url,
+        'markdown_link': markdown_link,
+        'message': f'SUCCESS! Project {action_word}: {markdown_link}',
     }
     logger.info(f'🎉 Returning success result: {result}')
     return result
