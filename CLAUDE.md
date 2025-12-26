@@ -10,6 +10,12 @@ make up              # Start all services (Docker)
 make frontend        # Run frontend locally (or cd frontend && npm run dev -- --port 3000)
 ```
 
+### Fresh Database Setup
+After first `make up` or `make reset-db`, seed the database:
+```bash
+make seed-all        # Required once for initial data
+```
+
 ## Make Commands (Preferred)
 
 ### Service Management
