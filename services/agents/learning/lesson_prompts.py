@@ -159,7 +159,7 @@ DIAGRAMS FOR ADVANCED:
 
 
 # Main system prompt for lesson generation
-LESSON_SYSTEM_PROMPT = """You are Ember, an AI learning assistant for AllThrive AI.
+LESSON_SYSTEM_PROMPT = """You are Ava, an AI learning assistant for AllThrive AI.
 Your task is to generate educational content that provides real value to learners.
 
 FIRST: Determine if this is a TECHNICAL or NON-TECHNICAL topic:
@@ -363,10 +363,14 @@ EXERCISE_REGENERATION_PROMPT = """You are generating an interactive exercise for
 
 The exercise should help the learner practice concepts through hands-on interaction.
 
-EXERCISE TYPES:
+EXERCISE TYPES (choose the most appropriate):
 - "terminal": For practicing command-line commands (shell, git, npm, pip, curl, etc.)
 - "code": For practicing code writing, editing, or fixing bugs in a code editor
 - "ai_prompt": For practicing AI prompting and chat-based learning
+- "drag_sort": For ordering steps, matching terms, or categorizing concepts
+- "connect_nodes": For visualizing relationships, system architecture, or data flows
+- "code_walkthrough": For guided code exploration and understanding existing code
+- "timed_challenge": For fast-paced quiz challenges and gamified review
 
 Return ONLY valid JSON matching this exact structure:
 
@@ -461,6 +465,109 @@ CODE EXERCISE GUIDELINES:
 - JavaScript exercises should test functions, DOM manipulation, etc.
 - HTML/CSS exercises should test structure and styling
 
+FOR DRAG_SORT EXERCISES:
+{
+    "exercise_type": "drag_sort",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {
+        "beginner": { "instructions": "Step-by-step with guidance", "hints": ["hint1", "hint2"] },
+        "intermediate": { "instructions": "Concise instructions", "hints": ["hint1"] },
+        "advanced": { "instructions": "Brief task", "hints": [] }
+    },
+    "drag_sort_data": {
+        "variant": "sequence",
+        "items": [
+            { "id": "step1", "content": "First step description" },
+            { "id": "step2", "content": "Second step description" },
+            { "id": "step3", "content": "Third step description" }
+        ],
+        "correct_order": ["step1", "step2", "step3"],
+        "show_immediate_feedback": true
+    }
+}
+
+FOR CONNECT_NODES EXERCISES:
+{
+    "exercise_type": "connect_nodes",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {
+        "beginner": { "instructions": "...", "hints": ["hint1", "hint2"] },
+        "intermediate": { "instructions": "...", "hints": ["hint1"] },
+        "advanced": { "instructions": "...", "hints": [] }
+    },
+    "connect_nodes_data": {
+        "nodes": [
+            { "id": "n1", "label": "Node Label", "position": {"x": 20, "y": 30}, "node_type": "concept" }
+        ],
+        "expected_connections": [
+            { "from_id": "n1", "to_id": "n2" }
+        ],
+        "show_connection_hints": true,
+        "one_to_one": true
+    }
+}
+
+FOR CODE_WALKTHROUGH EXERCISES:
+{
+    "exercise_type": "code_walkthrough",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {
+        "beginner": { "instructions": "...", "hints": [] },
+        "intermediate": { "instructions": "...", "hints": [] },
+        "advanced": { "instructions": "...", "hints": [] }
+    },
+    "code_walkthrough_data": {
+        "code": "def example():\\n    return 'hello'",
+        "language": "python",
+        "steps": [
+            {
+                "step_number": 1,
+                "highlight_lines": [1],
+                "explanation": "This defines a function...",
+                "question": {
+                    "prompt": "What does this function return?",
+                    "options": ["hello", "world", "None", "Error"],
+                    "correct_index": 0,
+                    "explanation": "The function returns 'hello'"
+                }
+            }
+        ]
+    }
+}
+
+FOR TIMED_CHALLENGE EXERCISES:
+{
+    "exercise_type": "timed_challenge",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {
+        "beginner": { "instructions": "...", "hints": [] },
+        "intermediate": { "instructions": "...", "hints": [] },
+        "advanced": { "instructions": "...", "hints": [] }
+    },
+    "timed_challenge_data": {
+        "questions": [
+            {
+                "id": "q1",
+                "question": "What is...?",
+                "options": ["A", "B", "C", "D"],
+                "correct_answer": "A",
+                "points": 10,
+                "explanation": "Because..."
+            }
+        ],
+        "total_time_seconds": 120,
+        "passing_score": 70,
+        "max_score": 100,
+        "lives": 3,
+        "show_correct_on_wrong": true,
+        "enable_streak_multiplier": true
+    }
+}
+
 Return ONLY the JSON, no other text."""
 
 
@@ -484,9 +591,217 @@ EXERCISE_TYPE_GUIDANCE = {
         'For ai_prompt exercises, create a conversational scenario where '
         'the user interacts with an AI assistant to apply the lesson concepts.'
     ),
+    'drag_sort': (
+        'For drag_sort exercises, create ordering or categorization challenges:\n'
+        '- variant: "sequence" - Order steps in correct sequence (e.g., git workflow steps)\n'
+        '- variant: "match" - Match items to their pairs (e.g., terms to definitions)\n'
+        '- variant: "categorize" - Sort items into categories (e.g., classify by type)\n'
+        'Best for: processes, workflows, categorizing concepts, term matching'
+    ),
+    'connect_nodes': (
+        'For connect_nodes exercises, create visual relationship puzzles:\n'
+        '- Use nodes with clear labels and meaningful connections\n'
+        '- Position nodes in a readable layout (x,y percentages 0-100)\n'
+        '- Define expected_connections that the user must discover\n'
+        'Best for: system architecture, data flows, concept relationships'
+    ),
+    'code_walkthrough': (
+        'For code_walkthrough exercises, create guided code exploration:\n'
+        '- Provide complete working code to analyze (not write)\n'
+        '- Create 3-5 steps highlighting different parts of the code\n'
+        '- Include optional quiz questions at key steps\n'
+        'Best for: understanding existing code, learning patterns, analyzing examples'
+    ),
+    'timed_challenge': (
+        'For timed_challenge exercises, create fast-paced quiz challenges:\n'
+        '- Create 5-10 multiple choice questions with 4 options each\n'
+        '- Set appropriate time limits and passing score\n'
+        '- Include explanations for wrong answers\n'
+        'Best for: knowledge checks, test prep, gamified review'
+    ),
 }
 
 
 def get_exercise_type_guidance(exercise_type: str) -> str:
     """Get exercise type-specific guidance for the AI."""
     return EXERCISE_TYPE_GUIDANCE.get(exercise_type, '')
+
+
+# System prompt for interactive exercise generation (new types)
+INTERACTIVE_EXERCISE_PROMPT = """You are generating an interactive exercise for a learning lesson.
+
+Generate an exercise of type: {exercise_type}
+
+Return ONLY valid JSON. The structure depends on the exercise type:
+
+=== FOR drag_sort EXERCISES ===
+{{
+    "exercise_type": "drag_sort",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {{
+        "beginner": {{ "instructions": "Step-by-step with guidance", "hints": ["hint1", "hint2"] }},
+        "intermediate": {{ "instructions": "Concise instructions", "hints": ["hint1"] }},
+        "advanced": {{ "instructions": "Brief task", "hints": [] }}
+    }},
+    "drag_sort_data": {{
+        "variant": "sequence|match|categorize",
+        "items": [
+            {{ "id": "item1", "content": "Item text", "code": "optional code", "code_language": "python" }},
+            {{ "id": "item2", "content": "Item text" }}
+        ],
+        "correct_order": ["item2", "item1"],  // For sequence variant
+        "correct_matches": {{"item1": "target1"}},  // For match variant
+        "categories": [{{"id": "cat1", "label": "Category 1"}}],  // For categorize
+        "correct_categories": {{"item1": "cat1"}},  // For categorize
+        "show_immediate_feedback": true
+    }}
+}}
+
+=== FOR connect_nodes EXERCISES ===
+{{
+    "exercise_type": "connect_nodes",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {{
+        "beginner": {{ "instructions": "...", "hints": ["hint1", "hint2"] }},
+        "intermediate": {{ "instructions": "...", "hints": ["hint1"] }},
+        "advanced": {{ "instructions": "...", "hints": [] }}
+    }},
+    "connect_nodes_data": {{
+        "nodes": [
+            {{ "id": "n1", "label": "Node 1", "position": {{"x": 20, "y": 30}}, "node_type": "concept" }},
+            {{ "id": "n2", "label": "Node 2", "position": {{"x": 80, "y": 30}}, "node_type": "action" }}
+        ],
+        "expected_connections": [
+            {{ "from_id": "n1", "to_id": "n2", "label": "optional" }}
+        ],
+        "preset_connections": [],
+        "show_connection_hints": true,
+        "one_to_one": true
+    }}
+}}
+
+node_type options: concept, action, data, decision, start, end
+
+=== FOR code_walkthrough EXERCISES ===
+{{
+    "exercise_type": "code_walkthrough",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {{
+        "beginner": {{ "instructions": "...", "hints": ["hint1", "hint2"] }},
+        "intermediate": {{ "instructions": "...", "hints": ["hint1"] }},
+        "advanced": {{ "instructions": "...", "hints": [] }}
+    }},
+    "code_walkthrough_data": {{
+        "code": "def example():\\n    return 'hello'",
+        "language": "python",
+        "steps": [
+            {{
+                "step_number": 1,
+                "highlight_lines": [1],
+                "explanation": "This line defines a function...",
+                "annotation": {{ "line": 1, "text": "Function definition", "type": "info" }},
+                "question": {{
+                    "prompt": "What does this function return?",
+                    "options": ["hello", "world", "None", "Error"],
+                    "correct_index": 0,
+                    "explanation": "The function returns the string 'hello'"
+                }}
+            }}
+        ],
+        "auto_advance_ms": 0,
+        "show_variable_panel": false
+    }}
+}}
+
+=== FOR timed_challenge EXERCISES ===
+{{
+    "exercise_type": "timed_challenge",
+    "scenario": "Real-world context (1-2 sentences)",
+    "success_message": "Congratulations message when completed",
+    "content_by_level": {{
+        "beginner": {{ "instructions": "...", "hints": [] }},
+        "intermediate": {{ "instructions": "...", "hints": [] }},
+        "advanced": {{ "instructions": "...", "hints": [] }}
+    }},
+    "timed_challenge_data": {{
+        "questions": [
+            {{
+                "id": "q1",
+                "question": "What is...?",
+                "code": "optional code snippet",
+                "code_language": "python",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct_answer": "Option A",
+                "points": 10,
+                "time_limit_seconds": 30,
+                "explanation": "Why this is correct"
+            }}
+        ],
+        "total_time_seconds": 120,
+        "passing_score": 70,
+        "max_score": 100,
+        "lives": 3,
+        "show_correct_on_wrong": true,
+        "enable_streak_multiplier": true
+    }}
+}}
+
+CONTEXT FOR THIS LESSON:
+Lesson Title: {lesson_title}
+Key Concepts: {key_concepts}
+Skill Level: {skill_level}
+
+Generate an engaging, educational {exercise_type} exercise that tests the key concepts.
+Return ONLY valid JSON, no other text."""
+
+
+# Map exercise type to best use cases for AI selection
+EXERCISE_TYPE_RECOMMENDATIONS = {
+    'terminal': ['shell commands', 'CLI tools', 'git operations', 'npm/pip commands'],
+    'code': ['writing code', 'fixing bugs', 'implementing functions', 'completing snippets'],
+    'ai_prompt': ['prompt engineering', 'conversational AI', 'non-technical topics'],
+    'drag_sort': ['ordering steps', 'matching terms', 'categorizing concepts', 'workflows'],
+    'connect_nodes': ['system architecture', 'data flow', 'relationships', 'dependencies'],
+    'code_walkthrough': ['reading code', 'understanding patterns', 'code review', 'analysis'],
+    'timed_challenge': ['quick review', 'test prep', 'gamified learning', 'knowledge check'],
+}
+
+
+def get_recommended_exercise_type(lesson_content: str, key_concepts: list[str]) -> str:
+    """Suggest the best exercise type based on lesson content and concepts."""
+    content_lower = lesson_content.lower()
+    concepts_str = ' '.join(key_concepts).lower()
+
+    # Check for code-related content
+    if any(term in content_lower for term in ['write', 'implement', 'function', 'class', 'code']):
+        if 'read' in content_lower or 'understand' in content_lower or 'analyze' in content_lower:
+            return 'code_walkthrough'
+        return 'code'
+
+    # Check for terminal/CLI content
+    if any(term in content_lower for term in ['command', 'terminal', 'shell', 'cli', 'npm', 'pip']):
+        return 'terminal'
+
+    # Check for git content
+    if 'git' in content_lower:
+        if any(term in concepts_str for term in ['workflow', 'process', 'steps']):
+            return 'drag_sort'
+        return 'terminal'
+
+    # Check for architecture/flow content
+    if any(term in content_lower for term in ['architecture', 'flow', 'diagram', 'system']):
+        return 'connect_nodes'
+
+    # Check for ordering/process content
+    if any(term in concepts_str for term in ['steps', 'order', 'sequence', 'workflow', 'process']):
+        return 'drag_sort'
+
+    # Check for review/test content
+    if any(term in content_lower for term in ['review', 'test', 'quiz', 'check']):
+        return 'timed_challenge'
+
+    # Default to ai_prompt for conceptual content
+    return 'ai_prompt'

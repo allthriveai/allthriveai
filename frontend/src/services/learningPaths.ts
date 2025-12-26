@@ -208,7 +208,17 @@ export interface ExerciseContentByLevel {
  * Interactive exercise for "Try It Yourself" sections
  */
 export interface LessonExercise {
-  exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review' | 'code';
+  exerciseType:
+    | 'terminal'
+    | 'git'
+    | 'ai_prompt'
+    | 'code_review'
+    | 'code'
+    // New interactive exercise types
+    | 'drag_sort'
+    | 'connect_nodes'
+    | 'code_walkthrough'
+    | 'timed_challenge';
   scenario: string;
   expectedInputs: string[]; // Regex patterns for validation (terminal/git)
   expectedPatterns?: string[]; // Regex patterns for code exercises
@@ -219,6 +229,100 @@ export interface LessonExercise {
   /** Starter code for code exercises */
   starterCode?: string;
   contentByLevel: Record<SkillLevel, ExerciseContentByLevel>;
+
+  // New interactive exercise data (only one populated based on exerciseType)
+  /** Data for drag_sort exercise type */
+  dragSortData?: DragSortExerciseData;
+  /** Data for connect_nodes exercise type */
+  connectNodesData?: ConnectNodesExerciseData;
+  /** Data for code_walkthrough exercise type */
+  codeWalkthroughData?: CodeWalkthroughExerciseData;
+  /** Data for timed_challenge exercise type */
+  timedChallengeData?: TimedChallengeExerciseData;
+}
+
+// =============================================================================
+// NEW INTERACTIVE EXERCISE DATA TYPES
+// =============================================================================
+
+/** Drag and sort exercise data */
+export interface DragSortExerciseData {
+  variant: 'sequence' | 'match' | 'categorize';
+  items: Array<{
+    id: string;
+    content: string;
+    code?: string;
+    codeLanguage?: 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+    category?: string;
+  }>;
+  correctOrder?: string[];
+  correctMatches?: Record<string, string>;
+  categories?: Array<{ id: string; label: string; description?: string }>;
+  correctCategories?: Record<string, string>;
+  showImmediateFeedback?: boolean;
+}
+
+/** Connect nodes exercise data */
+export interface ConnectNodesExerciseData {
+  nodes: Array<{
+    id: string;
+    label: string;
+    position: { x: number; y: number };
+    nodeType: 'concept' | 'action' | 'data' | 'decision' | 'start' | 'end';
+    isFixed?: boolean;
+    side?: 'left' | 'right' | 'any';
+  }>;
+  expectedConnections: Array<{ fromId: string; toId: string; label?: string }>;
+  presetConnections?: Array<{ fromId: string; toId: string; label?: string }>;
+  showConnectionHints?: boolean;
+  oneToOne?: boolean;
+}
+
+/** Code walkthrough exercise data */
+export interface CodeWalkthroughExerciseData {
+  code: string;
+  language: 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+  steps: Array<{
+    stepNumber: number;
+    highlightLines: number[];
+    explanation: string;
+    annotation?: {
+      line: number;
+      text: string;
+      type: 'info' | 'important' | 'warning';
+    };
+    question?: {
+      prompt: string;
+      options: string[];
+      correctIndex: number;
+      explanation: string;
+    };
+  }>;
+  autoAdvanceMs?: number;
+  showVariablePanel?: boolean;
+  variableStates?: Record<number, Record<string, string>>;
+}
+
+/** Timed challenge exercise data */
+export interface TimedChallengeExerciseData {
+  questions: Array<{
+    id: string;
+    question: string;
+    code?: string;
+    codeLanguage?: 'python' | 'javascript' | 'typescript';
+    options: string[];
+    correctAnswer: string;
+    points: number;
+    timeLimitSeconds?: number;
+    explanation?: string;
+  }>;
+  totalTimeSeconds?: number;
+  defaultTimePerQuestion?: number;
+  passingScore: number;
+  maxScore: number;
+  lives?: number;
+  showCorrectOnWrong?: boolean;
+  enableStreakMultiplier?: boolean;
 }
 
 /**

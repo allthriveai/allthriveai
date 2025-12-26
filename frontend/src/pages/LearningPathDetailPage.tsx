@@ -2,7 +2,7 @@
  * Learning Path Detail Page
  *
  * Displays a generated learning path by its slug with split-pane layout.
- * Curriculum on left, Ember chat panel on right when active.
+ * Curriculum on left, Ava chat panel on right when active.
  * Accessed via /:username/learn/:slug
  */
 import { useState, useEffect, useRef } from 'react';
@@ -61,6 +61,7 @@ import { SimulatedTerminal } from '@/components/learning/SimulatedTerminal';
 import { InlineAIChat } from '@/components/learning/InlineAIChat';
 import { LessonQuiz } from '@/components/learning/LessonQuiz';
 import { CodeEditorExercise } from '@/components/learning/CodeEditorExercise';
+import { ExerciseRenderer } from '@/components/learning/exercises/ExerciseRenderer';
 import type { Tool } from '@/types/models';
 
 /**
@@ -561,10 +562,10 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
   const [isAddingProject, setIsAddingProject] = useState(false);
   const projects = item.projects || [];
 
-  // Open Ember with project creation context
+  // Open Ava with project creation context
   const handleShareProject = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent toggle when clicking button
-    // Dispatch custom event to open Ember chat in project mode
+    // Dispatch custom event to open Ava chat in project mode
     window.dispatchEvent(new CustomEvent('openAddProject'));
   };
 
@@ -744,6 +745,24 @@ function getRelevantExerciseTypes(lessonTitle: string): string[] {
 
   // Default: all types available
   return ['terminal', 'ai_prompt', 'code'];
+}
+
+/**
+ * Get badge text for exercise type
+ */
+function getExerciseBadge(exerciseType?: string): string {
+  switch (exerciseType) {
+    case 'terminal': return 'Terminal';
+    case 'git': return 'Git';
+    case 'code': return 'Code';
+    case 'ai_prompt': return 'AI Chat';
+    case 'code_review': return 'Review';
+    case 'drag_sort': return 'Interactive';
+    case 'connect_nodes': return 'Puzzle';
+    case 'code_walkthrough': return 'Walkthrough';
+    case 'timed_challenge': return 'Challenge';
+    default: return 'Practice';
+  }
 }
 
 /**
@@ -1212,11 +1231,22 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
               title="Exercise"
               icon={faCode}
               iconColor="text-emerald-500"
-              badge={content.exercise?.exerciseType === 'terminal' ? 'Terminal' : content.exercise?.exerciseType === 'code' ? 'Code' : 'Practice'}
+              badge={getExerciseBadge(content.exercise?.exerciseType)}
             >
-              {content.exercise && content.exercise.exerciseType === 'ai_prompt' ? (
+              {content.exercise && ['drag_sort', 'connect_nodes', 'code_walkthrough', 'timed_challenge'].includes(content.exercise.exerciseType) ? (
+                /* New interactive exercise types use ExerciseRenderer */
+                <ExerciseRenderer
+                  exercise={content.exercise}
+                  skillLevel={skillLevel}
+                  lessonId={`lesson-${item.order}`}
+                  pathSlug={pathSlug}
+                  onAskForHelp={handleOpenChat}
+                  onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+                />
+              ) : content.exercise && content.exercise.exerciseType === 'ai_prompt' ? (
                 /* AI Prompt exercises use inline chat */
                 <InlineAIChat
+                  // @ts-expect-error - Type mismatch between LessonExercise and Exercise, safe for ai_prompt type
                   exercise={content.exercise}
                   skillLevel={skillLevel}
                   lessonId={`lesson-${item.order}`}
@@ -1246,6 +1276,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
               ) : content.exercise ? (
                 /* Terminal/Git exercises use SimulatedTerminal */
                 <SimulatedTerminal
+                  // @ts-expect-error - Type mismatch between LessonExercise and Exercise, safe for terminal/git types
                   exercise={content.exercise}
                   skillLevel={skillLevel}
                   onAskForHelp={handleOpenChat}

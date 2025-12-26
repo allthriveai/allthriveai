@@ -19,7 +19,9 @@ class ExerciseContentByLevel(TypedDict, total=False):
 class LessonExercise(TypedDict, total=False):
     """Interactive exercise for hands-on practice."""
 
-    exercise_type: str  # 'terminal' | 'git' | 'ai_prompt' | 'code_review' | 'code'
+    # 'terminal' | 'git' | 'ai_prompt' | 'code_review' | 'code'
+    # | 'drag_sort' | 'connect_nodes' | 'code_walkthrough' | 'timed_challenge'
+    exercise_type: str
     scenario: str
     expected_inputs: list[str]  # Regex patterns for validation (terminal/ai_prompt)
     success_message: str
@@ -29,6 +31,147 @@ class LessonExercise(TypedDict, total=False):
     language: str | None  # 'python' | 'javascript' | 'html' | 'css'
     starter_code: str | None  # Initial code template for code exercises
     expected_patterns: list[str] | None  # Regex patterns for code validation
+    # New interactive exercise data (only one populated based on exercise_type)
+    drag_sort_data: 'DragSortExerciseData | None'
+    connect_nodes_data: 'ConnectNodesExerciseData | None'
+    code_walkthrough_data: 'CodeWalkthroughExerciseData | None'
+    timed_challenge_data: 'TimedChallengeExerciseData | None'
+
+
+# =============================================================================
+# NEW INTERACTIVE EXERCISE DATA TYPES
+# =============================================================================
+
+
+class DragSortItem(TypedDict, total=False):
+    """Single item in a drag-sort exercise."""
+
+    id: str
+    content: str
+    code: str | None
+    code_language: str | None  # 'python' | 'javascript' | 'typescript' | 'html' | 'css'
+    category: str | None
+
+
+class DragSortCategory(TypedDict, total=False):
+    """Category for categorize variant."""
+
+    id: str
+    label: str
+    description: str | None
+
+
+class DragSortExerciseData(TypedDict, total=False):
+    """Data for drag and sort exercises."""
+
+    variant: str  # 'sequence' | 'match' | 'categorize'
+    items: list[DragSortItem]
+    correct_order: list[str] | None  # For sequence variant
+    correct_matches: dict[str, str] | None  # For match variant
+    categories: list[DragSortCategory] | None  # For categorize variant
+    correct_categories: dict[str, str] | None  # For categorize variant
+    show_immediate_feedback: bool | None
+
+
+class NodePosition(TypedDict):
+    """Position in percentage (0-100) for responsive layout."""
+
+    x: float
+    y: float
+
+
+class PuzzleNode(TypedDict, total=False):
+    """Single node in a connect-nodes exercise."""
+
+    id: str
+    label: str
+    position: NodePosition
+    node_type: str  # 'concept' | 'action' | 'data' | 'decision' | 'start' | 'end'
+    is_fixed: bool | None
+    side: str | None  # 'left' | 'right' | 'any'
+
+
+class NodeConnection(TypedDict, total=False):
+    """Connection between two nodes."""
+
+    from_id: str  # 'from' is reserved in Python
+    to_id: str  # 'to' could work but keeping consistent
+    label: str | None
+
+
+class ConnectNodesExerciseData(TypedDict, total=False):
+    """Data for connect nodes exercises."""
+
+    nodes: list[PuzzleNode]
+    expected_connections: list[NodeConnection]
+    preset_connections: list[NodeConnection] | None
+    show_connection_hints: bool | None
+    one_to_one: bool | None
+
+
+class CodeAnnotation(TypedDict, total=False):
+    """Annotation to show on a specific line."""
+
+    line: int
+    text: str
+    type: str  # 'info' | 'important' | 'warning'
+
+
+class StepQuestion(TypedDict, total=False):
+    """Optional quiz question at a walkthrough step."""
+
+    prompt: str
+    options: list[str]
+    correct_index: int
+    explanation: str
+
+
+class CodeWalkthroughStep(TypedDict, total=False):
+    """Single step in a code walkthrough."""
+
+    step_number: int
+    highlight_lines: list[int]
+    explanation: str
+    annotation: CodeAnnotation | None
+    question: StepQuestion | None
+
+
+class CodeWalkthroughExerciseData(TypedDict, total=False):
+    """Data for code walkthrough exercises."""
+
+    code: str
+    language: str  # 'python' | 'javascript' | 'typescript' | 'html' | 'css'
+    steps: list[CodeWalkthroughStep]
+    auto_advance_ms: int | None
+    show_variable_panel: bool | None
+    variable_states: dict[int, dict[str, str]] | None
+
+
+class ChallengeQuestion(TypedDict, total=False):
+    """Single question in a timed challenge."""
+
+    id: str
+    question: str
+    code: str | None
+    code_language: str | None  # 'python' | 'javascript' | 'typescript'
+    options: list[str]
+    correct_answer: str
+    points: int
+    time_limit_seconds: int | None
+    explanation: str | None
+
+
+class TimedChallengeExerciseData(TypedDict, total=False):
+    """Data for timed challenge exercises."""
+
+    questions: list[ChallengeQuestion]
+    total_time_seconds: int | None
+    default_time_per_question: int | None
+    passing_score: int
+    max_score: int
+    lives: int | None
+    show_correct_on_wrong: bool | None
+    enable_streak_multiplier: bool | None
 
 
 class QuizQuestion(TypedDict, total=False):
