@@ -69,7 +69,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     if len(parts) >= 2:
                         # Add base domain (e.g., allthrive.ai from www.allthrive.ai)
                         allowed_domains.add('.'.join(parts[-2:]))
-            except Exception:  # noqa: S112 - intentionally skip malformed origins
+            except Exception:  # noqa: S112 # nosec B112 - intentionally skip malformed origins
                 continue
 
         # Also allow allthrive.ai and its subdomains in production
