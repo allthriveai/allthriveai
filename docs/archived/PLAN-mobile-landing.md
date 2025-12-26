@@ -69,7 +69,7 @@ Make the UnifiedLanding parallax page work well on mobile by:
 - Chat messages appear directly below the feature description
 - No sticky behavior
 
-**EmberChatPanel:**
+**AvaChatPanel:**
 - Create a simplified mobile version without the full panel chrome
 - Just show the chat bubbles inline
 

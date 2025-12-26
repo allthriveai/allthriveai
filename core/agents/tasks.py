@@ -193,9 +193,9 @@ def _should_persist_conversation(conversation_id: str) -> bool:
     Only sidebar chats are persisted. Project-specific chats are skipped.
 
     Persisted patterns:
-    - ember-chat-{userId}: Main sidebar chat
-    - ember-learn-{userId}: Learn page chat
-    - ember-explore-{userId}: Explore page chat
+    - ava-chat-{userId}: Main sidebar chat
+    - ava-learn-{userId}: Learn page chat
+    - ava-explore-{userId}: Explore page chat
     - learn-{slug}-{userId}: Learning path detail chat
     - avatar-{timestamp}: Avatar generation
     - {timestamp}: Image generation
@@ -210,12 +210,12 @@ def _should_persist_conversation(conversation_id: str) -> bool:
 
 def _generate_conversation_title(conversation_id: str) -> str:
     """Generate human-readable title from conversation_id."""
-    if conversation_id.startswith('ember-chat'):
-        return 'Ember Chat'
-    elif conversation_id.startswith('ember-learn'):
-        return 'Ember Learn Chat'
-    elif conversation_id.startswith('ember-explore'):
-        return 'Ember Explore Chat'
+    if conversation_id.startswith('ava-chat'):
+        return 'Ava Chat'
+    elif conversation_id.startswith('ava-learn'):
+        return 'Ava Learn Chat'
+    elif conversation_id.startswith('ava-explore'):
+        return 'Ava Explore Chat'
     elif conversation_id.startswith('learn-'):
         return 'Learning Path Chat'
     elif conversation_id.startswith('avatar-'):
@@ -225,12 +225,12 @@ def _generate_conversation_title(conversation_id: str) -> str:
 
 def _get_conversation_type(conversation_id: str) -> str:
     """Determine conversation type from ID pattern."""
-    if conversation_id.startswith('ember-chat'):
-        return 'ember_chat'
-    elif conversation_id.startswith('ember-learn'):
-        return 'ember_learn'
-    elif conversation_id.startswith('ember-explore'):
-        return 'ember_explore'
+    if conversation_id.startswith('ava-chat'):
+        return 'ava_chat'
+    elif conversation_id.startswith('ava-learn'):
+        return 'ava_learn'
+    elif conversation_id.startswith('ava-explore'):
+        return 'ava_explore'
     elif conversation_id.startswith('learn-'):
         return 'learning_path'
     elif conversation_id.startswith('avatar-'):
@@ -249,7 +249,7 @@ def persist_conversation_message(
     """Async task to persist chat messages to database.
 
     Runs after streaming completes - no impact on chat latency.
-    Only persists sidebar chats (Ember, Sage, avatar, image gen).
+    Only persists sidebar chats (Ava, Sage, avatar, image gen).
     Skips project-specific conversations.
     """
     from .models import Conversation, Message
@@ -630,9 +630,9 @@ def _process_with_orchestrator(
     result = {'project_created': False, 'intent': 'orchestrated'}
 
     # ==========================================================================
-    # UNIFIED EMBER AGENT ROUTING
+    # UNIFIED AVA AGENT ROUTING
     # ==========================================================================
-    # All requests now go to the unified Ember agent which has all 27 tools.
+    # All requests now go to the unified Ava agent which has all 27 tools.
     # Only exception: Image generation uses Gemini (different provider).
     # ==========================================================================
 
@@ -669,29 +669,29 @@ def _process_with_orchestrator(
             channel_layer=channel_layer,
         )
 
-    # Everything else → Unified Ember agent (has all 27 tools)
+    # Everything else → Unified Ava agent (has all 27 tools)
     # - Discovery tools (search, recommend, trending, similar, details)
     # - Learning tools (progress, hints, explain, suggest, quiz)
     # - Project tools (create, import, media, scrape, architecture)
     # - Orchestration tools (navigate, highlight, toast, tray, trigger)
     # - Profile tools (gather, generate, save)
-    is_ember_conversation = conversation_id.startswith('ember-')
-    logger.info(f'Routing to unified Ember agent (is_ember_conversation={is_ember_conversation})')
-    result['intent'] = 'ember-unified'
-    return _process_with_ember(
+    is_ava_conversation = conversation_id.startswith('ava-')
+    logger.info(f'Routing to unified Ava agent (is_ava_conversation={is_ava_conversation})')
+    result['intent'] = 'ava-unified'
+    return _process_with_ava(
         conversation_id=conversation_id,
         message=message,
         user=user,
         channel_name=channel_name,
         channel_layer=channel_layer,
-        is_onboarding=is_ember_conversation,  # Only EmberHomePage conversations are onboarding
+        is_onboarding=is_ava_conversation,  # Only AvaHomePage conversations are onboarding
         conversation_history=conversation_history,  # Pass conversation history for context
         lesson_context=lesson_context,  # Pass lesson context for learning path chat
         image_url=image_url,  # Pass image URL for multimodal messages
     )
 
 
-def _process_with_ember(
+def _process_with_ava(
     conversation_id: str,
     message: str,
     user,
@@ -703,7 +703,7 @@ def _process_with_ember(
     image_url: str | None = None,
 ) -> dict:
     """
-    Process message using the unified Ember agent with all tools.
+    Process message using the unified Ava agent with all tools.
 
     This agent has access to ALL tools:
     - Discovery (5 tools) - search, recommend, trending, similar, details
@@ -727,10 +727,10 @@ def _process_with_ember(
     Returns:
         Dict with processing results
     """
-    from services.agents.ember import stream_ember_response
+    from services.agents.ava import stream_ava_response
 
-    logger.info(f'Processing with unified Ember agent: conversation={conversation_id}, onboarding={is_onboarding}')
-    # Note: Ember agent uses LangGraph checkpointing for conversation memory.
+    logger.info(f'Processing with unified Ava agent: conversation={conversation_id}, onboarding={is_onboarding}')
+    # Note: Ava agent uses LangGraph checkpointing for conversation memory.
     # The conversation_id is used as thread_id for persistent state.
 
     async def run_agent():
@@ -741,7 +741,7 @@ def _process_with_ember(
         full_response = []  # Accumulate chunks for persistence
 
         try:
-            async for event in stream_ember_response(
+            async for event in stream_ava_response(
                 user_message=message,
                 user_id=user.id,
                 username=user.username,
@@ -759,9 +759,9 @@ def _process_with_ember(
                     chunk_content = _sanitize_urls(chunk_content)
                     full_response.append(chunk_content)  # Accumulate for persistence
                     logger.debug(
-                        f'[EMBER] Sending chunk to {channel_name}: {chunk_content[:50]}...'
+                        f'[AVA] Sending chunk to {channel_name}: {chunk_content[:50]}...'
                         if len(str(chunk_content)) > 50
-                        else f'[EMBER] Sending chunk: {chunk_content}'
+                        else f'[AVA] Sending chunk: {chunk_content}'
                     )
                     await async_channel_layer.group_send(
                         channel_name,
@@ -784,7 +784,7 @@ def _process_with_ember(
                             'conversation_id': conversation_id,
                         },
                     )
-                    logger.info(f'Ember tool started: {event.get("tool")}')
+                    logger.info(f'Ava tool started: {event.get("tool")}')
 
                 elif event_type == 'tool_end':
                     # Notify frontend that tool completed
@@ -814,7 +814,7 @@ def _process_with_ember(
                             'conversation_id': conversation_id,
                         },
                     )
-                    logger.info(f'Ember tool ended: {tool_name}')
+                    logger.info(f'Ava tool ended: {tool_name}')
 
                 elif event_type == 'complete':
                     # Persist conversation to database (async via Celery)
@@ -826,11 +826,11 @@ def _process_with_ember(
                             user_message=message,
                             assistant_message=accumulated_text,
                         )
-                    logger.info('Ember agent stream completed')
+                    logger.info('Ava agent stream completed')
 
                 elif event_type == 'error':
                     error_msg = event.get('message', 'Unknown error')
-                    logger.error(f'Ember agent error: {error_msg}')
+                    logger.error(f'Ava agent error: {error_msg}')
                     await async_channel_layer.group_send(
                         channel_name,
                         {
@@ -844,7 +844,7 @@ def _process_with_ember(
                     # This prevents duplicate completed events
 
         except Exception as e:
-            logger.error(f'Ember agent streaming error: {e}', exc_info=True)
+            logger.error(f'Ava agent streaming error: {e}', exc_info=True)
             await async_channel_layer.group_send(
                 channel_name,
                 {
@@ -862,7 +862,7 @@ def _process_with_ember(
         _run_async(run_agent())
     except Exception as e:
         # This catches errors from the async runner itself (rare)
-        logger.error(f'Ember agent error: {e}', exc_info=True)
+        logger.error(f'Ava agent error: {e}', exc_info=True)
         async_to_sync(channel_layer.group_send)(
             channel_name,
             {
@@ -875,7 +875,7 @@ def _process_with_ember(
         # Don't send 'completed' here - the task function will send it
 
     # Note: Conversation history is handled by PostgreSQL checkpointer,
-    # so no Redis caching needed for Ember responses.
+    # so no Redis caching needed for Ava responses.
 
     return {}
 

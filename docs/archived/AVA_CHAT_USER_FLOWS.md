@@ -1,12 +1,12 @@
-# Ember Chat User Flows
+# Ava Chat User Flows
 
-Complete documentation of all user interaction paths in the Ember chat interface.
+Complete documentation of all user interaction paths in the Ava chat interface.
 
 ---
 
 ## Overview
 
-Ember chat has two layouts:
+Ava chat has two layouts:
 
 - **Embedded Chat (Home Page)** - Full-page chat with personalized "feeling pills"
 - **Sidebar Chat** - Sliding panel with context-aware quick actions
@@ -40,11 +40,11 @@ Time-based greeting prefix + randomized message:
 │                           NEW USER ONBOARDING                                │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-User Opens Ember Chat (first time)
+User Opens Ava Chat (first time)
         │
         ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  "Hi, {name}! I'm Ember, your guide throughout your All Thrive journey."    │
+│  "Hi, {name}! I'm Ava, your guide throughout your All Thrive journey."    │
 │                                                                              │
 │  "As you explore AI and our community, I'll be learning about you to give   │
 │   you a more personalized experience."                                       │
@@ -103,7 +103,7 @@ Clicking "Share something I've been working on" triggers this flow:
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│          Ember: "Great! I'd love to see what you've been creating."         │
+│          Ava: "Great! I'd love to see what you've been creating."         │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -225,7 +225,7 @@ For users setting up their learning preferences:
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  Ember: "Hey there! I'm Ember, your AI learning companion."                 │
+│  Ava: "Hey there! I'm Ava, your AI learning companion."                 │
 │                                                                              │
 │  "What brings you here today? This helps me personalize your learning path."│
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -257,7 +257,7 @@ For users setting up their learning preferences:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           USER OPENS EMBER CHAT                              │
+│                           USER OPENS AVA CHAT                              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                     ┌───────────────┴───────────────┐
@@ -346,7 +346,7 @@ ALWAYS AVAILABLE:
 
 ```
 ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                                            EMBER CHAT - COMPLETE USER FLOW MAP                                                         ║
+║                                                            AVA CHAT - COMPLETE USER FLOW MAP                                                         ║
 ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 
                                                                     ┌─────────────────┐
@@ -363,7 +363,7 @@ ALWAYS AVAILABLE:
                         ┌─────────────────────────────────────────┐                                         │
                         │           ONBOARDING SEQUENCE           │                                         │
                         │                                         │                                         │
-                        │  "Hi! I'm Ember, your guide..."         │                                         │
+                        │  "Hi! I'm Ava, your guide..."         │                                         │
                         │  "I'll be learning about you..."        │                                         │
                         │  "Let's create your avatar."            │                                         │
                         │                                         │                                         │
@@ -464,7 +464,7 @@ ALWAYS AVAILABLE:
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                                         PROJECT IMPORT OPTIONS (Detail)                                                                │
 │                                                                                                                                                        │
-│                                          Ember: "Great! I'd love to see what you've been creating."                                                    │
+│                                          Ava: "Great! I'd love to see what you've been creating."                                                    │
 │                                                                                                                                                        │
 │   ┌─────────────────────────────────────────┐  ┌─────────────────────────────────────────┐  ┌─────────────────────────────────────────┐               │
 │   │      Connect to an integration          │  │           Paste in a URL                 │  │           Upload a project              │               │
@@ -579,7 +579,7 @@ ALWAYS AVAILABLE:
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                                         LEARNING GOAL SELECTION                                                                        │
 │                                                                                                                                                        │
-│                                          Ember: "Hey there! I'm Ember, your AI learning companion."                                                    │
+│                                          Ava: "Hey there! I'm Ava, your AI learning companion."                                                    │
 │                                          "What brings you here today? This helps me personalize your learning path."                                   │
 │                                                                                                                                                        │
 │   ┌───────────────────────────────────────┐  ┌───────────────────────────────────────┐  ┌───────────────────────────────────────┐                     │
@@ -613,7 +613,7 @@ ALWAYS AVAILABLE:
 │   │           Chat Input                  │  │           Drag & Drop                 │  │          Slash Commands               │                     │
 │   │                                       │  │                                       │  │                                       │                     │
 │   │   Free-form text input                │  │   Drop files anywhere in chat         │  │   /clear - Clear conversation        │                     │
-│   │   → Ember responds conversationally   │  │   → Triggers upload flow              │  │   → Resets to greeting                │                     │
+│   │   → Ava responds conversationally   │  │   → Triggers upload flow              │  │   → Resets to greeting                │                     │
 │   └───────────────────────────────────────┘  └───────────────────────────────────────┘  └───────────────────────────────────────┘                     │
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -638,6 +638,6 @@ Frontend components:
 - `frontend/src/components/chat/messages/ProjectImportOptionsMessage.tsx` - Import options
 
 Backend:
-- `services/agents/ember/agent.py` - Main Ember agent
+- `services/agents/ember/agent.py` - Main Ava agent
 - `services/agents/ember/prompts.py` - System prompts
 - `services/agents/ember/tools.py` - Available tools

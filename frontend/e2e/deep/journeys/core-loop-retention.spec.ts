@@ -21,7 +21,7 @@ import {
   getGamificationState,
   getDailyQuests,
   getAchievements,
-  goToHomeAndWaitForEmber,
+  goToHomeAndWaitForAva,
   JOURNEY_TIMEOUT,
   PAGE_LOAD_WAIT,
   API_WAIT,
@@ -40,7 +40,7 @@ test.describe('Core Loop Retention Journey', () => {
     console.log('Step 1: Logging in and checking initial state...');
 
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     const homeContent = await getPageContent(page);
     assertNoTechnicalErrors(homeContent, 'home page');

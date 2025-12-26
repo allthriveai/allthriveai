@@ -1,7 +1,7 @@
 /**
  * Platform Walkthrough Tour Definition
  *
- * A guided tour of All Thrive's main features, led by Ember the dragon.
+ * A guided tour of All Thrive's main features, led by Ava the AI guide.
  * This tour navigates users to actual pages with modal overlays explaining each feature.
  */
 
@@ -14,7 +14,7 @@ import type { TourDefinition } from './types';
 export const platformWalkthroughTour: TourDefinition = {
   id: 'platform_walkthrough',
   title: 'Platform Tour',
-  description: 'Let Ember show you around All Thrive.',
+  description: 'Let Ava show you around All Thrive.',
   completionPoints: 100,
   // NOTE: targetPath means "where to navigate AFTER this step" (when clicking Next)
   steps: [

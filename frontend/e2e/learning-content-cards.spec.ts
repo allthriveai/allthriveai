@@ -20,7 +20,7 @@ const TOOL_RESPONSE_TIMEOUT = 45000;
  * Helper: Send a chat message and wait for response
  */
 async function sendChatMessage(page: Page, message: string) {
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
   await chatInput.fill(message);

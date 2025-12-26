@@ -123,6 +123,22 @@ urlpatterns = [
         views.RegenerateExerciseView.as_view(),
         name='regenerate-exercise',
     ),
+    # Multiple exercises per lesson endpoints
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/add-exercise/',
+        views.AddExerciseView.as_view(),
+        name='add-exercise',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/remove-exercise/',
+        views.RemoveExerciseView.as_view(),
+        name='remove-exercise',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/regenerate-specific-exercise/',
+        views.RegenerateSpecificExerciseView.as_view(),
+        name='regenerate-specific-exercise',
+    ),
     # Lesson rating endpoints
     path(
         'lessons/<int:project_id>/rate/',

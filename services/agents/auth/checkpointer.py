@@ -88,7 +88,7 @@ def get_checkpointer(use_postgres: bool = True, allow_fallback: bool | None = No
     Args:
         use_postgres: Use PostgreSQL checkpointer (default: True)
         allow_fallback: If True, falls back to MemorySaver on error.
-                       If None (default), reads from EMBER_ALLOW_MEMORY_FALLBACK setting
+                       If None (default), reads from AVA_ALLOW_MEMORY_FALLBACK setting
                        (defaults to False in production).
 
     Returns:
@@ -104,7 +104,7 @@ def get_checkpointer(use_postgres: bool = True, allow_fallback: bool | None = No
 
     # Determine fallback behavior from settings if not explicitly provided
     if allow_fallback is None:
-        allow_fallback = getattr(settings, 'EMBER_ALLOW_MEMORY_FALLBACK', False)
+        allow_fallback = getattr(settings, 'AVA_ALLOW_MEMORY_FALLBACK', False)
 
     if use_postgres:
         try:

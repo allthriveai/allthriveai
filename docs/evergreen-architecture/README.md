@@ -40,7 +40,7 @@ Unlike time-bound implementation docs (which go in `/docs/archived/`), these doc
 | [11-E2E-USER-JOURNEY-TESTS.md](./11-E2E-USER-JOURNEY-TESTS.md) | ✅ Complete | E2E TDD tests for user journey workflows |
 | [12-BILLING-ARCHITECTURE.md](./12-BILLING-ARCHITECTURE.md) | ✅ Complete | Billing, pricing, tokens, credit packs, AI guardrails |
 | [13-TAXONOMY-SYSTEM.md](./13-TAXONOMY-SYSTEM.md) | ✅ Complete | Tag taxonomy, 16 tag types, learning context |
-| [14-UNIFIED-CHAT-ARCHITECTURE.md](./14-UNIFIED-CHAT-ARCHITECTURE.md) | ✅ Complete | Unified chat system, Ember agent, WebSocket protocol |
+| [14-UNIFIED-CHAT-ARCHITECTURE.md](./14-UNIFIED-CHAT-ARCHITECTURE.md) | ✅ Complete | Unified chat system, Ava agent, WebSocket protocol |
 | [15-ENGAGEMENT-TRACKING.md](./15-ENGAGEMENT-TRACKING.md) | ✅ Complete | Project views, clicks, engagement velocity tracking |
 | [16-PERSONALIZATION-ENGINE.md](./16-PERSONALIZATION-ENGINE.md) | ✅ Complete | For You feed, recommendation algorithm, scoring weights |
 | [17-VECTOR-SEARCH.md](./17-VECTOR-SEARCH.md) | ✅ Complete | Weaviate integration, embeddings, semantic search |

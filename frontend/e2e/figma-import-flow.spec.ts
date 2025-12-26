@@ -41,7 +41,7 @@ test.describe('Figma Import Flow - End to End', () => {
 
     // Mock the import_url tool call response
     // This simulates the agent importing a Figma URL
-    await page.route('**/api/v1/agents/ember/chat/**', async (route) => {
+    await page.route('**/api/v1/agents/ava/chat/**', async (route) => {
       const request = route.request();
       const postData = request.postDataJSON();
 
@@ -70,7 +70,7 @@ test.describe('Figma Import Flow - End to End', () => {
       }
     });
 
-    // Navigate to Ember chat
+    // Navigate to Ava chat
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);

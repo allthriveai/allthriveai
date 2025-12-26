@@ -1,5 +1,5 @@
 """
-Tests for Ember Agent functionality.
+Tests for Ava Agent functionality.
 
 Tests cover:
 - User-friendly error message conversion
@@ -15,7 +15,7 @@ import asyncio
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from services.agents.ember.agent import (
+from services.agents.ava.agent import (
     _estimate_tokens,
     _get_thread_lock,
     _get_user_friendly_error,
@@ -223,7 +223,7 @@ class TestDistributedLock:
     @pytest.mark.asyncio
     async def test_acquire_lock_success(self):
         """Lock acquisition succeeds and returns True."""
-        from services.agents.ember.agent import _acquire_distributed_lock
+        from services.agents.ava.agent import _acquire_distributed_lock
 
         async with _acquire_distributed_lock('test-thread-dist-1') as acquired:
             # Lock should be successfully acquired
@@ -232,7 +232,7 @@ class TestDistributedLock:
     @pytest.mark.asyncio
     async def test_acquire_lock_releases_on_exit(self):
         """Lock is released when context exits."""
-        from services.agents.ember.agent import _acquire_distributed_lock
+        from services.agents.ava.agent import _acquire_distributed_lock
 
         # First acquisition should work
         async with _acquire_distributed_lock('test-thread-release-1') as acquired:
@@ -245,7 +245,7 @@ class TestDistributedLock:
     @pytest.mark.asyncio
     async def test_acquire_lock_timeout(self):
         """Lock acquisition works with timeout parameter."""
-        from services.agents.ember.agent import _acquire_distributed_lock
+        from services.agents.ava.agent import _acquire_distributed_lock
 
         # Test that lock with timeout works (doesn't timeout when not contended)
         async with _acquire_distributed_lock('test-thread-timeout-1', timeout=5) as acquired:
@@ -260,7 +260,7 @@ class TestMessageTruncation:
         from langchain_core.messages import SystemMessage
 
         messages = [
-            SystemMessage(content='You are Ember, an AI assistant.'),
+            SystemMessage(content='You are Ava, an AI assistant.'),
             HumanMessage(content='Message 1'),
             AIMessage(content='Response 1'),
             HumanMessage(content='Message 2'),

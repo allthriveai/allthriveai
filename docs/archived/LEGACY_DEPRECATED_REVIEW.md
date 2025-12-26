@@ -6,8 +6,8 @@
 
 | Location | What | Status |
 |----------|------|--------|
-| `services/agents/discovery/prompts.py:4` | Discovery agent routing | Deprecated - use Ember agent |
-| `services/agents/orchestration/prompts.py:4` | Orchestration agent routing | Deprecated - use Ember agent |
+| `services/agents/discovery/prompts.py:4` | Discovery agent routing | Deprecated - use Ava agent |
+| `services/agents/orchestration/prompts.py:4` | Orchestration agent routing | Deprecated - use Ava agent |
 | `services/agents/learning/components/learner_context.py` | `LearnerContextService` | Use `MemberContextService` |
 | `services/agents/auth/validators.py` | `validate_email`, `validate_name`, etc. | Use `ValidationService` |
 | `services/agents/project/tools.py:2521` | `import_video_project` | Use `create_media_project` |
@@ -25,7 +25,7 @@
 | `frontend/src/lib/generators/github-layout-generator.ts:74` | `LegacyBlock` interface | Old project format |
 | `frontend/src/utils/categoryColors.ts:9` | Legacy colors | Color mapping compatibility |
 | `core/avatars/models.py:24` | `'legacy'` creation mode | Pre-existing avatars |
-| `frontend/src/hooks/useEmberOnboarding.ts:13` | Legacy onboarding IDs | Backwards compatibility |
+| `frontend/src/hooks/useAvaOnboarding.ts:13` | Legacy onboarding IDs | Backwards compatibility |
 
 ## NPM Legacy (Not Code Debt)
 
@@ -33,4 +33,4 @@
 
 ## Notes
 
-The deprecated agent files (`discovery/prompts.py`, `orchestration/prompts.py`) are the most notable - all chat routing now goes through the unified Ember agent as of 2025-12-19.
+The deprecated agent files (`discovery/prompts.py`, `orchestration/prompts.py`) are the most notable - all chat routing now goes through the unified Ava agent as of 2025-12-19.

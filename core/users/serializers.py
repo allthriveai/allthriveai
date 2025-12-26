@@ -364,7 +364,7 @@ class UserTaxonomyPreferencesSerializer(serializers.ModelSerializer):
             learner_profile, _ = LearnerProfile.objects.get_or_create(user=instance)
             learner_profile.current_difficulty_level = skill_level
             learner_profile.save(update_fields=['current_difficulty_level'])
-            # Invalidate member context cache so Ember sees the update
+            # Invalidate member context cache so Ava sees the update
             from services.agents.context.member_context import MemberContextService
 
             MemberContextService.invalidate_cache(instance.id)
@@ -440,10 +440,10 @@ class TeamMemberSerializer(serializers.ModelSerializer):
     def get_team_type(self, obj):
         """Determine if this is a core team member or expert contributor.
 
-        Core team: ember, pip, sage, haven (AI personas)
+        Core team: ava, pip, sage, haven (AI personas)
         Expert contributors: RSS feed curators, YouTube curators, etc.
         """
-        core_team_usernames = {'ember', 'pip', 'sage', 'haven'}
+        core_team_usernames = {'ava', 'pip', 'sage', 'haven'}
         if obj.username.lower() in core_team_usernames:
             return 'core'
         return 'contributor'

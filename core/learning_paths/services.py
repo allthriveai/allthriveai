@@ -351,7 +351,7 @@ class MicroLessonService:
         """
         Generate AI lesson for concept.
 
-        This returns a template that Ember will personalize in conversation.
+        This returns a template that Ava will personalize in conversation.
         """
         difficulty = user_profile.get('current_difficulty_level', 'beginner')
 

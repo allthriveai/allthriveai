@@ -1,5 +1,5 @@
 """
-Unified tool registry for Ember agent.
+Unified tool registry for Ava agent.
 
 Combines all tools from specialized agents into a single registry,
 with unified state injection tracking.
@@ -62,8 +62,8 @@ DISCOVERY_LEARNING_TOOLS = [
     find_people_to_connect,
 ]
 
-# All tools available to Ember
-EMBER_TOOLS = [
+# All tools available to Ava
+AVA_TOOLS = [
     # Discovery + Learning (5 tools) - Unified find_content + learning paths + community
     *DISCOVERY_LEARNING_TOOLS,
     # Project (10+ tools) - Create, import, media, scrape, architecture
@@ -77,7 +77,7 @@ EMBER_TOOLS = [
 ]
 
 # Lookup by tool name
-EMBER_TOOLS_BY_NAME = {tool.name: tool for tool in EMBER_TOOLS}
+AVA_TOOLS_BY_NAME = {tool.name: tool for tool in AVA_TOOLS}
 
 # =============================================================================
 # State Injection Tracking
@@ -118,7 +118,7 @@ TOOL_COUNTS = {
     'project': len(PROJECT_TOOLS),
     'orchestration': len(ORCHESTRATION_TOOLS),
     'profile': len(PROFILE_TOOLS),
-    'total': len(EMBER_TOOLS),
+    'total': len(AVA_TOOLS),
     'needing_state': len(TOOLS_NEEDING_STATE),
 }
 
@@ -137,7 +137,7 @@ def _validate_no_duplicate_tools():
     """Validate that no tools have duplicate names (would silently override)."""
     seen_names = set()
     duplicates = []
-    for tool in EMBER_TOOLS:
+    for tool in AVA_TOOLS:
         if tool.name in seen_names:
             duplicates.append(tool.name)
         seen_names.add(tool.name)

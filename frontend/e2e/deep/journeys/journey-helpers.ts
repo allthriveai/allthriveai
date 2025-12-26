@@ -15,7 +15,7 @@ import {
 } from '../../helpers';
 import {
   sendHomeChat,
-  waitForEmberReady,
+  waitForAvaReady,
   getPageContent,
   DEEP_AI_TIMEOUT,
   WS_CONNECT_TIMEOUT,
@@ -39,7 +39,7 @@ export {
   TEST_USER_2,
   dismissOnboardingModal,
   sendHomeChat,
-  waitForEmberReady,
+  waitForAvaReady,
   getPageContent,
   assertHelpfulResponse,
   assertNoTechnicalErrors,
@@ -278,7 +278,7 @@ export async function getConversations(page: Page): Promise<Array<{ id: string; 
  */
 export async function hasCompletedOnboarding(page: Page): Promise<boolean> {
   const result = await page.evaluate(() => {
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith('ember_onboarding_'));
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith('ava_onboarding_'));
     for (const key of keys) {
       try {
         const data = JSON.parse(localStorage.getItem(key) || '{}');
@@ -301,7 +301,7 @@ export async function resetOnboardingState(page: Page): Promise<void> {
     // Remove all onboarding-related keys
     const keysToRemove = Object.keys(localStorage).filter(
       (k) =>
-        k.startsWith('ember_onboarding_') ||
+        k.startsWith('ava_onboarding_') ||
         k.startsWith('allthrive_onboarding_')
     );
     keysToRemove.forEach((k) => localStorage.removeItem(k));
@@ -313,15 +313,15 @@ export async function resetOnboardingState(page: Page): Promise<void> {
 // ============================================================================
 
 /**
- * Navigate to home and wait for Ember to be ready
+ * Navigate to home and wait for Ava to be ready
  */
-export async function goToHomeAndWaitForEmber(page: Page): Promise<void> {
+export async function goToHomeAndWaitForAva(page: Page): Promise<void> {
   await page.goto('/home');
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(PAGE_LOAD_WAIT);
 
   // Wait for chat input to be available
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 }
 

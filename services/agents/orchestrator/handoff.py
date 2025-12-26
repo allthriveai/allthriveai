@@ -19,7 +19,7 @@ class AgentType(str, Enum):
     IMAGE_GENERATION = 'image_generation'
     SUPPORT = 'support'
     ORCHESTRATION = 'orchestration'  # Site navigation, UI highlighting, action triggers
-    EMBER = 'ember'  # Unified agent with all tools (replaces multi-agent routing)
+    AVA = 'ava'  # Unified agent with all tools (replaces multi-agent routing)
 
 
 @dataclass
@@ -174,7 +174,7 @@ AGENT_CAPABILITIES = {
     ),
     AgentType.ORCHESTRATION: AgentCapability(
         agent_type=AgentType.ORCHESTRATION,
-        name='Ember (Site Guide)',
+        name='Ava (Site Guide)',
         description='Navigates users around the site, highlights UI elements to teach features, '
         'opens panels/trays, and triggers actions. Use for "take me to", "show me where", '
         '"go to", "where is", and site navigation requests.',
@@ -198,13 +198,13 @@ AGENT_CAPABILITIES = {
             'side quest',
         ],
     ),
-    AgentType.EMBER: AgentCapability(
-        agent_type=AgentType.EMBER,
-        name='Ember (Unified Assistant)',
+    AgentType.AVA: AgentCapability(
+        agent_type=AgentType.AVA,
+        name='Ava (Unified Assistant)',
         description='Unified AI assistant with access to ALL tools - discovery, learning, project creation, '
         'navigation, and profile management. Single agent that handles any request without routing overhead.',
-        can_handoff_to=[],  # Ember handles everything, no handoffs needed
-        keywords=[],  # Ember is selected via feature flag, not keywords
+        can_handoff_to=[],  # Ava handles everything, no handoffs needed
+        keywords=[],  # Ava is selected via feature flag, not keywords
     ),
 }
 

@@ -34,10 +34,10 @@ export function DropZone({
       className={cn(
         'p-4 rounded-lg border-2 border-dashed transition-all min-h-[60px]',
         isOver
-          ? 'bg-cyan-500/10 border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.2)]'
+          ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-400 dark:border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.2)]'
           : isOccupied
-            ? 'bg-emerald-500/5 border-emerald-500/30'
-            : 'bg-white/3 border-white/20 hover:border-white/30',
+            ? 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-300 dark:border-emerald-500/30'
+            : 'bg-gray-50 dark:bg-white/3 border-gray-300 dark:border-white/20 hover:border-gray-400 dark:hover:border-white/30',
         disabled && 'opacity-60 cursor-not-allowed'
       )}
       animate={isOver ? { scale: 1.02 } : { scale: 1 }}
@@ -47,12 +47,12 @@ export function DropZone({
         <div>
           <p className={cn(
             'font-medium text-sm',
-            isOccupied ? 'text-emerald-300' : 'text-slate-300'
+            isOccupied ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-600 dark:text-slate-300'
           )}>
             {label}
           </p>
           {description && (
-            <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-500 mt-0.5">{description}</p>
           )}
         </div>
         {isOccupied && (

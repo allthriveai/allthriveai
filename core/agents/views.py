@@ -270,7 +270,7 @@ def clear_conversation(request):
 
     Request body:
     {
-        "conversation_id": "ember-chat-2"  // optional, defaults to ember-chat-{user_id}
+        "conversation_id": "ava-chat-2"  // optional, defaults to ava-chat-{user_id}
     }
 
     This clears:
@@ -281,7 +281,7 @@ def clear_conversation(request):
     from django.db import connection
 
     user_id = request.user.id
-    conversation_id = request.data.get('conversation_id', f'ember-chat-{user_id}')
+    conversation_id = request.data.get('conversation_id', f'ava-chat-{user_id}')
 
     # Security: ensure conversation_id belongs to this user
     if not conversation_id.endswith(f'-{user_id}'):

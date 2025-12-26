@@ -118,7 +118,7 @@ function CurrentFocusCard({ concept, topicName, topicSlug, onConceptClick }: Cur
           className="flex-shrink-0 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg font-medium text-white hover:opacity-90 transition-opacity flex items-center gap-2"
         >
           <FontAwesomeIcon icon={faComments} />
-          Learn with Ember
+          Learn with Ava
         </button>
       </div>
     </motion.div>

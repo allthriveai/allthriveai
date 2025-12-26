@@ -208,6 +208,8 @@ export interface ExerciseContentByLevel {
  * Interactive exercise for "Try It Yourself" sections
  */
 export interface LessonExercise {
+  /** Unique ID for this exercise (UUID) */
+  id: string;
   exerciseType:
     | 'terminal'
     | 'git'
@@ -365,10 +367,39 @@ export interface AILessonContent {
   practicePrompt?: string;
   /** Optional mermaid diagram code for visual learners */
   mermaidDiagram?: string;
-  /** Interactive exercise for hands-on practice */
+  /** @deprecated Use exercises array instead. Single exercise for backwards compatibility */
   exercise?: LessonExercise;
+  /** Array of interactive exercises (supports multiple exercises per lesson) */
+  exercises?: LessonExercise[];
   /** Inline quiz to check understanding */
   quiz?: LessonQuiz;
+}
+
+/**
+ * Helper function to get exercises from lesson content.
+ * Handles backwards compatibility by converting single 'exercise' to array format.
+ *
+ * @param content - The AI lesson content
+ * @returns Array of exercises (may be empty)
+ */
+export function getExercises(content: AILessonContent | undefined): LessonExercise[] {
+  if (!content) return [];
+
+  // Prefer exercises array if it exists
+  if (content.exercises?.length) {
+    return content.exercises;
+  }
+
+  // Fall back to single exercise for backwards compatibility
+  // Return a new object to avoid mutating the original
+  if (content.exercise) {
+    return [{
+      ...content.exercise,
+      id: content.exercise.id || 'legacy',
+    }];
+  }
+
+  return [];
 }
 
 /**
@@ -1163,6 +1194,110 @@ export async function regenerateExercise(
 ): Promise<RegenerateExerciseResponse> {
   const response = await api.post<RegenerateExerciseResponse>(
     `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate-exercise/`,
+    data
+  );
+  return response.data;
+}
+
+// =============================================================================
+// MULTIPLE EXERCISES PER LESSON APIs
+// =============================================================================
+
+/**
+ * Request body for adding a new exercise to a lesson
+ */
+export interface AddExerciseRequest {
+  /** Optional exercise type - AI chooses if omitted */
+  exerciseType?: LessonExercise['exerciseType'];
+  /** Optional skill level for the exercise */
+  skillLevel?: 'beginner' | 'intermediate' | 'advanced';
+}
+
+/**
+ * Response from adding an exercise
+ */
+export interface AddExerciseResponse {
+  success: boolean;
+  exercise: LessonExercise;
+  totalExercises: number;
+}
+
+/**
+ * Request body for removing an exercise
+ */
+export interface RemoveExerciseRequest {
+  exerciseId: string;
+}
+
+/**
+ * Response from removing an exercise
+ */
+export interface RemoveExerciseResponse {
+  success: boolean;
+  remainingCount: number;
+}
+
+/**
+ * Request body for regenerating a specific exercise
+ */
+export interface RegenerateSpecificExerciseRequest {
+  exerciseId: string;
+  /** Optional new exercise type - uses same type if omitted */
+  exerciseType?: LessonExercise['exerciseType'];
+}
+
+/**
+ * Add a new exercise to a lesson (max 3 exercises per lesson)
+ *
+ * @param slug - The learning path slug
+ * @param lessonOrder - The lesson order number
+ * @param data - Optional exercise type and skill level
+ */
+export async function addExercise(
+  slug: string,
+  lessonOrder: number,
+  data?: AddExerciseRequest
+): Promise<AddExerciseResponse> {
+  const response = await api.post<AddExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/add-exercise/`,
+    data || {}
+  );
+  return response.data;
+}
+
+/**
+ * Remove an exercise from a lesson by ID
+ *
+ * @param slug - The learning path slug
+ * @param lessonOrder - The lesson order number
+ * @param exerciseId - The UUID of the exercise to remove
+ */
+export async function removeExercise(
+  slug: string,
+  lessonOrder: number,
+  exerciseId: string
+): Promise<RemoveExerciseResponse> {
+  const response = await api.post<RemoveExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/remove-exercise/`,
+    { exerciseId }
+  );
+  return response.data;
+}
+
+/**
+ * Regenerate a specific exercise by ID with optionally a different type
+ *
+ * @param slug - The learning path slug
+ * @param lessonOrder - The lesson order number
+ * @param data - Exercise ID and optional new type
+ */
+export async function regenerateSpecificExercise(
+  slug: string,
+  lessonOrder: number,
+  data: RegenerateSpecificExerciseRequest
+): Promise<RegenerateExerciseResponse> {
+  const response = await api.post<RegenerateExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate-specific-exercise/`,
     data
   );
   return response.data;

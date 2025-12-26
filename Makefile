@@ -45,7 +45,7 @@ help:
 	@echo "  make createsuperuser - Create Django superuser"
 	@echo ""
 	@echo "Data Management:"
-	@echo "  make seed-core-team  - Seed All Thrive Core Team (Ember, Pip, Sage, Haven)"
+	@echo "  make seed-core-team  - Seed All Thrive Core Team (Ava, Pip, Sage, Haven)"
 	@echo "  make recreate-core-team - Recreate Core Team with latest data"
 	@echo "  make create-pip      - Create Pip bot user only (if doesn't exist)"
 	@echo "  make recreate-pip    - Delete and recreate Pip with latest data"
@@ -104,7 +104,7 @@ help:
 	@echo "  make test-e2e-deep-learning - Run deep learning tests only"
 	@echo "  make test-e2e-deep-journeys - Run deep user journey tests only"
 	@echo "  make setup-test-login - Set password for test user (for Chrome DevTools MCP)"
-	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
+	@echo "  make reset-onboarding - Print JS to reset Ava onboarding (run in browser console)"
 	@echo "  make stop-impersonation - Print JS to stop admin impersonation (run in browser console)"
 	@echo "  make end-all-impersonations - End all active impersonation sessions in database"
 	@echo ""
@@ -288,7 +288,7 @@ recreate-pip:
 	docker-compose exec web python manage.py create_pip --recreate
 
 seed-core-team:
-	@echo "Seeding All Thrive Core Team (Ember, Pip, Sage, Haven)..."
+	@echo "Seeding All Thrive Core Team (Ava, Pip, Sage, Haven)..."
 	docker-compose exec web python manage.py seed_core_team
 
 recreate-core-team:
@@ -865,15 +865,15 @@ setup-test-login:
 
 reset-onboarding:
 	@echo ""
-	@echo "🐉 To reset Ember onboarding, run this in your browser console:"
+	@echo "🌟 To reset Ava onboarding, run this in your browser console:"
 	@echo ""
 	@echo "// Clear all onboarding state for all users"
-	@echo "Object.keys(localStorage).filter(k => k.startsWith('ember_onboarding_')).forEach(k => localStorage.removeItem(k));"
-	@echo "localStorage.removeItem('ember_open_chat');"
+	@echo "Object.keys(localStorage).filter(k => k.startsWith('ava_onboarding_')).forEach(k => localStorage.removeItem(k));"
+	@echo "localStorage.removeItem('ava_open_chat');"
 	@echo "localStorage.removeItem('allthrive_completed_quests');"
 	@echo "location.reload();"
 	@echo ""
-	@echo "This will clear all onboarding state and show the Ember modal again."
+	@echo "This will clear all onboarding state and show the Ava modal again."
 	@echo ""
 
 stop-impersonation:

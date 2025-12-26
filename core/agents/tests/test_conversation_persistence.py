@@ -30,17 +30,17 @@ User = get_user_model()
 class TestShouldPersistConversation:
     """Tests for _should_persist_conversation helper."""
 
-    def test_ember_chat_should_persist(self):
-        """Ember sidebar chat should be persisted."""
-        assert _should_persist_conversation('ember-chat-123') is True
+    def test_ava_chat_should_persist(self):
+        """Ava sidebar chat should be persisted."""
+        assert _should_persist_conversation('ava-chat-123') is True
 
-    def test_ember_learn_should_persist(self):
-        """Ember learn chat should be persisted."""
-        assert _should_persist_conversation('ember-learn-456') is True
+    def test_ava_learn_should_persist(self):
+        """Ava learn chat should be persisted."""
+        assert _should_persist_conversation('ava-learn-456') is True
 
-    def test_ember_explore_should_persist(self):
-        """Ember explore chat should be persisted."""
-        assert _should_persist_conversation('ember-explore-789') is True
+    def test_ava_explore_should_persist(self):
+        """Ava explore chat should be persisted."""
+        assert _should_persist_conversation('ava-explore-789') is True
 
     def test_learning_path_should_persist(self):
         """Learning path detail chat should be persisted."""
@@ -63,14 +63,14 @@ class TestShouldPersistConversation:
 class TestGetConversationType:
     """Tests for _get_conversation_type helper."""
 
-    def test_ember_chat_type(self):
-        assert _get_conversation_type('ember-chat-123') == 'ember_chat'
+    def test_ava_chat_type(self):
+        assert _get_conversation_type('ava-chat-123') == 'ava_chat'
 
-    def test_ember_learn_type(self):
-        assert _get_conversation_type('ember-learn-456') == 'ember_learn'
+    def test_ava_learn_type(self):
+        assert _get_conversation_type('ava-learn-456') == 'ava_learn'
 
-    def test_ember_explore_type(self):
-        assert _get_conversation_type('ember-explore-789') == 'ember_explore'
+    def test_ava_explore_type(self):
+        assert _get_conversation_type('ava-explore-789') == 'ava_explore'
 
     def test_learning_path_type(self):
         assert _get_conversation_type('learn-python-basics-123') == 'learning_path'
@@ -90,14 +90,14 @@ class TestGetConversationType:
 class TestGenerateConversationTitle:
     """Tests for _generate_conversation_title helper."""
 
-    def test_ember_chat_title(self):
-        assert _generate_conversation_title('ember-chat-123') == 'Ember Chat'
+    def test_ava_chat_title(self):
+        assert _generate_conversation_title('ava-chat-123') == 'Ava Chat'
 
-    def test_ember_learn_title(self):
-        assert _generate_conversation_title('ember-learn-456') == 'Ember Learn Chat'
+    def test_ava_learn_title(self):
+        assert _generate_conversation_title('ava-learn-456') == 'Ava Learn Chat'
 
-    def test_ember_explore_title(self):
-        assert _generate_conversation_title('ember-explore-789') == 'Ember Explore Chat'
+    def test_ava_explore_title(self):
+        assert _generate_conversation_title('ava-explore-789') == 'Ava Explore Chat'
 
     def test_learning_path_title(self):
         assert _generate_conversation_title('learn-python-basics-123') == 'Learning Path Chat'
@@ -141,15 +141,15 @@ class TestPersistConversationMessageTask:
         """Task should create conversation and both user/assistant messages."""
         persist_conversation_message(
             user_id=user.id,
-            conversation_id='ember-chat-123',
+            conversation_id='ava-chat-123',
             user_message='Hello, how are you?',
             assistant_message='I am doing well, thank you!',
         )
 
         # Verify conversation was created
-        conversation = Conversation.objects.get(user=user, conversation_id='ember-chat-123')
-        assert conversation.title == 'Ember Chat'
-        assert conversation.conversation_type == 'ember_chat'
+        conversation = Conversation.objects.get(user=user, conversation_id='ava-chat-123')
+        assert conversation.title == 'Ava Chat'
+        assert conversation.conversation_type == 'ava_chat'
 
         # Verify messages were created
         messages = conversation.messages.order_by('created_at')
@@ -164,7 +164,7 @@ class TestPersistConversationMessageTask:
         # First message
         persist_conversation_message(
             user_id=user.id,
-            conversation_id='ember-chat-123',
+            conversation_id='ava-chat-123',
             user_message='First message',
             assistant_message='First response',
         )
@@ -172,16 +172,16 @@ class TestPersistConversationMessageTask:
         # Second message to same conversation
         persist_conversation_message(
             user_id=user.id,
-            conversation_id='ember-chat-123',
+            conversation_id='ava-chat-123',
             user_message='Second message',
             assistant_message='Second response',
         )
 
         # Should still be one conversation
-        assert Conversation.objects.filter(user=user, conversation_id='ember-chat-123').count() == 1
+        assert Conversation.objects.filter(user=user, conversation_id='ava-chat-123').count() == 1
 
         # But now with 4 messages
-        conversation = Conversation.objects.get(user=user, conversation_id='ember-chat-123')
+        conversation = Conversation.objects.get(user=user, conversation_id='ava-chat-123')
         assert conversation.messages.count() == 4
 
     def test_skips_project_conversations(self, user):
@@ -198,7 +198,7 @@ class TestPersistConversationMessageTask:
 
     def test_user_isolation_same_conversation_id(self, user, another_user):
         """Same conversation_id for different users should create separate records."""
-        conversation_id = 'ember-chat-shared-id'
+        conversation_id = 'ava-chat-shared-id'
 
         # User 1 sends a message
         persist_conversation_message(
@@ -290,8 +290,8 @@ class TestConversationViewSet:
         """Create a conversation with messages."""
         conv = Conversation.objects.create(
             user=user,
-            conversation_id='ember-chat-test',
-            conversation_type='ember_chat',
+            conversation_id='ava-chat-test',
+            conversation_type='ava_chat',
             title='Test Conversation',
         )
         Message.objects.create(conversation=conv, role='user', content='Hello')
@@ -317,7 +317,7 @@ class TestConversationViewSet:
         # Create conversation for test user
         Conversation.objects.create(
             user=user,
-            conversation_id='ember-chat-user1',
+            conversation_id='ava-chat-user1',
             title='User 1 Conv',
         )
 
@@ -329,7 +329,7 @@ class TestConversationViewSet:
         )
         Conversation.objects.create(
             user=other_user,
-            conversation_id='ember-chat-user2',
+            conversation_id='ava-chat-user2',
             title='User 2 Conv',
         )
 
@@ -361,14 +361,14 @@ class TestConversationModel:
         """Same user cannot have duplicate conversation_id."""
         Conversation.objects.create(
             user=user,
-            conversation_id='ember-chat-123',
+            conversation_id='ava-chat-123',
             title='First',
         )
 
         with pytest.raises(Exception):  # IntegrityError
             Conversation.objects.create(
                 user=user,
-                conversation_id='ember-chat-123',
+                conversation_id='ava-chat-123',
                 title='Duplicate',
             )
 
@@ -383,14 +383,14 @@ class TestConversationModel:
         # First user
         Conversation.objects.create(
             user=user,
-            conversation_id='ember-chat-shared',
+            conversation_id='ava-chat-shared',
             title='User 1',
         )
 
         # Second user with same conversation_id - should NOT raise
         conv2 = Conversation.objects.create(
             user=other_user,
-            conversation_id='ember-chat-shared',
+            conversation_id='ava-chat-shared',
             title='User 2',
         )
         assert conv2.id is not None
@@ -399,7 +399,7 @@ class TestConversationModel:
         """Conversation should support soft delete."""
         conv = Conversation.objects.create(
             user=user,
-            conversation_id='ember-chat-softdelete',
+            conversation_id='ava-chat-softdelete',
             title='To be deleted',
         )
 
@@ -413,10 +413,10 @@ class TestConversationModel:
         assert Conversation.all_objects.filter(id=conv.id).count() == 1
 
     def test_default_conversation_type(self, user):
-        """Default conversation_type should be ember_chat."""
+        """Default conversation_type should be ava_chat."""
         conv = Conversation.objects.create(
             user=user,
             conversation_id='test-default',
             title='Test',
         )
-        assert conv.conversation_type == 'ember_chat'
+        assert conv.conversation_type == 'ava_chat'

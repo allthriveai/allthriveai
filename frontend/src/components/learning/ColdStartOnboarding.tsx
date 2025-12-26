@@ -1,8 +1,8 @@
 /**
  * ColdStartOnboarding - Learning path cold start onboarding
  *
- * Displays Ember greeting with a single question about learning goals.
- * Uses orange Ember theme with typewriter effect.
+ * Displays Ava greeting with a single question about learning goals.
+ * Uses cyan Ava theme with typewriter effect.
  */
 
 import { useState } from 'react';
@@ -58,8 +58,8 @@ const learningGoalOptions: LearningGoalOption[] = [
   },
 ];
 
-// Ember avatar component
-function EmberAvatar() {
+// Ava avatar component
+function AvaAvatar() {
   return (
     <div className="relative flex-shrink-0 self-start">
       <div className="absolute inset-[-4px] bg-black/60 rounded-full blur-md" />
@@ -110,9 +110,9 @@ export function ColdStartOnboarding({ onComplete }: ColdStartOnboardingProps) {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-2xl"
       >
-        {/* Ember greeting section */}
+        {/* Ava greeting section */}
         <div className="flex gap-4 mb-8">
-          <EmberAvatar />
+          <AvaAvatar />
 
           <div className="flex-1 space-y-4">
             {/* Greeting message with typewriter-like stagger */}
@@ -123,7 +123,7 @@ export function ColdStartOnboarding({ onComplete }: ColdStartOnboardingProps) {
               className="glass-subtle px-5 py-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20"
             >
               <p className="text-orange-100 text-lg leading-relaxed">
-                Hey there! I'm Ember, your AI learning companion.
+                Hey there! I'm Ava, your AI learning companion.
               </p>
             </motion.div>
 

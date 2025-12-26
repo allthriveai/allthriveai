@@ -1,8 +1,8 @@
-# Ember Guided Platform Walkthrough - Implementation Plan
+# Ava Guided Platform Walkthrough - Implementation Plan
 
 ## Overview
 
-Add a **4th adventure option** to the Ember onboarding "Choose Your Adventure" modal: a **Guided Platform Walkthrough** where Ember navigates users through actual platform pages with modal overlays explaining each feature.
+Add a **4th adventure option** to the Ava onboarding "Choose Your Adventure" modal: a **Guided Platform Walkthrough** where Ava navigates users through actual platform pages with modal overlays explaining each feature.
 
 ## Key Decisions
 
@@ -10,14 +10,14 @@ Add a **4th adventure option** to the Ember onboarding "Choose Your Adventure" m
 |----------|--------|-----------|
 | Architecture | Reusable tour system | Extensible for future tours, maintainable |
 | Navigation | Navigate to actual pages | More engaging, users see real platform |
-| UI | Modal overlay on each page | Consistent with Ember patterns, lets personality shine |
+| UI | Modal overlay on each page | Consistent with Ava patterns, lets personality shine |
 | Completion | Counts as 1 of 4 adventures | Integrated with existing quest system |
 | Persistence | localStorage with resume | Users can continue if they leave mid-tour |
 | Skip | Always visible | User can exit anytime |
 
 ## Tour Content (8 Steps)
 
-| Step | Page | Ember Dialogue Theme |
+| Step | Page | Ava Dialogue Theme |
 |------|------|---------------------|
 | 1 | Current | Welcome, let me show you around! |
 | 2 | `/:username` | Your profile - your AI portfolio home base |
@@ -36,7 +36,7 @@ Add a **4th adventure option** to the Ember onboarding "Choose Your Adventure" m
 frontend/src/
 ├── tours/
 │   ├── types.ts                    # Tour type definitions
-│   ├── platformWalkthrough.ts      # Tour step definitions + Ember dialogue
+│   ├── platformWalkthrough.ts      # Tour step definitions + Ava dialogue
 │   └── index.ts                    # Export tours by ID
 ├── hooks/
 │   └── useTour.ts                  # Tour state management + persistence
@@ -45,7 +45,7 @@ frontend/src/
 └── components/
     └── tour/
         ├── TourProvider.tsx        # Provider + modal rendering
-        ├── TourModal.tsx           # Modal overlay with Ember
+        ├── TourModal.tsx           # Modal overlay with Ava
         ├── TourProgress.tsx        # Progress indicator (dots/bar)
         └── index.ts                # Exports
 ```
@@ -54,9 +54,9 @@ frontend/src/
 
 | File | Changes |
 |------|---------|
-| `frontend/src/hooks/useEmberOnboarding.ts` | Add `'platform_tour'` to `AdventureId` type |
-| `frontend/src/components/onboarding/EmberOnboardingModal.tsx` | Add 4th adventure option, trigger tour on selection |
-| `frontend/src/components/onboarding/EmberAdventureBanner.tsx` | Add platform_tour to banner adventures |
+| `frontend/src/hooks/useAvaOnboarding.ts` | Add `'platform_tour'` to `AdventureId` type |
+| `frontend/src/components/onboarding/AvaOnboardingModal.tsx` | Add 4th adventure option, trigger tour on selection |
+| `frontend/src/components/onboarding/AvaAdventureBanner.tsx` | Add platform_tour to banner adventures |
 | `frontend/src/components/layouts/DashboardLayout.tsx` | Wrap with `TourProvider` |
 | `frontend/src/App.tsx` or router | Potentially add tour provider at app level |
 
@@ -72,7 +72,7 @@ export interface TourStep {
   id: string;
   targetPath?: string;        // Page to navigate to
   title: string;
-  dialogue: string | string[]; // Ember's words (typewriter)
+  dialogue: string | string[]; // Ava's words (typewriter)
   features?: string[];         // Bullet points to show
   showDelay?: number;          // Wait after nav (ms)
 }
@@ -95,14 +95,14 @@ export interface TourState {
 
 **1.2 Create platform walkthrough definition** (`/frontend/src/tours/platformWalkthrough.ts`)
 - Define all 8 steps with targetPath, dialogue, features
-- Write Ember's personality-driven dialogue for each step
+- Write Ava's personality-driven dialogue for each step
 
 ### Phase 2: Tour Engine (State & Logic)
 
 **2.1 Create useTour hook** (`/frontend/src/hooks/useTour.ts`)
 - State: `isActive`, `currentStep`, `currentStepIndex`, `progress`
 - Actions: `startTour()`, `nextStep()`, `previousStep()`, `skipTour()`, `completeTour()`
-- localStorage persistence keyed by userId (follow `useEmberOnboarding` pattern)
+- localStorage persistence keyed by userId (follow `useAvaOnboarding` pattern)
 - Navigate via `useNavigate()` when step has `targetPath`
 
 **2.2 Create TourContext** (`/frontend/src/context/TourContext.tsx`)
@@ -114,8 +114,8 @@ export interface TourState {
 
 **3.1 Create TourModal** (`/frontend/src/components/tour/TourModal.tsx`)
 - Full-screen semi-transparent overlay
-- Glass card modal (follow `EmberOnboardingModal` styling)
-- Ember avatar with dialogue bubble (typewriter effect)
+- Glass card modal (follow `AvaOnboardingModal` styling)
+- Ava avatar with dialogue bubble (typewriter effect)
 - Step content: title, features list
 - Navigation: Back / Next buttons
 - Skip button always visible (top-right)
@@ -131,17 +131,17 @@ export interface TourState {
 
 ### Phase 4: Integration
 
-**4.1 Update adventure types** (`useEmberOnboarding.ts`)
+**4.1 Update adventure types** (`useAvaOnboarding.ts`)
 ```typescript
 export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize' | 'platform_tour';
 ```
 
-**4.2 Add 4th adventure to modal** (`EmberOnboardingModal.tsx`)
+**4.2 Add 4th adventure to modal** (`AvaOnboardingModal.tsx`)
 ```typescript
 {
   id: 'platform_tour',
   title: 'Platform Tour',
-  description: "Let Ember show you around AllThrive.",
+  description: "Let Ava show you around AllThrive.",
   icon: faMap,
   gradient: 'from-emerald-500 to-teal-500',
   path: '', // Special handling - starts tour
@@ -149,12 +149,12 @@ export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personaliz
 ```
 - In `handleSelectAdventure`: if `platform_tour`, call `startTour('platform_walkthrough')` instead of navigating
 
-**4.3 Add to banner** (`EmberAdventureBanner.tsx`)
+**4.3 Add to banner** (`AvaAdventureBanner.tsx`)
 - Add platform_tour adventure option to banner array
 
 **4.4 Add TourProvider to layout** (`DashboardLayout.tsx`)
 - Import TourProvider
-- Wrap layout content (similar to how EmberOnboardingProvider is used)
+- Wrap layout content (similar to how AvaOnboardingProvider is used)
 
 ### Phase 5: Polish & Edge Cases
 
@@ -166,11 +166,11 @@ export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personaliz
 
 ## Critical Files to Read Before Implementation
 
-1. `/frontend/src/hooks/useEmberOnboarding.ts` - Pattern for state + localStorage
-2. `/frontend/src/components/onboarding/EmberOnboardingModal.tsx` - Modal styling, adventure structure
+1. `/frontend/src/hooks/useAvaOnboarding.ts` - Pattern for state + localStorage
+2. `/frontend/src/components/onboarding/AvaOnboardingModal.tsx` - Modal styling, adventure structure
 3. `/frontend/src/context/TopicTrayContext.tsx` - Context provider pattern
-4. `/frontend/src/hooks/useTypewriter.ts` - Typewriter effect for Ember dialogue
-5. `/frontend/src/components/onboarding/EmberAdventureBanner.tsx` - Banner integration
+4. `/frontend/src/hooks/useTypewriter.ts` - Typewriter effect for Ava dialogue
+5. `/frontend/src/components/onboarding/AvaAdventureBanner.tsx` - Banner integration
 
 ## State Flow
 
@@ -194,7 +194,7 @@ completeTour() → marks 'platform_tour' adventure complete
 Tour closes, user continues exploring
 ```
 
-## Ember Dialogue Guidelines
+## Ava Dialogue Guidelines
 
 - **Personality**: Friendly, enthusiastic, slightly playful dragon guide
 - **Length**: 1-3 sentences per step, concise but warm

@@ -13,7 +13,7 @@ import {
   loginViaAPI,
   getPageContent,
   sendHomeChat,
-  waitForEmberReady,
+  waitForAvaReady,
   waitForAIResponse as _waitForAIResponse,
   DEEP_AI_TIMEOUT as _DEEP_AI_TIMEOUT,
 } from './deep-helpers';
@@ -78,10 +78,10 @@ test.describe('Chat - Media Upload Flow', () => {
     const testImagePath = path.join(__dirname, '../fixtures/test-image.png');
     await fileChooser.setFiles(testImagePath);
 
-    // Wait for upload to complete and Ember to respond
+    // Wait for upload to complete and Ava to respond
     // Use 90 seconds since AI operations can take 60-90 seconds
-    console.log('Waiting for Ember to respond to upload...');
-    await waitForEmberReady(page, 90000);
+    console.log('Waiting for Ava to respond to upload...');
+    await waitForAvaReady(page, 90000);
 
     // Step 2: AI should respond to the image
     const afterUpload = await getPageContent(page);
@@ -93,10 +93,10 @@ test.describe('Chat - Media Upload Flow', () => {
     // Step 3: Say it's NOT mine - from the internet
     await sendHomeChat(page, "It's not mine, I found it on the internet and want to save it");
 
-    // Wait for Ember to finish responding before sending next message
+    // Wait for Ava to finish responding before sending next message
     // Use 90 seconds since AI operations can take 60-90 seconds
-    console.log('Waiting for Ember to respond to ownership claim...');
-    await waitForEmberReady(page, 90000);
+    console.log('Waiting for Ava to respond to ownership claim...');
+    await waitForAvaReady(page, 90000);
 
     const afterOwnership = await getPageContent(page);
     assertNoTechnicalErrors(afterOwnership, 'after ownership response');
@@ -142,7 +142,7 @@ test.describe('Chat - Media Upload Flow', () => {
       const isStillThinking =
         afterTool.includes('Thinking') ||
         afterTool.includes('Consulting my hoard') ||
-        afterTool.includes('Fanning the embers') ||
+        afterTool.includes('Finding the way') ||
         afterTool.includes('Cancel'); // Cancel button appears while processing
 
       // If found project link, or if AI is no longer thinking, break
@@ -213,17 +213,17 @@ test.describe('Chat - Media Upload Flow', () => {
     const testImagePath = path.join(__dirname, '../fixtures/test-image.png');
     await fileChooser.setFiles(testImagePath);
 
-    // Wait for image to appear in chat and Ember to respond
-    console.log('Waiting for Ember to respond to upload...');
+    // Wait for image to appear in chat and Ava to respond
+    console.log('Waiting for Ava to respond to upload...');
     await page.waitForTimeout(3000); // Wait for image upload to process
 
     // Verify image appears in chat before proceeding
     const imageUploadedContent = await getPageContent(page);
     console.log('After upload:', imageUploadedContent.substring(0, 400));
 
-    // Wait for Ember to be ready (quick actions may appear)
+    // Wait for Ava to be ready (quick actions may appear)
     // Use 90 seconds since AI operations can take 60-90 seconds
-    await waitForEmberReady(page, 90000);
+    await waitForAvaReady(page, 90000);
 
     // Say it IS mine and specify the tool
     // AI needs to call create_media_project tool which does AI image analysis
@@ -262,7 +262,7 @@ test.describe('Chat - Media Upload Flow', () => {
       const isStillThinking =
         afterOwnership.includes('Thinking') ||
         afterOwnership.includes('Consulting my hoard') ||
-        afterOwnership.includes('Fanning the embers') ||
+        afterOwnership.includes('Finding the way') ||
         afterOwnership.includes('Cancel'); // Cancel button appears while processing
 
       // If found project link, or if AI is no longer thinking, break

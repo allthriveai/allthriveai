@@ -56,7 +56,7 @@ export interface WebSocketMessage {
     title?: string;
     message?: string;
     error?: string;
-    // Orchestration action fields (Ember)
+    // Orchestration action fields (Ava)
     action?: 'navigate' | 'highlight' | 'open_tray' | 'toast' | 'trigger';
     path?: string;
     target?: string;
@@ -272,7 +272,7 @@ export interface ChatMessage extends Omit<SharedChatMessage, 'metadata'> {
   metadata?: IntelligentChatMetadata;
 }
 
-// Orchestration action types for Ember
+// Orchestration action types for Ava
 export interface OrchestrationAction {
   action: 'navigate' | 'highlight' | 'open_tray' | 'toast' | 'trigger';
   path?: string;
@@ -597,7 +597,7 @@ export function useIntelligentChat({
                 // Project was created successfully - trigger callback
                 onProjectCreated?.(data.output.url, data.output.title || 'Project');
               }
-              // Check for orchestration actions (Ember)
+              // Check for orchestration actions (Ava)
               // These are actions like navigate, highlight, open_tray, toast, trigger
               if (data.output?.action && onOrchestrationAction) {
                 const orchestrationAction: OrchestrationAction = {
@@ -871,7 +871,7 @@ export function useIntelligentChat({
 
                     if (validSections.length > 0) {
                       // Dispatch custom event for ProfilePage to handle
-                      window.dispatchEvent(new CustomEvent('emberProfileSectionsGenerated', {
+                      window.dispatchEvent(new CustomEvent('avaProfileSectionsGenerated', {
                         detail: { sections: validSections, toolName: data.tool }
                       }));
                     }

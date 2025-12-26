@@ -6,6 +6,7 @@ Contains validation functions for mermaid diagrams, exercises, and quizzes.
 
 import logging
 import re
+import uuid
 
 from .types import (
     ExerciseContentByLevel,
@@ -248,8 +249,14 @@ def validate_exercise(exercise_data: dict) -> LessonExercise | None:
         logger.warning('No valid skill levels in exercise content_by_level')
         return None
 
+    # Ensure exercise has a unique ID
+    exercise_id = exercise_data.get('id')
+    if not exercise_id:
+        exercise_id = str(uuid.uuid4())
+
     # Build validated exercise
     exercise = LessonExercise(
+        id=exercise_id,
         exercise_type=exercise_type,
         scenario=exercise_data.get('scenario', ''),
         expected_inputs=expected_inputs,
@@ -345,3 +352,66 @@ def validate_quiz(quiz_data: dict) -> LessonQuiz | None:
         encouragement_message=quiz_data.get('encouragement_message', 'Great job! You understood the key concepts.'),
         retry_message=quiz_data.get('retry_message', 'Almost there! Review the lesson and try again.'),
     )
+
+
+def validate_exercises_array(exercises_data: list | None) -> list[LessonExercise]:
+    """
+    Validate and normalize an array of exercises.
+
+    Args:
+        exercises_data: Raw list of exercise dicts from AI response or storage
+
+    Returns:
+        List of validated LessonExercise objects (may be empty)
+    """
+    if not exercises_data or not isinstance(exercises_data, list):
+        return []
+
+    validated_exercises: list[LessonExercise] = []
+
+    for i, exercise_data in enumerate(exercises_data):
+        if not isinstance(exercise_data, dict):
+            logger.warning(f'Invalid exercise at index {i}: not a dict')
+            continue
+
+        validated = validate_exercise(exercise_data)
+        if validated:
+            validated_exercises.append(validated)
+        else:
+            logger.warning(f'Exercise at index {i} failed validation')
+
+    return validated_exercises
+
+
+def normalize_lesson_exercises(content: dict) -> dict:
+    """
+    Normalize lesson content to always have an 'exercises' array.
+
+    Handles backwards compatibility by converting single 'exercise' field
+    to 'exercises' array format.
+
+    Args:
+        content: Raw AI lesson content dict
+
+    Returns:
+        Content dict with normalized 'exercises' array
+    """
+    if not content:
+        return content
+
+    # If already has exercises array, validate it
+    if 'exercises' in content and content['exercises']:
+        content['exercises'] = validate_exercises_array(content['exercises'])
+        return content
+
+    # Convert single exercise to array format
+    if 'exercise' in content and content['exercise']:
+        validated = validate_exercise(content['exercise'])
+        if validated:
+            content['exercises'] = [validated]
+        else:
+            content['exercises'] = []
+    else:
+        content['exercises'] = []
+
+    return content

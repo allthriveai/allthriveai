@@ -1,8 +1,8 @@
 /**
- * Ember's Quest Board
+ * Ava's Quest Board
  *
- * A gamified quest board where Ember the dragon guides users through
- * discovering all the features of AllThrive. Quests are grouped by
+ * A gamified quest board where Ava the AI guide helps users discover
+ * all the features of AllThrive. Quests are grouped by
  * category and displayed in a grid layout.
  */
 
@@ -93,10 +93,10 @@ const categoryColors: Record<string, { bg: string; border: string; text: string;
   },
 };
 
-// Ember's messages based on progress
-function getEmberMessage(progressPercent: number, completedCount: number): string {
+// Ava's messages based on progress
+function getAvaMessage(progressPercent: number, completedCount: number): string {
   if (completedCount === 0) {
-    return "Welcome, adventurer! I'm Ember, your guide to AllThrive. Let's start your journey!";
+    return "Welcome, adventurer! I'm Ava, your guide to AllThrive. Let's start your journey!";
   }
   if (progressPercent < 25) {
     return "Great start! Every quest you complete makes you stronger. Keep going!";
@@ -217,18 +217,18 @@ export default function OnboardingPage() {
   }
 
   const isComplete = progress.progressPercentage === 100;
-  const emberMessage = getEmberMessage(progress.progressPercentage, progress.completedCount);
+  const avaMessage = getAvaMessage(progress.progressPercentage, progress.completedCount);
 
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Header with Ember */}
+        {/* Header with Ava */}
         <div className="mb-6 sm:mb-8">
           {/* Mobile: Stack vertically, Desktop: Row layout */}
           <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
-            {/* Top row on mobile: Ember + Title */}
+            {/* Top row on mobile: Ava + Title */}
             <div className="flex items-center sm:items-start gap-3 sm:gap-4">
-              {/* Ember */}
+              {/* Ava */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -248,10 +248,10 @@ export default function OnboardingPage() {
                   transition={{ delay: 0.2 }}
                 >
                   <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
-                    Ember's Quest Board
+                    Ava's Quest Board
                   </h1>
                   <p className="text-slate-300 text-xs sm:text-sm line-clamp-2 sm:line-clamp-none">
-                    {emberMessage}
+                    {avaMessage}
                   </p>
                 </motion.div>
               </div>
@@ -352,7 +352,7 @@ export default function OnboardingPage() {
               <FontAwesomeIcon icon={faTrophy} className="text-2xl sm:text-3xl text-amber-400" />
               <div className="text-center sm:text-left">
                 <p className="text-white font-semibold text-sm sm:text-base">Quest Master Achievement Unlocked!</p>
-                <p className="text-xs sm:text-sm text-slate-300">You've completed all of Ember's quests</p>
+                <p className="text-xs sm:text-sm text-slate-300">You've completed all of Ava's quests</p>
               </div>
               <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 hidden sm:block" />
             </div>

@@ -114,7 +114,7 @@ Infrastructure is defined in `infrastructure/cloudformation/`:
 
 ## Weaviate (Vector Database)
 
-Weaviate provides semantic search and RAG capabilities for Ember.
+Weaviate provides semantic search and RAG capabilities for Ava.
 
 **What it stores:**
 - Project embeddings (for similarity search)

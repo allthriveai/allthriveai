@@ -21,10 +21,10 @@
 
 ```bash
 # Frontend E2E - UI Only (Fast)
-cd frontend && npx playwright test e2e/ember-chat/home-flows.spec.ts -g "UI Behavior"
+cd frontend && npx playwright test e2e/ava-chat/home-flows.spec.ts -g "UI Behavior"
 
 # Frontend E2E - With AI (Slower)
-cd frontend && RUN_AI_TESTS=true npx playwright test e2e/ember-chat/home-flows.spec.ts
+cd frontend && RUN_AI_TESTS=true npx playwright test e2e/ava-chat/home-flows.spec.ts
 
 # Backend Tests
 make test-backend
@@ -40,7 +40,7 @@ make test-backend
 
 ---
 
-## 1. EMBER CHAT - /home Page Flows
+## 1. AVA CHAT - /home Page Flows
 
 ### 1.1 Greeting & Typewriter Animation
 
@@ -110,7 +110,7 @@ make test-backend
 
 | ✓ | Test Case | Dark | Light | Notes |
 |---|-----------|------|-------|-------|
-| [ ] | Chat input shows "Message Ember..." placeholder | [ ] | [ ] | |
+| [ ] | Chat input shows "Message Ava..." placeholder | [ ] | [ ] | |
 | [ ] | Enter key sends message | [ ] | [ ] | |
 | [ ] | Message appears immediately (optimistic) | [ ] | [ ] | |
 | [ ] | 10,000 character limit enforced | [ ] | [ ] | |
@@ -144,7 +144,7 @@ make test-backend
 | ✓ | Test Case | Dark | Light | Notes |
 |---|-----------|------|-------|-------|
 | [ ] | User messages right-aligned with avatar | [ ] | [ ] | |
-| [ ] | Ember messages left-aligned with dragon | [ ] | [ ] | |
+| [ ] | Ava messages left-aligned with dragon | [ ] | [ ] | |
 | [ ] | Streaming text renders progressively | [ ] | [ ] | |
 | [ ] | Markdown formatting works | [ ] | [ ] | |
 | [ ] | Images display correctly | [ ] | [ ] | |
@@ -152,7 +152,7 @@ make test-backend
 
 ---
 
-## 2. EMBER CHAT - Right Sidebar
+## 2. AVA CHAT - Right Sidebar
 
 ### 2.1 Sidebar Open/Close
 
@@ -162,7 +162,7 @@ make test-backend
 | [ ] | Backdrop blur appears | [ ] | [ ] | |
 | [ ] | Close (X) button works | [ ] | [ ] | |
 | [ ] | Clicking backdrop closes sidebar | [ ] | [ ] | |
-| [ ] | "Ember" header with online indicator | [ ] | [ ] | |
+| [ ] | "Ava" header with online indicator | [ ] | [ ] | |
 
 ### 2.2 Context-Aware Quick Actions
 
@@ -420,7 +420,7 @@ make test-backend
 | [ ] | Feeling pills visible | [ ] | [ ] | |
 | [ ] | GamePicker glassmorphism | [ ] | [ ] | |
 | [ ] | Chat input border | [ ] | [ ] | |
-| [ ] | Ember avatar visible | [ ] | [ ] | |
+| [ ] | Ava avatar visible | [ ] | [ ] | |
 | [ ] | Loading spinners visible | [ ] | [ ] | |
 | [ ] | Neon glow effects | [ ] | [ ] | |
 | [ ] | Glass-subtle backgrounds | [ ] | [ ] | |
@@ -493,7 +493,7 @@ AUTH="Authorization: Token $TOKEN"
 
 ---
 
-## 12. EMBER TEST PROMPTS
+## 12. AVA TEST PROMPTS
 
 ### Game Triggers
 

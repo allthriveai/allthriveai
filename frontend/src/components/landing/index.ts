@@ -2,7 +2,7 @@ export { HeroSection } from './HeroSection';
 export { IconCloud } from './IconCloud';
 export { ExplorePreview } from './ExplorePreview';
 export { AutomatedProfile } from './AutomatedProfile';
-export { MeetEmber } from './MeetEmber';
+export { MeetAva } from './MeetAva';
 export { ParallaxLanding } from './ParallaxLanding';
 export { UnifiedLanding } from './UnifiedLanding';
 export { SideQuestsPreview } from './SideQuestsPreview';

@@ -266,8 +266,8 @@ export function ImageUpload({
     setError(null);
   };
 
-  const handleOpenEmber = () => {
-    // Dispatch event to open Ember with avatar generation context
+  const handleOpenAva = () => {
+    // Dispatch event to open Ava with avatar generation context
     // This works directly since we're in DashboardLayout which listens for this event
     if (user) {
       window.dispatchEvent(new CustomEvent('openAvatarGenerate', {
@@ -377,10 +377,10 @@ export function ImageUpload({
         <div className="mt-4 w-full">
           <button
             type="button"
-            onClick={handleOpenEmber}
+            onClick={handleOpenAva}
             className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
           >
-            Or let Ember create one for you
+            Or let Ava create one for you
           </button>
 
           {showPresetPicker && (

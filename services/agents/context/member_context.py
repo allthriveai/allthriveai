@@ -1,7 +1,7 @@
 """
 Member context aggregation service.
 
-Aggregates comprehensive member state for injection into Ember agent.
+Aggregates comprehensive member state for injection into Ava agent.
 Combines learning context with personalization data for a complete picture.
 
 Uses Redis caching with 5-minute TTL for performance at scale.
@@ -195,10 +195,10 @@ class ProfileCompletion(TypedDict):
 
 class MemberContext(TypedDict):
     """
-    Full member context for Ember agent.
+    Full member context for Ava agent.
 
     This combines learning data with personalization signals to give
-    Ember a complete picture of the member.
+    Ava a complete picture of the member.
     """
 
     # Top-level skill level (for easy access - same as learning.difficulty_level)

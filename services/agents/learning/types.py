@@ -19,6 +19,8 @@ class ExerciseContentByLevel(TypedDict, total=False):
 class LessonExercise(TypedDict, total=False):
     """Interactive exercise for hands-on practice."""
 
+    # Unique identifier for this exercise (UUID)
+    id: str
     # 'terminal' | 'git' | 'ai_prompt' | 'code_review' | 'code'
     # | 'drag_sort' | 'connect_nodes' | 'code_walkthrough' | 'timed_challenge'
     exercise_type: str
@@ -205,7 +207,10 @@ class AILessonContent(TypedDict, total=False):
     examples: list[dict]
     practice_prompt: str
     mermaid_diagram: str | None
+    # DEPRECATED: Use 'exercises' array instead (kept for backwards compatibility)
     exercise: LessonExercise | None
+    # NEW: Array of exercises (supports multiple exercises per lesson)
+    exercises: list[LessonExercise] | None
     quiz: LessonQuiz | None
 
 

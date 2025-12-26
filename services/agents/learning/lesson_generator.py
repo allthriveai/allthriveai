@@ -900,6 +900,7 @@ Remember to return valid JSON matching the required structure. Include a "title"
         lesson_title: str,
         exercise_type: str,
         user_id: int | None = None,
+        existing_types: list[str] | None = None,
     ) -> LessonExercise | None:
         """
         Regenerate just the exercise for a lesson with a different exercise type.
@@ -909,6 +910,7 @@ Remember to return valid JSON matching the required structure. Include a "title"
             lesson_title: Title of the lesson for context
             exercise_type: The new exercise type to generate
             user_id: User ID for AI usage tracking
+            existing_types: List of exercise types already in this lesson (for variety)
 
         Returns:
             New LessonExercise dict, or None if generation fails
@@ -938,6 +940,16 @@ Remember to return valid JSON matching the required structure. Include a "title"
         key_concepts = lesson_content.get('key_concepts', [])
         summary = lesson_content.get('summary', '')
 
+        # Build variety guidance if there are existing exercises
+        variety_note = ''
+        if existing_types:
+            variety_note = f"""
+EXISTING EXERCISES IN THIS LESSON: {', '.join(existing_types)}
+
+IMPORTANT: This is an additional exercise being added to complement the existing one(s).
+Make this exercise focus on a DIFFERENT aspect of the lesson content than what the existing
+exercise(s) likely cover. For variety, consider testing different skills or concepts."""
+
         # Build the prompt
         prompt = f"""Generate a {exercise_type} exercise for this lesson:
 
@@ -948,6 +960,7 @@ LESSON SUMMARY: {summary}
 KEY CONCEPTS: {', '.join(key_concepts) if key_concepts else 'N/A'}
 
 REQUESTED EXERCISE TYPE: {exercise_type}
+{variety_note}
 
 Create an engaging {exercise_type} exercise that helps the learner practice the concepts from this lesson.
 
@@ -955,68 +968,107 @@ Create an engaging {exercise_type} exercise that helps the learner practice the 
 
 Make the exercise practical and directly related to the lesson content."""
 
-        try:
-            ai = AIProvider(user_id=user_id)
+        # Token limits by exercise type complexity
+        # Complex types need more tokens; we'll retry with higher limits if parsing fails
+        complex_types = {'timed_challenge', 'code_walkthrough', 'connect_nodes'}
+        token_limits = [2000, 2500] if exercise_type in complex_types else [1200, 1800]
 
-            response = ai.complete(
-                prompt=prompt,
-                system_message=cls.EXERCISE_REGENERATION_PROMPT,
-                temperature=0.7,
-                max_tokens=1000,
-            )
+        ai = AIProvider(user_id=user_id)
+        last_error = None
 
-            # Track AI usage
-            if user_id and ai.last_usage:
-                try:
-                    user = User.objects.get(id=user_id)
-                    AIUsageTracker.track_usage(
-                        user=user,
-                        feature='exercise_regeneration',
-                        provider=ai._provider.value if ai._provider else 'unknown',
-                        model=ai.last_usage.get('gateway_model', 'gpt-4o-mini'),
-                        input_tokens=ai.last_usage.get('prompt_tokens', 0),
-                        output_tokens=ai.last_usage.get('completion_tokens', 0),
-                        request_type='completion',
-                        status='success',
-                        request_metadata={
-                            'lesson_title': lesson_title,
-                            'exercise_type': exercise_type,
-                        },
-                        gateway_metadata={
-                            'gateway_provider': ai.last_usage.get('gateway_provider'),
-                            'gateway_model': ai.last_usage.get('gateway_model'),
-                            'requested_model': ai.last_usage.get('requested_model'),
-                        }
-                        if ai.last_usage.get('gateway_provider')
-                        else None,
-                    )
-                except User.DoesNotExist:
-                    logger.warning(f'User {user_id} not found for AI usage tracking')
-                except Exception as e:
-                    logger.error(f'Failed to track AI usage: {e}', exc_info=True)
-
-            # Parse JSON response
-            exercise = cls._parse_exercise_response(response)
-
-            if exercise:
-                logger.info(
-                    f'Regenerated exercise for lesson: {lesson_title}',
-                    extra={
-                        'lesson_title': lesson_title,
-                        'exercise_type': exercise_type,
-                        'user_id': user_id,
-                    },
+        for attempt, token_limit in enumerate(token_limits):
+            try:
+                response = ai.complete(
+                    prompt=prompt,
+                    system_message=cls.EXERCISE_REGENERATION_PROMPT,
+                    temperature=0.7,
+                    max_tokens=token_limit,
                 )
 
-            return exercise
+                # Track AI usage
+                if user_id and ai.last_usage:
+                    try:
+                        user = User.objects.get(id=user_id)
+                        AIUsageTracker.track_usage(
+                            user=user,
+                            feature='exercise_regeneration',
+                            provider=ai._provider.value if ai._provider else 'unknown',
+                            model=ai.last_usage.get('gateway_model', 'gpt-4o-mini'),
+                            input_tokens=ai.last_usage.get('prompt_tokens', 0),
+                            output_tokens=ai.last_usage.get('completion_tokens', 0),
+                            request_type='completion',
+                            status='success',
+                            request_metadata={
+                                'lesson_title': lesson_title,
+                                'exercise_type': exercise_type,
+                                'attempt': attempt + 1,
+                                'token_limit': token_limit,
+                            },
+                            gateway_metadata={
+                                'gateway_provider': ai.last_usage.get('gateway_provider'),
+                                'gateway_model': ai.last_usage.get('gateway_model'),
+                                'requested_model': ai.last_usage.get('requested_model'),
+                            }
+                            if ai.last_usage.get('gateway_provider')
+                            else None,
+                        )
+                    except User.DoesNotExist:
+                        logger.warning(f'User {user_id} not found for AI usage tracking')
+                    except Exception as e:
+                        logger.error(f'Failed to track AI usage: {e}', exc_info=True)
 
-        except Exception as e:
-            logger.error(
-                f'Exercise regeneration failed: {e}',
-                extra={'lesson_title': lesson_title, 'exercise_type': exercise_type, 'error': str(e)},
-                exc_info=True,
-            )
-            return None
+                # Parse JSON response
+                exercise = cls._parse_exercise_response(response)
+
+                if exercise:
+                    logger.info(
+                        f'Regenerated exercise for lesson: {lesson_title}',
+                        extra={
+                            'lesson_title': lesson_title,
+                            'exercise_type': exercise_type,
+                            'user_id': user_id,
+                            'attempt': attempt + 1,
+                        },
+                    )
+                    return exercise
+
+                # If parsing failed but we have more attempts, log and retry
+                if attempt < len(token_limits) - 1:
+                    logger.warning(
+                        'Exercise parse failed, retrying with higher token limit',
+                        extra={
+                            'lesson_title': lesson_title,
+                            'exercise_type': exercise_type,
+                            'attempt': attempt + 1,
+                            'next_token_limit': token_limits[attempt + 1],
+                        },
+                    )
+                    continue
+
+                # Final attempt failed
+                logger.error(
+                    f'Exercise regeneration failed after {len(token_limits)} attempts',
+                    extra={'lesson_title': lesson_title, 'exercise_type': exercise_type},
+                )
+                return None
+
+            except Exception as e:
+                last_error = e
+                if attempt < len(token_limits) - 1:
+                    logger.warning(
+                        f'Exercise generation attempt {attempt + 1} failed, retrying: {e}',
+                        extra={'lesson_title': lesson_title, 'exercise_type': exercise_type},
+                    )
+                    continue
+                break
+
+        # All attempts failed
+        logger.error(
+            f'Exercise regeneration failed: {last_error}',
+            extra={'lesson_title': lesson_title, 'exercise_type': exercise_type, 'error': str(last_error)},
+            exc_info=True,
+        )
+        return None
 
     @classmethod
     def _parse_exercise_response(cls, response: str) -> LessonExercise | None:

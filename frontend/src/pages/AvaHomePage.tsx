@@ -1,7 +1,7 @@
 /**
- * EmberHomePage - Unified chat experience for authenticated users
+ * AvaHomePage - Unified chat experience for authenticated users
  *
- * A focused chat interface with Ember (the dragon guide).
+ * A focused chat interface with Ava (the AI guide).
  * Uses the consolidated ChatCore architecture with EmbeddedChatLayout.
  * Uses the Neon Glass design system.
  * Wrapped in DashboardLayout for header/footer.
@@ -12,7 +12,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { EmbeddedChatLayout } from '@/components/chat/layouts';
 import { useStableConversationId } from '@/hooks/useStableConversationId';
 
-function EmberHomeContent() {
+function AvaHomeContent() {
   // Use stable conversation ID for LangGraph checkpointing persistence
   // This ensures chat history is preserved across page refreshes
   const conversationId = useStableConversationId({ context: 'home' });
@@ -25,10 +25,10 @@ function EmberHomeContent() {
   return <EmbeddedChatLayout conversationId={conversationId} />;
 }
 
-export default function EmberHomePage() {
+export default function AvaHomePage() {
   return (
     <DashboardLayout>
-      <EmberHomeContent />
+      <AvaHomeContent />
     </DashboardLayout>
   );
 }

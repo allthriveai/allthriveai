@@ -1,5 +1,5 @@
 """
-Unified content discovery tool for Ember agent.
+Unified content discovery tool for Ava agent.
 
 HYPER-PERSONALIZED, INTELLIGENT, AGENTIC content discovery.
 

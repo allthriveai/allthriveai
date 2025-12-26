@@ -168,7 +168,7 @@ def list_team_members(request):
     """Get the All Thrive team (AI agents).
 
     Returns team members grouped by type:
-    - core: Core team members (Ember, Pip, Sage, Haven) - the AI personas
+    - core: Core team members (Ava, Pip, Sage, Haven) - the AI personas
     - contributor: Expert contributors (RSS/YouTube curators)
 
     Query parameters:
@@ -179,7 +179,7 @@ def list_team_members(request):
     team_type = request.GET.get('type', None)
 
     # Core team usernames (AI personas with distinct personalities)
-    core_team_usernames = ['ember', 'pip', 'sage', 'haven']
+    core_team_usernames = ['ava', 'pip', 'sage', 'haven']
 
     # Get all agent users
     queryset = User.objects.filter(
@@ -217,7 +217,7 @@ def list_team_members(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def onboarding_progress(request):
-    """Get user's quest progress for Ember's Quest Board.
+    """Get user's quest progress for Ava's Quest Board.
 
     Returns a list of quest items with their completion status,
     based on actual user activity in the system. These are grouped

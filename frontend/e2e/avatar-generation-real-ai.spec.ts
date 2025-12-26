@@ -37,14 +37,14 @@ test.describe('Avatar Generation - Real AI', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for chat to be ready
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 10000 });
 
     // WHEN: I ask to create an avatar
     await chatInput.fill('make my avatar');
     await page.keyboard.press('Enter');
 
-    // Wait for Ember's response and confirmation dialog (may take a few seconds for AI)
+    // Wait for Ava's response and confirmation dialog (may take a few seconds for AI)
     const confirmButton = page.locator('button:has-text("Yes")');
     await expect(confirmButton).toBeVisible({ timeout: 30000 });
     await confirmButton.click();
@@ -156,7 +156,7 @@ test.describe('Avatar Generation - Real AI', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 10000 });
 
     await chatInput.fill('make my avatar');
@@ -220,7 +220,7 @@ test.describe('Avatar Generation - Real AI', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 10000 });
 
     await chatInput.fill('make my avatar');
@@ -321,7 +321,7 @@ test.describe('Avatar Generation - Performance Requirements', () => {
     });
 
     await page.goto('/home');
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 10000 });
 
     await chatInput.fill('make my avatar');
@@ -386,7 +386,7 @@ test.describe('Avatar Generation - Performance Requirements', () => {
     });
 
     await page.goto('/home');
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 10000 });
 
     await chatInput.fill('make my avatar');

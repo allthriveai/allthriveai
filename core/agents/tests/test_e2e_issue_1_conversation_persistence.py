@@ -17,7 +17,7 @@ Expected Behavior After Fix:
 
 Test Strategy:
 1. Simulate what happens during a WebSocket chat session
-2. Call persist_conversation_message (what _process_with_ember now calls)
+2. Call persist_conversation_message (what _process_with_ava now calls)
 3. Verify the conversations API returns the persisted data
 """
 
@@ -83,10 +83,10 @@ class TestE2EIssue1ConversationPersistence:
         """
         # Simulate what happens during a chat session:
         # 1. User sends message via WebSocket
-        # 2. _process_with_ember streams response and accumulates it
+        # 2. _process_with_ava streams response and accumulates it
         # 3. On 'complete' event, persist_conversation_message.delay() is called
 
-        conversation_id = f'ember-chat-{user.id}'
+        conversation_id = f'ava-chat-{user.id}'
 
         # Simulate first chat exchange
         persist_conversation_message(
@@ -118,8 +118,8 @@ class TestE2EIssue1ConversationPersistence:
         # Verify the conversation details
         conversation = results[0]
         assert conversation['conversation_id'] == conversation_id
-        assert conversation['conversation_type'] == 'ember_chat'
-        assert conversation['title'] == 'Ember Chat'
+        assert conversation['conversation_type'] == 'ava_chat'
+        assert conversation['title'] == 'Ava Chat'
 
         # Should have 4 messages (2 user + 2 assistant)
         assert conversation['message_count'] == 4
@@ -132,7 +132,7 @@ class TestE2EIssue1ConversationPersistence:
 
         This tests the "context preservation" aspect from the E2E test.
         """
-        conversation_id = f'ember-chat-{user.id}'
+        conversation_id = f'ava-chat-{user.id}'
 
         # Turn 1: Learning question
         persist_conversation_message(
@@ -195,13 +195,13 @@ class TestE2EIssue1ConversationPersistence:
 
         This simulates the E2E test "STEP 5: Verify conversation persists after refresh"
         """
-        conversation_id = f'ember-chat-{user.id}'
+        conversation_id = f'ava-chat-{user.id}'
 
         # Initial chat
         persist_conversation_message(
             user_id=user.id,
             conversation_id=conversation_id,
-            user_message='Hello Ember!',
+            user_message='Hello Ava!',
             assistant_message='Hello! How can I help you today?',
         )
 
@@ -232,7 +232,7 @@ class TestE2EIssue1ConversationPersistence:
 
         This simulates the E2E test "conversation history loads after logout and login"
         """
-        conversation_id = f'ember-chat-{user.id}'
+        conversation_id = f'ava-chat-{user.id}'
 
         # Chat while "logged in"
         persist_conversation_message(
@@ -271,18 +271,18 @@ class TestE2EIssue1ConversationPersistence:
         WHEN: Each type is persisted
         THEN: All should appear in the conversations API
         """
-        # Ember sidebar chat
+        # Ava sidebar chat
         persist_conversation_message(
             user_id=user.id,
-            conversation_id=f'ember-chat-{user.id}',
+            conversation_id=f'ava-chat-{user.id}',
             user_message='Sidebar message',
             assistant_message='Sidebar response',
         )
 
-        # Ember learn chat
+        # Ava learn chat
         persist_conversation_message(
             user_id=user.id,
-            conversation_id=f'ember-learn-{user.id}',
+            conversation_id=f'ava-learn-{user.id}',
             user_message='Learn message',
             assistant_message='Learn response',
         )
@@ -321,7 +321,7 @@ class TestE2EIssue1ConversationPersistence:
 
         # Verify types
         types = {c['conversation_type'] for c in results}
-        assert types == {'ember_chat', 'ember_learn', 'learning_path', 'avatar', 'image'}
+        assert types == {'ava_chat', 'ava_learn', 'learning_path', 'avatar', 'image'}
 
     def test_project_conversations_not_persisted(self, api_client, user):
         """
@@ -340,7 +340,7 @@ class TestE2EIssue1ConversationPersistence:
         # Also persist a regular chat
         persist_conversation_message(
             user_id=user.id,
-            conversation_id=f'ember-chat-{user.id}',
+            conversation_id=f'ava-chat-{user.id}',
             user_message='Regular question',
             assistant_message='Regular answer',
         )
@@ -350,9 +350,9 @@ class TestE2EIssue1ConversationPersistence:
         data = response.json()
         results = data.get('results', data)
 
-        # Should only have 1 conversation (the ember-chat, not project)
+        # Should only have 1 conversation (the ava-chat, not project)
         assert len(results) == 1
-        assert results[0]['conversation_type'] == 'ember_chat'
+        assert results[0]['conversation_type'] == 'ava_chat'
 
 
 @pytest.mark.django_db
@@ -380,7 +380,7 @@ class TestE2EIssue1EdgeCases:
         """
         persist_conversation_message(
             user_id=user.id,
-            conversation_id=f'ember-chat-{user.id}',
+            conversation_id=f'ava-chat-{user.id}',
             user_message='Hello',
             assistant_message='',  # Empty response
         )
@@ -402,7 +402,7 @@ class TestE2EIssue1EdgeCases:
 
         persist_conversation_message(
             user_id=user.id,
-            conversation_id=f'ember-chat-{user.id}',
+            conversation_id=f'ava-chat-{user.id}',
             user_message=long_message,
             assistant_message=long_response,
         )
@@ -420,7 +420,7 @@ class TestE2EIssue1EdgeCases:
         """
         persist_conversation_message(
             user_id=user.id,
-            conversation_id=f'ember-chat-{user.id}',
+            conversation_id=f'ava-chat-{user.id}',
             user_message='Hello! 👋 How are you? 你好',
             assistant_message='I am great! 🎉 很高兴见到你',
         )

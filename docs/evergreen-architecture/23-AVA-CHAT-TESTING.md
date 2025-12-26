@@ -1,29 +1,29 @@
-# Ember Chat E2E Testing Patterns
+# Ava Chat E2E Testing Patterns
 
 **Source of Truth** | **Last Updated**: 2025-12-25
 
-This document describes patterns for writing reliable E2E tests for Ember (the AI chat assistant) flows. These tests are challenging because they involve AI operations that can take 60-120 seconds and produce non-deterministic output.
+This document describes patterns for writing reliable E2E tests for Ava (the AI chat assistant) flows. These tests are challenging because they involve AI operations that can take 60-120 seconds and produce non-deterministic output.
 
 ---
 
 ## Overview
 
-### Why Ember Tests Are Different
+### Why Ava Tests Are Different
 
-Ember tests differ from typical E2E tests because:
+Ava tests differ from typical E2E tests because:
 
 1. **Long operation times** - AI calls can take 60-90 seconds, especially with provider fallback (Gemini → OpenAI)
 2. **Non-deterministic responses** - AI may phrase things differently each time
 3. **Tool execution delays** - LangGraph tool calls add latency
 4. **Rendered content** - Markdown `[link](/url)` becomes HTML `<a href="/url">link</a>`
-5. **WebSocket state** - Input is disabled while Ember is "thinking"
+5. **WebSocket state** - Input is disabled while Ava is "thinking"
 
 ### Key Patterns
 
 | Pattern | Why It Matters |
 |---------|---------------|
 | Extended timeouts (90-120s) | AI operations need time, especially with provider fallback |
-| `waitForEmberReady()` | Wait for input to be enabled = Ember finished responding |
+| `waitForAvaReady()` | Wait for input to be enabled = Ava finished responding |
 | Poll for results | Check every 10s instead of one long wait |
 | Detect HTML links | Markdown is rendered, so look for `<a>` elements |
 | Flexible assertions | Check for outcomes, not exact wording |
@@ -40,7 +40,7 @@ Ember tests differ from typical E2E tests because:
 ```
 frontend/e2e/
 ├── deep/
-│   ├── deep-helpers.ts           # Ember-specific helpers
+│   ├── deep-helpers.ts           # Ava-specific helpers
 │   ├── ai-quality-assertions.ts  # Response quality checks
 │   ├── chat-media-upload.spec.ts # Image/video upload → project
 │   ├── chat-url-import.spec.ts   # URL paste → project creation
@@ -51,16 +51,16 @@ frontend/e2e/
 
 ## Critical Helper Functions
 
-### `waitForEmberReady(page, timeout)`
+### `waitForAvaReady(page, timeout)`
 
-Waits for Ember to finish responding by checking when the chat input becomes enabled again.
+Waits for Ava to finish responding by checking when the chat input becomes enabled again.
 
 ```typescript
-export async function waitForEmberReady(
+export async function waitForAvaReady(
   page: Page,
   timeout = DEEP_AI_TIMEOUT
 ): Promise<void> {
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
@@ -79,13 +79,13 @@ export async function waitForEmberReady(
       pageContent.includes('Fanning the embers');
 
     if (isThinking) {
-      console.log(`Waiting for Ember... (${Math.round((Date.now() - startTime) / 1000)}s)`);
+      console.log(`Waiting for Ava... (${Math.round((Date.now() - startTime) / 1000)}s)`);
     }
 
     await page.waitForTimeout(1000);
   }
 
-  throw new Error(`Ember did not become ready within ${timeout}ms`);
+  throw new Error(`Ava did not become ready within ${timeout}ms`);
 }
 ```
 
@@ -95,7 +95,7 @@ Sends a message in the home chat, waiting for WebSocket connection first.
 
 ```typescript
 export async function sendHomeChat(page: Page, message: string): Promise<void> {
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
   await chatInput.fill(message);
@@ -108,7 +108,7 @@ export async function sendHomeChat(page: Page, message: string): Promise<void> {
 
 ### Detecting Rendered Links
 
-When Ember returns markdown like `[Project Title](/username/slug)`, the browser renders it as HTML. Use both detection methods:
+When Ava returns markdown like `[Project Title](/username/slug)`, the browser renders it as HTML. Use both detection methods:
 
 ```typescript
 // Method 1: Check for markdown in text content (if not rendered)
@@ -156,12 +156,12 @@ test.setTimeout(180000); // 3 minutes per test
 
 ## Test Templates
 
-### Template: Ember Tool Execution Flow
+### Template: Ava Tool Execution Flow
 
-Use this template for tests where Ember calls a tool and returns results:
+Use this template for tests where Ava calls a tool and returns results:
 
 ```typescript
-test('user action → Ember calls tool → creates entity → verify it exists', async ({ page }) => {
+test('user action → Ava calls tool → creates entity → verify it exists', async ({ page }) => {
   // Setup
   await loginViaAPI(page);
   await page.goto('/home');
@@ -171,13 +171,13 @@ test('user action → Ember calls tool → creates entity → verify it exists',
   // Step 1: User action (e.g., upload, send message)
   await sendHomeChat(page, "User's message here");
 
-  // Step 2: Wait for Ember to respond (may take 60-90s)
-  console.log('Waiting for Ember...');
-  await waitForEmberReady(page, 90000);
+  // Step 2: Wait for Ava to respond (may take 60-90s)
+  console.log('Waiting for Ava...');
+  await waitForAvaReady(page, 90000);
 
   // Step 3: Get content and verify no errors
   const content = await getPageContent(page);
-  assertNoTechnicalErrors(content, 'after Ember response');
+  assertNoTechnicalErrors(content, 'after Ava response');
 
   // Step 4: Poll for created entity link
   let entityUrl: string | null = null;
@@ -235,7 +235,7 @@ test('user action → Ember calls tool → creates entity → verify it exists',
 
 ### Verification Checklist
 
-When Ember creates something, verify it actually exists:
+When Ava creates something, verify it actually exists:
 
 | Created Entity | How to Verify |
 |----------------|---------------|
@@ -247,14 +247,14 @@ When Ember creates something, verify it actually exists:
 ### Template: Multi-Turn Conversation
 
 ```typescript
-test('multi-turn conversation with Ember', async ({ page }) => {
+test('multi-turn conversation with Ava', async ({ page }) => {
   await loginViaAPI(page);
   await page.goto('/home');
   await page.waitForTimeout(2000);
 
   // Turn 1: User initiates
   await sendHomeChat(page, "First message");
-  await waitForEmberReady(page, 60000);
+  await waitForAvaReady(page, 60000);
 
   const turn1 = await getPageContent(page);
   assertNoTechnicalErrors(turn1, 'turn 1');
@@ -262,7 +262,7 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 
   // Turn 2: User follows up
   await sendHomeChat(page, "Follow up message");
-  await waitForEmberReady(page, 60000);
+  await waitForAvaReady(page, 60000);
 
   const turn2 = await getPageContent(page);
   assertNoTechnicalErrors(turn2, 'turn 2');
@@ -270,7 +270,7 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 
   // Turn 3: Final action
   await sendHomeChat(page, "Final message that triggers tool");
-  await waitForEmberReady(page, 120000); // Longer for tool execution
+  await waitForAvaReady(page, 120000); // Longer for tool execution
 
   const turn3 = await getPageContent(page);
   expect(turn3).toMatch(/success indicator/i);
@@ -279,7 +279,7 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 
 ---
 
-## Testable Ember Flows
+## Testable Ava Flows
 
 ### Currently Tested
 
@@ -296,13 +296,13 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 |------|----------|-------|
 | Avatar generation | Medium | "Make my avatar" → wizard opens → avatar generated |
 | Inline game launch | Medium | "Play a game" → game widget appears in chat |
-| Profile building questions | Low | Ember asks pill question → user clicks → saved |
+| Profile building questions | Low | Ava asks pill question → user clicks → saved |
 
 ---
 
 ## Prompt Engineering for Reliable Tool Responses
 
-When tests fail because Ember doesn't format responses correctly (e.g., missing links), update the Ember prompt to be more explicit.
+When tests fail because Ava doesn't format responses correctly (e.g., missing links), update the Ava prompt to be more explicit.
 
 ### Example: Forcing Markdown Links
 
@@ -351,7 +351,7 @@ docker compose logs celery --tail=100 | grep -E "(ERROR|Exception|create_media|p
 
 ### 2. Look for Thinking States
 
-If test times out waiting for Ember, check what thinking state it's stuck on:
+If test times out waiting for Ava, check what thinking state it's stuck on:
 - "Thinking..." - Initial processing
 - "Consulting my treasure trove..." - Tool lookup
 - "Fanning the embers..." - Generating response
@@ -386,16 +386,16 @@ npx playwright show-trace test-results/*/trace.zip
 
 ---
 
-## How to Request New Ember Tests
+## How to Request New Ava Tests
 
-When asking for a new Ember flow test, provide:
+When asking for a new Ava flow test, provide:
 
 ```
-Write an Ember e2e test for [FLOW NAME]:
+Write an Ava e2e test for [FLOW NAME]:
 
 User journey:
 1. User does X
-2. Ember responds with Y (may call Z tool)
+2. Ava responds with Y (may call Z tool)
 3. User does W
 4. Expected outcome: [SPECIFIC RESULT]
 
@@ -412,13 +412,13 @@ Known timing:
 ### Example Request
 
 ```
-Write an Ember e2e test for Learning Path Creation:
+Write an Ava e2e test for Learning Path Creation:
 
 User journey:
 1. User says "I want to learn about RAG"
-2. Ember asks clarifying questions (1-2 questions)
+2. Ava asks clarifying questions (1-2 questions)
 3. User answers "I want to build a chatbot, intermediate level"
-4. Ember calls create_learning_path tool
+4. Ava calls create_learning_path tool
 5. Expected: Link to learning path appears, user can navigate to it
 
 Key verifications:
@@ -437,15 +437,15 @@ Known timing:
 
 ### When to Update This Doc
 
-- New Ember tools added that need testing
-- New thinking states added (update waitForEmberReady)
+- New Ava tools added that need testing
+- New thinking states added (update waitForAvaReady)
 - Timeout issues discovered
 - New helper functions created
 
 ### Review Cadence
 
 Review after:
-- Adding new Ember capabilities
+- Adding new Ava capabilities
 - Encountering flaky tests
 - Provider changes (new AI models)
 

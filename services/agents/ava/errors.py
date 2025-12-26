@@ -1,5 +1,5 @@
 """
-Unified error handling utilities for Ember agent tools.
+Unified error handling utilities for Ava agent tools.
 
 Provides consistent error response formatting and logging across all tools.
 """

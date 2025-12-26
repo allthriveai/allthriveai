@@ -227,7 +227,7 @@ class Tool(WeaviateSyncMixin, models.Model):
     best_practices = models.JSONField(default=list, blank=True, help_text='Best practices and recommendations')
     limitations = models.JSONField(default=list, blank=True, help_text='Known limitations or considerations')
 
-    # Comparison & Decision Metadata (for Ember discovery)
+    # Comparison & Decision Metadata (for Ava discovery)
     pricing_tiers = models.JSONField(
         default=list,
         blank=True,
@@ -241,7 +241,7 @@ class Tool(WeaviateSyncMixin, models.Model):
     not_ideal_for = models.JSONField(
         default=list,
         blank=True,
-        help_text='Use cases where NOT recommended (for Ember to cite)',
+        help_text='Use cases where NOT recommended (for Ava to cite)',
     )
     differentiators = models.JSONField(
         default=list,

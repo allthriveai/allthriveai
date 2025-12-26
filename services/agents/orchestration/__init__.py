@@ -1,5 +1,5 @@
 """
-Site orchestration tools for Ember.
+Site orchestration tools for Ava.
 
 These tools allow the chat to navigate users, highlight UI elements,
 and trigger actions on the AllThrive platform.

@@ -1,9 +1,9 @@
 /**
- * useEmberOnboarding Hook
+ * useAvaOnboarding Hook
  *
- * Manages Ember's onboarding state - tracking which adventures are completed,
+ * Manages Ava's onboarding state - tracking which adventures are completed,
  * whether to show the modal/banner, and persisting state to localStorage.
- * Ember is the friendly dragon guide for new AllThrive users.
+ * Ava is the friendly AI guide for new AllThrive users.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,24 +15,24 @@ import { api } from '@/services/api';
 // Legacy IDs for backwards compatibility, new IDs for avatar-focused onboarding
 export type AdventureId = 'battle_pip' | 'add_project' | 'explore' | 'personalize' | 'play' | 'learn';
 
-interface EmberOnboardingState {
+interface AvaOnboardingState {
   hasSeenModal: boolean;
   completedAdventures: AdventureId[];
   isDismissed: boolean;
   welcomePointsAwarded: boolean;
 }
 
-const STORAGE_KEY = 'ember_onboarding';
+const STORAGE_KEY = 'ava_onboarding';
 
 // Dev mode: Force onboarding to always show for testing
 // Set to true to always show onboarding, false for normal behavior
 const DEV_FORCE_ONBOARDING = import.meta.env.DEV && false;
 
 if (DEV_FORCE_ONBOARDING) {
-  console.log('[EmberOnboarding] DEV MODE: Forcing onboarding to always show');
+  console.log('[AvaOnboarding] DEV MODE: Forcing onboarding to always show');
 }
 
-const defaultState: EmberOnboardingState = {
+const defaultState: AvaOnboardingState = {
   hasSeenModal: false,
   completedAdventures: [],
   isDismissed: false,
@@ -43,31 +43,31 @@ function getStorageKey(userId: number | string): string {
   return `${STORAGE_KEY}_${userId}`;
 }
 
-function loadState(userId: number | string): EmberOnboardingState {
+function loadState(userId: number | string): AvaOnboardingState {
   try {
     const stored = localStorage.getItem(getStorageKey(userId));
     if (stored) {
       return { ...defaultState, ...JSON.parse(stored) };
     }
   } catch (e) {
-    console.error('[EmberOnboarding] Failed to load state:', e);
+    console.error('[AvaOnboarding] Failed to load state:', e);
   }
   return defaultState;
 }
 
-function saveState(userId: number | string, state: EmberOnboardingState): void {
+function saveState(userId: number | string, state: AvaOnboardingState): void {
   try {
     localStorage.setItem(getStorageKey(userId), JSON.stringify(state));
   } catch (e) {
-    console.error('[EmberOnboarding] Failed to save state:', e);
+    console.error('[AvaOnboarding] Failed to save state:', e);
   }
 }
 
-export function useEmberOnboarding() {
+export function useAvaOnboarding() {
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
   const pointsNotification = usePointsNotificationOptional();
-  const [state, setState] = useState<EmberOnboardingState>(defaultState);
+  const [state, setState] = useState<AvaOnboardingState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
   // Legacy state kept for backwards compatibility (consumers may still use these)
   const [showPointsOverlay, setShowPointsOverlay] = useState(false);
@@ -192,7 +192,7 @@ export function useEmberOnboarding() {
       }
       setState((prev) => ({ ...prev, welcomePointsAwarded: true }));
     } catch (error) {
-      console.error('[EmberOnboarding] Failed to award welcome points:', error);
+      console.error('[AvaOnboarding] Failed to award welcome points:', error);
     }
   }, [state.welcomePointsAwarded, pointsNotification]);
 
@@ -240,4 +240,4 @@ export function useEmberOnboarding() {
   };
 }
 
-export type { EmberOnboardingState };
+export type { AvaOnboardingState };

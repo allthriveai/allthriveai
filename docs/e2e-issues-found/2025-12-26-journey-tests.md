@@ -18,7 +18,7 @@ The new journey E2E tests (Phase 1 of nightly test expansion) found 3 real bugs 
 
 ### Description
 
-Ember home chat messages are NOT persisted to the database. The WebSocket chat system uses Redis cache for temporary conversation history but never saves messages to the `Conversation` and `Message` database models.
+Ava home chat messages are NOT persisted to the database. The WebSocket chat system uses Redis cache for temporary conversation history but never saves messages to the `Conversation` and `Message` database models.
 
 ### Evidence
 
@@ -80,7 +80,7 @@ In `core/agents/tasks.py`, modify `process_chat_message_task` to:
 
 **Files Changed:**
 - `core/agents/models.py` - Added `conversation_id`, `conversation_type` fields + user-scoped UniqueConstraint
-- `core/agents/tasks.py` - Added `persist_conversation_message` Celery task, response accumulator in `_process_with_ember()`, persistence call in `_process_image_generation()`
+- `core/agents/tasks.py` - Added `persist_conversation_message` Celery task, response accumulator in `_process_with_ava()`, persistence call in `_process_image_generation()`
 - `core/agents/serializers.py` - Added new fields to `ConversationSerializer`
 - `core/agents/views.py` - Added `annotate(message_count=Count('messages'))` to ViewSet
 
@@ -104,7 +104,7 @@ In `core/agents/tasks.py`, modify `process_chat_message_task` to:
 
 **Severity**: High
 **Component**: Database / Docker Configuration
-**Status**: Open
+**Status**: ✅ FIXED (2025-12-26)
 
 ### Description
 
@@ -187,35 +187,96 @@ projects: [
 
 **Recommended**: Implement Option A + Option C for local development.
 
+### Actual Fix Implemented
+
+Both Option A and Option C were implemented:
+
+**Option A - Increased PostgreSQL max_connections:**
+
+`docker-compose.yml`:
+```yaml
+db:
+  image: postgres:18.1-alpine
+  # Increase max_connections from default 100 to handle:
+  # - Django web workers (~20 connections)
+  # - Celery workers (~20 connections)
+  # - Celery beat (~5 connections)
+  # - E2E test workers (4 parallel × ~10 each)
+  command: postgres -c max_connections=200
+```
+
+**Option C - Reduced Playwright workers for deep tests:**
+
+`frontend/playwright.config.ts`:
+```typescript
+{
+  name: 'deep',
+  testMatch: '**/deep/**/*.spec.ts',
+  workers: 2, // Reduced from default 4 to prevent DB connection exhaustion
+  // ...
+}
+```
+
+**Note**: After applying these changes, restart the database container:
+```bash
+docker compose down db && docker compose up -d db
+```
+
 ---
 
 ## Issue 3: AI Routing / Intent Detection
 
 **Severity**: Medium
 **Component**: `core/agents/` and `services/agents/`
-**Status**: Needs Investigation
+**Status**: ✅ FIXED (2025-12-26)
 
 ### Description
 
-Some evidence suggests Ember may misroute certain query types. For example, learning questions might be treated as profile interest updates rather than being answered directly.
+Some evidence suggests Ava may misroute certain query types. For example, learning questions might be treated as profile interest updates rather than being answered directly.
 
 ### Evidence
 
 - Test logs showed unexpected response patterns for learning queries
 - Response to "What is RAG in AI?" appeared to trigger profile update rather than educational response
 
-### Affected Code (Likely)
+### Root Cause Analysis
 
-- `core/agents/tasks.py` - Intent detection logic
-- `services/agents/ember/` - Ember agent routing
-- `services/agents/orchestrator/` - Multi-agent supervisor
+Investigation revealed three issues:
 
-### Investigation Needed
+1. **System prompt encouraged profile questions during learning** - The `ask_profile_question` guidelines said to use it "during natural pauses in conversation" and "after 3+ messages of good conversation", which the LLM could interpret as valid during learning sessions.
 
-1. Review intent classification logic
-2. Check agent routing decisions for edge cases
-3. Verify that learning/discovery/creation intents route to correct agents
-4. Add logging to track routing decisions in development
+2. **Learning question detection only applied to first message** - The `force_tool_choice` for `find_content` was only applied when the last message was a `HumanMessage`, meaning multi-turn learning conversations lost this safeguard.
+
+3. **No learning context tracking** - The system had no way to detect that the user was in an active learning session (recent `find_content` or `create_learning_path` calls) to suppress profile questions.
+
+### Actual Fix Implemented
+
+**Files Changed:**
+- `services/agents/ava/prompts.py` - Added explicit "When NOT to use" rules for `ask_profile_question()`
+- `services/agents/ava/agent.py` - Added `_is_in_learning_context()` helper and dynamic system prompt hint
+
+**Key Changes:**
+
+1. **Updated system prompt guidelines** (prompts.py:83-89):
+   ```python
+   **When NOT to use:**
+   - User is in learning mode (asking "what is", "explain", "how does", educational questions)
+   - You just called find_content or create_learning_path (wait at least 3 more exchanges)
+   - User is actively exploring content or learning paths
+   ```
+
+2. **Added learning context detection** (agent.py:745-764):
+   - New `_is_in_learning_context()` function checks last 6 messages for learning tool calls
+   - Detects: `find_content`, `create_learning_path`, `update_learner_profile`, `get_quiz_hint`
+
+3. **Dynamic system prompt injection** (agent.py:814-824):
+   - When learning context detected, injects: "User is in active learning mode. Do NOT call ask_profile_question()"
+   - Logged for observability: `[AGENT_NODE] User is in learning context, suppressing profile questions`
+
+**Why this works:**
+- LLM now has explicit guidance NOT to use profile questions during learning
+- System dynamically detects learning context and reinforces the constraint
+- Multi-turn conversations maintain learning mode protection
 
 ---
 
@@ -231,17 +292,17 @@ Some evidence suggests Ember may misroute certain query types. For example, lear
 
 ## Recommendations
 
-### Immediate Actions
+### Completed Actions ✅
 
-1. **Fix conversation persistence** - Critical for user experience
-2. **Increase PostgreSQL max_connections** - Unblocks E2E test suite
-3. **Add connection pool monitoring** - Track connection usage
+1. ~~**Fix conversation persistence**~~ - ✅ Fixed with async Celery task
+2. ~~**Increase PostgreSQL max_connections**~~ - ✅ Set to 200 in docker-compose.yml
+3. ~~**Investigate AI routing**~~ - ✅ Fixed with learning context detection
 
 ### Follow-up Actions
 
-1. Investigate AI routing to ensure correct intent classification
-2. Add database connection metrics to observability stack
-3. Consider adding conversation persistence as a Celery post-processing task
+1. Add database connection metrics to observability stack
+2. Consider adding E2E tests for multi-turn learning conversations
+3. Monitor logging for "[AGENT_NODE] User is in learning context" to validate fix
 
 ---
 

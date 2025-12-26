@@ -105,7 +105,7 @@ class Migration(migrations.Migration):
             model_name='tool',
             name='not_ideal_for',
             field=models.JSONField(
-                blank=True, default=list, help_text='Use cases where NOT recommended (for Ember to cite)'
+                blank=True, default=list, help_text='Use cases where NOT recommended (for Ava to cite)'
             ),
         ),
         migrations.AddField(

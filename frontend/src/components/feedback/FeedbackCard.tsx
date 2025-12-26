@@ -22,7 +22,7 @@ const categoryLabels: Record<FeedbackCategory, string> = {
   lounge: 'Lounge',
   learn: 'Learn',
   // Agents
-  ember: 'Ember',
+  ava: 'Ava',
   sage: 'Sage',
   haven: 'Haven',
   guide: 'Guide',

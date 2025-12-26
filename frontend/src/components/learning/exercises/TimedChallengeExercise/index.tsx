@@ -206,24 +206,24 @@ export function TimedChallengeExercise({
       {gameState === 'ready' && (
         <AnimatedContainer variant="interactive" className="p-6 text-center">
           <div className="space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
-              <FontAwesomeIcon icon={faBolt} className="text-3xl text-amber-400" />
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-amber-100 dark:from-amber-500/20 to-orange-100 dark:to-orange-500/20 flex items-center justify-center">
+              <FontAwesomeIcon icon={faBolt} className="text-3xl text-amber-500 dark:text-amber-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-200">Timed Challenge</h3>
-            <p className="text-sm text-slate-400 max-w-md mx-auto">{content.instructions}</p>
+            <h3 className="text-xl font-bold text-gray-800 dark:text-slate-200">Timed Challenge</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400 max-w-md mx-auto">{content.instructions}</p>
 
             <div className="flex justify-center gap-6 text-sm">
               <div className="text-center">
-                <p className="text-slate-500">Questions</p>
-                <p className="text-lg font-bold text-slate-200">{questions.length}</p>
+                <p className="text-gray-400 dark:text-slate-500">Questions</p>
+                <p className="text-lg font-bold text-gray-800 dark:text-slate-200">{questions.length}</p>
               </div>
               <div className="text-center">
-                <p className="text-slate-500">Time</p>
-                <p className="text-lg font-bold text-slate-200">{Math.floor(timerDuration / 60)}:{(timerDuration % 60).toString().padStart(2, '0')}</p>
+                <p className="text-gray-400 dark:text-slate-500">Time</p>
+                <p className="text-lg font-bold text-gray-800 dark:text-slate-200">{Math.floor(timerDuration / 60)}:{(timerDuration % 60).toString().padStart(2, '0')}</p>
               </div>
               <div className="text-center">
-                <p className="text-slate-500">To Pass</p>
-                <p className="text-lg font-bold text-emerald-400">{passingScore} pts</p>
+                <p className="text-gray-400 dark:text-slate-500">To Pass</p>
+                <p className="text-lg font-bold text-emerald-500 dark:text-emerald-400">{passingScore} pts</p>
               </div>
             </div>
 
@@ -246,26 +246,26 @@ export function TimedChallengeExercise({
             {/* Timer */}
             <div className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg font-mono',
-              urgencyLevel === 'critical' && 'bg-red-500/20 text-red-400 animate-pulse',
-              urgencyLevel === 'high' && 'bg-amber-500/20 text-amber-400',
-              urgencyLevel === 'medium' && 'bg-cyan-500/10 text-cyan-400',
-              urgencyLevel === 'low' && 'bg-white/5 text-slate-300',
+              urgencyLevel === 'critical' && 'bg-red-100 dark:bg-red-500/20 text-red-500 dark:text-red-400 animate-pulse',
+              urgencyLevel === 'high' && 'bg-amber-100 dark:bg-amber-500/20 text-amber-500 dark:text-amber-400',
+              urgencyLevel === 'medium' && 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+              urgencyLevel === 'low' && 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-slate-300',
             )}>
               <span className="text-lg font-bold">{formattedTime}</span>
             </div>
 
             {/* Score */}
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faTrophy} className="text-amber-400" />
+              <FontAwesomeIcon icon={faTrophy} className="text-amber-500 dark:text-amber-400" />
               <motion.span
                 key={score}
                 initial={{ scale: 1.2 }}
                 animate={{ scale: 1 }}
-                className="text-lg font-bold text-slate-200"
+                className="text-lg font-bold text-gray-800 dark:text-slate-200"
               >
                 {score}
               </motion.span>
-              <span className="text-slate-500">/ {maxScore}</span>
+              <span className="text-gray-400 dark:text-slate-500">/ {maxScore}</span>
             </div>
 
             {/* Streak */}
@@ -273,10 +273,10 @@ export function TimedChallengeExercise({
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20"
+                className="flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 dark:bg-orange-500/20"
               >
-                <FontAwesomeIcon icon={faFire} className="text-orange-400" />
-                <span className="font-bold text-orange-300">{currentStreak}x</span>
+                <FontAwesomeIcon icon={faFire} className="text-orange-500 dark:text-orange-400" />
+                <span className="font-bold text-orange-600 dark:text-orange-300">{currentStreak}x</span>
               </motion.div>
             )}
 
@@ -289,7 +289,7 @@ export function TimedChallengeExercise({
                     icon={faHeart}
                     className={cn(
                       'text-lg transition-all',
-                      i < lives ? 'text-red-400' : 'text-slate-700'
+                      i < lives ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-slate-700'
                     )}
                   />
                 ))}
@@ -298,7 +298,7 @@ export function TimedChallengeExercise({
           </div>
 
           {/* Progress */}
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500"
               initial={{ width: 0 }}
@@ -340,37 +340,37 @@ export function TimedChallengeExercise({
             <div className={cn(
               'w-20 h-20 mx-auto rounded-2xl flex items-center justify-center',
               isPassed
-                ? 'bg-gradient-to-br from-emerald-500/20 to-cyan-500/20'
-                : 'bg-gradient-to-br from-red-500/20 to-orange-500/20'
+                ? 'bg-gradient-to-br from-emerald-100 dark:from-emerald-500/20 to-cyan-100 dark:to-cyan-500/20'
+                : 'bg-gradient-to-br from-red-100 dark:from-red-500/20 to-orange-100 dark:to-orange-500/20'
             )}>
               <FontAwesomeIcon
                 icon={isPassed ? faTrophy : faBolt}
                 className={cn(
                   'text-4xl',
-                  isPassed ? 'text-emerald-400' : 'text-red-400'
+                  isPassed ? 'text-emerald-500 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
                 )}
               />
             </div>
 
             <h3 className={cn(
               'text-2xl font-bold',
-              isPassed ? 'text-emerald-300' : 'text-red-300'
+              isPassed ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'
             )}>
               {isPassed ? 'Challenge Complete!' : 'Challenge Failed'}
             </h3>
 
             <div className="flex justify-center gap-8 text-sm">
               <div className="text-center">
-                <p className="text-slate-500">Score</p>
-                <p className="text-2xl font-bold text-slate-200">{score}</p>
+                <p className="text-gray-400 dark:text-slate-500">Score</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-slate-200">{score}</p>
               </div>
               <div className="text-center">
-                <p className="text-slate-500">Best Streak</p>
-                <p className="text-2xl font-bold text-orange-400">{maxStreak}x</p>
+                <p className="text-gray-400 dark:text-slate-500">Best Streak</p>
+                <p className="text-2xl font-bold text-orange-500 dark:text-orange-400">{maxStreak}x</p>
               </div>
               <div className="text-center">
-                <p className="text-slate-500">Accuracy</p>
-                <p className="text-2xl font-bold text-cyan-400">
+                <p className="text-gray-400 dark:text-slate-500">Accuracy</p>
+                <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
                   {answeredQuestions.size > 0
                     ? Math.round((score / maxScore) * 100)
                     : 0}%
@@ -379,7 +379,7 @@ export function TimedChallengeExercise({
             </div>
 
             {isPassed && (
-              <p className="text-emerald-200/70">
+              <p className="text-emerald-700 dark:text-emerald-200/70">
                 {exercise.successMessage || 'Great job completing the challenge!'}
               </p>
             )}
@@ -390,7 +390,7 @@ export function TimedChallengeExercise({
                 'px-6 py-3 rounded-xl font-bold transition-all transform hover:scale-105',
                 isPassed
                   ? 'text-slate-900 bg-gradient-to-r from-emerald-400 to-cyan-400'
-                  : 'text-slate-200 bg-white/10 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-slate-200 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20'
               )}
             >
               <FontAwesomeIcon icon={faRotateRight} className="mr-2" />
@@ -430,20 +430,20 @@ function QuestionCard({
       <div className="space-y-4">
         {/* Question header */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-gray-400 dark:text-slate-500">
             Question {questionNumber} of {totalQuestions}
           </span>
-          <span className="px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
+          <span className="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium">
             +{question.points} pts
           </span>
         </div>
 
         {/* Question text */}
-        <h4 className="text-lg font-medium text-slate-200">{question.question}</h4>
+        <h4 className="text-lg font-medium text-gray-800 dark:text-slate-200">{question.question}</h4>
 
         {/* Code snippet if present */}
         {question.code && (
-          <div className="rounded-lg overflow-hidden border border-white/10">
+          <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-white/10">
             <SyntaxHighlighter
               language={question.codeLanguage || 'javascript'}
               style={oneDark}
@@ -473,21 +473,22 @@ function QuestionCard({
                 className={cn(
                   'p-4 rounded-lg text-left text-sm font-medium transition-all',
                   selectedAnswer === null
-                    ? 'bg-white/5 border border-white/10 hover:border-cyan-500/30 hover:bg-cyan-500/5'
+                    ? 'bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-cyan-400 dark:hover:border-cyan-500/30 hover:bg-cyan-50 dark:hover:bg-cyan-500/5 text-gray-800 dark:text-slate-200'
                     : isSelected
                       ? isCorrect
-                        ? 'bg-emerald-500/20 border-2 border-emerald-500/50'
-                        : 'bg-red-500/20 border-2 border-red-500/50'
+                        ? 'bg-emerald-50 dark:bg-emerald-500/20 border-2 border-emerald-400 dark:border-emerald-500/50'
+                        : 'bg-red-50 dark:bg-red-500/20 border-2 border-red-400 dark:border-red-500/50'
                       : showFeedback && showCorrectOnWrong && isCorrectOption
-                        ? 'bg-emerald-500/10 border border-emerald-500/30'
-                        : 'bg-white/5 border border-white/10 opacity-50'
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30'
+                        : 'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 opacity-50'
                 )}
                 whileHover={selectedAnswer === null ? { scale: 1.02 } : undefined}
                 whileTap={selectedAnswer === null ? { scale: 0.98 } : undefined}
               >
                 <span className={cn(
-                  isSelected && (isCorrect ? 'text-emerald-300' : 'text-red-300'),
-                  showFeedback && showCorrectOnWrong && isCorrectOption && !isSelected && 'text-emerald-300'
+                  'text-gray-800 dark:text-slate-200',
+                  isSelected && (isCorrect ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'),
+                  showFeedback && showCorrectOnWrong && isCorrectOption && !isSelected && 'text-emerald-600 dark:text-emerald-300'
                 )}>
                   {option}
                 </span>
@@ -501,7 +502,7 @@ function QuestionCard({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-3 rounded-lg bg-slate-800/50 text-sm text-slate-300"
+            className="p-3 rounded-lg bg-gray-100 dark:bg-slate-800/50 text-sm text-gray-600 dark:text-slate-300"
           >
             {question.explanation}
           </motion.div>

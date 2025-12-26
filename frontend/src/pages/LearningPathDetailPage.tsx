@@ -41,12 +41,6 @@ import {
   faExpand,
   faCompress,
   faSync,
-  faTerminal,
-  faComments,
-  faGripVertical,
-  faProjectDiagram,
-  faListOl,
-  faBolt,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -58,14 +52,13 @@ import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/ga
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
-import { getLessonImage, rateLesson, getLessonProgress, completeExercise, completeQuiz, regenerateLesson, regenerateExercise, type CurriculumItem, type RelatedProject, type PathProgress, type AILessonContent, type LessonExercise } from '@/services/learningPaths';
+import { getLessonImage, rateLesson, getLessonProgress, completeExercise, completeQuiz, regenerateLesson, type CurriculumItem, type RelatedProject, type PathProgress, type AILessonContent } from '@/services/learningPaths';
 import { getToolBySlug } from '@/services/tools';
 import { getTaxonomyPreferences, type SkillLevel } from '@/services/personalization';
-import { SimulatedTerminal } from '@/components/learning/SimulatedTerminal';
 import { InlineAIChat } from '@/components/learning/InlineAIChat';
 import { LessonQuiz } from '@/components/learning/LessonQuiz';
-import { CodeEditorExercise } from '@/components/learning/CodeEditorExercise';
-import { ExerciseRenderer } from '@/components/learning/exercises/ExerciseRenderer';
+import { ExerciseCollection } from '@/components/learning/exercises';
+import { getExercises } from '@/services/learningPaths';
 import type { Tool } from '@/types/models';
 
 /**
@@ -707,89 +700,6 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
 }
 
 /**
- * Exercise type options for "Try Differently" feature
- * Supports both legacy and new interactive exercise types:
- * - terminal: Command-line exercises (shell, git, npm, etc.) via SimulatedTerminal
- * - ai_prompt: Conversational practice with Sage via InlineAIChat
- * - code: Code editor exercises via CodeEditorExercise
- * - drag_sort: Drag and drop ordering/matching exercises
- * - connect_nodes: Visual puzzle connecting concepts
- * - code_walkthrough: Step-through code analysis
- * - timed_challenge: Game-like timed quiz
- */
-const EXERCISE_TYPE_OPTIONS = [
-  { type: 'terminal' as const, icon: faTerminal, label: 'Terminal', description: 'Practice with commands' },
-  { type: 'ai_prompt' as const, icon: faComments, label: 'AI Chat', description: 'Practice with Sage' },
-  { type: 'code' as const, icon: faCode, label: 'Code', description: 'Write code exercises' },
-  { type: 'drag_sort' as const, icon: faGripVertical, label: 'Sort', description: 'Drag and drop exercise' },
-  { type: 'connect_nodes' as const, icon: faProjectDiagram, label: 'Connect', description: 'Connect the concepts' },
-  { type: 'code_walkthrough' as const, icon: faListOl, label: 'Walkthrough', description: 'Step through code' },
-  { type: 'timed_challenge' as const, icon: faBolt, label: 'Challenge', description: 'Timed quiz challenge' },
-];
-
-/**
- * Get relevant exercise types based on lesson topic
- * Returns array of exercise types appropriate for the lesson content
- */
-function getRelevantExerciseTypes(lessonTitle: string): string[] {
-  const title = lessonTitle.toLowerCase();
-
-  // Shell/CLI lessons - terminal focus + sorting for workflow steps
-  if (title.includes('shell') || title.includes('cli') || title.includes('command') || title.includes('bash')) {
-    return ['terminal', 'ai_prompt', 'code', 'drag_sort', 'timed_challenge'];
-  }
-
-  // Git lessons - terminal, workflow sorting, and challenges
-  if (title.includes('git')) {
-    return ['terminal', 'ai_prompt', 'drag_sort', 'timed_challenge'];
-  }
-
-  // Architecture/system design - visual connections
-  if (title.includes('architecture') || title.includes('system') || title.includes('design') ||
-      title.includes('flow') || title.includes('diagram')) {
-    return ['connect_nodes', 'ai_prompt', 'drag_sort', 'timed_challenge'];
-  }
-
-  // Prompt engineering - AI chat focus
-  if (title.includes('prompt')) {
-    return ['ai_prompt', 'code', 'timed_challenge'];
-  }
-
-  // Code/programming lessons - code editor, walkthrough, and challenges
-  if (title.includes('python') || title.includes('javascript') || title.includes('code') ||
-      title.includes('function') || title.includes('programming') || title.includes('html') || title.includes('css')) {
-    return ['code', 'code_walkthrough', 'terminal', 'ai_prompt', 'timed_challenge'];
-  }
-
-  // Concept/theory lessons - sorting, connections, and challenges
-  if (title.includes('concept') || title.includes('introduction') || title.includes('basics') ||
-      title.includes('overview') || title.includes('understanding')) {
-    return ['drag_sort', 'connect_nodes', 'ai_prompt', 'timed_challenge'];
-  }
-
-  // Default: show all interactive types
-  return ['terminal', 'ai_prompt', 'code', 'drag_sort', 'connect_nodes', 'code_walkthrough', 'timed_challenge'];
-}
-
-/**
- * Get badge text for exercise type
- */
-function getExerciseBadge(exerciseType?: string): string {
-  switch (exerciseType) {
-    case 'terminal': return 'Terminal';
-    case 'git': return 'Git';
-    case 'code': return 'Code';
-    case 'ai_prompt': return 'AI Chat';
-    case 'code_review': return 'Review';
-    case 'drag_sort': return 'Interactive';
-    case 'connect_nodes': return 'Puzzle';
-    case 'code_walkthrough': return 'Walkthrough';
-    case 'timed_challenge': return 'Challenge';
-    default: return 'Practice';
-  }
-}
-
-/**
  * Expandable accordion section for lesson content (Exercise, Quiz, Diagram)
  */
 interface LessonSectionAccordionProps {
@@ -855,10 +765,9 @@ interface AILessonCardProps {
   isCompleted?: boolean;
   showCelebration?: boolean;
   onLessonUpdated?: (lessonOrder: number, newContent: AILessonContent, newTitle?: string) => void;
-  onExerciseUpdated?: (lessonOrder: number, newExercise: LessonExercise) => void;
 }
 
-function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete, autoExpand, cardRef: externalCardRef, isCompleted, showCelebration, onLessonUpdated, onExerciseUpdated }: AILessonCardProps) {
+function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete, autoExpand, cardRef: externalCardRef, isCompleted, showCelebration, onLessonUpdated }: AILessonCardProps) {
   const [isExpanded, setIsExpanded] = useState(autoExpand ?? false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -874,8 +783,6 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   const [regenerateFocus, setRegenerateFocus] = useState('');
   const [regenerateReason, setRegenerateReason] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [isRegeneratingExercise, setIsRegeneratingExercise] = useState(false);
-  const [regeneratingExerciseType, setRegeneratingExerciseType] = useState<string | null>(null);
   const [regenerationError, setRegenerationError] = useState<string | null>(null);
 
   // Use local state for content and title to allow real-time updates after regeneration
@@ -1014,33 +921,6 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
       setRegenerationError('Failed to regenerate lesson. Please try again.');
     } finally {
       setIsRegenerating(false);
-    }
-  };
-
-  // Handle regenerating just the exercise with a different type
-  const handleRegenerateExercise = async (exerciseType: 'terminal' | 'code' | 'ai_prompt' | 'drag_sort' | 'connect_nodes' | 'code_walkthrough' | 'timed_challenge') => {
-    if (!pathSlug) return;
-
-    setIsRegeneratingExercise(true);
-    setRegeneratingExerciseType(exerciseType);
-    setRegenerationError(null);
-
-    try {
-      const result = await regenerateExercise(pathSlug, item.order, {
-        exerciseType,
-      });
-
-      if (result.success && result.exercise) {
-        // Update local content with the new exercise
-        setLocalContent(prev => prev ? { ...prev, exercise: result.exercise } : prev);
-        onExerciseUpdated?.(item.order, result.exercise);
-      }
-    } catch (error) {
-      console.error('Failed to regenerate exercise:', error);
-      setRegenerationError('Failed to regenerate exercise. Please try again.');
-    } finally {
-      setIsRegeneratingExercise(false);
-      setRegeneratingExerciseType(null);
     }
   };
 
@@ -1249,65 +1129,32 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
             </LessonSectionAccordion>
           )}
 
-          {/* Exercise Section - expandable accordion */}
-          {(content.exercise || content.practicePrompt) && (
+          {/* Exercise Section - expandable accordion with multiple exercises support */}
+          {(getExercises(content).length > 0 || content.practicePrompt) && (
             <LessonSectionAccordion
-              title="Exercise"
+              title="Exercises"
               icon={faCode}
               iconColor="text-emerald-500"
-              badge={getExerciseBadge(content.exercise?.exerciseType)}
+              badge={getExercises(content).length > 0 ? `${getExercises(content).length} exercise${getExercises(content).length > 1 ? 's' : ''}` : 'Practice'}
             >
-              {content.exercise && ['drag_sort', 'connect_nodes', 'code_walkthrough', 'timed_challenge'].includes(content.exercise.exerciseType) ? (
-                /* New interactive exercise types use ExerciseRenderer */
-                <ExerciseRenderer
-                  exercise={content.exercise}
-                  skillLevel={skillLevel}
-                  lessonId={`lesson-${item.order}`}
+              {getExercises(content).length > 0 && pathSlug ? (
+                /* Multiple exercises with collection UI */
+                <ExerciseCollection
                   pathSlug={pathSlug}
-                  onAskForHelp={handleOpenChat}
-                  onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
-                />
-              ) : content.exercise && content.exercise.exerciseType === 'ai_prompt' ? (
-                /* AI Prompt exercises use inline chat */
-                <InlineAIChat
-                  // @ts-expect-error - Type mismatch between LessonExercise and Exercise, safe for ai_prompt type
-                  exercise={content.exercise}
+                  lessonOrder={item.order}
+                  content={content}
                   skillLevel={skillLevel}
-                  lessonId={`lesson-${item.order}`}
-                  pathSlug={pathSlug}
-                  onAskForHelp={handleOpenChat}
-                  onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
-                />
-              ) : content.exercise && content.exercise.exerciseType === 'code' ? (
-                /* Code exercises use Monaco-based code editor */
-                <CodeEditorExercise
-                  exercise={{
-                    exerciseType: 'code',
-                    language: content.exercise.language || 'python',
-                    scenario: content.exercise.scenario,
-                    starterCode: content.exercise.starterCode,
-                    expectedPatterns: content.exercise.expectedPatterns || content.exercise.expectedInputs || [],
-                    successMessage: content.exercise.successMessage,
-                    expectedOutput: content.exercise.expectedOutput,
-                    contentByLevel: content.exercise.contentByLevel,
+                  onExerciseComplete={() => {
+                    // Call the lesson completion handler with placeholder stats
+                    onExerciseComplete?.(item.order, { hintsUsed: 0, attempts: 1, timeSpentMs: 0 });
                   }}
-                  skillLevel={skillLevel}
-                  lessonId={`lesson-${item.order}`}
-                  pathSlug={pathSlug}
-                  onAskForHelp={handleOpenChat}
-                  onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
-                />
-              ) : content.exercise ? (
-                /* Terminal/Git exercises use SimulatedTerminal */
-                <SimulatedTerminal
-                  // @ts-expect-error - Type mismatch between LessonExercise and Exercise, safe for terminal/git types
-                  exercise={content.exercise}
-                  skillLevel={skillLevel}
-                  onAskForHelp={handleOpenChat}
-                  onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+                  onContentUpdate={(exercises) => {
+                    // Update local content with new exercises array
+                    setLocalContent(prev => prev ? { ...prev, exercises } : prev);
+                  }}
                 />
               ) : content.practicePrompt && (
-                /* Fallback: convert practicePrompt to inline chat */
+                /* Fallback: convert practicePrompt to inline chat when no exercises */
                 <InlineAIChat
                   exercise={{
                     exerciseType: 'ai_prompt',
@@ -1327,42 +1174,6 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                   onAskForHelp={handleOpenChat}
                   onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
                 />
-              )}
-
-              {/* Try a different exercise type */}
-              {pathSlug && (
-                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/10">
-                  <p className="text-sm text-slate-500 dark:text-gray-400 mb-2">Try a different exercise type:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {EXERCISE_TYPE_OPTIONS
-                      .filter(opt => getRelevantExerciseTypes(title).includes(opt.type))
-                      .map(opt => {
-                        // Determine current type - could be from exercise or fallback to ai_prompt for practicePrompt
-                        const currentType = content.exercise?.exerciseType || (content.practicePrompt ? 'ai_prompt' : null);
-                        const isCurrentType = currentType === opt.type;
-                        const isGenerating = regeneratingExerciseType === opt.type;
-
-                        return (
-                          <button
-                            key={opt.type}
-                            onClick={() => handleRegenerateExercise(opt.type)}
-                            disabled={isRegeneratingExercise || isCurrentType}
-                            className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5 transition-all ${
-                              isCurrentType
-                                ? 'bg-emerald-500 text-white cursor-default'
-                                : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'
-                            } ${isGenerating ? 'animate-pulse' : ''} ${isRegeneratingExercise && !isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            <FontAwesomeIcon icon={isGenerating ? faSpinner : opt.icon} className={`text-xs ${isGenerating ? 'animate-spin' : ''}`} />
-                            {isGenerating ? 'Generating...' : opt.label}
-                          </button>
-                        );
-                      })}
-                  </div>
-                  {regenerationError && !isRegeneratingExercise && (
-                    <p className="text-sm text-red-500 dark:text-red-400 mt-2">{regenerationError}</p>
-                  )}
-                </div>
               )}
             </LessonSectionAccordion>
           )}

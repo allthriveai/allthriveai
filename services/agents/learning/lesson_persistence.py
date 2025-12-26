@@ -30,21 +30,21 @@ class LessonPersistenceService:
     """
     Service to persist AI-generated lessons as Project records.
 
-    Lessons are owned by Ember (the learning agent) and marked with is_lesson=True.
+    Lessons are owned by Ava (the learning agent) and marked with is_lesson=True.
     Content is hashed to avoid duplicate persistence.
     """
 
-    EMBER_USERNAME = 'ember'
+    AVA_USERNAME = 'ava'
 
     @classmethod
-    def get_ember_user(cls) -> User:
-        """Get the Ember agent user."""
+    def get_ava_user(cls) -> User:
+        """Get the Ava agent user."""
         from core.users.models import UserRole
 
         try:
-            return User.objects.get(username=cls.EMBER_USERNAME, role=UserRole.AGENT)
+            return User.objects.get(username=cls.AVA_USERNAME, role=UserRole.AGENT)
         except User.DoesNotExist as err:
-            raise ValueError('Ember user not found. Run: python manage.py create_ember') from err
+            raise ValueError('Ava user not found. Run: python manage.py create_ava') from err
 
     @classmethod
     def content_hash(cls, lesson_content: dict) -> str:
@@ -86,14 +86,14 @@ class LessonPersistenceService:
         from core.taxonomy.models import Taxonomy
         from core.taxonomy.topic_service import ensure_topics_in_taxonomy
 
-        ember = cls.get_ember_user()
+        ava = cls.get_ava_user()
 
         # Generate content hash for deduplication
         content_hash = cls.content_hash(lesson_content)
 
         # Check for existing lesson with same content
         existing = Project.objects.filter(
-            user=ember,
+            user=ava,
             content__content_hash=content_hash,
         ).first()
 
@@ -102,7 +102,7 @@ class LessonPersistenceService:
             return PersistedLessonResult(
                 project_id=existing.id,
                 slug=existing.slug,
-                url=f'/{ember.username}/{existing.slug}',
+                url=f'/{ava.username}/{existing.slug}',
                 already_existed=True,
             )
 
@@ -120,7 +120,7 @@ class LessonPersistenceService:
         base_slug = slugify(title)[:150]
         slug = base_slug
         counter = 1
-        while Project.objects.filter(user=ember, slug=slug).exists():
+        while Project.objects.filter(user=ava, slug=slug).exists():
             slug = f'{base_slug}-{counter}'
             counter += 1
 
@@ -147,14 +147,14 @@ class LessonPersistenceService:
 
         # Create the Project
         project = Project.objects.create(
-            user=ember,
+            user=ava,
             title=title,
             slug=slug,
             description=lesson_content.get('summary', ''),
             type=Project.ProjectType.OTHER,
             content=project_content,
             is_private=False,  # Lessons are public
-            is_showcased=False,  # Don't show on Ember's profile
+            is_showcased=False,  # Don't show on Ava's profile
             is_archived=False,
             difficulty_taxonomy=difficulty_taxonomy,
             content_type_taxonomy=lesson_content_type,
@@ -205,7 +205,7 @@ class LessonPersistenceService:
         return PersistedLessonResult(
             project_id=project.id,
             slug=project.slug,
-            url=f'/{ember.username}/{project.slug}',
+            url=f'/{ava.username}/{project.slug}',
             already_existed=False,
         )
 

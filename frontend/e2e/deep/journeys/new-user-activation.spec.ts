@@ -8,7 +8,7 @@
  * This test validates that a brand new user can:
  * 1. Arrive at the platform
  * 2. Sign up for an account (or use existing test user as proxy)
- * 3. Complete Ember's onboarding chat
+ * 3. Complete Ava's onboarding chat
  * 4. Create or import their first project
  * 5. See their activity reflected on their profile
  */
@@ -18,13 +18,13 @@ import {
   loginViaAPI,
   TEST_USER,
   sendHomeChat,
-  waitForEmberReady,
+  waitForAvaReady,
   getPageContent,
   assertNoTechnicalErrors,
   assertHelpfulResponse,
   getGamificationState,
   getClippedProjects,
-  goToHomeAndWaitForEmber,
+  goToHomeAndWaitForAva,
   goToProfile,
   JOURNEY_TIMEOUT,
   PAGE_LOAD_WAIT,
@@ -43,7 +43,7 @@ test.describe('New User Activation Journey', () => {
     console.log('Step 1: Logging in and navigating to home...');
 
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     const homeContent = await getPageContent(page);
     assertNoTechnicalErrors(homeContent, 'home page after login');
@@ -65,41 +65,41 @@ test.describe('New User Activation Journey', () => {
     expect(initialState.totalPoints).toBeGreaterThanOrEqual(0);
 
     // =========================================================================
-    // STEP 3: Interact with Ember (onboarding conversation)
+    // STEP 3: Interact with Ava (onboarding conversation)
     // =========================================================================
-    console.log('Step 3: Starting conversation with Ember...');
+    console.log('Step 3: Starting conversation with Ava...');
 
-    // Ask Ember for help (simulates new user exploration)
+    // Ask Ava for help (simulates new user exploration)
     await sendHomeChat(page, 'Hi! I just joined. What can I do here?');
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     const welcomeResponse = await getPageContent(page);
-    assertHelpfulResponse(welcomeResponse, 'Ember welcome');
+    assertHelpfulResponse(welcomeResponse, 'Ava welcome');
 
-    // Ember should mention key features
+    // Ava should mention key features
     const mentionsFeatures =
       /project|learn|battle|explore|create|community/i.test(welcomeResponse);
     expect(mentionsFeatures).toBe(true);
 
     // =========================================================================
-    // STEP 4: Import a project via Ember (first value moment)
+    // STEP 4: Import a project via Ava (first value moment)
     // =========================================================================
-    console.log('Step 4: Importing first project via Ember...');
+    console.log('Step 4: Importing first project via Ava...');
 
     // Paste a URL to import
     await sendHomeChat(page, 'https://github.com/openai/whisper');
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     let importResponse = await getPageContent(page);
     assertNoTechnicalErrors(importResponse, 'URL paste response');
 
-    // Ember should ask about ownership or confirm import
+    // Ava should ask about ownership or confirm import
     const asksAboutOwnership = /yours|own|create|clip|save/i.test(importResponse);
     expect(asksAboutOwnership).toBe(true);
 
     // Respond that we want to save/clip it
     await sendHomeChat(page, "It's not mine, I want to save it to my collection");
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     importResponse = await getPageContent(page);
     assertNoTechnicalErrors(importResponse, 'import confirmation');
@@ -155,10 +155,10 @@ test.describe('New User Activation Journey', () => {
     console.log('New User Activation Journey completed successfully!');
   });
 
-  test('Ember provides helpful guidance to new users', async ({ page }) => {
-    // This test validates Ember's onboarding quality
+  test('Ava provides helpful guidance to new users', async ({ page }) => {
+    // This test validates Ava's onboarding quality
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     // Ask about key features
     const questions = [
@@ -169,7 +169,7 @@ test.describe('New User Activation Journey', () => {
 
     for (const question of questions) {
       await sendHomeChat(page, question);
-      await waitForEmberReady(page);
+      await waitForAvaReady(page);
 
       const response = await getPageContent(page);
       assertHelpfulResponse(response, `question: ${question}`);

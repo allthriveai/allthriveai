@@ -1,20 +1,20 @@
 /**
- * Ember URL Import E2E Tests
+ * Ava URL Import E2E Tests
  *
- * Tests the URL import flow through Ember chat:
+ * Tests the URL import flow through Ava chat:
  * 1. User says "I want to share something I've been working on"
  * 2. User pastes a URL (e.g., https://www.kinlia.com/)
- * 3. Ember calls import_from_url tool with real AI
+ * 3. Ava calls import_from_url tool with real AI
  * 4. Project is created and user is notified
  *
  * These tests use REAL AI tokens (OpenAI) - no mocking.
- * Run locally: npx playwright test ember-url-import.spec.ts
+ * Run locally: npx playwright test ava-url-import.spec.ts
  */
 
 import { test, expect } from '@playwright/test';
 import { loginViaAPI } from './helpers';
 
-test.describe('Ember URL Import Flow', () => {
+test.describe('Ava URL Import Flow', () => {
   // Skip in CI - requires real AI API keys
   test.skip(!!process.env.CI, 'Skipping in CI - requires OPENAI_API_KEY');
 
@@ -25,20 +25,20 @@ test.describe('Ember URL Import Flow', () => {
     await loginViaAPI(page);
   });
 
-  test('should navigate to /home and see Ember chat interface', async ({ page }) => {
+  test('should navigate to /home and see Ava chat interface', async ({ page }) => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Take screenshot of initial state
-    await page.screenshot({ path: 'test-results/ember-chat-initial.png' });
+    await page.screenshot({ path: 'test-results/ava-chat-initial.png' });
 
     // Should see the chat input
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
-    // Should see a greeting message from Ember (Hi, [name]! I'm Ember...)
-    const greetingText = page.getByText(/Hi,.*I'm Ember/i);
+    // Should see a greeting message from Ava (Hi, [name]! I'm Ava...)
+    const greetingText = page.getByText(/Hi,.*I'm Ava/i);
     const hasGreeting = await greetingText.isVisible({ timeout: 5000 }).catch(() => false);
     expect(hasGreeting).toBe(true);
   });
@@ -49,7 +49,7 @@ test.describe('Ember URL Import Flow', () => {
     await page.waitForTimeout(3000); // Wait for greeting
 
     // Find chat input
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Type and send message
@@ -61,20 +61,20 @@ test.describe('Ember URL Import Flow', () => {
     const userMessage = page.getByText(shareMessage);
     await expect(userMessage).toBeVisible({ timeout: 5000 });
 
-    // Wait for Ember's response (AI call)
-    // Ember should respond asking for URL or details
+    // Wait for Ava's response (AI call)
+    // Ava should respond asking for URL or details
     await page.waitForTimeout(10000); // Wait for AI response
 
     // Take screenshot after response
-    await page.screenshot({ path: 'test-results/ember-share-response.png' });
+    await page.screenshot({ path: 'test-results/ava-share-response.png' });
 
-    // Should see Ember's response (check for loading to complete)
+    // Should see Ava's response (check for loading to complete)
     const loadingIndicator = page.locator('text=Thinking...');
     await loadingIndicator.waitFor({ state: 'hidden', timeout: 60000 });
 
-    // Verify we got a response from Ember
-    const emberMessages = page.locator('.prose-invert');
-    const messageCount = await emberMessages.count();
+    // Verify we got a response from Ava
+    const avaMessages = page.locator('.prose-invert');
+    const messageCount = await avaMessages.count();
     expect(messageCount).toBeGreaterThan(0);
   });
 
@@ -83,7 +83,7 @@ test.describe('Ember URL Import Flow', () => {
     const toolCalls: string[] = [];
     page.on('request', (request) => {
       const url = request.url();
-      if (url.includes('/ws/ember/') || url.includes('import_from_url')) {
+      if (url.includes('/ws/chat/') || url.includes('import_from_url')) {
         toolCalls.push(url);
       }
     });
@@ -92,7 +92,7 @@ test.describe('Ember URL Import Flow', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Send the share message with URL directly
@@ -102,7 +102,7 @@ test.describe('Ember URL Import Flow', () => {
 
     // Wait for user message to appear
     await page.waitForTimeout(2000);
-    await page.screenshot({ path: 'test-results/ember-url-sent.png' });
+    await page.screenshot({ path: 'test-results/ava-url-sent.png' });
 
     // Wait for AI to process and potentially call import_from_url tool
     // This can take a while: AI processing + web scraping + template analysis
@@ -112,13 +112,13 @@ test.describe('Ember URL Import Flow', () => {
     await expect(loadingIndicator).toBeHidden({ timeout: 180000 });
 
     await page.waitForTimeout(5000);
-    await page.screenshot({ path: 'test-results/ember-url-imported.png' });
+    await page.screenshot({ path: 'test-results/ava-url-imported.png' });
 
-    // Check for success indicators in Ember's response
+    // Check for success indicators in Ava's response
     // Try multiple selectors for the AI response
     let responseContent = await page.locator('.prose-invert').allTextContents();
     if (responseContent.length === 0) {
-      responseContent = await page.locator('[data-testid="ember-message"]').allTextContents();
+      responseContent = await page.locator('[data-testid="assistant-message"]').allTextContents();
     }
     if (responseContent.length === 0) {
       // Try the chat message container
@@ -126,7 +126,7 @@ test.describe('Ember URL Import Flow', () => {
     }
     const fullResponse = responseContent.join(' ').toLowerCase();
 
-    console.log('Ember response:', fullResponse);
+    console.log('Ava response:', fullResponse);
 
     // Should NOT contain error messages
     const hasError =
@@ -149,7 +149,7 @@ test.describe('Ember URL Import Flow', () => {
     console.log('Response length:', fullResponse.length);
 
     // Take final screenshot
-    await page.screenshot({ path: 'test-results/ember-url-final.png' });
+    await page.screenshot({ path: 'test-results/ava-url-final.png' });
 
     // Assert: either we got a success response, or we didn't get an error
     // A true success is hasSuccess=true and hasError=false
@@ -172,7 +172,7 @@ test.describe('Ember URL Import Flow', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Step 1: Express intent to share
@@ -189,7 +189,7 @@ test.describe('Ember URL Import Flow', () => {
     // Wait for import to complete
     await page.waitForTimeout(90000); // 90 seconds for scraping + AI
 
-    await page.screenshot({ path: 'test-results/ember-url-conversation.png' });
+    await page.screenshot({ path: 'test-results/ava-url-conversation.png' });
 
     // Check final state
     const responseContent = await page.locator('.prose-invert').allTextContents();
@@ -206,7 +206,7 @@ test.describe('Ember URL Import Flow', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Send URL directly with context
@@ -216,7 +216,7 @@ test.describe('Ember URL Import Flow', () => {
     // Wait for processing
     await page.waitForTimeout(90000);
 
-    await page.screenshot({ path: 'test-results/ember-url-with-link.png' });
+    await page.screenshot({ path: 'test-results/ava-url-with-link.png' });
 
     // Look for a link to the created project
     const projectLinks = page.locator('a[href*="/project"], a[href*="kinlia"]');
@@ -239,11 +239,11 @@ test.describe('Ember URL Import Flow', () => {
 });
 
 /**
- * Ember Tool Calling Tests
+ * Ava Tool Calling Tests
  *
  * Tests specifically for tool calling behavior
  */
-test.describe('Ember Tool Calling', () => {
+test.describe('Ava Tool Calling', () => {
   test.skip(!!process.env.CI, 'Skipping in CI - requires OPENAI_API_KEY');
   test.setTimeout(120000);
 
@@ -256,7 +256,7 @@ test.describe('Ember Tool Calling', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Send a message that triggers tool use
@@ -269,7 +269,7 @@ test.describe('Ember Tool Calling', () => {
 
     // Then might transition to "Working on it..." during tool execution
     await page.waitForTimeout(5000);
-    await page.screenshot({ path: 'test-results/ember-tool-loading.png' });
+    await page.screenshot({ path: 'test-results/ava-tool-loading.png' });
   });
 
   test('should handle WebSocket disconnection gracefully', async ({ page }) => {
@@ -278,11 +278,11 @@ test.describe('Ember Tool Calling', () => {
     await page.waitForTimeout(3000);
 
     // Verify chat is functional
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Send a simple message
-    await chatInput.fill('Hello Ember!');
+    await chatInput.fill('Hello Ava!');
     await chatInput.press('Enter');
 
     // Should get a response even if WS reconnects
@@ -291,7 +291,7 @@ test.describe('Ember Tool Calling', () => {
     const responseContent = await page.locator('.prose-invert').allTextContents();
     expect(responseContent.length).toBeGreaterThan(0);
 
-    await page.screenshot({ path: 'test-results/ember-ws-test.png' });
+    await page.screenshot({ path: 'test-results/ava-ws-test.png' });
   });
 });
 
@@ -311,7 +311,7 @@ test.describe('URL Import Edge Cases', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Send invalid URL
@@ -324,7 +324,7 @@ test.describe('URL Import Edge Cases', () => {
     const responseContent = await page.locator('.prose-invert').allTextContents();
     expect(responseContent.length).toBeGreaterThan(0);
 
-    await page.screenshot({ path: 'test-results/ember-invalid-url.png' });
+    await page.screenshot({ path: 'test-results/ava-invalid-url.png' });
   });
 
   test('should handle GitHub URL differently', async ({ page }) => {
@@ -332,7 +332,7 @@ test.describe('URL Import Edge Cases', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
-    const chatInput = page.locator('input[placeholder*="Message Ember"]');
+    const chatInput = page.locator('input[placeholder*="Message Ava"]');
     await expect(chatInput).toBeVisible({ timeout: 10000 });
 
     // Send GitHub URL
@@ -354,7 +354,7 @@ test.describe('URL Import Edge Cases', () => {
       fullResponse.includes('connect') ||
       fullResponse.includes('clip');
 
-    await page.screenshot({ path: 'test-results/ember-github-url.png' });
+    await page.screenshot({ path: 'test-results/ava-github-url.png' });
 
     expect(mentionsGitHub || responseContent.length > 0).toBe(true);
   });

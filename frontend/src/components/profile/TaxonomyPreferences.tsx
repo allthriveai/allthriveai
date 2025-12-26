@@ -440,7 +440,7 @@ export function TaxonomyPreferences() {
               </div>
 
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Your skill level helps Ember personalize explanations and learning content for you.
+                Your skill level helps Ava personalize explanations and learning content for you.
               </p>
 
               <div className="flex flex-wrap gap-2">

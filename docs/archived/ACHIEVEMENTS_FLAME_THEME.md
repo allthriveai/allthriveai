@@ -98,7 +98,7 @@
 
 | Badge | Name | Requirement | Points | Description | Colors |
 |-------|------|------------|--------|-------------|--------|
-| ⚡ | **Ember** | Start at Ember tier | 5 | "Just getting started" | gray-500/orange-400 |
+| ⚡ | **Ava** | Start at Ava tier | 5 | "Just getting started" | gray-500/orange-400 |
 | ✨ | **Spark** | Reach Spark tier (500 XP) | 25 | "Making progress" | orange-400/yellow-500 |
 | 🔥 | **Blaze** | Reach Blaze tier (2000 XP) | 100 | "Really going now" | red-500/orange-500 |
 | 💫 | **Beacon** | Reach Beacon tier (5000 XP) | 250 | "Serious dedication" | blue-500/purple-500 |
@@ -279,7 +279,7 @@ Update the achievement card descriptions to emphasize the flame theme:
 ### Color Palette
 
 **Warm Fire Colors** (primary palette):
-- 🔥 **Ember**: orange-400, orange-500
+- 🔥 **Ava**: orange-400, orange-500
 - 🔥 **Flame**: orange-600, red-500
 - 🔥 **Blaze**: red-600, red-700
 - ✨ **Spark**: yellow-400, orange-400

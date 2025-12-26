@@ -28,7 +28,6 @@ import {
   faCheck,
   faRotateRight,
   faLightbulb,
-  faRobot,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { SortableItem } from './SortableItem';
@@ -228,10 +227,10 @@ export function DragSortExercise({
       {/* Instructions */}
       <AnimatedContainer variant="default" className="p-4">
         <div className="flex items-start gap-3">
-          <FontAwesomeIcon icon={faGripVertical} className="text-cyan-400 mt-1" />
+          <FontAwesomeIcon icon={faGripVertical} className="text-cyan-600 dark:text-cyan-400 mt-1" />
           <div>
-            <h4 className="font-medium text-slate-200 mb-1">Instructions</h4>
-            <p className="text-sm text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
+            <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-1">Instructions</h4>
+            <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
           </div>
         </div>
       </AnimatedContainer>
@@ -274,8 +273,8 @@ export function DragSortExercise({
         {/* Drag overlay */}
         <DragOverlay>
           {activeItem && (
-            <div className="p-3 rounded-lg bg-cyan-500/20 border border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-              <span className="text-slate-200">{activeItem.content}</span>
+            <div className="p-3 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-400 dark:border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+              <span className="text-gray-800 dark:text-slate-200">{activeItem.content}</span>
             </div>
           )}
         </DragOverlay>
@@ -285,10 +284,10 @@ export function DragSortExercise({
       {revealedHints.length > 0 && (
         <AnimatedContainer variant="default" className="p-4">
           <div className="flex items-start gap-3">
-            <FontAwesomeIcon icon={faLightbulb} className="text-amber-400 mt-1" />
+            <FontAwesomeIcon icon={faLightbulb} className="text-amber-500 dark:text-amber-400 mt-1" />
             <div className="space-y-2">
               {revealedHints.map((hint, index) => (
-                <p key={index} className="text-sm text-amber-200/80">{hint}</p>
+                <p key={index} className="text-sm text-amber-700 dark:text-amber-200/80">{hint}</p>
               ))}
             </div>
           </div>
@@ -315,20 +314,20 @@ export function DragSortExercise({
                     animate={{ x: [-4, 4, -4, 4, 0] }}
                     transition={{ duration: 0.4 }}
                   >
-                    <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center">
-                      <span className="text-red-400 text-sm">!</span>
+                    <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                      <span className="text-red-500 dark:text-red-400 text-sm">!</span>
                     </div>
                   </motion.div>
                 )}
                 <div>
                   <p className={cn(
                     'font-medium',
-                    feedback.isCorrect ? 'text-emerald-300' : 'text-red-300'
+                    feedback.isCorrect ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'
                   )}>
                     {feedback.isCorrect ? exercise.successMessage || 'Great job!' : feedback.message}
                   </p>
                   {feedback.explanation && (
-                    <p className="text-sm text-slate-400 mt-1">{feedback.explanation}</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{feedback.explanation}</p>
                   )}
                 </div>
               </div>
@@ -352,7 +351,7 @@ export function DragSortExercise({
             {hasMoreHints && (
               <button
                 onClick={revealNextHint}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/10 transition-colors"
               >
                 <FontAwesomeIcon icon={faLightbulb} />
                 Hint ({revealedHints.length}/{config.maxHints})
@@ -361,7 +360,7 @@ export function DragSortExercise({
 
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
             >
               <FontAwesomeIcon icon={faRotateRight} />
               Reset
@@ -370,9 +369,9 @@ export function DragSortExercise({
             {onAskForHelp && (
               <button
                 onClick={onAskForHelp}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-colors"
               >
-                <FontAwesomeIcon icon={faRobot} />
+                <img src="/sage-avatar.png" alt="Sage" className="w-5 h-5 rounded-full" />
                 Ask Sage
               </button>
             )}
@@ -380,7 +379,7 @@ export function DragSortExercise({
         ) : (
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <FontAwesomeIcon icon={faRotateRight} />
             Try Again
@@ -391,7 +390,7 @@ export function DragSortExercise({
       {/* Completion stats */}
       {isCompleted && (
         <AnimatedContainer variant="success" className="p-4">
-          <p className="text-sm text-emerald-200/70">
+          <p className="text-sm text-emerald-700 dark:text-emerald-200/70">
             Completed in {attempts} {attempts === 1 ? 'attempt' : 'attempts'}
             {revealedHints.length > 0 && ` using ${revealedHints.length} ${revealedHints.length === 1 ? 'hint' : 'hints'}`}.
           </p>
@@ -462,14 +461,14 @@ function MatchExercise({ items, matches, isCompleted }: MatchExerciseProps) {
             className={cn(
               'p-3 rounded-lg border transition-all',
               matches[item.id]
-                ? 'bg-cyan-500/10 border-cyan-500/30'
-                : 'bg-white/5 border-white/10 hover:border-white/20'
+                ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-300 dark:border-cyan-500/30'
+                : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
             )}
           >
-            <span className="text-slate-200">{item.content}</span>
+            <span className="text-gray-800 dark:text-slate-200">{item.content}</span>
             {item.code && (
-              <pre className="mt-2 text-xs bg-black/30 p-2 rounded overflow-x-auto">
-                <code className="text-cyan-300">{item.code}</code>
+              <pre className="mt-2 text-xs bg-gray-100 dark:bg-black/30 p-2 rounded overflow-x-auto">
+                <code className="text-cyan-600 dark:text-cyan-300">{item.code}</code>
               </pre>
             )}
           </div>
@@ -522,8 +521,8 @@ function CategorizeExercise({
     <div className="space-y-4">
       {/* Unplaced items */}
       {unplacedItems.length > 0 && (
-        <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-          <p className="text-sm text-slate-400 mb-3">Drag items to the correct category:</p>
+        <div className="p-4 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-3">Drag items to the correct category:</p>
           <div className="flex flex-wrap gap-2">
             {unplacedItems.map(item => (
               <SortableItem
@@ -554,7 +553,7 @@ function CategorizeExercise({
               {getItemsInCategory(category.id).map(item => (
                 <div
                   key={item.id}
-                  className="px-3 py-1.5 rounded bg-cyan-500/20 border border-cyan-500/30 text-sm text-slate-200"
+                  className="px-3 py-1.5 rounded bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-300 dark:border-cyan-500/30 text-sm text-gray-800 dark:text-slate-200"
                 >
                   {item.content}
                 </div>

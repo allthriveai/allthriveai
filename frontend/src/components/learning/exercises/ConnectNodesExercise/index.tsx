@@ -12,7 +12,6 @@ import {
   faCheck,
   faRotateRight,
   faLightbulb,
-  faRobot,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { AnimatedContainer } from '../primitives/AnimatedContainer';
@@ -162,11 +161,11 @@ export function ConnectNodesExercise({
       {/* Instructions */}
       <AnimatedContainer variant="default" className="p-4">
         <div className="flex items-start gap-3">
-          <FontAwesomeIcon icon={faProjectDiagram} className="text-purple-400 mt-1" />
+          <FontAwesomeIcon icon={faProjectDiagram} className="text-purple-500 dark:text-purple-400 mt-1" />
           <div>
-            <h4 className="font-medium text-slate-200 mb-1">Instructions</h4>
-            <p className="text-sm text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
-            <p className="text-xs text-slate-500 mt-2">
+            <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-1">Instructions</h4>
+            <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
               Click a node to select it, then click another node to create a connection.
             </p>
           </div>
@@ -174,7 +173,7 @@ export function ConnectNodesExercise({
       </AnimatedContainer>
 
       {/* Puzzle area */}
-      <div className="relative w-full h-[400px] rounded-lg bg-slate-900/50 border border-white/10 overflow-hidden">
+      <div className="relative w-full h-[400px] rounded-lg bg-gray-100 dark:bg-slate-900/50 border border-gray-200 dark:border-white/10 overflow-hidden">
         {/* SVG for connections */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
           {/* Preset connections */}
@@ -243,10 +242,10 @@ export function ConnectNodesExercise({
                 'absolute px-4 py-2 rounded-lg font-medium text-sm transition-all',
                 'transform -translate-x-1/2 -translate-y-1/2',
                 isSelected
-                  ? 'bg-cyan-500/30 border-2 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]'
+                  ? 'bg-cyan-100 dark:bg-cyan-500/30 border-2 border-cyan-500 dark:border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]'
                   : hasConnection
-                    ? 'bg-emerald-500/20 border border-emerald-500/30'
-                    : 'bg-white/10 border border-white/20 hover:border-white/40',
+                    ? 'bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-400 dark:border-emerald-500/30'
+                    : 'bg-white dark:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-gray-400 dark:hover:border-white/40',
                 isCompleted && 'cursor-default'
               )}
               style={{
@@ -256,14 +255,14 @@ export function ConnectNodesExercise({
               whileHover={!isCompleted ? { scale: 1.05 } : undefined}
               whileTap={!isCompleted ? { scale: 0.95 } : undefined}
             >
-              <span className="text-slate-200">{node.label}</span>
+              <span className="text-gray-800 dark:text-slate-200">{node.label}</span>
             </motion.button>
           );
         })}
       </div>
 
       {/* Connection count */}
-      <div className="text-sm text-slate-400">
+      <div className="text-sm text-gray-500 dark:text-slate-400">
         Connections made: {userConnections.length} / {expectedConnections.length}
       </div>
 
@@ -271,10 +270,10 @@ export function ConnectNodesExercise({
       {revealedHints.length > 0 && (
         <AnimatedContainer variant="default" className="p-4">
           <div className="flex items-start gap-3">
-            <FontAwesomeIcon icon={faLightbulb} className="text-amber-400 mt-1" />
+            <FontAwesomeIcon icon={faLightbulb} className="text-amber-500 dark:text-amber-400 mt-1" />
             <div className="space-y-2">
               {revealedHints.map((hint, index) => (
-                <p key={index} className="text-sm text-amber-200/80">{hint}</p>
+                <p key={index} className="text-sm text-amber-700 dark:text-amber-200/80">{hint}</p>
               ))}
             </div>
           </div>
@@ -297,14 +296,14 @@ export function ConnectNodesExercise({
                 {feedback.isCorrect ? (
                   <CheckmarkAnimation isVisible size="md" />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center">
-                    <span className="text-red-400 text-sm">!</span>
+                  <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+                    <span className="text-red-500 dark:text-red-400 text-sm">!</span>
                   </div>
                 )}
                 <div>
                   <p className={cn(
                     'font-medium',
-                    feedback.isCorrect ? 'text-emerald-300' : 'text-red-300'
+                    feedback.isCorrect ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'
                   )}>
                     {feedback.isCorrect ? exercise.successMessage || 'Great job!' : feedback.message}
                   </p>
@@ -325,7 +324,7 @@ export function ConnectNodesExercise({
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors',
                 userConnections.length === 0
-                  ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                  ? 'bg-gray-200 dark:bg-slate-700 text-gray-400 dark:text-slate-400 cursor-not-allowed'
                   : 'bg-emerald-500 hover:bg-emerald-400 text-white'
               )}
             >
@@ -336,7 +335,7 @@ export function ConnectNodesExercise({
             {hasMoreHints && (
               <button
                 onClick={revealNextHint}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/10 transition-colors"
               >
                 <FontAwesomeIcon icon={faLightbulb} />
                 Hint ({revealedHints.length}/{config.maxHints})
@@ -345,7 +344,7 @@ export function ConnectNodesExercise({
 
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
             >
               <FontAwesomeIcon icon={faRotateRight} />
               Reset
@@ -354,9 +353,9 @@ export function ConnectNodesExercise({
             {onAskForHelp && (
               <button
                 onClick={onAskForHelp}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/10 transition-colors"
               >
-                <FontAwesomeIcon icon={faRobot} />
+                <img src="/sage-avatar.png" alt="Sage" className="w-5 h-5 rounded-full" />
                 Ask Sage
               </button>
             )}
@@ -364,7 +363,7 @@ export function ConnectNodesExercise({
         ) : (
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <FontAwesomeIcon icon={faRotateRight} />
             Try Again
@@ -375,7 +374,7 @@ export function ConnectNodesExercise({
       {/* Completion stats */}
       {isCompleted && (
         <AnimatedContainer variant="success" className="p-4">
-          <p className="text-sm text-emerald-200/70">
+          <p className="text-sm text-emerald-700 dark:text-emerald-200/70">
             Completed in {attempts} {attempts === 1 ? 'attempt' : 'attempts'}
             {revealedHints.length > 0 && ` using ${revealedHints.length} ${revealedHints.length === 1 ? 'hint' : 'hints'}`}.
           </p>

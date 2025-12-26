@@ -1,18 +1,18 @@
 /**
- * EmberOnboardingProvider
+ * AvaOnboardingProvider
  *
- * Global provider for Ember's onboarding experience.
- * Ember is the friendly dragon guide for new AllThrive users.
- * Onboarding now happens in the intelligent chat (EmberHomePage/ChatSidebar).
+ * Global provider for Ava's onboarding experience.
+ * Ava is the friendly AI guide for new AllThrive users.
+ * Onboarding now happens in the intelligent chat (AvaHomePage/ChatSidebar).
  * This provider handles the banner for remaining adventures.
  */
 
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import type { AdventureId } from '@/hooks/useEmberOnboarding';
-import { useEmberOnboarding } from '@/hooks/useEmberOnboarding';
+import type { AdventureId } from '@/hooks/useAvaOnboarding';
+import { useAvaOnboarding } from '@/hooks/useAvaOnboarding';
 
-interface EmberOnboardingContextValue {
+interface AvaOnboardingContextValue {
   // State
   isLoaded: boolean;
   hasSeenModal: boolean;
@@ -28,26 +28,26 @@ interface EmberOnboardingContextValue {
   isAdventureComplete: (adventureId: AdventureId) => boolean;
 }
 
-const EmberOnboardingContext = createContext<EmberOnboardingContextValue | null>(null);
+const AvaOnboardingContext = createContext<AvaOnboardingContextValue | null>(null);
 
-export function useEmberOnboardingContext() {
-  const context = useContext(EmberOnboardingContext);
+export function useAvaOnboardingContext() {
+  const context = useContext(AvaOnboardingContext);
   if (!context) {
-    throw new Error('useEmberOnboardingContext must be used within EmberOnboardingProvider');
+    throw new Error('useAvaOnboardingContext must be used within AvaOnboardingProvider');
   }
   return context;
 }
 
 // Safe version that returns null if not in provider (for optional use)
-export function useEmberOnboardingContextSafe() {
-  return useContext(EmberOnboardingContext);
+export function useAvaOnboardingContextSafe() {
+  return useContext(AvaOnboardingContext);
 }
 
-interface EmberOnboardingProviderProps {
+interface AvaOnboardingProviderProps {
   children: ReactNode;
 }
 
-export function EmberOnboardingProvider({ children }: EmberOnboardingProviderProps) {
+export function AvaOnboardingProvider({ children }: AvaOnboardingProviderProps) {
   const {
     isLoaded,
     hasSeenModal,
@@ -59,13 +59,13 @@ export function EmberOnboardingProvider({ children }: EmberOnboardingProviderPro
     dismissOnboarding,
     resetOnboarding,
     isAdventureComplete,
-  } = useEmberOnboarding();
+  } = useAvaOnboarding();
 
   // Determine if banner should show
   // Once all 4 adventures are complete, banner never shows again (no celebration mode)
   const showBanner = shouldShowBanner && !allAdventuresComplete;
 
-  const contextValue: EmberOnboardingContextValue = {
+  const contextValue: AvaOnboardingContextValue = {
     isLoaded,
     hasSeenModal,
     completedAdventures,
@@ -78,12 +78,12 @@ export function EmberOnboardingProvider({ children }: EmberOnboardingProviderPro
     isAdventureComplete,
   };
 
-  // Onboarding modal is now replaced by in-chat onboarding in EmberHomePage/ChatSidebar
+  // Onboarding modal is now replaced by in-chat onboarding in AvaHomePage/ChatSidebar
   return (
-    <EmberOnboardingContext.Provider value={contextValue}>
+    <AvaOnboardingContext.Provider value={contextValue}>
       {children}
-    </EmberOnboardingContext.Provider>
+    </AvaOnboardingContext.Provider>
   );
 }
 
-export default EmberOnboardingProvider;
+export default AvaOnboardingProvider;

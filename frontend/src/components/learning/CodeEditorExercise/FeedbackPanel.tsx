@@ -12,8 +12,8 @@ import {
   faCircleCheck,
   faChevronDown,
   faChevronUp,
-  faRobot,
   faThumbsUp,
+  faRobot,
 } from '@fortawesome/free-solid-svg-icons';
 import type { FeedbackPanelProps, CodeFeedbackIssue } from './types';
 
@@ -241,9 +241,9 @@ export function FeedbackPanel({ feedback, skillLevel, onAskForHelp }: FeedbackPa
         <div className="p-3 border-t border-white/10">
           <button
             onClick={onAskForHelp}
-            className="w-full px-4 py-2 text-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors"
           >
-            <FontAwesomeIcon icon={faRobot} className="mr-2" />
+            <img src="/sage-avatar.png" alt="Sage" className="w-5 h-5 rounded-full" />
             Ask Sage for more help
           </button>
         </div>

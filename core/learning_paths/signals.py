@@ -101,7 +101,7 @@ def update_learning_path_on_sidequest_completion(sender, instance, **kwargs):
 def emit_learning_event_on_quiz_completion(sender, instance, created, **kwargs):
     """
     Emit a LearningEvent when a quiz is completed.
-    This feeds into the unified learning system for Ember.
+    This feeds into the unified learning system for Ava.
     """
     # Only process completed quizzes
     if not instance.completed_at:

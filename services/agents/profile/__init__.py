@@ -1,4 +1,4 @@
-"""Profile tools for Ember agent."""
+"""Profile tools for Ava agent."""
 
 from .tools import PROFILE_TOOLS, TOOLS_NEEDING_STATE
 

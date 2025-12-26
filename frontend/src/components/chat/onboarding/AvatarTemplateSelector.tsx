@@ -3,7 +3,7 @@
  *
  * Shows template buttons and prompt input for avatar generation.
  * Supports photo upload for "Make Me" style avatar generation.
- * Uses typewriter effect for Ember's messages with orange theme.
+ * Uses typewriter effect for Ava's messages with orange theme.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -101,8 +101,8 @@ function useTypewriter(text: string, speed: number = 30, startDelay: number = 0,
   return { displayedText, isComplete, skip };
 }
 
-// Ember avatar component - positioned at bottom
-function EmberAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
+// Ava avatar component - positioned at bottom
+function AvaAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
   return (
     <motion.div
       initial={{ scale: 0, rotate: -20 }}
@@ -123,8 +123,8 @@ function EmberAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
         transition={{ duration: 0.5, repeat: Infinity }}
       >
         <img
-          src="/ember-avatar.png"
-          alt="Ember"
+          src="/ava-avatar.png"
+          alt="Ava"
           className="w-12 h-12 rounded-full border-2 border-cyan-500/50"
         />
       </motion.div>
@@ -322,9 +322,9 @@ export function AvatarTemplateSelector({
       className="py-4"
       onClick={!showControls ? handleSkipDialogue : undefined}
     >
-      {/* Layout with Ember avatar alongside content */}
+      {/* Layout with Ava avatar alongside content */}
       <div className="flex items-end gap-4">
-        <EmberAvatar isSpeaking={isSpeaking} />
+        <AvaAvatar isSpeaking={isSpeaking} />
 
         <div className="flex-1 max-w-2xl space-y-3">
           {/* Line 1: Let's create your avatar! */}

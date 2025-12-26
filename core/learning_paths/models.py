@@ -4,7 +4,7 @@ Learning Paths models.
 This module provides:
 - Auto-generated learning paths that aggregate user's learning progress
 - Concept-level mastery tracking with spaced repetition
-- Micro-lessons for conversational learning with Ember
+- Micro-lessons for conversational learning with Ava
 - Project-based learning metadata linking projects to concepts
 - Unified learning event stream for analytics and triggers
 
@@ -228,7 +228,7 @@ class LearnerProfile(models.Model):
     # Notification preferences
     allow_proactive_suggestions = models.BooleanField(
         default=True,
-        help_text='Allow Ember to proactively suggest learning',
+        help_text='Allow Ava to proactively suggest learning',
     )
     proactive_cooldown_minutes = models.IntegerField(
         default=10,
@@ -252,7 +252,7 @@ class LearnerProfile(models.Model):
     last_proactive_nudge = models.DateTimeField(
         null=True,
         blank=True,
-        help_text='When Ember last sent a proactive nudge',
+        help_text='When Ava last sent a proactive nudge',
     )
 
     # Aggregate stats
@@ -290,6 +290,14 @@ class LearnerProfile(models.Model):
     celebration_enabled = models.BooleanField(
         default=True,
         help_text='Whether to show milestone celebrations',
+    )
+
+    # User-customizable section organization for topics
+    sections_organization = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text='User-customized section organization for learning path topics',
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -579,7 +587,7 @@ class UserConceptMastery(models.Model):
 
 class MicroLesson(WeaviateSyncMixin, models.Model):
     """
-    Template for lessons Ember can deliver conversationally.
+    Template for lessons Ava can deliver conversationally.
 
     Lessons can be:
     - Pre-authored (curated official content)
@@ -623,7 +631,7 @@ class MicroLesson(WeaviateSyncMixin, models.Model):
         help_text='Lesson content with markdown support',
     )
 
-    # Follow-up prompts Ember can use to continue conversation
+    # Follow-up prompts Ava can use to continue conversation
     follow_up_prompts = ArrayField(
         models.CharField(max_length=500),
         blank=True,
@@ -685,7 +693,7 @@ class ProjectLearningMetadata(models.Model):
 
     Links projects to concepts they demonstrate, enabling:
     - "Learn from @username's project" recommendations
-    - Project-based examples in Ember's teaching
+    - Project-based examples in Ava's teaching
     - Creator XP rewards when their projects help others learn
     """
 
@@ -1231,7 +1239,7 @@ class UserSkillProficiency(models.Model):
 
 class ConversationFeedback(models.Model):
     """
-    Captures explicit feedback on Ember's responses.
+    Captures explicit feedback on Ava's responses.
 
     Enables the system to learn which explanations, recommendations,
     and interactions are helpful vs confusing.
@@ -1322,7 +1330,7 @@ class ProactiveOfferResponse(models.Model):
     """
     Tracks user responses to proactive intervention offers.
 
-    Records when Ember offers help ("Would you like me to explain differently?")
+    Records when Ava offers help ("Would you like me to explain differently?")
     and whether the user accepts, declines, or ignores the offer.
     """
 
@@ -1785,6 +1793,14 @@ class SavedLearningPath(models.Model):
         blank=True,
         related_name='learning_paths',
         help_text='Tools featured or taught in this learning path',
+    )
+
+    # User-customizable section organization for topics
+    sections_organization = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text='User-customized section organization for learning path topics',
     )
 
     # Timestamps

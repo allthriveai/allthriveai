@@ -4,7 +4,7 @@
  * Features:
  * - Cyan gradient background
  * - Right-aligned
- * - Two variants: default (sidebar) and neon (EmberHomePage)
+ * - Two variants: default (sidebar) and neon (AvaHomePage)
  * - Renders image attachments inline
  */
 
@@ -157,7 +157,7 @@ export function UserMessage({ content, variant = 'default', avatarUrl }: UserMes
   const textContent = textParts.filter(p => p.trim()).join(' ').trim();
 
   if (isNeon) {
-    // Neon Glass variant (EmberHomePage)
+    // Neon Glass variant (AvaHomePage)
     return (
       <div className="flex justify-end items-end gap-3">
         <div className="max-w-[85%] px-5 py-4 rounded-2xl rounded-br-sm bg-gradient-to-r from-cyan-500 to-cyan-600 text-white">

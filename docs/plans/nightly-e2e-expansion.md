@@ -25,7 +25,7 @@ Each phase ends with a **validation gate** to ensure tests provide real value be
 | Test File | Journey | Real-World Value |
 |-----------|---------|------------------|
 | `new-user-activation.spec.ts` | Guest → signup → onboarding → first project | Catches onboarding breaks that lose new users |
-| `ai-chat-flow.spec.ts` | Ember chat → multi-turn → context preservation | Catches AI routing bugs and context loss |
+| `ai-chat-flow.spec.ts` | Ava chat → multi-turn → context preservation | Catches AI routing bugs and context loss |
 | `core-loop-retention.spec.ts` | Login → battle → earn points → achievement | Catches gamification bugs that hurt engagement |
 
 **Location**: `frontend/e2e/deep/journeys/`

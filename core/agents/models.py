@@ -52,9 +52,9 @@ class Conversation(BaseModel):
     """
 
     CONVERSATION_TYPE_CHOICES = [
-        ('ember_chat', 'Ember Sidebar Chat'),
-        ('ember_learn', 'Ember Learn Chat'),
-        ('ember_explore', 'Ember Explore Chat'),
+        ('ava_chat', 'Ava Sidebar Chat'),
+        ('ava_learn', 'Ava Learn Chat'),
+        ('ava_explore', 'Ava Explore Chat'),
         ('learning_path', 'Learning Path Chat'),
         ('avatar', 'Avatar Generation'),
         ('image', 'Image Generation'),
@@ -69,12 +69,12 @@ class Conversation(BaseModel):
         db_index=True,
         default='',
         blank=True,
-        help_text='WebSocket conversation ID (e.g., ember-chat-123, ember-learn-456)',
+        help_text='WebSocket conversation ID (e.g., ava-chat-123, ava-learn-456)',
     )
     conversation_type = models.CharField(
         max_length=50,
         db_index=True,
-        default='ember_chat',
+        default='ava_chat',
         choices=CONVERSATION_TYPE_CHOICES,
     )
     created_at = models.DateTimeField(auto_now_add=True)

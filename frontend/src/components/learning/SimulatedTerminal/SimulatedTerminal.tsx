@@ -10,7 +10,6 @@ import {
   faTerminal,
   faLightbulb,
   faCheck,
-  faCircleQuestion,
   faRotateRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -165,7 +164,7 @@ function HintSystem({
             onClick={onAskForHelp}
             className="text-sm text-slate-400 hover:text-emerald-400 flex items-center gap-1.5 transition-colors"
           >
-            <FontAwesomeIcon icon={faCircleQuestion} />
+            <img src="/sage-avatar.png" alt="Sage" className="w-4 h-4 rounded-full" />
             Ask Sage
           </button>
         )}

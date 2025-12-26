@@ -1620,7 +1620,7 @@ def _create_image_project_internal(
 
     action_word = 'created' if is_owned else 'clipped'
     project_url = f'/{user.username}/{project.slug}'
-    # Include markdown link in message so Ember can use it directly
+    # Include markdown link in message so Ava can use it directly
     markdown_link = f'[{project.title}]({project_url})'
     result = {
         'success': True,

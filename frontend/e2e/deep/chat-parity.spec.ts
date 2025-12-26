@@ -1,7 +1,7 @@
 /**
  * Chat Parity Tests - Sidebar vs Home Chat Comparison
  *
- * These tests verify that Ember chat behaves identically whether accessed
+ * These tests verify that Ava chat behaves identically whether accessed
  * from the home page (/home) or via the sidebar on other pages.
  *
  * CRITICAL: The user identified sidebar vs home chat inconsistency as a pain point.

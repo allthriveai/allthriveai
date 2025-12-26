@@ -40,7 +40,7 @@ export function ChatInputArea({
   isLoading,
   isUploading,
   onCancelUpload,
-  placeholder = 'Message Ember...',
+  placeholder = 'Message Ava...',
   disabled = false,
   enableAttachments = false,
   attachments = [],

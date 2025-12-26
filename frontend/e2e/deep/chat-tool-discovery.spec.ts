@@ -1,17 +1,17 @@
 /**
  * Chat Tool Discovery Tests
  *
- * Tests for the tool discovery flow where users ask Ember about tools
+ * Tests for the tool discovery flow where users ask Ava about tools
  * and can click on tools/projects to open them in the side tray.
  *
  * User journey:
  * 1. User asks "help me decide which LLM to use"
- * 2. Ember finds LLM tools and projects using those tools
+ * 2. Ava finds LLM tools and projects using those tools
  * 3. User clicks on a project card in the chat
  * 4. ProjectPreviewTray opens on the right side
  * 5. User can view project details and navigate to full page
  *
- * See: docs/evergreen-architecture/23-EMBER-CHAT-TESTING.md
+ * See: docs/evergreen-architecture/23-AVA-CHAT-TESTING.md
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -43,9 +43,9 @@ async function waitForWebSocketConnected(page: Page, timeout = 30000): Promise<v
 }
 
 /**
- * Wait for Ember to respond (input becomes enabled and thinking indicators disappear)
+ * Wait for Ava to respond (input becomes enabled and thinking indicators disappear)
  */
-async function waitForEmberResponse(
+async function waitForAvaResponse(
   page: Page,
   timeout = 120000
 ): Promise<string> {
@@ -59,20 +59,20 @@ async function waitForEmberResponse(
     const isThinking =
       content.includes('Thinking') ||
       content.includes('Consulting my') ||
-      content.includes('Fanning the embers') ||
+      content.includes('Finding the way') ||
       content.includes('treasure trove');
 
     if (isThinking) {
       sawThinking = true;
       console.log(
-        `Ember is thinking... (${Math.round((Date.now() - startTime) / 1000)}s)`
+        `Ava is thinking... (${Math.round((Date.now() - startTime) / 1000)}s)`
       );
       await page.waitForTimeout(2000);
       continue;
     }
 
     // Check if input is disabled (still processing)
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     const isDisabled = await chatInput.isDisabled().catch(() => true);
 
     if (isDisabled) {
@@ -89,23 +89,23 @@ async function waitForEmberResponse(
       /llm|claude|chatgpt|gpt|gemini|anthropic|openai|model|vector|database|tool|compare|recommend/i.test(content);
 
     if (hasToolResponse) {
-      console.log('Ember responded with tool info!');
+      console.log('Ava responded with tool info!');
       return content;
     }
 
-    // If we saw thinking but now input is enabled, Ember finished
+    // If we saw thinking but now input is enabled, Ava finished
     if (sawThinking) {
-      console.log('Ember finished (saw thinking state earlier)');
+      console.log('Ava finished (saw thinking state earlier)');
       return content;
     }
 
     console.log(
-      `Waiting for Ember to start... (${Math.round((Date.now() - startTime) / 1000)}s)`
+      `Waiting for Ava to start... (${Math.round((Date.now() - startTime) / 1000)}s)`
     );
     await page.waitForTimeout(2000);
   }
 
-  console.log('Timeout waiting for Ember response');
+  console.log('Timeout waiting for Ava response');
   return await getPageContent(page);
 }
 
@@ -207,7 +207,7 @@ test.describe('Chat - Tool Discovery Flow', () => {
     await loginViaAPI(page);
   });
 
-  test('ask about LLMs → Ember returns tools and projects → click project → opens preview tray', async ({
+  test('ask about LLMs → Ava returns tools and projects → click project → opens preview tray', async ({
     page,
   }) => {
     await page.goto('/home');
@@ -222,13 +222,13 @@ test.describe('Chat - Tool Discovery Flow', () => {
     // Step 1: Ask about LLMs
     await sendHomeChat(page, 'help me decide which LLM to use');
 
-    // Step 2: Wait for Ember to respond
-    console.log('Waiting for Ember to respond about LLMs...');
-    const afterQuestion = await waitForEmberResponse(page, 90000);
+    // Step 2: Wait for Ava to respond
+    console.log('Waiting for Ava to respond about LLMs...');
+    const afterQuestion = await waitForAvaResponse(page, 90000);
     assertNoTechnicalErrors(afterQuestion, 'after LLM question');
-    console.log('Ember response:', afterQuestion.substring(0, 500));
+    console.log('Ava response:', afterQuestion.substring(0, 500));
 
-    // Verify Ember mentioned some LLM tools
+    // Verify Ava mentioned some LLM tools
     const mentionsLLMs = /claude|chatgpt|gpt|gemini|llm|model|anthropic|openai/i.test(afterQuestion);
     expect(mentionsLLMs).toBe(true);
 
@@ -278,11 +278,11 @@ test.describe('Chat - Tool Discovery Flow', () => {
       }
     }
 
-    // Final verification: Ember provided helpful tool info
+    // Final verification: Ava provided helpful tool info
     expect(mentionsLLMs).toBe(true);
   });
 
-  test('ask about vector databases → Ember returns relevant tools and projects', async ({
+  test('ask about vector databases → Ava returns relevant tools and projects', async ({
     page,
   }) => {
     await page.goto('/home');
@@ -296,7 +296,7 @@ test.describe('Chat - Tool Discovery Flow', () => {
     await sendHomeChat(page, 'which vector database should I use for RAG');
 
     console.log('Waiting for vector database response...');
-    const response = await waitForEmberResponse(page, 90000);
+    const response = await waitForAvaResponse(page, 90000);
     assertNoTechnicalErrors(response, 'after vector DB question');
     console.log('Response:', response.substring(0, 500));
 
@@ -319,7 +319,7 @@ test.describe('Chat - Tool Discovery Flow', () => {
     await sendHomeChat(page, 'what are the best AI coding assistants');
 
     console.log('Waiting for code assistant response...');
-    const response = await waitForEmberResponse(page, 90000);
+    const response = await waitForAvaResponse(page, 90000);
     assertNoTechnicalErrors(response, 'after code assistant question');
     console.log('Response:', response.substring(0, 500));
 
@@ -374,7 +374,7 @@ test.describe('Chat - Tool Discovery Flow', () => {
     await sendHomeChat(page, 'compare Claude vs ChatGPT for coding');
 
     console.log('Waiting for comparison response...');
-    const response = await waitForEmberResponse(page, 90000);
+    const response = await waitForAvaResponse(page, 90000);
     assertNoTechnicalErrors(response, 'after comparison question');
     console.log('Response:', response.substring(0, 500));
 
@@ -404,7 +404,7 @@ test.describe('Chat - Tool Discovery Flow', () => {
     await sendHomeChat(page, 'show me projects using LangChain');
 
     console.log('Waiting for LangChain projects response...');
-    const response = await waitForEmberResponse(page, 90000);
+    const response = await waitForAvaResponse(page, 90000);
     assertNoTechnicalErrors(response, 'after LangChain question');
 
     // Wait for project cards
@@ -469,7 +469,7 @@ test.describe('Chat - Tool Discovery Edge Cases', () => {
     await loginViaAPI(page);
   });
 
-  test('ambiguous query → Ember asks clarifying question or provides options', async ({
+  test('ambiguous query → Ava asks clarifying question or provides options', async ({
     page,
   }) => {
     await page.goto('/home');
@@ -481,18 +481,18 @@ test.describe('Chat - Tool Discovery Edge Cases', () => {
     // Vague question
     await sendHomeChat(page, 'what tools should I use');
 
-    const response = await waitForEmberResponse(page, 60000);
+    const response = await waitForAvaResponse(page, 60000);
     assertNoTechnicalErrors(response, 'after vague question');
 
-    // Ember should either ask for clarification or suggest popular tools
+    // Ava should either ask for clarification or suggest popular tools
     const handlesVagueness =
       /what.*kind|what.*type|which.*category|tell me more|specific|looking for|help.*with|recommend|popular|trending/i.test(response);
 
     expect(handlesVagueness).toBe(true);
-    console.log('Ember handled vague query appropriately');
+    console.log('Ava handled vague query appropriately');
   });
 
-  test('unknown tool query → Ember provides helpful fallback', async ({
+  test('unknown tool query → Ava provides helpful fallback', async ({
     page,
   }) => {
     await page.goto('/home');
@@ -504,15 +504,15 @@ test.describe('Chat - Tool Discovery Edge Cases', () => {
     // Query about non-existent tool
     await sendHomeChat(page, 'tell me about SuperAmazingAI9000 tool');
 
-    const response = await waitForEmberResponse(page, 60000);
+    const response = await waitForAvaResponse(page, 60000);
     assertNoTechnicalErrors(response, 'after unknown tool question');
 
-    // Ember should handle gracefully - not crash, provide alternatives
+    // Ava should handle gracefully - not crash, provide alternatives
     const _handlesUnknown =
       /don't.*know|not.*familiar|couldn't find|can't.*find|instead|alternative|similar|help.*with|other/i.test(response);
 
     // If not explicitly saying unknown, should at least not error
     expect(response.length).toBeGreaterThan(50);
-    console.log('Ember handled unknown tool query gracefully');
+    console.log('Ava handled unknown tool query gracefully');
   });
 });

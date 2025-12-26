@@ -2,7 +2,7 @@
  * TeamPage - Meet the All Thrive Team
  *
  * Displays the AI team members that power All Thrive:
- * - Core Team: AI personas (Ember, Pip, Sage, Haven)
+ * - Core Team: AI personas (Ava, Pip, Sage, Haven)
  * - Expert Contributors: RSS/YouTube curators
  */
 

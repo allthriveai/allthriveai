@@ -68,7 +68,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       if (path.startsWith('/admin/users')) return '/admin/users';
       // Content management items have different base paths, map them to parent
       if (path.startsWith('/admin/prompt-challenge-prompts') ||
-          path.startsWith('/admin/ember-flows') ||
+          path.startsWith('/admin/ava-flows') ||
           path.startsWith('/admin/lessons')) {
         return '/admin/content';
       }
@@ -112,7 +112,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
   const contentManagementSubItems: AdminSidebarItem[] = [
     { label: 'Prompt Library', path: '/admin/prompt-challenge-prompts', icon: SparklesIcon },
     { label: 'Lesson Library', path: '/admin/lessons', icon: AcademicCapIcon },
-    { label: 'Ember Flows', path: '/admin/ember-flows', icon: MapIcon },
+    { label: 'Ava Flows', path: '/admin/ava-flows', icon: MapIcon },
   ];
 
   const phoenixUrl = import.meta.env.VITE_PHOENIX_URL;

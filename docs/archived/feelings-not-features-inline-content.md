@@ -1,7 +1,7 @@
 # Plan: Convert All Navigation Pills to Load Content Inline
 
 ## Goal
-Change all feeling pills that currently navigate away to instead load content inline in the chat. User stays on home page, content appears as Ember's response.
+Change all feeling pills that currently navigate away to instead load content inline in the chat. User stays on home page, content appears as Ava's response.
 
 ## Current Pills (8 total)
 
@@ -66,22 +66,22 @@ Change all feeling pills that currently navigate away to instead load content in
 ## How Each Will Work
 
 ### Play a game
-- Ember uses `launch_inline_game` tool with `game_type: 'random'`
+- Ava uses `launch_inline_game` tool with `game_type: 'random'`
 - `ChatGameCard` component renders inline (Context Snake or Quick Quiz)
 - **Already working** - infrastructure exists
 
 ### Challenge (needs backend tool)
-- Ember uses `get_weekly_challenge` tool (may need to create)
+- Ava uses `get_weekly_challenge` tool (may need to create)
 - Returns challenge data + "See all challenges" link
 - Display with `CircleChallengeCard` component inline
 
 ### Explore (needs backend tool)
-- Ember uses `get_trending_content` tool (may need to create)
+- Ava uses `get_trending_content` tool (may need to create)
 - Returns 3-5 trending projects as `LearningTeaserCard` carousel
 - Include "Explore more" link to `/explore`
 
 ### Connect (needs backend tool)
-- Ember uses `get_circle_suggestions` tool (may need to create)
+- Ava uses `get_circle_suggestions` tool (may need to create)
 - Returns suggested connections or circle members
 - Display with `CircleMemberCard` component inline
 

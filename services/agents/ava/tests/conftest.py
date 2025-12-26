@@ -1,7 +1,7 @@
 """
-Shared fixtures for Ember agent tests.
+Shared fixtures for Ava agent tests.
 
-Run with: pytest services/agents/ember/tests/ -v
+Run with: pytest services/agents/ava/tests/ -v
 """
 
 from unittest.mock import AsyncMock, MagicMock, Mock
@@ -17,8 +17,8 @@ User = get_user_model()
 def mock_user(db):
     """Create a test user."""
     user = User.objects.create_user(
-        username='ember_test_user',
-        email='ember_test@example.com',
+        username='ava_test_user',
+        email='ava_test@example.com',
         password='testpass123',
     )
     return user
@@ -89,8 +89,8 @@ def sample_tool_message():
 
 
 @pytest.fixture
-def ember_state(sample_messages, mock_user):
-    """Sample Ember agent state."""
+def ava_state(sample_messages, mock_user):
+    """Sample Ava agent state."""
     return {
         'messages': sample_messages,
         'user_id': mock_user.id,

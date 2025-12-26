@@ -2,7 +2,7 @@
 
 **Source of Truth** | **Last Updated**: 2025-12-20
 
-This document defines the AI architecture for AllThrive AI, including the unified Ember agent, AI provider integrations, tool system, and observability.
+This document defines the AI architecture for AllThrive AI, including the unified Ava agent, AI provider integrations, tool system, and observability.
 
 ---
 
@@ -22,7 +22,7 @@ This document defines the AI architecture for AllThrive AI, including the unifie
 └────────────────────┬────────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────────┐
-│            Unified Ember Agent (LangGraph)                  │
+│            Unified Ava Agent (LangGraph)                  │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  services/agents/ember/                               │  │
 │  │  - agent.py: LangGraph StateGraph + streaming         │  │
@@ -59,11 +59,11 @@ This document defines the AI architecture for AllThrive AI, including the unifie
 
 ---
 
-## Unified Ember Agent
+## Unified Ava Agent
 
 ### Agent Architecture
 
-AllThrive AI uses a **single unified Ember agent** built on LangGraph. The agent has access to ~25 tools across 4 categories and handles all chat interactions.
+AllThrive AI uses a **single unified Ava agent** built on LangGraph. The agent has access to ~25 tools across 4 categories and handles all chat interactions.
 
 **Key Characteristics**:
 - **Single agent**: No supervisor routing - one agent handles all requests
@@ -96,7 +96,7 @@ services/agents/
 ### State Schema
 
 ```python
-class EmberState(TypedDict):
+class AvaState(TypedDict):
     messages: Annotated[list, add_messages]  # Conversation history
     user_id: int
     username: str
@@ -154,10 +154,10 @@ Handled by `create_tool_node_with_state_injection()` in `ember/agent.py`.
 
 | Setting | Value | Location |
 |---------|-------|----------|
-| `EMBER_MAX_TOOL_ITERATIONS` | 10 | Django settings |
-| `EMBER_MAX_CONTEXT_MESSAGES` | 50 | Django settings |
-| `EMBER_TOOL_EXECUTION_TIMEOUT` | 30s | Django settings |
-| `EMBER_DEFAULT_MODEL` | gpt-4o-mini | AI gateway config |
+| `AVA_MAX_TOOL_ITERATIONS` | 10 | Django settings |
+| `AVA_MAX_CONTEXT_MESSAGES` | 50 | Django settings |
+| `AVA_TOOL_EXECUTION_TIMEOUT` | 30s | Django settings |
+| `AVA_DEFAULT_MODEL` | gpt-4o-mini | AI gateway config |
 
 ---
 
@@ -181,7 +181,7 @@ def get_checkpointer():
 - Checkpoints store full state at each step
 
 **Conversation ID Patterns**:
-- `ember-home-{timestamp}` - EmberHomePage full-page chat
+- `ember-home-{timestamp}` - AvaHomePage full-page chat
 - `ember-learn-{timestamp}` - Learn page context
 - `ember-explore-{timestamp}` - Explore page context
 - `ember-project-{timestamp}` - Project page context
@@ -200,7 +200,7 @@ def get_checkpointer():
 
 | Provider | Use Case | Default Model |
 |----------|----------|---------------|
-| **OpenAI** | Chat (Ember agent) | `gpt-4o-mini` |
+| **OpenAI** | Chat (Ava agent) | `gpt-4o-mini` |
 | **Gemini** | Image generation (Nano Banana) | `gemini-2.0-flash-exp` |
 | **Anthropic** | Alternative (not currently used) | `claude-3-5-sonnet` |
 
@@ -276,7 +276,7 @@ DEFAULT_AI_PROVIDER=openai
 ### Model Selection
 
 **Default Models**:
-- **OpenAI**: `gpt-4o-mini` (Ember chat agent)
+- **OpenAI**: `gpt-4o-mini` (Ava chat agent)
 - **Gemini**: `gemini-2.0-flash-exp` (image generation)
 - **Anthropic**: `claude-3-5-sonnet-20240620` (alternative)
 
@@ -308,18 +308,18 @@ print(ai.last_usage)
 
 ### System Prompts
 
-**Ember System Prompt** (`services/agents/ember/prompts.py`):
+**Ava System Prompt** (`services/agents/ember/prompts.py`):
 
-The Ember agent uses a dynamic system prompt that includes:
+The Ava agent uses a dynamic system prompt that includes:
 
-1. **Base personality**: Friendly AI companion named Ember
+1. **Base personality**: Friendly AI companion named Ava
 2. **Tool instructions**: When and how to use each of the 31 tools
 3. **Learner context**: Injected at runtime via `LearnerContextService`
 
 ```python
 # Simplified structure
-EMBER_SYSTEM_PROMPT = """
-You are Ember, a friendly AI companion on AllThrive AI.
+AVA_SYSTEM_PROMPT = """
+You are Ava, a friendly AI companion on AllThrive AI.
 
 You help users:
 - Discover projects, tools, and content

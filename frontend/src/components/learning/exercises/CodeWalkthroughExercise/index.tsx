@@ -156,17 +156,17 @@ export function CodeWalkthroughExercise({
       {/* Instructions */}
       <AnimatedContainer variant="default" className="p-4">
         <div className="flex items-start gap-3">
-          <FontAwesomeIcon icon={faCode} className="text-cyan-400 mt-1" />
+          <FontAwesomeIcon icon={faCode} className="text-cyan-600 dark:text-cyan-400 mt-1" />
           <div>
-            <h4 className="font-medium text-slate-200 mb-1">Code Walkthrough</h4>
-            <p className="text-sm text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
+            <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-1">Code Walkthrough</h4>
+            <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
           </div>
         </div>
       </AnimatedContainer>
 
       {/* Progress bar */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+        <div className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500"
             initial={{ width: 0 }}
@@ -174,7 +174,7 @@ export function CodeWalkthroughExercise({
             transition={{ duration: 0.3 }}
           />
         </div>
-        <span className="text-sm text-slate-400">
+        <span className="text-sm text-gray-500 dark:text-slate-400">
           Step {currentStepIndex + 1} of {totalSteps}
         </span>
       </div>
@@ -182,12 +182,12 @@ export function CodeWalkthroughExercise({
       {/* Code viewer */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Code panel */}
-        <div className="rounded-lg overflow-hidden border border-white/10">
-          <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border-b border-white/10">
-            <FontAwesomeIcon icon={faCode} className="text-slate-400 text-sm" />
-            <span className="text-sm text-slate-400">{language}</span>
+        <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-white/10">
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+            <FontAwesomeIcon icon={faCode} className="text-gray-400 dark:text-slate-400 text-sm" />
+            <span className="text-sm text-gray-500 dark:text-slate-400">{language}</span>
           </div>
-          <div className="max-h-[400px] overflow-auto">
+          <div className="max-h-[400px] overflow-auto bg-gray-900">
             <SyntaxHighlighter
               language={language}
               style={oneDark}
@@ -216,15 +216,15 @@ export function CodeWalkthroughExercise({
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h4 className="font-medium text-slate-200 mb-2">
+                <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-2">
                   Step {currentStep.stepNumber}: What's happening?
                 </h4>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
                   {currentStep.explanation}
                 </p>
 
                 {/* Line reference */}
-                <div className="mt-3 text-xs text-slate-500">
+                <div className="mt-3 text-xs text-gray-400 dark:text-slate-500">
                   Lines: {currentStep.highlightLines.join(', ')}
                 </div>
 
@@ -233,10 +233,10 @@ export function CodeWalkthroughExercise({
                   <div className={cn(
                     'mt-3 p-3 rounded-lg text-sm',
                     currentStep.annotation.type === 'important'
-                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-200'
+                      ? 'bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-200'
                       : currentStep.annotation.type === 'warning'
-                        ? 'bg-red-500/10 border border-red-500/30 text-red-200'
-                        : 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-200'
+                        ? 'bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-200'
+                        : 'bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-200'
                   )}>
                     {currentStep.annotation.text}
                   </div>
@@ -266,8 +266,8 @@ export function CodeWalkthroughExercise({
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors',
             currentStepIndex === 0
-              ? 'text-slate-600 cursor-not-allowed'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+              ? 'text-gray-400 dark:text-slate-600 cursor-not-allowed'
+              : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700'
           )}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
@@ -282,10 +282,10 @@ export function CodeWalkthroughExercise({
               className={cn(
                 'w-2.5 h-2.5 rounded-full transition-all',
                 index === currentStepIndex
-                  ? 'bg-cyan-400 scale-125'
+                  ? 'bg-cyan-500 dark:bg-cyan-400 scale-125'
                   : completedSteps.has(index)
-                    ? 'bg-emerald-400'
-                    : 'bg-slate-600 hover:bg-slate-500'
+                    ? 'bg-emerald-500 dark:bg-emerald-400'
+                    : 'bg-gray-300 dark:bg-slate-600 hover:bg-gray-400 dark:hover:bg-slate-500'
               )}
             />
           ))}
@@ -311,7 +311,7 @@ export function CodeWalkthroughExercise({
         ) : (
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <FontAwesomeIcon icon={faRotateRight} />
             Try Again
@@ -325,8 +325,8 @@ export function CodeWalkthroughExercise({
           <div className="flex items-center gap-3">
             <CheckmarkAnimation isVisible size="md" />
             <div>
-              <p className="font-medium text-emerald-300">{exercise.successMessage || 'Walkthrough Complete!'}</p>
-              <p className="text-sm text-emerald-200/70">
+              <p className="font-medium text-emerald-600 dark:text-emerald-300">{exercise.successMessage || 'Walkthrough Complete!'}</p>
+              <p className="text-sm text-emerald-700 dark:text-emerald-200/70">
                 You completed all {totalSteps} steps
                 {Object.keys(questionAnswers).length > 0 && (
                   <> and answered {Object.keys(questionAnswers).length} questions</>
@@ -360,7 +360,7 @@ function QuestionPanel({
 
   return (
     <AnimatedContainer variant="default" className="p-4">
-      <h5 className="font-medium text-slate-200 mb-3">{question.prompt}</h5>
+      <h5 className="font-medium text-gray-800 dark:text-slate-200 mb-3">{question.prompt}</h5>
       <div className="space-y-2">
         {question.options.map((option, index) => {
           const isSelected = selectedAnswer === index;
@@ -374,21 +374,21 @@ function QuestionPanel({
               className={cn(
                 'w-full p-3 rounded-lg text-left text-sm transition-all',
                 selectedAnswer === undefined
-                  ? 'bg-white/5 border border-white/10 hover:border-cyan-500/30 hover:bg-cyan-500/5'
+                  ? 'bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-cyan-400 dark:hover:border-cyan-500/30 hover:bg-cyan-50 dark:hover:bg-cyan-500/5'
                   : isSelected
                     ? isCorrect
-                      ? 'bg-emerald-500/10 border border-emerald-500/30'
-                      : 'bg-red-500/10 border border-red-500/30'
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30'
+                      : 'bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30'
                     : showFeedback && isCorrectOption
-                      ? 'bg-emerald-500/10 border border-emerald-500/30'
-                      : 'bg-white/5 border border-white/10 opacity-60',
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30'
+                      : 'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 opacity-60',
                 (disabled || selectedAnswer !== undefined) && 'cursor-default'
               )}
             >
               <span className={cn(
-                'text-slate-300',
-                isSelected && (isCorrect ? 'text-emerald-300' : 'text-red-300'),
-                showFeedback && isCorrectOption && !isSelected && 'text-emerald-300'
+                'text-gray-600 dark:text-slate-300',
+                isSelected && (isCorrect ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'),
+                showFeedback && isCorrectOption && !isSelected && 'text-emerald-600 dark:text-emerald-300'
               )}>
                 {option}
               </span>
@@ -402,7 +402,7 @@ function QuestionPanel({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3 p-3 rounded-lg bg-slate-800/50 text-sm text-slate-300"
+          className="mt-3 p-3 rounded-lg bg-gray-100 dark:bg-slate-800/50 text-sm text-gray-600 dark:text-slate-300"
         >
           {question.explanation}
         </motion.div>

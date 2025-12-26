@@ -1,5 +1,5 @@
 /**
- * EmberFlowsPage - Admin page showing Ember chat user flows as one big zoomable Mermaid diagram
+ * AvaFlowsPage - Admin page showing Ava chat user flows as one big zoomable Mermaid diagram
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +17,7 @@ import {
 
 // User Journey Flow - What the user sees and clicks at each step
 const COMPLETE_FLOW = `flowchart TD
-    START([User Opens Ember Chat])
+    START([User Opens Ava Chat])
     START --> GREETING["Greeting Message:<br/>Good morning! What are you in the mood for?"]
 
     GREETING --> PILLS{Feeling Pills}
@@ -95,7 +95,7 @@ const COMPLETE_FLOW = `flowchart TD
     BATTLE_START --> GAME_PLAY
 
     %% LEARN SOMETHING NEW FLOW
-    P4 --> LEARN_ASK["Ember: That's awesome! Is there a<br/>specific topic you're interested in?"]
+    P4 --> LEARN_ASK["Ava: That's awesome! Is there a<br/>specific topic you're interested in?"]
     LEARN_ASK --> LEARN_TOPIC["User provides topic<br/>(LangChain, RAG, AI Agents, etc.)"]
 
     LEARN_TOPIC --> LEARN_RESULTS["find_learning_content returns:"]
@@ -185,7 +185,7 @@ const COMPLETE_FLOW = `flowchart TD
     TRENDING_RESP --> CONTINUE
     QUICKWIN_RESP --> CONTINUE`;
 
-export default function EmberFlowsPage() {
+export default function AvaFlowsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -279,7 +279,7 @@ export default function EmberFlowsPage() {
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-                    Ember <span className="text-orange-600 dark:text-orange-400">User Flows</span>
+                    Ava <span className="text-orange-600 dark:text-orange-400">User Flows</span>
                   </h1>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     Complete visual map • Drag to pan, scroll to zoom

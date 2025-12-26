@@ -1,9 +1,9 @@
 /**
- * OnboardingIntroMessage - Ember's intro message with typewriter effect
+ * OnboardingIntroMessage - Ava's intro message with typewriter effect
  *
  * Displays the initial greeting for new users in the chat,
  * with a typewriter animation and "Create My Avatar" button.
- * The Ember icon follows alongside as new messages appear.
+ * The Ava icon follows alongside as new messages appear.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -54,8 +54,8 @@ function useTypewriter(text: string, speed: number = 30, startDelay: number = 0,
   return { displayedText, isComplete, skip };
 }
 
-// Ember avatar component - positioned to follow messages
-function EmberAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
+// Ava avatar component - positioned to follow messages
+function AvaAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
   return (
     <motion.div
       initial={{ scale: 0, rotate: -20 }}
@@ -78,8 +78,8 @@ function EmberAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
         transition={{ duration: 0.5, repeat: Infinity }}
       >
         <img
-          src="/ember-avatar.png"
-          alt="Ember"
+          src="/ava-avatar.png"
+          alt="Ava"
           className="w-12 h-12 rounded-full border-2 border-cyan-500/50"
         />
       </motion.div>
@@ -87,7 +87,7 @@ function EmberAvatar({ isSpeaking = false }: { isSpeaking?: boolean }) {
   );
 }
 
-// Dialogue bubble component - orange themed for Ember
+// Dialogue bubble component - orange themed for Ava
 function DialogueBubble({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
@@ -122,7 +122,7 @@ export function OnboardingIntroMessage({
   // Dialogue lines with typewriter effects
   // Each line only starts typing when its dialogue step is reached
   const line1 = useTypewriter(
-    `Hi${username ? `, ${username}` : ''}! I'm Ember, your guide throughout your All Thrive journey.`,
+    `Hi${username ? `, ${username}` : ''}! I'm Ava, your guide throughout your All Thrive journey.`,
     25,
     300,
     true // Line 1 starts immediately
@@ -188,10 +188,10 @@ export function OnboardingIntroMessage({
       className="py-4"
       onClick={!showButton ? handleSkip : undefined}
     >
-      {/* Messages with Ember avatar alongside */}
+      {/* Messages with Ava avatar alongside */}
       <div className="flex items-end gap-4">
-        {/* Ember avatar - stays at bottom, following the last message */}
-        <EmberAvatar isSpeaking={isSpeaking} />
+        {/* Ava avatar - stays at bottom, following the last message */}
+        <AvaAvatar isSpeaking={isSpeaking} />
 
         {/* Message bubbles stack */}
         <div className="flex-1 space-y-3 max-w-2xl">

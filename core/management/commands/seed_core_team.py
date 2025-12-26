@@ -2,7 +2,7 @@
 Management command to seed the All Thrive Core Team (AI personas).
 
 This creates all the core AI agents that power All Thrive:
-- Ember: Core guide, onboarding, learning journeys
+- Ava: Core guide, onboarding, learning journeys
 - Pip: Prompt battle champion, playful competition
 - Sage: Professor/teacher, deep learning explanations
 - Haven: Community support, handles feedback and concerns
@@ -29,17 +29,17 @@ User = get_user_model()
 # =============================================================================
 
 CORE_TEAM = {
-    'ember': {
-        'email': 'ember@allthrive.ai',
-        'first_name': 'Ember',
+    'ava': {
+        'email': 'ava@allthrive.ai',
+        'first_name': 'Ava',
         'last_name': '',
         'pronouns': 'she/her',
         'tagline': 'Your All Thrive Guide • The Heart of the Community',
         'location': 'Everywhere You Need Me',
         'current_status': 'Here to help you thrive!',
-        'avatar_url': f'{settings.FRONTEND_URL}/ember-avatar.png',
+        'avatar_url': f'{settings.FRONTEND_URL}/ava-avatar.png',
         'bio': (
-            "<p>Hey there! I'm Ember, your guide to everything All Thrive.</p>"
+            "<p>Hey there! I'm Ava, your guide to everything All Thrive.</p>"
             "<p>Whether you're just getting started or diving deep into AI, I'm here to help you "
             'find your way. I love watching people discover new things and celebrating every step '
             'of the journey with you.</p>'
@@ -53,7 +53,7 @@ CORE_TEAM = {
             "<p>I'm always curious about what you're working on. Let's explore together!</p>"
         ),
         'personality_prompt': (
-            "You are Ember, the core guide for All Thrive. You're the heart of the community - "
+            "You are Ava, the core guide for All Thrive. You're the heart of the community - "
             "warm, encouraging, and genuinely invested in every user's journey."
             '\n\nYour personality:'
             '\n- Warm, welcoming, and genuinely caring'
@@ -131,7 +131,7 @@ CORE_TEAM = {
             'gaming',
         ],
         # Pip has social links
-        'website_url': 'https://allthrive.ai',
+        'website_url': settings.FRONTEND_URL,
         'twitter_url': 'https://twitter.com/pip_allthrive',
     },
     'sage': {
@@ -252,7 +252,7 @@ CORE_TEAM = {
 
 
 class Command(BaseCommand):
-    help = 'Seed the All Thrive Core Team (AI personas: Ember, Pip, Sage, Haven)'
+    help = 'Seed the All Thrive Core Team (AI personas: Ava, Pip, Sage, Haven)'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -263,7 +263,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--agent',
             type=str,
-            choices=['ember', 'pip', 'sage', 'haven'],
+            choices=['ava', 'pip', 'sage', 'haven'],
             help='Only seed a specific agent',
         )
 

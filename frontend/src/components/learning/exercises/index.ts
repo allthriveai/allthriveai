@@ -5,6 +5,10 @@
 // Main router component
 export { ExerciseRenderer } from './ExerciseRenderer';
 
+// Multiple exercises per lesson
+export { ExerciseCollection } from './ExerciseCollection';
+export { useExerciseCollection } from './ExerciseCollection/useExerciseCollection';
+
 // Types
 export * from './types';
 

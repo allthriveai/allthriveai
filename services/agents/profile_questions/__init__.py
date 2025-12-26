@@ -1,7 +1,7 @@
 """
-Profile Questions module for Ember chat.
+Profile Questions module for Ava chat.
 
-Enables Ember to weave in fun, interactive profile-building questions
+Enables Ava to weave in fun, interactive profile-building questions
 during conversations to enrich member_context.
 """
 

@@ -1,12 +1,12 @@
 /**
  * AI Chat Flow Journey E2E Test
  *
- * Tests the core AI experience: Ember Chat → Multi-Turn → Context Preservation
+ * Tests the core AI experience: Ava Chat → Multi-Turn → Context Preservation
  *
  * Real-World Value: Catches AI routing bugs and context loss
  *
  * This test validates that:
- * 1. Ember responds helpfully to various query types
+ * 1. Ava responds helpfully to various query types
  * 2. Multi-turn context is preserved
  * 3. Agent routing works correctly (discovery, learning, creation)
  * 4. Conversations persist after page refresh
@@ -17,12 +17,12 @@ import { test, expect } from '@playwright/test';
 import {
   loginViaAPI,
   sendHomeChat,
-  waitForEmberReady,
+  waitForAvaReady,
   getPageContent,
   assertNoTechnicalErrors,
   assertHelpfulResponse,
   getConversations,
-  goToHomeAndWaitForEmber,
+  goToHomeAndWaitForAva,
   JOURNEY_TIMEOUT,
 } from './journey-helpers';
 
@@ -31,20 +31,20 @@ test.describe('AI Chat Flow Journey', () => {
 
   test('complete multi-turn conversation with context preservation', async ({ page }) => {
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     // =========================================================================
-    // TURN 1: Ask a question - Ember should respond helpfully
+    // TURN 1: Ask a question - Ava should respond helpfully
     // =========================================================================
     console.log('Turn 1: Asking a learning question...');
 
     await sendHomeChat(page, 'I want to learn about building AI chatbots');
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     let response = await getPageContent(page);
     assertHelpfulResponse(response, 'learning question');
 
-    // Ember should provide some helpful response (not error)
+    // Ava should provide some helpful response (not error)
     // Accept various response types: learning resources, direct answers, or suggestions
     const hasHelpfulContent =
       /learn|chatbot|AI|project|course|path|start|build|resource|here|help/i.test(response);
@@ -56,7 +56,7 @@ test.describe('AI Chat Flow Journey', () => {
     console.log('Turn 2: Asking follow-up question...');
 
     await sendHomeChat(page, 'What tools would I need?');
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     response = await getPageContent(page);
     assertHelpfulResponse(response, 'follow-up question');
@@ -72,7 +72,7 @@ test.describe('AI Chat Flow Journey', () => {
     console.log('Turn 3: Asking for project discovery...');
 
     await sendHomeChat(page, 'Show me some chatbot projects people have built');
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     response = await getPageContent(page);
     assertHelpfulResponse(response, 'project discovery');
@@ -86,7 +86,7 @@ test.describe('AI Chat Flow Journey', () => {
     console.log('Turn 4: Testing navigation...');
 
     await sendHomeChat(page, 'Take me to explore');
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     // May navigate or provide link
     const currentUrl = page.url();
@@ -103,7 +103,7 @@ test.describe('AI Chat Flow Journey', () => {
     console.log('Step 5: Verifying conversation persistence...');
 
     // Go back to home
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     response = await getPageContent(page);
     assertNoTechnicalErrors(response, 'home after navigation');
@@ -127,7 +127,7 @@ test.describe('AI Chat Flow Journey', () => {
 
   test('URL import flow with ownership clarification', async ({ page }) => {
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     // =========================================================================
     // TURN 1: Paste a URL
@@ -135,12 +135,12 @@ test.describe('AI Chat Flow Journey', () => {
     console.log('Turn 1: Pasting a URL...');
 
     await sendHomeChat(page, 'https://github.com/facebookresearch/llama');
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     let response = await getPageContent(page);
     assertHelpfulResponse(response, 'URL paste');
 
-    // Ember should ask about ownership or confirm detection
+    // Ava should ask about ownership or confirm detection
     expect(response).toMatch(/yours|own|create|clip|save|project|repository|detected/i);
 
     // =========================================================================
@@ -149,7 +149,7 @@ test.describe('AI Chat Flow Journey', () => {
     console.log('Turn 2: Clarifying ownership...');
 
     await sendHomeChat(page, "It's not mine, I just want to save it");
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     response = await getPageContent(page);
     assertHelpfulResponse(response, 'clip response');
@@ -161,9 +161,9 @@ test.describe('AI Chat Flow Journey', () => {
     expect(response).not.toMatch(/is this your project\?/i);
   });
 
-  test('Ember handles different query types appropriately', async ({ page }) => {
+  test('Ava handles different query types appropriately', async ({ page }) => {
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     const testCases = [
       {
@@ -187,7 +187,7 @@ test.describe('AI Chat Flow Journey', () => {
       console.log(`Testing: ${testCase.context}...`);
 
       await sendHomeChat(page, testCase.query);
-      await waitForEmberReady(page);
+      await waitForAvaReady(page);
 
       const response = await getPageContent(page);
       assertHelpfulResponse(response, testCase.context);
@@ -198,12 +198,12 @@ test.describe('AI Chat Flow Journey', () => {
 
   test('conversation history loads after logout and login', async ({ page }) => {
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     // Send a message
     const uniqueMessage = `Test message ${Date.now()}`;
     await sendHomeChat(page, `Remember this: ${uniqueMessage}`);
-    await waitForEmberReady(page);
+    await waitForAvaReady(page);
 
     // Get conversation count before logout
     const conversationsBefore = await getConversations(page);
@@ -215,7 +215,7 @@ test.describe('AI Chat Flow Journey', () => {
 
     // Login again
     await loginViaAPI(page);
-    await goToHomeAndWaitForEmber(page);
+    await goToHomeAndWaitForAva(page);
 
     // Get conversation count after login
     const conversationsAfter = await getConversations(page);

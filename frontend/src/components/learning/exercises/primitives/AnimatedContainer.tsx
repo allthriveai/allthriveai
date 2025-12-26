@@ -35,13 +35,13 @@ const glowColors: Record<GlowColor, string> = {
 };
 
 const variantStyles: Record<ContainerVariant, string> = {
-  default: 'bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg',
-  interactive: 'bg-white/8 backdrop-blur-md border border-cyan-500/20 rounded-lg hover:border-cyan-400/40 transition-colors',
-  success: 'bg-emerald-500/10 backdrop-blur-sm border border-emerald-500/30 rounded-lg',
-  error: 'bg-red-500/10 backdrop-blur-sm border border-red-500/30 rounded-lg',
-  warning: 'bg-amber-500/10 backdrop-blur-sm border border-amber-500/30 rounded-lg',
-  dropzone: 'bg-white/3 border-2 border-dashed border-white/20 rounded-lg',
-  dropzoneActive: 'bg-cyan-500/10 border-2 border-dashed border-cyan-400/50 rounded-lg',
+  default: 'bg-gray-100 dark:bg-white/5 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-lg',
+  interactive: 'bg-gray-50 dark:bg-white/8 backdrop-blur-md border border-cyan-500/30 dark:border-cyan-500/20 rounded-lg hover:border-cyan-500/50 dark:hover:border-cyan-400/40 transition-colors',
+  success: 'bg-emerald-50 dark:bg-emerald-500/10 backdrop-blur-sm border border-emerald-300 dark:border-emerald-500/30 rounded-lg',
+  error: 'bg-red-50 dark:bg-red-500/10 backdrop-blur-sm border border-red-300 dark:border-red-500/30 rounded-lg',
+  warning: 'bg-amber-50 dark:bg-amber-500/10 backdrop-blur-sm border border-amber-300 dark:border-amber-500/30 rounded-lg',
+  dropzone: 'bg-gray-50 dark:bg-white/3 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-lg',
+  dropzoneActive: 'bg-cyan-50 dark:bg-cyan-500/10 border-2 border-dashed border-cyan-400 dark:border-cyan-400/50 rounded-lg',
 };
 
 const containerVariants: Variants = {

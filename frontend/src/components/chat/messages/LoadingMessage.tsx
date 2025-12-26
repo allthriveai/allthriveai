@@ -6,7 +6,7 @@
  * - Tool-specific status messages (e.g., "Importing from GitHub...")
  * - Rotating thinking messages when no specific tool is active
  * - Cancel button to abort processing
- * - Two variants: default (sidebar) and neon (EmberHomePage)
+ * - Two variants: default (sidebar) and neon (AvaHomePage)
  */
 
 import { useState, useEffect } from 'react';
@@ -33,13 +33,13 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
 };
 
 // Rotating status messages when no specific tool is active
-// Dragon-themed for Ember!
+// Playful themed for Ava!
 const THINKING_MESSAGES = [
   'Thinking...',
   'Stoking the flames...',
   'Consulting my hoard...',
   'Warming up...',
-  'Fanning the embers...',
+  'Gathering thoughts...',
   'Almost there...',
   'Kindling ideas...',
   'Breathing fire on this...',
@@ -69,12 +69,12 @@ export function LoadingMessage({
   const isNeon = variant === 'neon';
 
   if (isNeon) {
-    // Neon Glass variant (EmberHomePage)
+    // Neon Glass variant (AvaHomePage)
     return (
       <div className="flex items-end">
         <img
-          src="/ember-avatar.png"
-          alt="Ember"
+          src="/ava-avatar.png"
+          alt="Ava"
           className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover -scale-x-100"
         />
         <div className="glass-subtle px-5 py-4 rounded-2xl rounded-bl-sm flex-1">

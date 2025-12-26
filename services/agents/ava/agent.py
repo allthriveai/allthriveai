@@ -1,5 +1,5 @@
 """
-Unified Ember LangGraph agent.
+Unified Ava LangGraph agent.
 
 Single agent with access to all tools, eliminating the need for
 supervisor routing between specialized agents.
@@ -36,14 +36,14 @@ from core.ai_usage.tracker import AIUsageTracker
 from services.ai.callbacks import TokenTrackingCallback
 
 from .prompts import (
-    EMBER_FULL_ONBOARDING_PROMPT,
-    EMBER_SYSTEM_PROMPT,
+    AVA_FULL_ONBOARDING_PROMPT,
+    AVA_SYSTEM_PROMPT,
     SAGE_PERSONALITY,
     format_learning_intelligence,
     format_lesson_context,
     format_member_context,
 )
-from .tools import EMBER_TOOLS, TOOLS_NEEDING_STATE
+from .tools import AVA_TOOLS, TOOLS_NEEDING_STATE
 
 # Lua script for atomic lock release (compare-and-delete)
 # This prevents race conditions where another worker could acquire the lock
@@ -163,21 +163,21 @@ async def _fetch_image_as_base64(image_url: str) -> tuple[str, str]:
 # =============================================================================
 
 # Maximum tool call iterations per request (prevents infinite loops)
-MAX_TOOL_ITERATIONS = getattr(settings, 'EMBER_MAX_TOOL_ITERATIONS', 10)
+MAX_TOOL_ITERATIONS = getattr(settings, 'AVA_MAX_TOOL_ITERATIONS', 10)
 
 # Maximum messages to keep in context (prevents unbounded memory growth)
 # Keep last N messages to stay within context window and memory limits
-MAX_CONTEXT_MESSAGES = getattr(settings, 'EMBER_MAX_CONTEXT_MESSAGES', 50)
+MAX_CONTEXT_MESSAGES = getattr(settings, 'AVA_MAX_CONTEXT_MESSAGES', 50)
 
 # Tool execution timeout in seconds (prevents hanging on slow tools)
-TOOL_EXECUTION_TIMEOUT = getattr(settings, 'EMBER_TOOL_EXECUTION_TIMEOUT', 30)
+TOOL_EXECUTION_TIMEOUT = getattr(settings, 'AVA_TOOL_EXECUTION_TIMEOUT', 30)
 
 # Extended timeout for AI-heavy tools that make multiple LLM calls
 # These tools do AI image analysis, metadata generation, or lesson creation
 # Note: Gemini can timeout at 60s, then fallback to OpenAI needs 20-30s more
 EXTENDED_TIMEOUT_TOOLS = getattr(
     settings,
-    'EMBER_EXTENDED_TIMEOUT_TOOLS',
+    'AVA_EXTENDED_TIMEOUT_TOOLS',
     {
         'create_learning_path': 120,  # AI lesson generation takes 60-90s
         'create_media_project': 120,  # Gemini timeout (60s) + OpenAI fallback (30s) + project creation
@@ -188,14 +188,14 @@ EXTENDED_TIMEOUT_TOOLS = getattr(
 
 # Maximum in-memory locks to keep (LRU eviction for memory safety at scale)
 # At 100k users, we limit to 10k locks (~1MB memory) and use Redis for distributed locking
-MAX_THREAD_LOCKS = getattr(settings, 'EMBER_MAX_THREAD_LOCKS', 10000)
+MAX_THREAD_LOCKS = getattr(settings, 'AVA_MAX_THREAD_LOCKS', 10000)
 
 # Redis lock timeout for distributed locking (seconds)
-REDIS_LOCK_TIMEOUT = getattr(settings, 'EMBER_REDIS_LOCK_TIMEOUT', 120)
+REDIS_LOCK_TIMEOUT = getattr(settings, 'AVA_REDIS_LOCK_TIMEOUT', 120)
 
 # Maximum concurrent tool executor threads (prevents thread exhaustion)
 # At scale, we cap threads to prevent resource exhaustion from slow tools
-TOOL_EXECUTOR_MAX_WORKERS = getattr(settings, 'EMBER_TOOL_EXECUTOR_MAX_WORKERS', 20)
+TOOL_EXECUTOR_MAX_WORKERS = getattr(settings, 'AVA_TOOL_EXECUTOR_MAX_WORKERS', 20)
 
 # Bounded thread pool for tool execution (prevents unbounded thread creation)
 # Using None as executor in run_in_executor creates unbounded threads per request
@@ -257,7 +257,7 @@ async def _acquire_distributed_lock(thread_id: str, timeout: int = REDIS_LOCK_TI
     Raises:
         RuntimeError: If lock cannot be acquired within timeout
     """
-    lock_key = f'ember:lock:{thread_id}'
+    lock_key = f'ava:lock:{thread_id}'
     # Use UUID for guaranteed uniqueness (memory addresses can be reused)
     lock_value = f'{time.time()}:{uuid.uuid4()}'
 
@@ -489,8 +489,8 @@ def _serialize_tool_output(output, _depth: int = 0) -> dict | list:
 # =============================================================================
 
 
-class EmberState(TypedDict):
-    """State for the Ember agent graph."""
+class AvaState(TypedDict):
+    """State for the Ava agent graph."""
 
     messages: Annotated[list[BaseMessage], add_messages]
     # User context for state injection
@@ -548,7 +548,7 @@ def _validate_user_state(user_id: int | None, username: str) -> tuple[bool, str]
     return (True, '')
 
 
-async def tools_node(state: EmberState) -> dict:
+async def tools_node(state: AvaState) -> dict:
     """
     Async tool execution node that injects user state into tools that need it.
 
@@ -623,7 +623,7 @@ async def tools_node(state: EmberState) -> dict:
 
         # Find and execute the tool with timeout
         tool_result = None
-        for tool in EMBER_TOOLS:
+        for tool in AVA_TOOLS:
             if tool.name == tool_name:
                 try:
                     # Use extended timeout for AI-heavy tools
@@ -646,7 +646,7 @@ async def tools_node(state: EmberState) -> dict:
                 break
 
         if tool_result is None:
-            logger.warning(f'Tool {tool_name} not found in EMBER_TOOLS')
+            logger.warning(f'Tool {tool_name} not found in AVA_TOOLS')
             tool_result = {'error': f'Tool {tool_name} not found', 'success': False}
 
         # Store full tool result for frontend event emission
@@ -706,7 +706,7 @@ def create_agent_node(model_name: str | None = None):
     resolved_model = model_name or get_default_model()
 
     llm = ChatOpenAI(model=resolved_model, temperature=0.7)
-    llm_with_tools = llm.bind_tools(EMBER_TOOLS)
+    llm_with_tools = llm.bind_tools(AVA_TOOLS)
 
     # Patterns that indicate learning/conceptual questions requiring find_content
     LEARNING_QUESTION_PATTERNS = [
@@ -739,14 +739,38 @@ def create_agent_node(model_name: str | None = None):
             message_content = ' '.join(text_parts)
         return bool(LEARNING_REGEX.search(message_content))
 
-    async def agent_node(state: EmberState) -> dict:
+    # Learning tools that indicate user is in learning mode
+    LEARNING_TOOLS = {'find_content', 'create_learning_path', 'update_learner_profile', 'get_quiz_hint'}
+
+    def _is_in_learning_context(messages: list, lookback: int = 6) -> bool:
+        """Check if recent messages indicate user is in learning mode.
+
+        Returns True if any of the last N messages contain learning tool calls.
+        This is used to suppress profile questions during active learning sessions.
+        """
+        from langchain_core.messages import AIMessage, ToolMessage
+
+        recent_messages = messages[-lookback:] if len(messages) > lookback else messages
+        for msg in recent_messages:
+            # Check AIMessage for tool calls
+            if isinstance(msg, AIMessage) and hasattr(msg, 'tool_calls') and msg.tool_calls:
+                for tc in msg.tool_calls:
+                    if tc.get('name') in LEARNING_TOOLS:
+                        return True
+            # Check ToolMessage for learning tool results
+            if isinstance(msg, ToolMessage) and hasattr(msg, 'name'):
+                if msg.name in LEARNING_TOOLS:
+                    return True
+        return False
+
+    async def agent_node(state: AvaState) -> dict:
         """Process messages and decide next action (async)."""
         logger.info('[AGENT_NODE] ========== ENTERING agent_node ==========')
         all_messages = state.get('messages', [])
         logger.info(f'[AGENT_NODE] Total message count: {len(all_messages)}')
 
         # Trim to last N messages to prevent context bloat and slow processing
-        # Uses module-level MAX_CONTEXT_MESSAGES (configurable via EMBER_MAX_CONTEXT_MESSAGES setting)
+        # Uses module-level MAX_CONTEXT_MESSAGES (configurable via AVA_MAX_CONTEXT_MESSAGES setting)
         if len(all_messages) > MAX_CONTEXT_MESSAGES:
             messages = all_messages[-MAX_CONTEXT_MESSAGES:]
             logger.info(f'[AGENT_NODE] Trimmed to last {MAX_CONTEXT_MESSAGES} messages')
@@ -765,7 +789,7 @@ def create_agent_node(model_name: str | None = None):
 
         # Determine which system prompt to use
         is_onboarding = state.get('is_onboarding', False)
-        base_prompt = EMBER_FULL_ONBOARDING_PROMPT if is_onboarding else EMBER_SYSTEM_PROMPT
+        base_prompt = AVA_FULL_ONBOARDING_PROMPT if is_onboarding else AVA_SYSTEM_PROMPT
         logger.info(f'[AGENT_NODE] is_onboarding={is_onboarding}')
 
         # Inject member context for personalization
@@ -780,15 +804,32 @@ def create_agent_node(model_name: str | None = None):
         lesson_context_section = format_lesson_context(lesson_context)
 
         # Inject Sage personality for learn contexts (even without lesson_context)
-        # This covers the /learn page which uses "ember-{user_id}" as session_id
+        # This covers the /learn page which uses "ava-{user_id}" as session_id
         session_id = state.get('session_id', '')
         sage_section = ''
-        if session_id.startswith('ember-') and not lesson_context:
+        if session_id.startswith('ava-') and not lesson_context:
             # Inject Sage personality for /learn page (lesson_context already includes it)
             sage_section = SAGE_PERSONALITY
 
+        # Check if user is in active learning context (recent find_content, learning path calls)
+        # This suppresses profile questions during learning sessions
+        learning_context_hint = ''
+        if _is_in_learning_context(messages):
+            learning_context_hint = (
+                '\n\n**IMPORTANT: User is in active learning mode.** '
+                'Do NOT call ask_profile_question() - focus on answering their learning questions. '
+                'Continue providing educational content and only ask profile questions after '
+                'they explicitly move away from learning topics.\n'
+            )
+            logger.info('[AGENT_NODE] User is in learning context, suppressing profile questions')
+
         system_prompt = (
-            base_prompt + sage_section + member_context_section + learning_intelligence_section + lesson_context_section
+            base_prompt
+            + sage_section
+            + member_context_section
+            + learning_intelligence_section
+            + lesson_context_section
+            + learning_context_hint
         )
 
         # Build full message list with system prompt
@@ -836,7 +877,7 @@ def create_agent_node(model_name: str | None = None):
 # =============================================================================
 
 
-def should_continue(state: EmberState) -> str:
+def should_continue(state: AvaState) -> str:
     """Determine whether to continue to tools or end."""
     messages = state.get('messages', [])
 
@@ -858,9 +899,9 @@ def should_continue(state: EmberState) -> str:
 # =============================================================================
 
 
-def _build_ember_workflow(model_name: str | None = None) -> StateGraph:
+def _build_ava_workflow(model_name: str | None = None) -> StateGraph:
     """
-    Build the Ember agent workflow (without checkpointer).
+    Build the Ava agent workflow (without checkpointer).
 
     Uses the AI gateway configuration from settings.AI_MODELS.
 
@@ -871,7 +912,7 @@ def _build_ember_workflow(model_name: str | None = None) -> StateGraph:
         StateGraph (not compiled) - compile with checkpointer at runtime
     """
     # Create the graph
-    graph = StateGraph(EmberState)
+    graph = StateGraph(AvaState)
 
     # Add nodes - model_name passed through, resolved in create_agent_node
     graph.add_node('agent', create_agent_node(model_name))
@@ -907,7 +948,7 @@ def _get_workflow():
     """Get the workflow, building it lazily on first use."""
     global _workflow
     if _workflow is None:
-        _workflow = _build_ember_workflow()
+        _workflow = _build_ava_workflow()
     return _workflow
 
 
@@ -935,9 +976,9 @@ async def _get_async_agent():
         yield agent
 
 
-def create_ember_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
+def create_ava_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
     """
-    Create the unified Ember agent graph (stateless, no checkpointer).
+    Create the unified Ava agent graph (stateless, no checkpointer).
 
     For stateful conversations with memory, use _get_async_agent() instead.
 
@@ -947,18 +988,18 @@ def create_ember_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
     Returns:
         Compiled LangGraph StateGraph ready for invocation
     """
-    graph = _build_ember_workflow(model_name)
+    graph = _build_ava_workflow(model_name)
     return graph.compile()
 
 
-def create_ember_agent_with_state_injection(
+def create_ava_agent_with_state_injection(
     model_name: str | None = None,
     user_id: int | None = None,
     username: str = '',
     session_id: str = '',
 ) -> StateGraph:
     """
-    Create the Ember agent with pre-configured state injection.
+    Create the Ava agent with pre-configured state injection.
 
     This variant creates a custom tool node that automatically injects
     user state into tools that need it.
@@ -975,7 +1016,7 @@ def create_ember_agent_with_state_injection(
         Compiled LangGraph StateGraph with state injection
     """
     # Create graph
-    graph = StateGraph(EmberState)
+    graph = StateGraph(AvaState)
 
     # Add agent node
     graph.add_node('agent', create_agent_node(model_name))
@@ -1031,7 +1072,7 @@ def _estimate_messages_tokens(messages: list[BaseMessage]) -> int:
     return total
 
 
-async def _track_ember_usage(
+async def _track_ava_usage(
     user_id: int | None,
     session_id: str,
     model_name: str,
@@ -1047,7 +1088,7 @@ async def _track_ember_usage(
     gateway_metadata: dict | None = None,
 ):
     """
-    Track Ember agent usage for analytics and billing.
+    Track Ava agent usage for analytics and billing.
 
     Uses the centralized AIUsageTracker for consistent cost calculation.
     """
@@ -1062,7 +1103,7 @@ async def _track_ember_usage(
         User = get_user_model()
         user = await User.objects.aget(id=user_id)
 
-        feature = 'ember_onboarding' if is_onboarding else 'ember_chat'
+        feature = 'ava_onboarding' if is_onboarding else 'ava_chat'
 
         # Wrap sync Django ORM call for async context
         await sync_to_async(AIUsageTracker.track_usage)(
@@ -1078,7 +1119,7 @@ async def _track_ember_usage(
             error_message=error_message,
             session_id=session_id,
             request_metadata={
-                'agent': 'ember',
+                'agent': 'ava',
                 'tool_calls': tool_calls_count,
                 'estimated': is_estimated,
                 'llm_calls': llm_calls,
@@ -1087,7 +1128,7 @@ async def _track_ember_usage(
         )
     except Exception as e:
         # Don't fail the request if tracking fails
-        logger.error(f'Failed to track Ember usage: {e}')
+        logger.error(f'Failed to track Ava usage: {e}')
 
 
 # =============================================================================
@@ -1147,7 +1188,7 @@ async def _execute_tool_with_timeout(
     # Let other exceptions propagate naturally
 
 
-async def stream_ember_response(
+async def stream_ava_response(
     user_message: str,
     user_id: int | None = None,
     username: str = '',
@@ -1158,7 +1199,7 @@ async def stream_ember_response(
     image_url: str | None = None,
 ):
     """
-    Stream Ember agent response with tool execution events.
+    Stream Ava agent response with tool execution events.
 
     Uses LangGraph with PostgreSQL checkpointing for conversation memory.
     The session_id is used as the thread_id for persistent state.
@@ -1457,7 +1498,7 @@ async def stream_ember_response(
             actual_output_tokens = _estimate_tokens(total_output_content)
             is_estimated = True
 
-        await _track_ember_usage(
+        await _track_ava_usage(
             user_id=user_id,
             session_id=session_id,
             model_name=resolved_model,
@@ -1476,7 +1517,7 @@ async def stream_ember_response(
     except Exception as e:
         # Convert exception to user-friendly message
         error_user_message = _get_user_friendly_error(e)
-        logger.error(f'Ember streaming error: {e}', exc_info=True)
+        logger.error(f'Ava streaming error: {e}', exc_info=True)
 
         # Track usage on error - use callback data if available
         latency_ms = int((time.time() - start_time) * 1000)
@@ -1489,7 +1530,7 @@ async def stream_ember_response(
             actual_output_tokens = _estimate_tokens(total_output_content)
             is_estimated = True
 
-        await _track_ember_usage(
+        await _track_ava_usage(
             user_id=user_id,
             session_id=session_id,
             model_name=resolved_model,
@@ -1507,7 +1548,7 @@ async def stream_ember_response(
         yield {'type': 'error', 'message': error_user_message}
 
 
-def invoke_ember(
+def invoke_ava(
     message: str,
     user_id: int | None = None,
     username: str = '',
@@ -1517,12 +1558,12 @@ def invoke_ember(
     model_name: str | None = None,
 ) -> dict:
     """
-    Convenience function to invoke Ember with a single message (non-streaming).
+    Convenience function to invoke Ava with a single message (non-streaming).
 
     DEPRECATED: This function does NOT use LangGraph checkpointing for conversation
     memory. Each call is stateless and requires passing conversation_history manually.
 
-    For production use with persistent conversation memory, use stream_ember_response()
+    For production use with persistent conversation memory, use stream_ava_response()
     which uses PostgreSQL checkpointing via the session_id as thread_id.
 
     Args:
@@ -1540,8 +1581,8 @@ def invoke_ember(
     import warnings
 
     warnings.warn(
-        'invoke_ember() does not use LangGraph checkpointing. '
-        'Use stream_ember_response() for persistent conversation memory.',
+        'invoke_ava() does not use LangGraph checkpointing. '
+        'Use stream_ava_response() for persistent conversation memory.',
         DeprecationWarning,
         stacklevel=2,
     )
@@ -1565,7 +1606,7 @@ def invoke_ember(
     member_context = MemberContextService.get_context(user_id)
 
     # Create initial state
-    initial_state = EmberState(
+    initial_state = AvaState(
         messages=messages,
         user_id=user_id,
         username=username,
@@ -1576,7 +1617,7 @@ def invoke_ember(
     )
 
     # Create and invoke agent (uses AI gateway model)
-    agent = create_ember_agent(resolved_model)
+    agent = create_ava_agent(resolved_model)
     result = agent.invoke(initial_state)
 
     # Track usage (sync version for non-streaming)
@@ -1600,7 +1641,7 @@ def invoke_ember(
             )
 
             latency_ms = int((time.time() - start_time) * 1000)
-            feature = 'ember_onboarding' if is_onboarding else 'ember_chat'
+            feature = 'ava_onboarding' if is_onboarding else 'ava_chat'
 
             AIUsageTracker.track_usage(
                 user=user,
@@ -1614,11 +1655,11 @@ def invoke_ember(
                 status='success',
                 session_id=session_id,
                 request_metadata={
-                    'agent': 'ember',
+                    'agent': 'ava',
                     'tool_calls': tool_calls_count,
                 },
             )
         except Exception as e:
-            logger.error(f'Failed to track Ember usage: {e}')
+            logger.error(f'Failed to track Ava usage: {e}')
 
     return result

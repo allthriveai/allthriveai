@@ -534,7 +534,7 @@ test.describe('GitLab Import - URL Paste Flow', () => {
     await page.waitForTimeout(3000);
 
     // Find the chat input
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 30000 });
 
     // Paste a GitLab URL

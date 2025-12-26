@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { loginViaAPI } from './helpers';
 
 /**
- * Ember Onboarding & Avatar Generation E2E Tests
+ * Ava Onboarding & Avatar Generation E2E Tests
  *
  * Tests the feelings-first home page onboarding flow:
  * 1. Intro message with typewriter effect
@@ -10,9 +10,9 @@ import { loginViaAPI } from './helpers';
  * 3. Avatar generation via AI (Gemini)
  * 4. Accept avatar and verify profile update
  *
- * Run locally: npx playwright test ember-onboarding.spec.ts
+ * Run locally: npx playwright test ava-onboarding.spec.ts
  */
-test.describe('Ember Onboarding Flow', () => {
+test.describe('Ava Onboarding Flow', () => {
   // Skip in CI - requires AI API keys (Gemini) for avatar generation
   test.skip(!!process.env.CI, 'Skipping avatar tests in CI - requires GOOGLE_API_KEY');
   test.setTimeout(120000); // 2 minutes for AI generation
@@ -28,7 +28,7 @@ test.describe('Ember Onboarding Flow', () => {
     // Wait for onboarding to load
     await page.waitForTimeout(2000);
 
-    // Should see Ember's intro with typewriter effect or the Create Avatar button
+    // Should see Ava's intro with typewriter effect or the Create Avatar button
     const createAvatarButton = page.getByRole('button', { name: /Create My Avatar/i });
 
     // Either we see the button directly, or we need to wait for typewriter

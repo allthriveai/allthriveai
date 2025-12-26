@@ -8,8 +8,8 @@ Provides tools for:
 - Getting trending projects
 - Explaining project details
 
-Note: All chat now routes through the unified Ember agent.
-The tools are imported and used by Ember.
+Note: All chat now routes through the unified Ava agent.
+The tools are imported and used by Ava.
 """
 
 from .tools import DISCOVERY_TOOLS

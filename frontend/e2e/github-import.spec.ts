@@ -272,7 +272,7 @@ test.describe('GitHub Import Error Handling', () => {
     await page.waitForTimeout(3000);
 
     // Type an invalid URL in chat - use correct input selector
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 15000 });
     await chatInput.fill('Import this repo: not-a-valid-url');
     await chatInput.press('Enter');

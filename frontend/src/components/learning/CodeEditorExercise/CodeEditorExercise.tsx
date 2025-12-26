@@ -8,7 +8,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPlay,
   faRotateRight,
-  faRobot,
   faCode,
   faCheckCircle,
 } from '@fortawesome/free-solid-svg-icons';
@@ -241,7 +240,7 @@ export function CodeEditorExercise({
                 onClick={onAskForHelp}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
               >
-                <FontAwesomeIcon icon={faRobot} />
+                <img src="/sage-avatar.png" alt="Sage" className="w-5 h-5 rounded-full" />
                 Ask Sage
               </button>
             )}

@@ -1,8 +1,8 @@
 /**
- * EmberAdventureBanner Component
+ * AvaAdventureBanner Component
  *
  * Banner showing remaining adventure paths after user completes their first choice.
- * Guided by Ember the dragon. Can be dismissed by clicking X. Shows celebration when all done.
+ * Guided by Ava the AI guide. Can be dismissed by clicking X. Shows celebration when all done.
  */
 
 import { useState } from 'react';
@@ -10,9 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { XMarkIcon, CheckCircleIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDragon, faGamepad, faRocket, faCompass, faUserPen } from '@fortawesome/free-solid-svg-icons';
+import { faStar, faGamepad, faRocket, faCompass, faUserPen } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '@/hooks/useAuth';
-import type { AdventureId } from '@/hooks/useEmberOnboarding';
+import type { AdventureId } from '@/hooks/useAvaOnboarding';
 
 interface Adventure {
   id: AdventureId;
@@ -61,19 +61,19 @@ const adventures: Adventure[] = [
   },
 ];
 
-interface EmberAdventureBannerProps {
+interface AvaAdventureBannerProps {
   completedAdventures: AdventureId[];
   onAdventureClick: (adventureId: AdventureId) => void;
   onDismiss: () => void;
   onShowMoreRecommendations?: () => void;
 }
 
-export function EmberAdventureBanner({
+export function AvaAdventureBanner({
   completedAdventures,
   onAdventureClick,
   onDismiss,
   onShowMoreRecommendations,
-}: EmberAdventureBannerProps) {
+}: AvaAdventureBannerProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isExpanded] = useState(true);
@@ -89,16 +89,16 @@ export function EmberAdventureBanner({
 
     // Special handling for add_project - navigate to user's profile and open chat
     if (adventure.id === 'add_project') {
-      localStorage.setItem('ember_open_chat', 'true');
+      localStorage.setItem('ava_open_chat', 'true');
       // Navigate to user's profile page (/:username)
       const profilePath = user?.username ? `/${user.username}` : '/dashboard';
       navigate(profilePath);
     } else if (adventure.id === 'personalize') {
       // Navigate to user's profile and open the AI profile generator tray
-      localStorage.setItem('ember_open_profile_generator', 'true');
+      localStorage.setItem('ava_open_profile_generator', 'true');
       const profilePath = user?.username ? `/${user.username}` : '/dashboard';
       // Dispatch event for when already on profile page
-      window.dispatchEvent(new CustomEvent('ember-open-profile-generator'));
+      window.dispatchEvent(new CustomEvent('ava-open-profile-generator'));
       navigate(profilePath);
     } else {
       navigate(adventure.path);
@@ -119,7 +119,7 @@ export function EmberAdventureBanner({
             <div className="flex items-center justify-between gap-2 sm:gap-4">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0">
-                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-cyan-500 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]" />
+                  <FontAwesomeIcon icon={faStar} className="text-xl sm:text-2xl text-cyan-500 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]" />
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 dark:text-orange-400 flex-shrink-0" />
@@ -171,13 +171,13 @@ export function EmberAdventureBanner({
           <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent dark:from-black/10" />
           <div className="relative max-w-[1920px] mx-auto px-4 sm:pl-8 sm:pr-6 py-2 sm:py-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-              {/* Ember avatar and message */}
+              {/* Ava avatar and message */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0">
-                  <FontAwesomeIcon icon={faDragon} className="text-xl sm:text-2xl text-cyan-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
+                  <FontAwesomeIcon icon={faStar} className="text-xl sm:text-2xl text-cyan-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
                 </div>
                 <span className="text-orange-300 text-xs sm:text-sm">
-                  <span className="text-orange-300 font-semibold">Ember:</span>{' '}
+                  <span className="text-orange-300 font-semibold">Ava:</span>{' '}
                   <a
                     href="/onboarding"
                     onClick={(e) => {
@@ -257,4 +257,4 @@ export function EmberAdventureBanner({
   );
 }
 
-export default EmberAdventureBanner;
+export default AvaAdventureBanner;

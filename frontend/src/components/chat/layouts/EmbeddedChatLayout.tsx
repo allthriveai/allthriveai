@@ -1,5 +1,5 @@
 /**
- * EmbeddedChatLayout - Full-page chat layout for EmberHomePage
+ * EmbeddedChatLayout - Full-page chat layout for AvaHomePage
  *
  * Features:
  * - Typewriter greeting animation
@@ -12,7 +12,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useEmberOnboarding } from '@/hooks/useEmberOnboarding';
+import { useAvaOnboarding } from '@/hooks/useAvaOnboarding';
 import { getPersonalizationSettings } from '@/services/personalization';
 import { logError } from '@/utils/errorHandler';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -337,7 +337,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
   }, []);
 
   // Check if user has already personalized
-  const { isAdventureComplete } = useEmberOnboarding();
+  const { isAdventureComplete } = useAvaOnboarding();
   const hasPersonalized = isAdventureComplete('personalize');
 
   // Get greeting based on time of day
@@ -348,7 +348,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
     return 'Good evening';
   };
 
-  // Generate Ember's greeting message
+  // Generate Ava's greeting message
   const greetingMessage = useMemo(() => {
     const name = user?.firstName || user?.username || 'there';
     const greeting = getGreeting();
@@ -500,7 +500,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
             // Add assistant message prompting for a concept (simple, reduces overwhelm)
             const assistantMessage: ChatMessage = {
-              id: `ember-get-started-${timestamp}`,
+              id: `ava-get-started-${timestamp}`,
               content: "What's ONE thing you're curious about?",
               sender: 'assistant',
               timestamp: new Date(),
@@ -809,8 +809,8 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                     <div className="flex flex-col justify-start">
                       <div className="flex items-end">
                         <img
-                          src="/ember-avatar.png"
-                          alt="Ember"
+                          src="/ava-avatar.png"
+                          alt="Ava"
                           className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover -scale-x-100"
                         />
                         <div className="flex-1 glass-subtle px-5 py-4 rounded-2xl rounded-br-sm">
@@ -936,7 +936,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                 isLoading={state.isLoading}
                 isUploading={state.isUploading}
                 onCancelUpload={state.cancelUpload}
-                placeholder="Message Ember..."
+                placeholder="Message Ava..."
                 enableAttachments={true}
                 onFileSelectRef={(fn) => { triggerFileSelectRef.current = fn; }}
                 onDropFilesRef={(fn) => { dropFilesRef.current = fn; }}

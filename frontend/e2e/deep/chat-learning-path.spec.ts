@@ -3,10 +3,10 @@
  *
  * Tests the multi-turn flow where:
  * 1. User asks about a topic (e.g., "what is a context window")
- * 2. Ember responds with explanation + projects + game
- * 3. Ember offers to create a learning path
+ * 2. Ava responds with explanation + projects + game
+ * 3. Ava offers to create a learning path
  * 4. User accepts the offer
- * 5. Ember creates the learning path
+ * 5. Ava creates the learning path
  * 6. User can click the link to navigate to it
  *
  * This is a DEEP test because it involves:
@@ -22,7 +22,7 @@ import {
   loginViaAPI,
   getPageContent,
   sendHomeChat,
-  waitForEmberReady,
+  waitForAvaReady,
   DEEP_AI_TIMEOUT,
   MULTI_TURN_TIMEOUT,
 } from './deep-helpers';
@@ -48,8 +48,8 @@ test.describe('Chat - Learning Path Creation Flow', () => {
     console.log('Turn 1: Asking about context windows...');
     await sendHomeChat(page, 'what is a context window');
 
-    // Wait for Ember to finish responding (can take 60-90s)
-    await waitForEmberReady(page, DEEP_AI_TIMEOUT);
+    // Wait for Ava to finish responding (can take 60-90s)
+    await waitForAvaReady(page, DEEP_AI_TIMEOUT);
 
     const turn1Response = await getPageContent(page);
     assertNoTechnicalErrors(turn1Response, 'after context window question');
@@ -60,7 +60,7 @@ test.describe('Chat - Learning Path Creation Flow', () => {
       /context/i.test(turn1Response) &&
       (/token|memory|window|limit|input|text/i.test(turn1Response));
     expect(hasExplanation).toBe(true);
-    console.log('✓ Ember explained context windows');
+    console.log('✓ Ava explained context windows');
 
     // 2. Project cards should be visible (grid with cards)
     const gridContainer = page.locator('.grid[class*="cols"]');
@@ -136,7 +136,7 @@ test.describe('Chat - Learning Path Creation Flow', () => {
       const isStillThinking =
         currentContent.includes('Thinking') ||
         currentContent.includes('Consulting my') ||
-        currentContent.includes('Fanning the embers') ||
+        currentContent.includes('Finding the way') ||
         currentContent.includes('treasure trove') ||
         currentContent.includes('Cancel');
 
@@ -161,7 +161,7 @@ test.describe('Chat - Learning Path Creation Flow', () => {
     const hasCreatedPath =
       /created|ready|here|path|curriculum|lessons|learn/i.test(turn2Response);
     expect(hasCreatedPath).toBe(true);
-    console.log('✓ Ember confirmed learning path creation');
+    console.log('✓ Ava confirmed learning path creation');
 
     // Verify we got a clickable link
     expect(learningPathUrl).toBeTruthy();
@@ -198,7 +198,7 @@ test.describe('Chat - Learning Path Creation Flow', () => {
     // Ask for a learning path directly to test link clickability
     await sendHomeChat(page, 'create a learning path about prompt engineering for me');
 
-    // Wait for Ember to finish (learning path creation takes time)
+    // Wait for Ava to finish (learning path creation takes time)
     console.log('Waiting for learning path creation...');
 
     let learningPathUrl: string | null = null;
@@ -254,7 +254,7 @@ test.describe('Chat - Learning Path Creation Flow', () => {
 
     // Turn 1: Ask about context windows
     await sendHomeChat(page, 'what is a context window');
-    await waitForEmberReady(page, DEEP_AI_TIMEOUT);
+    await waitForAvaReady(page, DEEP_AI_TIMEOUT);
 
     const turn1 = await getPageContent(page);
     assertNoTechnicalErrors(turn1, 'turn 1');
@@ -262,7 +262,7 @@ test.describe('Chat - Learning Path Creation Flow', () => {
 
     // Turn 2: Decline the learning path offer
     await sendHomeChat(page, 'no thanks, I have a different question');
-    await waitForEmberReady(page, 60000);
+    await waitForAvaReady(page, 60000);
 
     const turn2 = await getPageContent(page);
     assertNoTechnicalErrors(turn2, 'turn 2');
@@ -273,7 +273,7 @@ test.describe('Chat - Learning Path Creation Flow', () => {
 
     // Turn 3: Ask a different question
     await sendHomeChat(page, 'how do I use RAG with LangChain?');
-    await waitForEmberReady(page, DEEP_AI_TIMEOUT);
+    await waitForAvaReady(page, DEEP_AI_TIMEOUT);
 
     const turn3 = await getPageContent(page);
     assertNoTechnicalErrors(turn3, 'turn 3');
@@ -300,7 +300,7 @@ test.describe('Chat - Learning Path Quality', () => {
     await sendHomeChat(page, 'create a learning path about neural networks');
 
     // Wait for creation
-    await waitForEmberReady(page, DEEP_AI_TIMEOUT);
+    await waitForAvaReady(page, DEEP_AI_TIMEOUT);
 
     const response = await getPageContent(page);
     assertHelpfulResponse(response, 'learning path creation');
@@ -331,7 +331,7 @@ test.describe('Chat - Learning Path Quality', () => {
       await page.waitForTimeout(2000);
 
       await sendHomeChat(page, question);
-      await waitForEmberReady(page, DEEP_AI_TIMEOUT);
+      await waitForAvaReady(page, DEEP_AI_TIMEOUT);
 
       const response = await getPageContent(page);
       assertNoTechnicalErrors(response, question);

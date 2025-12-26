@@ -1,5 +1,8 @@
 """Views for Learning Paths API."""
 
+import logging
+import uuid
+
 from django.db import IntegrityError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -60,6 +63,99 @@ def safe_int(value, default: int, max_value: int = 100) -> int:
         return min(max(1, result), max_value)
     except (ValueError, TypeError):
         return default
+
+
+logger = logging.getLogger(__name__)
+
+
+def get_lesson_from_saved_path(user, slug: str, order: str | int):
+    """
+    Get a lesson from a user's saved learning path.
+
+    Args:
+        user: The authenticated user
+        slug: The learning path slug
+        order: The lesson order number (will be converted to int)
+
+    Returns:
+        Tuple of (path, lesson_index, lesson_item, error_response)
+        If error_response is not None, return it immediately.
+    """
+    path = SavedLearningPath.objects.filter(
+        user=user,
+        slug=slug,
+        is_archived=False,
+    ).first()
+
+    if not path:
+        return (
+            None,
+            None,
+            None,
+            Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            ),
+        )
+
+    try:
+        lesson_order = int(order)
+    except (ValueError, TypeError):
+        return (
+            None,
+            None,
+            None,
+            Response(
+                {'error': 'Invalid lesson order'},
+                status=status.HTTP_400_BAD_REQUEST,
+            ),
+        )
+
+    # Find the AI lesson in the curriculum
+    curriculum = path.path_data.get('curriculum', [])
+    lesson_index = None
+    lesson_item = None
+
+    for i, item in enumerate(curriculum):
+        if item.get('order') == lesson_order and item.get('type') == 'ai_lesson':
+            lesson_index = i
+            lesson_item = item
+            break
+
+    if lesson_item is None:
+        return (
+            None,
+            None,
+            None,
+            Response(
+                {'error': 'AI lesson not found at this order'},
+                status=status.HTTP_404_NOT_FOUND,
+            ),
+        )
+
+    return path, lesson_index, lesson_item, None
+
+
+def normalize_exercises_from_content(content: dict) -> list:
+    """
+    Get exercises array from content, handling legacy single-exercise format.
+
+    Args:
+        content: The lesson content dict
+
+    Returns:
+        List of exercises (may be empty)
+    """
+    exercises = content.get('exercises', [])
+
+    # Backwards compatibility: convert single 'exercise' to array
+    if not exercises and content.get('exercise'):
+        old_exercise = content['exercise']
+        if 'id' not in old_exercise:
+            old_exercise['id'] = str(uuid.uuid4())
+        exercises = [old_exercise]
+
+    return exercises
 
 
 class MyLearningPathsViewSet(viewsets.ViewSet):
@@ -2374,9 +2470,6 @@ class RegenerateLessonView(APIView):
             )
 
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f'Lesson regeneration failed: {e}', exc_info=True)
             return Response(
                 {'error': 'Failed to regenerate lesson. Please try again.'},
@@ -2486,10 +2579,294 @@ class RegenerateExerciseView(APIView):
             )
 
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.error(f'Exercise regeneration failed: {e}', exc_info=True)
+            return Response(
+                {'error': 'Failed to regenerate exercise. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class AddExerciseView(APIView):
+    """Add an additional exercise to a lesson."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug, order):
+        """
+        POST /api/v1/me/saved-paths/{slug}/lessons/{order}/add-exercise/
+
+        Add a new exercise to the lesson's exercises array.
+
+        Request body:
+        {
+            "exercise_type": "timed_challenge",  # Optional - AI chooses if omitted
+            "skill_level": "intermediate"  # Optional
+        }
+
+        Returns the newly generated exercise.
+        """
+        from services.agents.learning.lesson_generator import AILessonGenerator
+
+        # Get the lesson using helper
+        path, lesson_index, lesson_item, error = get_lesson_from_saved_path(request.user, slug, order)
+        if error:
+            return error
+
+        # Get current exercises (normalize from old format if needed)
+        content = lesson_item.get('content', {})
+        exercises = normalize_exercises_from_content(content)
+
+        # Check limit (max 3 exercises)
+        if len(exercises) >= 3:
+            return Response(
+                {'error': 'Maximum 3 exercises per lesson. Remove one to add another.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get exercise type preference (optional)
+        exercise_type = request.data.get('exercise_type', '')
+        valid_types = {
+            'terminal',
+            'code',
+            'ai_prompt',
+            'drag_sort',
+            'connect_nodes',
+            'code_walkthrough',
+            'timed_challenge',
+        }
+
+        if exercise_type and exercise_type not in valid_types:
+            return Response(
+                {'error': f'Invalid exercise type. Must be one of: {", ".join(valid_types)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get existing exercise types for variety
+        existing_types = [ex.get('exercise_type') for ex in exercises if ex.get('exercise_type')]
+
+        try:
+            # Generate a new exercise
+            new_exercise = AILessonGenerator.regenerate_exercise(
+                lesson_content=content,
+                lesson_title=lesson_item.get('title', ''),
+                exercise_type=exercise_type,
+                user_id=request.user.id,
+                existing_types=existing_types,  # For variety
+            )
+
+            if not new_exercise:
+                return Response(
+                    {'error': 'Failed to generate exercise'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            # Ensure the new exercise has an ID
+            if 'id' not in new_exercise:
+                new_exercise['id'] = str(uuid.uuid4())
+
+            # Add to exercises array
+            exercises.append(new_exercise)
+            content['exercises'] = exercises
+
+            # Update the lesson
+            lesson_item['content'] = content
+            curriculum = path.path_data.get('curriculum', [])
+            curriculum[lesson_index] = lesson_item
+            path.path_data['curriculum'] = curriculum
+            path.save(update_fields=['path_data', 'updated_at'])
+
+            return Response(
+                {
+                    'success': True,
+                    'exercise': new_exercise,
+                    'total_exercises': len(exercises),
+                }
+            )
+
+        except Exception as e:
+            logger.error(f'Add exercise failed: {e}', exc_info=True)
+            return Response(
+                {'error': 'Failed to add exercise. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class RemoveExerciseView(APIView):
+    """Remove an exercise from a lesson."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug, order):
+        """
+        POST /api/v1/me/saved-paths/{slug}/lessons/{order}/remove-exercise/
+
+        Remove an exercise by ID from the lesson's exercises array.
+
+        Request body:
+        {
+            "exercise_id": "uuid-to-remove"
+        }
+
+        Returns success status and remaining exercise count.
+        """
+        exercise_id = request.data.get('exercise_id', '')
+
+        if not exercise_id:
+            return Response(
+                {'error': 'exercise_id is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get the lesson using helper
+        path, lesson_index, lesson_item, error = get_lesson_from_saved_path(request.user, slug, order)
+        if error:
+            return error
+
+        # Get current exercises (normalize from old format if needed)
+        content = lesson_item.get('content', {})
+        exercises = normalize_exercises_from_content(content)
+
+        # Find and remove the exercise
+        original_count = len(exercises)
+        exercises = [ex for ex in exercises if ex.get('id') != exercise_id]
+
+        if len(exercises) == original_count:
+            return Response(
+                {'error': 'Exercise not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Update the lesson content
+        content['exercises'] = exercises
+        lesson_item['content'] = content
+        curriculum = path.path_data.get('curriculum', [])
+        curriculum[lesson_index] = lesson_item
+        path.path_data['curriculum'] = curriculum
+        path.save(update_fields=['path_data', 'updated_at'])
+
+        return Response(
+            {
+                'success': True,
+                'remaining_count': len(exercises),
+            }
+        )
+
+
+class RegenerateSpecificExerciseView(APIView):
+    """Regenerate a specific exercise by ID."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug, order):
+        """
+        POST /api/v1/me/saved-paths/{slug}/lessons/{order}/regenerate-specific-exercise/
+
+        Regenerate a specific exercise by ID with optionally a different type.
+
+        Request body:
+        {
+            "exercise_id": "uuid-of-exercise",
+            "exercise_type": "timed_challenge"  # Optional - uses same type if omitted
+        }
+
+        Returns the regenerated exercise.
+        """
+        from services.agents.learning.lesson_generator import AILessonGenerator
+
+        exercise_id = request.data.get('exercise_id', '')
+
+        if not exercise_id:
+            return Response(
+                {'error': 'exercise_id is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get the lesson using helper
+        path, lesson_index, lesson_item, error = get_lesson_from_saved_path(request.user, slug, order)
+        if error:
+            return error
+
+        # Get current exercises (normalize from old format if needed)
+        content = lesson_item.get('content', {})
+        exercises = normalize_exercises_from_content(content)
+
+        # Find the exercise to regenerate
+        exercise_index = None
+        old_exercise = None
+        for i, ex in enumerate(exercises):
+            if ex.get('id') == exercise_id:
+                exercise_index = i
+                old_exercise = ex
+                break
+
+        if exercise_index is None:
+            return Response(
+                {'error': 'Exercise not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get exercise type (use provided or keep same)
+        exercise_type = request.data.get('exercise_type', old_exercise.get('exercise_type', ''))
+        valid_types = {
+            'terminal',
+            'code',
+            'ai_prompt',
+            'drag_sort',
+            'connect_nodes',
+            'code_walkthrough',
+            'timed_challenge',
+        }
+
+        if exercise_type and exercise_type not in valid_types:
+            return Response(
+                {'error': f'Invalid exercise type. Must be one of: {", ".join(valid_types)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get existing exercise types (excluding the one being regenerated)
+        existing_types = [
+            ex.get('exercise_type') for ex in exercises if ex.get('id') != exercise_id and ex.get('exercise_type')
+        ]
+
+        try:
+            # Regenerate the exercise
+            new_exercise = AILessonGenerator.regenerate_exercise(
+                lesson_content=content,
+                lesson_title=lesson_item.get('title', ''),
+                exercise_type=exercise_type,
+                user_id=request.user.id,
+                existing_types=existing_types,
+            )
+
+            if not new_exercise:
+                return Response(
+                    {'error': 'Failed to regenerate exercise'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            # Keep the same ID
+            new_exercise['id'] = exercise_id
+
+            # Replace the exercise in the array
+            exercises[exercise_index] = new_exercise
+            content['exercises'] = exercises
+
+            # Update the lesson
+            lesson_item['content'] = content
+            curriculum = path.path_data.get('curriculum', [])
+            curriculum[lesson_index] = lesson_item
+            path.path_data['curriculum'] = curriculum
+            path.save(update_fields=['path_data', 'updated_at'])
+
+            return Response(
+                {
+                    'success': True,
+                    'exercise': new_exercise,
+                }
+            )
+
+        except Exception as e:
+            logger.error(f'Regenerate specific exercise failed: {e}', exc_info=True)
             return Response(
                 {'error': 'Failed to regenerate exercise. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -40,7 +40,7 @@ export async function sendHomeChat(
   message: string,
   waitForResponse = true
 ): Promise<void> {
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
   await chatInput.fill(message);
@@ -103,7 +103,7 @@ export async function sendSidebarChat(
 export async function getLastAIResponse(page: Page): Promise<string> {
   // AI messages typically have specific classes or data attributes
   const aiMessages = page.locator(
-    '[data-testid="assistant-message"], [class*="assistant"], [class*="ember"]'
+    '[data-testid="assistant-message"], [class*="assistant"], .prose-invert'
   );
 
   const count = await aiMessages.count();
@@ -154,14 +154,14 @@ export async function waitForAIResponse(
 }
 
 /**
- * Wait for Ember to finish responding (input becomes enabled again).
- * Use this between multi-turn messages to ensure Ember has finished processing.
+ * Wait for Ava to finish responding (input becomes enabled again).
+ * Use this between multi-turn messages to ensure Ava has finished processing.
  */
-export async function waitForEmberReady(
+export async function waitForAvaReady(
   page: Page,
   timeout = DEEP_AI_TIMEOUT
 ): Promise<void> {
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
@@ -181,17 +181,17 @@ export async function waitForEmberReady(
     const isThinking =
       pageContent.includes('Thinking') ||
       pageContent.includes('Consulting my') ||
-      pageContent.includes('Fanning the embers') ||
+      pageContent.includes('Finding the way') ||
       pageContent.includes('treasure trove');
 
     if (isThinking) {
-      console.log(`Waiting for Ember to finish... (${Math.round((Date.now() - startTime) / 1000)}s)`);
+      console.log(`Waiting for Ava to finish... (${Math.round((Date.now() - startTime) / 1000)}s)`);
     }
 
     await page.waitForTimeout(1000);
   }
 
-  throw new Error(`Ember did not become ready within ${timeout}ms`);
+  throw new Error(`Ava did not become ready within ${timeout}ms`);
 }
 
 /**

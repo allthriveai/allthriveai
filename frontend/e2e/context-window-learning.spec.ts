@@ -2,7 +2,7 @@
  * Context Window Learning Flow E2E Tests
  *
  * Tests the full learning experience when asking "what is a context window":
- * 1. Ember explains context windows (text response)
+ * 1. Ava explains context windows (text response)
  * 2. Project cards display related projects
  * 3. Context Snake game renders inline
  * 4. Learning path offer appears at the end
@@ -21,7 +21,7 @@ const AI_RESPONSE_TIMEOUT = 60000;
  * Helper: Send a chat message
  */
 async function sendChatMessage(page: Page, message: string) {
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
   await chatInput.fill(message);
@@ -79,13 +79,13 @@ test.describe('Context Window Learning Flow', () => {
 
     await loginViaAPI(page);
 
-    // Navigate to home page with Ember chat
+    // Navigate to home page with Ava chat
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
   });
 
   test('full learning flow: explanation + projects + game + learning path offer', async ({ page }) => {
-    // GIVEN: I am on the home page with Ember chat ready
+    // GIVEN: I am on the home page with Ava chat ready
     await page.waitForTimeout(1000);
 
     // WHEN: I ask "what is a context window"

@@ -8,14 +8,14 @@
  * 4. Completes onboarding → user lands on feelings-first home chat
  *
  * Integrates with:
- * - useEmberOnboarding for persistence
+ * - useAvaOnboarding for persistence
  * - useAvatarGeneration for avatar WebSocket streaming
  * - useAuth for user info
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useEmberOnboarding } from '@/hooks/useEmberOnboarding';
+import { useAvaOnboarding } from '@/hooks/useAvaOnboarding';
 import { useAvatarGeneration } from '@/hooks/useAvatarGeneration';
 import type { ChatMessage, AvatarTemplate, IntelligentChatMetadata } from '@/hooks/useIntelligentChat';
 import { defaultAvatarTemplates } from '@/components/chat/onboarding/AvatarTemplateSelector';
@@ -50,7 +50,7 @@ export function useOnboardingChat({
     completeAdventure,
     dismissOnboarding,
     isLoaded: onboardingLoaded,
-  } = useEmberOnboarding();
+  } = useAvaOnboarding();
 
   // Onboarding state
   const [state, setState] = useState<OnboardingChatState>({

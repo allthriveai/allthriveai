@@ -2,7 +2,7 @@
  * ChatErrorBoundary - Error boundary specialized for chat components
  *
  * Provides graceful error handling for chat message rendering,
- * onboarding flows, and integration UIs with Ember-themed styling.
+ * onboarding flows, and integration UIs with Ava-themed styling.
  */
 
 import { Component } from 'react';
@@ -28,7 +28,7 @@ interface ChatErrorBoundaryState {
 }
 
 /**
- * Error boundary for chat components with Ember theming.
+ * Error boundary for chat components with Ava theming.
  *
  * Usage:
  *   <ChatErrorBoundary>
@@ -98,11 +98,11 @@ export class ChatErrorBoundary extends Component<ChatErrorBoundaryProps, ChatErr
         );
       }
 
-      // Card mode - friendly error with Ember branding
+      // Card mode - friendly error with Ava branding
       return (
         <div className="flex flex-col items-center justify-center py-8 px-4">
           <div className="w-full max-w-sm text-center">
-            {/* Ember avatar with error state */}
+            {/* Ava avatar with error state */}
             <div className="mb-4 mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30 flex items-center justify-center">
               <FontAwesomeIcon
                 icon={faDragon}
@@ -114,7 +114,7 @@ export class ChatErrorBoundary extends Component<ChatErrorBoundaryProps, ChatErr
               Oops! Something went wrong
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Ember encountered an unexpected error. Try again or start fresh.
+              Ava encountered an unexpected error. Try again or start fresh.
             </p>
 
             {/* Error details in dev mode */}

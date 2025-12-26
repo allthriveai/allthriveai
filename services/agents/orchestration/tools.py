@@ -1,5 +1,5 @@
 """
-Site orchestration tools for Ember.
+Site orchestration tools for Ava.
 
 These tools enable the chat assistant to control the UI:
 - Navigate users to different pages
@@ -175,7 +175,7 @@ def navigate_to_page(path: str, message: str = '', state: dict = None) -> dict:
     - /quizzes - Learning quizzes
     - /tools - AI tool directory
     - /thrive-circle - Community membership
-    - /onboarding - Quest board (Ember's adventures)
+    - /onboarding - Quest board (Ava's adventures)
     - /{username} - User profile (replace with actual username)
     - /account/settings - Account settings
 

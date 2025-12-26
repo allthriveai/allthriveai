@@ -4,7 +4,7 @@ import { loginViaAPI } from './helpers';
 /**
  * Figma Integration E2E Tests
  *
- * Tests the Figma integration flow in Ember chat:
+ * Tests the Figma integration flow in Ava chat:
  * 1. Opening the + menu and navigating to Figma option
  * 2. Not-connected state: Shows connect button in chat (not settings redirect)
  * 3. Connected state: Shows URL input form in chat
@@ -22,7 +22,7 @@ test.describe('Figma Integration - Chat Menu Flow', () => {
   });
 
   test('should show "Add from Figma" option in More Integrations menu', async ({ page }) => {
-    // Navigate to Ember/home page where chat is available
+    // Navigate to Ava/home page where chat is available
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);

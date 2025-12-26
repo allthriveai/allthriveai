@@ -7,8 +7,8 @@ Provides tools for:
 - Explaining concepts from lessons
 - Suggesting next quizzes or learning activities
 
-Note: All chat now routes through the unified Ember agent.
-The tools are imported and used by Ember.
+Note: All chat now routes through the unified Ava agent.
+The tools are imported and used by Ava.
 """
 
 from .tools import LEARNING_TOOLS

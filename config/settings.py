@@ -31,10 +31,10 @@ BETA_MODE = config('BETA_MODE', default=False, cast=bool)
 # Usage is ALWAYS tracked regardless of this setting for analytics purposes
 CREDIT_PACK_ENFORCEMENT_ENABLED = config('CREDIT_PACK_ENFORCEMENT_ENABLED', default=False, cast=bool)
 
-# Unified Ember Agent: Routes EmberHomePage conversations to single agent with all tools
-# When True: Conversations starting with 'ember-' use unified Ember agent (no supervisor routing)
+# Unified Ava Agent: Routes AvaHomePage conversations to single agent with all tools
+# When True: Conversations starting with 'ava-' use unified Ava agent (no supervisor routing)
 # When False: Uses multi-agent orchestrator with supervisor routing (default)
-USE_UNIFIED_EMBER = config('USE_UNIFIED_EMBER', default=True, cast=bool)
+USE_UNIFIED_AVA = config('USE_UNIFIED_AVA', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 

@@ -88,7 +88,7 @@ test.describe('Smoke - Page Loads', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Chat input should be present and enabled (WebSocket connected)
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
   });
 
@@ -146,18 +146,18 @@ test.describe('Smoke - Page Loads', () => {
 // EMBER AI QUALITY TESTS - Verify AI gives helpful responses
 // ============================================================================
 
-test.describe('Smoke - Ember AI Quality', () => {
+test.describe('Smoke - Ava AI Quality', () => {
   test.beforeEach(async ({ page }) => {
     await loginViaAPI(page);
   });
 
-  test('Ember responds to greeting (not rejection)', async ({ page }) => {
+  test('Ava responds to greeting (not rejection)', async ({ page }) => {
     test.setTimeout(60000);
 
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Send greeting
@@ -169,7 +169,7 @@ test.describe('Smoke - Ember AI Quality', () => {
     await page.waitForTimeout(AI_RESPONSE_TIMEOUT);
 
     // Get response text
-    const messages = page.locator('[data-testid="assistant-message"], [class*="assistant"], [class*="ember"]');
+    const messages = page.locator('[data-testid="assistant-message"], [class*="assistant"], .prose-invert');
     const lastMessage = messages.last();
 
     if (await lastMessage.isVisible()) {
@@ -181,13 +181,13 @@ test.describe('Smoke - Ember AI Quality', () => {
     }
   });
 
-  test('Ember explains concepts correctly (context window)', async ({ page }) => {
+  test('Ava explains concepts correctly (context window)', async ({ page }) => {
     test.setTimeout(90000);
 
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Ask about context window
@@ -210,13 +210,13 @@ test.describe('Smoke - Ember AI Quality', () => {
     assertHelpfulResponse(pageContent, 'context window explanation');
   });
 
-  test('Ember handles URL paste (project creation flow)', async ({ page }) => {
+  test('Ava handles URL paste (project creation flow)', async ({ page }) => {
     test.setTimeout(90000);
 
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Paste a GitHub URL
@@ -237,13 +237,13 @@ test.describe('Smoke - Ember AI Quality', () => {
     assertHelpfulResponse(pageContent, 'URL paste');
   });
 
-  test('Ember can discuss learning paths', async ({ page }) => {
+  test('Ava can discuss learning paths', async ({ page }) => {
     test.setTimeout(90000);
 
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Ask about learning paths

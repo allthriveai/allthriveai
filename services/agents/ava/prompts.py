@@ -1,8 +1,8 @@
 """
-System prompts for the unified Ember agent.
+System prompts for the unified Ava agent.
 """
 
-EMBER_SYSTEM_PROMPT = """You are Ember, the friendly AI guide for AllThrive AI - a platform where creators showcase their AI projects, learn through quizzes, and connect with other builders.
+AVA_SYSTEM_PROMPT = """You are Ava, the friendly AI guide for AllThrive AI - a platform where creators showcase their AI projects, learn through quizzes, and connect with other builders.
 
 ## Your Personality
 - Warm, encouraging, and genuinely curious about what users are building
@@ -84,6 +84,9 @@ Use markdown to make your responses easy to read:
 - User seems frustrated or asking urgent questions
 - Already asked 2+ questions this session
 - User just answered a question (wait a few messages)
+- User is in learning mode (asking "what is", "explain", "how does", educational questions)
+- You just called find_content or create_learning_path (wait at least 3 more exchanges)
+- User is actively exploring content or learning paths
 
 **How it works:**
 - Call `ask_profile_question()` - it auto-selects the best question based on context gaps
@@ -94,12 +97,12 @@ Use markdown to make your responses easy to read:
 **Example flow:**
 ```
 User: I want to learn about RAG
-Ember: [Explains RAG, provides resources]
+Ava: [Explains RAG, provides resources]
        [After a few messages of good conversation...]
        By the way, quick vibe check! [calls ask_profile_question]
 [User sees pills: "Watch videos", "Build things", "Read & research", "Mix of everything"]
 User: [Clicks "Build things"]
-Ember: Nice! A hands-on learner - I'll keep that in mind when sharing resources!
+Ava: Nice! A hands-on learner - I'll keep that in mind when sharing resources!
        [Continues helping with RAG in a hands-on way]
 ```
 
@@ -486,7 +489,7 @@ Remember: You're not just an assistant - you're a guide helping users build, lea
 """
 
 # Onboarding-specific prompt additions
-EMBER_ONBOARDING_PROMPT = """
+AVA_ONBOARDING_PROMPT = """
 ## Onboarding Context
 
 You're helping a new user get started on AllThrive AI. Your goals:
@@ -512,7 +515,7 @@ You're helping a new user get started on AllThrive AI. Your goals:
 """
 
 # Combine for full onboarding experience
-EMBER_FULL_ONBOARDING_PROMPT = EMBER_SYSTEM_PROMPT + EMBER_ONBOARDING_PROMPT
+AVA_FULL_ONBOARDING_PROMPT = AVA_SYSTEM_PROMPT + AVA_ONBOARDING_PROMPT
 
 
 # =============================================================================
@@ -530,7 +533,7 @@ def format_member_context(context: dict | None, max_tokens: int = MAX_MEMBER_CON
     Format member context for injection into the system prompt.
 
     Converts the MemberContext dict into a readable format that helps
-    Ember personalize responses.
+    Ava personalize responses.
 
     Token budgeting: The output is limited to max_tokens to prevent unbounded
     context growth that could exhaust the context window at scale.
@@ -695,7 +698,7 @@ def format_proactive_context(context: dict | None) -> str:
     Format proactive intervention context for the system prompt.
 
     When the user shows signs of struggle, this adds context that
-    helps Ember respond with gentle, supportive offers.
+    helps Ava respond with gentle, supportive offers.
 
     Args:
         context: MemberContext dict containing proactive_offer
@@ -751,7 +754,7 @@ def format_gap_awareness(context: dict | None) -> str:
     """
     Format detected knowledge gaps for the system prompt.
 
-    Helps Ember be aware of concepts the user might struggle with
+    Helps Ava be aware of concepts the user might struggle with
     so it can proactively offer help when relevant.
 
     Args:
@@ -928,7 +931,7 @@ def format_lesson_context(lesson_context: dict | None) -> str:
         lines.append(truncated)
         lines.append('')
 
-    # Guidance for Ember
+    # Guidance for Ava
     lines.extend(
         [
             '**Your Role:**',
