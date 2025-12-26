@@ -104,13 +104,38 @@ test.describe('Chat - Media Upload Flow', () => {
     const afterTool = await getPageContent(page);
     assertNoTechnicalErrors(afterTool, 'after tool response');
 
-    // Step 5: Verify some acknowledgment of the save/clip action
-    const hasResponse = /clip|save|added|project|collection|library|bookmark|done|got it|perfect|great|midjourney|understood/i.test(afterTool);
-    console.log('Final response contains acknowledgment:', hasResponse);
+    // Step 5: Verify project was created with a link
+    // The response should contain a markdown link to the created project
+    const projectLinkMatch = afterTool.match(/\[([^\]]+)\]\(\/[a-z0-9_-]+\/[a-z0-9_-]+\)/i);
+    console.log('Project link found:', projectLinkMatch ? projectLinkMatch[0] : 'NO LINK FOUND');
     console.log('Final content:', afterTool.substring(0, 500));
 
-    // Test passes if we got through the flow without errors
-    expect(true).toBe(true);
+    // Verify we got a project link (not just acknowledgment words)
+    expect(projectLinkMatch).not.toBeNull();
+
+    // Extract and verify the project URL
+    if (projectLinkMatch) {
+      const projectUrl = projectLinkMatch[0].match(/\(([^)]+)\)/)?.[1];
+      console.log('Project URL:', projectUrl);
+
+      // Navigate to the project and verify the image is NOT a placeholder
+      if (projectUrl) {
+        await page.goto(projectUrl);
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForTimeout(2000);
+
+        // Check that the featured image exists and has a real URL (not placeholder)
+        const featuredImage = page.locator('img[alt*="featured"], img[class*="featured"], img[class*="hero"]').first();
+        if (await featuredImage.isVisible()) {
+          const imageSrc = await featuredImage.getAttribute('src');
+          console.log('Featured image src:', imageSrc);
+
+          // Verify image URL is real (contains localhost:9000 or actual S3 URL)
+          expect(imageSrc).not.toContain('...url...');
+          expect(imageSrc).toMatch(/localhost:9000|amazonaws\.com|minio/i);
+        }
+      }
+    }
   });
 
   test('upload image → "this is mine" → project creation flow', async ({ page }) => {
@@ -145,18 +170,43 @@ test.describe('Chat - Media Upload Flow', () => {
 
     await page.waitForTimeout(5000);
 
-    // Say it IS mine - my own project
-    await sendHomeChat(page, "Yes, this is my own project that I created");
+    // Say it IS mine and specify the tool
+    await sendHomeChat(page, "Yes, this is my own project that I created with DALL-E");
     await page.waitForTimeout(5000);
 
     const afterOwnership = await getPageContent(page);
     assertNoTechnicalErrors(afterOwnership, 'after claiming ownership');
-
-    // Should get some response about project creation
     console.log('Response after ownership claim:', afterOwnership.substring(0, 500));
 
-    // Test passes if we got through without errors
-    expect(true).toBe(true);
+    // Verify project was created with a link
+    const projectLinkMatch = afterOwnership.match(/\[([^\]]+)\]\(\/[a-z0-9_-]+\/[a-z0-9_-]+\)/i);
+    console.log('Project link found:', projectLinkMatch ? projectLinkMatch[0] : 'NO LINK FOUND');
+
+    // Should have created a project with a link
+    expect(projectLinkMatch).not.toBeNull();
+
+    // Navigate to project and verify it has correct image
+    if (projectLinkMatch) {
+      const projectUrl = projectLinkMatch[0].match(/\(([^)]+)\)/)?.[1];
+      if (projectUrl) {
+        await page.goto(projectUrl);
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForTimeout(2000);
+
+        // Verify the page loaded (has a title)
+        const pageTitle = await page.title();
+        console.log('Project page title:', pageTitle);
+        expect(pageTitle).not.toBe('');
+
+        // Check featured image has real URL
+        const featuredImage = page.locator('img[alt*="featured"], img[class*="featured"], img[class*="hero"]').first();
+        if (await featuredImage.isVisible()) {
+          const imageSrc = await featuredImage.getAttribute('src');
+          console.log('Featured image src:', imageSrc);
+          expect(imageSrc).not.toContain('...url...');
+        }
+      }
+    }
   });
 
   test('mentions tool in chat → AI asks for confirmation before clipping', async ({ page }) => {
