@@ -143,10 +143,11 @@ export function ChatCore({
         }
 
         // If there's exactly one image and no other files, use multimodal message
-        // so Claude can actually see the image content
+        // so Ember can see the image for the upload → ownership → tool flow
         if (uploadedImages.length === 1 && uploadedFiles.length === 0) {
           const imageUrl = uploadedImages[0].url;
-          const messageText = content.trim() || `Please analyze this image: ${uploadedImages[0].name}`;
+          // Don't ask to "analyze" - Ember should ask about ownership and tool used
+          const messageText = content.trim() || `[Uploaded image: ${uploadedImages[0].name}]`;
           rawSendMessageWithImage(messageText, imageUrl);
         } else {
           // Multiple files or mixed files - build message with file info

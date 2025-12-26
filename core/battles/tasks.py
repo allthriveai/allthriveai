@@ -639,18 +639,71 @@ def create_pip_submission_task(self, battle_id: int) -> dict[str, Any]:
             },
         )
 
-        # Trigger image generation for Pip's submission
+        # Check if both have now submitted and transition to GENERATING
+        all_submissions = list(battle.submissions.all())
+        submission_count = len(all_submissions)
+
         _log_task_event(
             trace_id,
-            'pip_submission_queueing_image_gen',
+            'pip_checking_both_submitted',
             battle_id=battle_id,
-            submission_id=submission.id,
+            extra={
+                'submission_count': submission_count,
+                'submission_ids': [s.id for s in all_submissions],
+            },
         )
 
-        generate_submission_image_task.apply_async(
-            args=[submission.id],
-            expires=600,  # Expire after 10 min if not picked up
-        )
+        if submission_count >= 2:
+            # Both submitted! Transition to generating phase
+            _log_task_event(
+                trace_id,
+                'pip_transitioning_to_generating',
+                battle_id=battle_id,
+                extra={'from_phase': battle.phase, 'to_phase': BattlePhase.GENERATING},
+            )
+
+            battle.phase = BattlePhase.GENERATING
+            battle.phase_changed_at = timezone.now()
+            battle.save(update_fields=['phase', 'phase_changed_at'])
+
+            # Notify phase change
+            async_to_sync(channel_layer.group_send)(
+                group_name,
+                {
+                    'type': 'battle_event',
+                    'event': 'phase_change',
+                    'phase': BattlePhase.GENERATING,
+                },
+            )
+
+            # Queue image generation for ALL submissions that don't have images
+            for sub in all_submissions:
+                if not sub.generated_output_url:
+                    _log_task_event(
+                        trace_id,
+                        'pip_queueing_image_gen',
+                        battle_id=battle_id,
+                        submission_id=sub.id,
+                        extra={'user_id': sub.user_id},
+                    )
+                    generate_submission_image_task.apply_async(
+                        args=[sub.id],
+                        expires=600,  # Expire after 10 min if not picked up
+                    )
+        else:
+            # Only Pip submitted so far - queue Pip's image generation
+            # User's submission will trigger the phase transition when it comes
+            _log_task_event(
+                trace_id,
+                'pip_submission_queueing_image_gen',
+                battle_id=battle_id,
+                submission_id=submission.id,
+            )
+
+            generate_submission_image_task.apply_async(
+                args=[submission.id],
+                expires=600,  # Expire after 10 min if not picked up
+            )
 
         _log_task_event(
             trace_id,
