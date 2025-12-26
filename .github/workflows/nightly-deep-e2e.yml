@@ -163,7 +163,14 @@ jobs:
           # Run comprehensive Celery integration tests
           python - <<'PY'
           import sys
+          import os
           import time
+
+          # CRITICAL: Set up Django BEFORE importing any task modules
+          # Task modules import Django models which require the app registry to be ready
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+          import django
+          django.setup()
 
           print("=" * 60)
           print("CELERY INTEGRATION TESTS")
