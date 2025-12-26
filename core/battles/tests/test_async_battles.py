@@ -720,7 +720,7 @@ class PipBattleSubmissionTestCase(TestCase):
         result = can_submit_prompt(self.battle, self.pip)
         self.assertTrue(result.allowed)
 
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_pip_generates_creative_submission(self, mock_ai_provider):
         """Test Pip generates a creative prompt response."""
         # Mock AI response
@@ -734,7 +734,7 @@ class PipBattleSubmissionTestCase(TestCase):
         self.assertIsNotNone(prompt_text)
         self.assertGreater(len(prompt_text), 10)
 
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_pip_create_submission_creates_record(self, mock_ai_provider):
         """Test create_pip_submission creates a BattleSubmission record."""
         # Mock AI response
@@ -750,7 +750,7 @@ class PipBattleSubmissionTestCase(TestCase):
         self.assertEqual(submission.battle, self.battle)
         self.assertGreater(len(submission.prompt_text), 10)
 
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_pip_submission_is_idempotent(self, mock_ai_provider):
         """Test Pip submission creation is idempotent - returns existing if called twice."""
         mock_ai = MagicMock()
@@ -984,7 +984,7 @@ class PipBattleImageGenerationTestCase(TestCase):
         self.assertIsNone(self.pip_submission.generated_output_url)
 
     @patch('core.battles.services.get_storage_service')
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     @patch('core.battles.services.check_and_reserve_ai_request')
     def test_generate_image_for_challenger(self, mock_reserve, mock_ai_provider, mock_storage):
         """Test image generation for challenger submission."""
@@ -1009,7 +1009,7 @@ class PipBattleImageGenerationTestCase(TestCase):
         self.assertEqual(image_url, 'https://example.com/image.png')
 
     @patch('core.battles.services.get_storage_service')
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_generate_image_for_pip_no_quota_check(self, mock_ai_provider, mock_storage):
         """Test image generation for Pip doesn't check quota."""
         # Mock AI provider
@@ -1094,7 +1094,7 @@ class PipBattleJudgingTestCase(TestCase):
             generated_output_url='https://example.com/pip_robot.png',
         )
 
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_judge_battle_determines_winner(self, mock_ai_provider):
         """Test judging determines a winner."""
         # Mock AI judging response
@@ -1389,7 +1389,7 @@ class PipBattleTaskTestCase(TestCase):
         )
 
     @patch('core.battles.tasks.generate_submission_image_task.apply_async')
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_create_pip_submission_task(self, mock_ai_provider, mock_image_task):
         """Test create_pip_submission_task creates submission and queues image."""
         from core.battles.tasks import create_pip_submission_task
@@ -1413,7 +1413,7 @@ class PipBattleTaskTestCase(TestCase):
         mock_image_task.assert_called_once()
 
     @patch('core.battles.tasks.generate_submission_image_task.apply_async')
-    @patch('core.battles.services.AIProvider')
+    @patch('services.ai.provider.AIProvider')
     def test_create_pip_submission_task_idempotent(self, mock_ai_provider, mock_image_task):
         """Test create_pip_submission_task is idempotent."""
         from core.battles.tasks import create_pip_submission_task
