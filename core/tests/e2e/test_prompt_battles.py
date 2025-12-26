@@ -21,6 +21,7 @@ from core.battles.models import (
     BattleStatus,
     InvitationType,
     PromptBattle,
+    PromptChallengePrompt,
 )
 from core.users.models import User
 
@@ -33,7 +34,7 @@ skip_e2e = unittest.skipIf(SKIP_E2E, SKIP_REASON)
 
 
 def setUpModule():
-    """Print section header when this module runs."""
+    """Print section header and seed required data when this module runs."""
     if SKIP_E2E:
         return
     print('\n')
@@ -41,6 +42,25 @@ def setUpModule():
     print('  PROMPT BATTLES - Mission Critical Tests')
     print('=' * 70)
     print()
+
+    # Seed PromptChallengePrompts if none exist (required for battle creation)
+    if PromptChallengePrompt.objects.count() == 0:
+        print('  Seeding PromptChallengePrompts for tests...')
+        prompts = [
+            'Create an image of a beautiful sunset over mountains',
+            'Design a futuristic city skyline at night',
+            'Draw a magical forest with glowing plants',
+            'Illustrate a cozy coffee shop interior',
+            'Create an underwater scene with colorful fish',
+        ]
+        for prompt_text in prompts:
+            PromptChallengePrompt.objects.create(
+                prompt_text=prompt_text,
+                difficulty='medium',
+                is_active=True,
+                weight=1.0,
+            )
+        print(f'  Created {len(prompts)} prompts')
 
 
 @skip_e2e

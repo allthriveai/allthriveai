@@ -1145,6 +1145,40 @@ scenarios:
       **Expected:** No critical console errors on page load
     order: 66
 
+  - title: Ember calls find_content when asked to compare tools
+    category: ember
+    description: |
+      **Source:** ember-chat/tool-discovery.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true
+
+      **Steps:**
+      1. Navigate to /home
+      2. Send "Help me decide between Midjourney and DALL-E"
+      3. Wait for Ember response
+      4. Verify find_content tool was called
+      5. Check response includes community projects using these tools
+
+      **Expected:** Ember calls find_content and shows projects from the community using the mentioned tools, helping user see real examples
+    order: 67
+
+  - title: Ember calls find_content when asked what tool to use
+    category: ember
+    description: |
+      **Source:** ember-chat/tool-discovery.spec.ts
+
+      **Preconditions:** RUN_AI_TESTS=true
+
+      **Steps:**
+      1. Navigate to /home
+      2. Send "What should I use to build an AI chatbot?"
+      3. Wait for Ember response
+      4. Verify find_content tool was called
+      5. Check response includes relevant community projects
+
+      **Expected:** Ember calls find_content and shows what the community is building with relevant tools (LangChain, OpenAI, etc.), providing real-world examples
+    order: 68
+
   # ===========================================================================
   # AI FEATURES (ai-features) - ai-chat/*.spec.ts
   # ===========================================================================

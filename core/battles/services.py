@@ -272,6 +272,20 @@ class BattleService:
         if existing:
             raise ValueError('User has already submitted')
 
+        # Check prompt text length
+        if len(prompt_text.strip()) < 10:
+            raise ValueError('Prompt must be at least 10 characters long.')
+        if len(prompt_text) > 5000:
+            raise ValueError('Prompt must be less than 5000 characters.')
+
+        # Prevent copy-pasting the challenge text exactly
+        submitted_normalized = prompt_text.strip().lower()
+        challenge_normalized = (battle.challenge_text or '').strip().lower()
+        if submitted_normalized == challenge_normalized:
+            raise ValueError(
+                'Come on, be more creative than that! ' 'Write your own unique prompt instead of copying the challenge.'
+            )
+
         # Create submission
         submission = BattleSubmission.objects.create(
             battle=battle,
@@ -328,6 +342,19 @@ Focus on visual impact and artistic interpretation."""
 
         try:
             # Use Gemini for image generation
+            gemini_model = getattr(settings, 'GEMINI_IMAGE_MODEL', 'gemini-3-pro-image-preview')
+            logger.info(
+                f'Starting image generation for submission {submission.id}',
+                extra={
+                    'submission_id': submission.id,
+                    'battle_id': battle.id,
+                    'user_id': user.id,
+                    'provider': 'gemini',
+                    'model': gemini_model,
+                    'prompt_length': len(enhanced_prompt),
+                    'is_pip': is_pip_submission,
+                },
+            )
             ai = AIProvider(provider='gemini', user_id=submission.user_id)
             image_bytes, mime_type, text_response = ai.generate_image(
                 prompt=enhanced_prompt,
@@ -335,7 +362,17 @@ Focus on visual impact and artistic interpretation."""
             )
 
             if not image_bytes:
-                logger.error(f'No image generated for submission {submission.id}')
+                logger.error(
+                    f'No image generated for submission {submission.id}',
+                    extra={
+                        'submission_id': submission.id,
+                        'battle_id': battle.id,
+                        'user_id': user.id,
+                        'prompt_length': len(enhanced_prompt),
+                        'text_response': text_response[:500] if text_response else None,
+                        'has_text_response': bool(text_response),
+                    },
+                )
                 return None
 
             # Track AI usage for human users (not Pip)
@@ -409,7 +446,18 @@ Focus on visual impact and artistic interpretation."""
             return url
 
         except Exception as e:
-            logger.error(f'Error generating image for submission {submission.id}: {e}', exc_info=True)
+            logger.error(
+                f'Error generating image for submission {submission.id}: {e}',
+                exc_info=True,
+                extra={
+                    'submission_id': submission.id,
+                    'battle_id': battle.id,
+                    'user_id': user.id,
+                    'error_type': type(e).__name__,
+                    'error_message': str(e),
+                    'is_pip': is_pip_submission,
+                },
+            )
             return None
 
     def judge_battle(self, battle: PromptBattle) -> dict[str, Any]:
@@ -485,13 +533,16 @@ Focus on visual impact and artistic interpretation."""
         )
 
         def judge_single_submission(submission: BattleSubmission) -> dict | None:
-            """Judge a single submission. Called in parallel for each submission."""
+            """Judge a single submission. Called in parallel for each submission.
+
+            Uses Gemini as primary provider with OpenAI as fallback.
+            If both fail, returns None to avoid hanging forever.
+            """
+            import time
+
             if not submission.generated_output_url:
                 logger.warning(f'Submission {submission.id} has no generated image')
                 return None
-
-            # Each thread gets its own AI provider instance
-            ai = AIProvider(provider='gemini')
 
             # Wrap user prompt to prevent injection attacks
             wrapped_user_prompt = wrap_user_prompt_for_ai(
@@ -538,80 +589,138 @@ What could they add to their prompt next time (style keywords, composition direc
 Return ONLY the JSON, no other text.
 """
 
-            try:
-                # Use vision model to evaluate the image
-                # Low temperature for consistent scoring with slight variation in feedback
-                response = ai.complete_with_image(
-                    prompt=judging_prompt,
-                    image_url=submission.generated_output_url,
-                    model=judging_model,
-                    temperature=0.2,
-                )
-
-                # Log the raw response for debugging
-                logger.info(
-                    f'AI judging response for submission {submission.id}: {response[:500]}...'
-                    if len(response) > 500
-                    else f'AI judging response for submission {submission.id}: {response}'
-                )
-
-                # Track token usage from the AI call
-                tokens_used = 0
-                if ai.last_usage:
-                    tokens_used = ai.last_usage.get('total_tokens', BATTLE_JUDGING_TOKENS_PER_SUBMISSION)
-
-                # Parse response
-                eval_result = self._parse_judging_response(response, criteria)
-
-                # Log parsing result
-                if eval_result:
-                    logger.info(f'Parsed scores for submission {submission.id}: {eval_result.get("scores", {})}')
-                else:
-                    logger.warning(f'Failed to parse judging response for submission {submission.id}')
-
-                if eval_result:
-                    # Calculate weighted score
-                    weighted_score = self._calculate_weighted_score(eval_result['scores'], criteria)
-
-                    # Update submission
-                    submission.criteria_scores = eval_result['scores']
-                    submission.score = weighted_score
-                    submission.evaluation_feedback = eval_result.get('feedback', '')
-                    submission.evaluated_at = timezone.now()
-                    submission.save()
-
-                    # Create AI vote record
-                    BattleVote.objects.create(
-                        battle=battle,
-                        submission=submission,
-                        vote_source=VoteSource.AI,
-                        score=weighted_score,
-                        criteria_scores=eval_result['scores'],
-                        feedback=eval_result.get('feedback', ''),
+            def try_judge_with_provider(provider: str, model: str) -> dict | None:
+                """Try to judge with a specific provider/model. Returns result or None on failure."""
+                try:
+                    ai = AIProvider(provider=provider)
+                    response = ai.complete_with_image(
+                        prompt=judging_prompt,
+                        image_url=submission.generated_output_url,
+                        model=model,
+                        temperature=0.2,
                     )
 
+                    # Log the raw response for debugging
                     logger.info(
-                        f'Evaluated submission {submission.id}: score={weighted_score}',
-                        extra={
-                            'submission_id': submission.id,
-                            'score': weighted_score,
-                            'tokens_used': tokens_used,
-                        },
+                        f'AI judging response for submission {submission.id} ({provider}/{model}): '
+                        f'{response[:500]}...'
+                        if len(response) > 500
+                        else f'AI judging response for submission {submission.id} ({provider}/{model}): {response}'
                     )
 
-                    return {
-                        'submission_id': submission.id,
-                        'user_id': submission.user_id,
-                        'score': weighted_score,
-                        'criteria_scores': eval_result['scores'],
-                        'feedback': eval_result.get('feedback', ''),
-                        'tokens_used': tokens_used,
-                    }
+                    # Track token usage from the AI call
+                    tokens_used = 0
+                    if ai.last_usage:
+                        tokens_used = ai.last_usage.get('total_tokens', BATTLE_JUDGING_TOKENS_PER_SUBMISSION)
 
-            except Exception as e:
-                logger.error(f'Error judging submission {submission.id}: {e}', exc_info=True)
+                    # Parse response
+                    eval_result = self._parse_judging_response(response, criteria)
 
-            return None
+                    if eval_result:
+                        logger.info(f'Parsed scores for submission {submission.id}: {eval_result.get("scores", {})}')
+                        return {'eval_result': eval_result, 'tokens_used': tokens_used, 'provider': provider}
+                    else:
+                        logger.warning(f'Failed to parse judging response for submission {submission.id}')
+                        return None
+
+                except Exception as e:
+                    error_str = str(e)
+                    # Check for transient errors that warrant fallback
+                    is_transient = any(
+                        err in error_str
+                        for err in [
+                            '504',
+                            'Deadline',
+                            'timeout',
+                            'Timeout',
+                            'TIMEOUT',
+                            '503',
+                            'Service Unavailable',
+                            '429',
+                            'Rate limit',
+                            'rate_limit',
+                            '500',
+                            'Internal Server Error',
+                            'overloaded',
+                        ]
+                    )
+                    if is_transient:
+                        logger.warning(
+                            f'Transient error judging submission {submission.id} with {provider}/{model}: {e}'
+                        )
+                    else:
+                        logger.error(
+                            f'Error judging submission {submission.id} with {provider}/{model}: {e}', exc_info=True
+                        )
+                    return None
+
+            # Provider fallback chain: OpenAI (primary) -> Gemini (fallback)
+            # GPT-4o is faster and more reliable for vision tasks
+            providers_to_try = [
+                ('openai', 'gpt-4o'),  # Primary: OpenAI GPT-4o with vision (fast, reliable)
+                ('gemini', judging_model),  # Fallback: Gemini (tends to timeout)
+            ]
+
+            result = None
+            for provider, model in providers_to_try:
+                logger.info(f'Attempting to judge submission {submission.id} with {provider}/{model}')
+                result = try_judge_with_provider(provider, model)
+                if result:
+                    logger.info(f'Successfully judged submission {submission.id} with {provider}/{model}')
+                    break
+                else:
+                    logger.warning(
+                        f'Failed to judge submission {submission.id} with {provider}/{model}, trying next...'
+                    )
+                    # Brief pause before trying fallback to avoid rate limiting
+                    time.sleep(1)
+
+            if not result:
+                logger.error(f'All providers failed to judge submission {submission.id}')
+                return None
+
+            # Process successful result
+            eval_result = result['eval_result']
+            tokens_used = result['tokens_used']
+
+            # Calculate weighted score
+            weighted_score = self._calculate_weighted_score(eval_result['scores'], criteria)
+
+            # Update submission
+            submission.criteria_scores = eval_result['scores']
+            submission.score = weighted_score
+            submission.evaluation_feedback = eval_result.get('feedback', '')
+            submission.evaluated_at = timezone.now()
+            submission.save()
+
+            # Create AI vote record
+            BattleVote.objects.create(
+                battle=battle,
+                submission=submission,
+                vote_source=VoteSource.AI,
+                score=weighted_score,
+                criteria_scores=eval_result['scores'],
+                feedback=eval_result.get('feedback', ''),
+            )
+
+            logger.info(
+                f'Evaluated submission {submission.id}: score={weighted_score} (via {result["provider"]})',
+                extra={
+                    'submission_id': submission.id,
+                    'score': weighted_score,
+                    'tokens_used': tokens_used,
+                    'provider': result['provider'],
+                },
+            )
+
+            return {
+                'submission_id': submission.id,
+                'user_id': submission.user_id,
+                'score': weighted_score,
+                'criteria_scores': eval_result['scores'],
+                'feedback': eval_result.get('feedback', ''),
+                'tokens_used': tokens_used,
+            }
 
         # Judge both submissions in parallel for ~2x speedup
         results = []

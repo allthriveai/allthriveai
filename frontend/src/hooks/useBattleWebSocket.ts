@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { buildWebSocketUrl, logWebSocketUrl } from '@/utils/websocket';
+import { buildWebSocketUrl } from '@/utils/websocket';
 import { getCsrfToken } from '@/utils/cookies';
 
 // Import unified phase types
@@ -15,6 +15,64 @@ import type { BattlePhase } from '@/types/battlePhases';
 
 // Re-export for backward compatibility
 export type { BattlePhase } from '@/types/battlePhases';
+
+// =============================================================================
+// BATTLE LOGGING UTILITY
+// =============================================================================
+
+interface BattleLogContext {
+  battleId?: number;
+  phase?: string;
+  userId?: number;
+  traceId?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Generate a short trace ID for tracking related log events
+ */
+function generateTraceId(): string {
+  return Math.random().toString(36).substring(2, 10);
+}
+
+/**
+ * Structured logging for battle WebSocket events
+ */
+function logBattle(
+  level: 'debug' | 'info' | 'warn' | 'error',
+  event: string,
+  context: BattleLogContext = {}
+): void {
+  const timestamp = new Date().toISOString();
+  const { battleId, phase, traceId, ...extra } = context;
+
+  const prefix = `[Battle WS${traceId ? `:${traceId}` : ''}]`;
+  const battleInfo = battleId ? ` battle=${battleId}` : '';
+  const phaseInfo = phase ? ` phase=${phase}` : '';
+  const extraInfo = Object.keys(extra).length > 0
+    ? ` | ${Object.entries(extra).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`
+    : '';
+
+  const message = `${prefix} ${event}${battleInfo}${phaseInfo}${extraInfo}`;
+
+  // Log with structured data for debugging tools
+  const logData = { timestamp, event, ...context };
+
+  switch (level) {
+    case 'debug':
+      console.debug(message, logData);
+      break;
+    case 'info':
+      console.info(message, logData);
+      break;
+    case 'warn':
+      console.warn(message, logData);
+      break;
+    case 'error':
+      console.error(message, logData);
+      break;
+  }
+}
 
 // Constants
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -125,6 +183,7 @@ export function useBattleWebSocket({
   const intentionalCloseRef = useRef(false);
   const connectFnRef = useRef<(() => void) | null>(null);
   const isConnectingRef = useRef(false);
+  const traceIdRef = useRef<string>(generateTraceId());
 
   // Refs for callbacks to avoid stale closures
   const onErrorRef = useRef(onError);
@@ -256,11 +315,24 @@ export function useBattleWebSocket({
 
   // Connect to WebSocket
   const connect = useCallback(async () => {
-    if (authLoading) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    if (isConnectingRef.current) return;
+    const traceId = traceIdRef.current;
+
+    if (authLoading) {
+      logBattle('debug', 'connect_skipped', { battleId, traceId, reason: 'auth_loading' });
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      logBattle('debug', 'connect_skipped', { battleId, traceId, reason: 'already_connected' });
+      return;
+    }
+    if (isConnectingRef.current) {
+      logBattle('debug', 'connect_skipped', { battleId, traceId, reason: 'already_connecting' });
+      return;
+    }
 
     isConnectingRef.current = true;
+
+    logBattle('info', 'connect_start', { battleId, traceId, reconnectAttempts });
 
     if (wsRef.current) {
       wsRef.current.close();
@@ -275,6 +347,8 @@ export function useBattleWebSocket({
     // which fixes race conditions when navigating from guest invite acceptance
     let connectionToken: string;
     try {
+      logBattle('debug', 'fetching_connection_token', { battleId, traceId });
+
       const csrfToken = getCsrfToken();
       const response = await fetch('/api/v1/auth/ws-connection-token/', {
         method: 'POST',
@@ -289,7 +363,7 @@ export function useBattleWebSocket({
       });
 
       if (response.status === 401 || response.status === 403) {
-        // Auth failed - user not logged in
+        logBattle('warn', 'auth_failed', { battleId, traceId, status: response.status });
         setIsConnecting(false);
         isConnectingRef.current = false;
         onErrorRef.current?.('Please log in to join battles');
@@ -302,8 +376,14 @@ export function useBattleWebSocket({
 
       const data = await response.json();
       connectionToken = data.connection_token;
+
+      logBattle('debug', 'connection_token_received', { battleId, traceId });
     } catch (error) {
-      console.error('[Battle WS] Failed to fetch connection token:', error);
+      logBattle('error', 'connection_token_error', {
+        battleId,
+        traceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       setIsConnecting(false);
       isConnectingRef.current = false;
       onErrorRef.current?.('Failed to get connection token. Please try again.');
@@ -315,13 +395,14 @@ export function useBattleWebSocket({
       connection_token: connectionToken,
     });
 
-    logWebSocketUrl(wsUrl, '[Battle WS] Connecting');
+    logBattle('info', 'websocket_connecting', { battleId, traceId });
 
     try {
       const ws = new WebSocket(wsUrl);
 
       connectionTimeoutRef.current = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
+          logBattle('warn', 'connection_timeout', { battleId, traceId });
           ws.close();
           onErrorRef.current?.('Connection timeout');
           scheduleReconnect();
@@ -333,6 +414,9 @@ export function useBattleWebSocket({
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
         }
+
+        logBattle('info', 'websocket_connected', { battleId, traceId });
+
         setIsConnected(true);
         setIsConnecting(false);
         isConnectingRef.current = false;
@@ -346,24 +430,55 @@ export function useBattleWebSocket({
 
           if (data.event === 'pong') return;
 
+          // Log all non-pong events
+          logBattle('debug', `ws_event_${data.event}`, {
+            battleId,
+            traceId,
+            eventData: data,
+          });
+
           switch (data.event) {
             case 'battle_state':
               if (data.state) {
                 const newState = parseServerState(data.state);
                 if (newState) {
+                  logBattle('info', 'battle_state_received', {
+                    battleId,
+                    traceId,
+                    phase: newState.phase,
+                    status: newState.status,
+                    opponentConnected: newState.opponent.connected,
+                    hasMySubmission: !!newState.mySubmission,
+                    hasOpponentSubmission: !!newState.opponentSubmission,
+                    winnerId: newState.winnerId,
+                    matchSource: newState.matchSource,
+                  });
                   setBattleState(newState);
                   setOpponentStatus(newState.opponent.connected ? 'connected' : 'disconnected');
+                } else {
+                  logBattle('error', 'battle_state_parse_failed', { battleId, traceId });
                 }
               }
               break;
 
             case 'opponent_status':
               if (data.status) {
+                logBattle('info', 'opponent_status_change', {
+                  battleId,
+                  traceId,
+                  newStatus: data.status,
+                  userId: data.user_id,
+                });
                 setOpponentStatus(data.status as OpponentStatus);
               }
               break;
 
             case 'countdown_start':
+              logBattle('info', 'countdown_start', {
+                battleId,
+                traceId,
+                duration: data.duration || 3,
+              });
               setCountdownValue(data.duration || 3);
               onPhaseChangeRef.current?.('countdown');
               break;
@@ -376,6 +491,11 @@ export function useBattleWebSocket({
 
             case 'phase_change':
               if (data.phase) {
+                logBattle('info', 'phase_change', {
+                  battleId,
+                  traceId,
+                  newPhase: data.phase,
+                });
                 setBattleState((prev) => (prev ? { ...prev, phase: data.phase! } : null));
                 onPhaseChangeRef.current?.(data.phase);
 
@@ -383,6 +503,11 @@ export function useBattleWebSocket({
                   // Get winnerId from current state
                   setBattleState((prev) => {
                     if (prev) {
+                      logBattle('info', 'battle_complete_from_phase', {
+                        battleId,
+                        traceId,
+                        winnerId: prev.winnerId,
+                      });
                       onMatchCompleteRef.current?.(prev.winnerId);
                     }
                     return prev;
@@ -397,6 +522,11 @@ export function useBattleWebSocket({
               break;
 
             case 'submission_confirmed':
+              logBattle('info', 'submission_confirmed', {
+                battleId,
+                traceId,
+                submissionId: data.submission_id,
+              });
               // Update battleState to reflect submission
               setBattleState((prev) => {
                 if (!prev) return null;
@@ -411,9 +541,22 @@ export function useBattleWebSocket({
               break;
 
             case 'image_generating':
+              logBattle('info', 'image_generating', {
+                battleId,
+                traceId,
+                submissionId: data.submission_id,
+                userId: data.user_id,
+              });
               break;
 
             case 'image_generated':
+              logBattle('info', 'image_generated', {
+                battleId,
+                traceId,
+                submissionId: data.submission_id,
+                userId: data.user_id,
+                hasImageUrl: !!data.image_url,
+              });
               // Update my submission with the image if it's mine
               setBattleState((prev) => {
                 if (!prev || !prev.mySubmission) return prev;
@@ -432,6 +575,12 @@ export function useBattleWebSocket({
               break;
 
             case 'judging_complete':
+              logBattle('info', 'judging_complete', {
+                battleId,
+                traceId,
+                winnerId: data.winner_id,
+                resultsCount: Array.isArray(data.results) ? data.results.length : 0,
+              });
               setBattleState((prev) => {
                 if (!prev) return null;
 
@@ -452,6 +601,13 @@ export function useBattleWebSocket({
 
                 if (results && Array.isArray(results)) {
                   for (const result of results) {
+                    logBattle('debug', 'judging_result', {
+                      battleId,
+                      traceId,
+                      submissionId: result.submission_id,
+                      userId: result.user_id,
+                      score: result.score,
+                    });
                     // Update my submission if this is mine
                     if (prev.mySubmission && result.submission_id === prev.mySubmission.id) {
                       newState.mySubmission = {
@@ -469,6 +625,7 @@ export function useBattleWebSocket({
               break;
 
             case 'state_refresh':
+              logBattle('info', 'state_refresh_requested', { battleId, traceId });
               // Server is telling us to request fresh state (after judging/completion)
               // Send request_state directly since requestState callback isn't available here
               if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -477,20 +634,34 @@ export function useBattleWebSocket({
               break;
 
             case 'battle_complete':
+              logBattle('info', 'battle_complete', {
+                battleId,
+                traceId,
+                winnerId: data.winner_id,
+              });
               onMatchCompleteRef.current?.(data.winner_id as number | null);
               break;
 
             case 'error':
+              logBattle('error', 'server_error', {
+                battleId,
+                traceId,
+                error: data.error,
+              });
               onErrorRef.current?.(data.error || 'An error occurred');
               break;
           }
         } catch (error) {
-          console.error('[Battle WS] Failed to parse message:', error);
+          logBattle('error', 'message_parse_error', {
+            battleId,
+            traceId,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('[Battle WS] Error:', error);
+      ws.onerror = (_error) => {
+        logBattle('error', 'websocket_error', { battleId, traceId });
         setIsConnected(false);
         setIsConnecting(false);
         isConnectingRef.current = false;
@@ -498,6 +669,15 @@ export function useBattleWebSocket({
       };
 
       ws.onclose = (event) => {
+        logBattle('info', 'websocket_closed', {
+          battleId,
+          traceId,
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+          intentional: intentionalCloseRef.current,
+        });
+
         setIsConnected(false);
         setIsConnecting(false);
         isConnectingRef.current = false;
@@ -515,7 +695,11 @@ export function useBattleWebSocket({
 
       wsRef.current = ws;
     } catch (error) {
-      console.error('[Battle WS] Failed to create WebSocket:', error);
+      logBattle('error', 'websocket_create_error', {
+        battleId,
+        traceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       setIsConnecting(false);
       isConnectingRef.current = false;
       onErrorRef.current?.('Failed to establish WebSocket connection');
@@ -552,18 +736,42 @@ export function useBattleWebSocket({
   // Send typing indicator
   const sendTyping = useCallback((isTyping: boolean) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      logBattle('debug', 'sending_typing_indicator', {
+        battleId,
+        traceId: traceIdRef.current,
+        isTyping,
+      });
       wsRef.current.send(JSON.stringify({ type: 'typing', is_typing: isTyping }));
     }
-  }, []);
+  }, [battleId]);
 
   // Submit prompt
   const submitPrompt = useCallback((promptText: string): boolean => {
+    const traceId = traceIdRef.current;
+
+    logBattle('info', 'submit_prompt_start', {
+      battleId,
+      traceId,
+      promptLength: promptText.length,
+    });
+
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      logBattle('error', 'submit_prompt_failed', {
+        battleId,
+        traceId,
+        reason: 'not_connected',
+        wsState: wsRef.current?.readyState,
+      });
       onErrorRef.current?.('Not connected to battle');
       return false;
     }
 
     if (!promptText.trim()) {
+      logBattle('warn', 'submit_prompt_failed', {
+        battleId,
+        traceId,
+        reason: 'empty_prompt',
+      });
       onErrorRef.current?.('Prompt cannot be empty');
       return false;
     }
@@ -575,13 +783,24 @@ export function useBattleWebSocket({
           prompt_text: promptText,
         })
       );
+
+      logBattle('info', 'submit_prompt_sent', {
+        battleId,
+        traceId,
+        promptLength: promptText.length,
+      });
+
       return true;
     } catch (error) {
-      console.error('[Battle WS] Failed to submit prompt:', error);
+      logBattle('error', 'submit_prompt_error', {
+        battleId,
+        traceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       onErrorRef.current?.('Failed to submit prompt');
       return false;
     }
-  }, []);
+  }, [battleId]);
 
   // Request state refresh
   const requestState = useCallback(() => {

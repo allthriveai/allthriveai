@@ -10,6 +10,22 @@ app = Celery('allthrive_ai')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+
+@app.task(name='celery.health_check')
+def health_check():
+    """
+    Simple health check task for CI verification.
+
+    This task verifies that:
+    1. Celery worker can connect to the broker
+    2. Worker can pick up and execute tasks
+    3. Task results can be returned
+
+    Used by CI to catch Celery infrastructure issues before deployment.
+    """
+    return {'status': 'healthy', 'worker': 'ok'}
+
+
 # Manually discover tasks from modules not in INSTALLED_APPS
 # These apps have models under 'core' app but tasks need explicit discovery
 app.autodiscover_tasks(
@@ -44,40 +60,40 @@ app.conf.worker_prefetch_multiplier = 1  # Fetch one task at a time (fair distri
 app.conf.task_time_limit = 300  # 5 minutes hard limit
 app.conf.task_soft_time_limit = 240  # 4 minutes soft limit (task should handle gracefully)
 
-# Configure task queues for priority handling
+# Default task expiration - discard stale tasks that haven't been picked up
+# This prevents queue backlog from causing wasted AI credits on abandoned sessions
+# Individual tasks can override with apply_async(expires=...) for shorter timeouts
+app.conf.task_default_expires = 3600  # 1 hour default (lenient for background tasks)
+
+# Configure task queues - simplified: only Weaviate gets its own queue
+# All other tasks go to the default 'celery' queue for simpler routing
 app.conf.task_queues = (
-    Queue('celery', routing_key='celery'),  # Default Celery queue
-    Queue('default', routing_key='default'),
-    Queue('youtube_sync', routing_key='youtube.sync'),
-    Queue('youtube_import', routing_key='youtube.import'),
-    Queue('battles', routing_key='battles'),  # Prompt battles queue
-    Queue('engagement', routing_key='engagement'),  # Engagement processing queue
+    Queue('celery', routing_key='celery'),  # Default queue for all tasks
+    Queue('weaviate', routing_key='weaviate'),  # Low-priority Weaviate sync (background)
 )
 
-# Route tasks to specific queues
+# Route only Weaviate tasks to their own queue - everything else uses default 'celery' queue
 app.conf.task_routes = {
-    # WebSocket chat tasks
-    'core.agents.tasks.process_chat_message_task': {'queue': 'default'},
-    # YouTube tasks
-    'core.integrations.youtube.tasks.sync_single_content_source': {'queue': 'youtube_sync'},
-    'core.integrations.youtube.tasks.sync_content_sources': {'queue': 'youtube_sync'},
-    'core.integrations.youtube.tasks.import_youtube_video_task': {'queue': 'youtube_import'},
-    'core.integrations.youtube.tasks.import_youtube_channel_task': {'queue': 'youtube_import'},
-    # Prompt battles tasks (using default queue for now)
-    'core.battles.tasks.generate_submission_image_task': {'queue': 'default'},
-    'core.battles.tasks.judge_battle_task': {'queue': 'default'},
-    'core.battles.tasks.complete_battle_task': {'queue': 'default'},
-    'core.battles.tasks.create_pip_submission_task': {'queue': 'default'},
-    'core.battles.tasks.handle_battle_timeout_task': {'queue': 'default'},
-    # Async battle tasks
-    'core.battles.tasks.check_async_battle_deadlines': {'queue': 'default'},
-    'core.battles.tasks.send_async_battle_reminders': {'queue': 'default'},
-    'core.battles.tasks.start_async_turn_task': {'queue': 'default'},
-    'core.battles.tasks.handle_async_turn_timeout_task': {'queue': 'default'},
-    # Engagement tasks
-    'core.engagement.tasks.process_engagement_batch': {'queue': 'engagement'},
-    'core.engagement.tasks.update_user_profile_from_events': {'queue': 'engagement'},
-    'core.engagement.tasks.apply_recency_decay': {'queue': 'engagement'},
+    # Weaviate sync tasks (low priority - background, can be delayed)
+    'services.weaviate.tasks.sync_project_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_user_profile_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_quiz_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_tool_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_micro_lesson_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_learning_path_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_concept_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.sync_knowledge_state_to_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.remove_project_from_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.remove_user_profile_from_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.remove_learning_path_from_weaviate': {'queue': 'weaviate'},
+    'services.weaviate.tasks.update_engagement_metrics': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_projects': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_users': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_quizzes': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_tools': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_concepts': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_micro_lessons': {'queue': 'weaviate'},
+    'services.weaviate.tasks.full_reindex_learning_paths': {'queue': 'weaviate'},
 }
 
 # Periodic tasks schedule (Celery Beat)
@@ -87,7 +103,6 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/15'),  # Every 15 minutes (SCALABLE)
         'options': {
             'expires': 900,  # Task expires after 15min if not picked up
-            'queue': 'youtube_sync',
         },
     },
     'sync-reddit-agents': {
@@ -110,7 +125,6 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour='*/2', minute=0),  # Every 2 hours at minute 0
         'options': {
             'expires': 3600,  # Task expires after 1 hour if not picked up
-            'queue': 'youtube_sync',
         },
     },
     # Weaviate personalization tasks
@@ -246,7 +260,6 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/5'),  # Every 5 minutes
         'options': {
             'expires': 300,  # Expires after 5 minutes
-            'queue': 'engagement',
         },
     },
     'engagement-apply-recency-decay': {
@@ -254,7 +267,6 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=4, minute=30),  # Daily at 4:30 AM
         'options': {
             'expires': 7200,  # Expires after 2 hours
-            'queue': 'engagement',
         },
     },
     # AI Taxonomy Tagging tasks

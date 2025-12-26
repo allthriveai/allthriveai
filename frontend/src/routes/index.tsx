@@ -104,6 +104,7 @@ const AdminTasksPage = lazy(() => import('@/pages/admin/TasksPage'));
 const AdminUATScenariosPage = lazy(() => import('@/pages/admin/UATScenariosPage'));
 const AdminEmberFlowsPage = lazy(() => import('@/pages/admin/EmberFlowsPage'));
 const AdminLessonsPage = lazy(() => import('@/pages/admin/LessonsPage'));
+const AdminLogsPage = lazy(() => import('@/pages/admin/LogsPage'));
 
 // Analytics pages - lazy loaded (admin only)
 const AnalyticsIndexPage = lazy(() => import('@/pages/admin/analytics/index'));
@@ -550,6 +551,19 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminLessonsPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* System Management - nested routes */}
+      <Route
+        path="/admin/system"
+        element={<Navigate to="/admin/system/logs" replace />}
+      />
+      <Route
+        path="/admin/system/logs"
+        element={
+          <ProtectedRoute>
+            <AdminLogsPage />
           </ProtectedRoute>
         }
       />

@@ -65,6 +65,8 @@ export function BattlePage() {
   const [hasStartedMyTurn, setHasStartedMyTurn] = useState(false);
   // Friend name for invitation battles
   const [localFriendName, setLocalFriendName] = useState<string>('');
+  // Submission error to display near the prompt input
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Check if user is a guest
   const isGuestUser = user?.isGuest ?? false;
@@ -128,6 +130,8 @@ export function BattlePage() {
       component: 'BattlePage',
       battleId,
     });
+    // Show error near the submit button
+    setSubmitError(error);
   }, [battleId]);
 
   const handlePhaseChange = useCallback((_phase: string) => {
@@ -366,8 +370,12 @@ export function BattlePage() {
   const handleTyping = useCallback(
     (isTyping: boolean) => {
       sendTyping(isTyping);
+      // Clear any submission error when user starts typing again
+      if (isTyping && submitError) {
+        setSubmitError(null);
+      }
     },
-    [sendTyping]
+    [sendTyping, submitError]
   );
 
   // Handle play again
@@ -631,6 +639,7 @@ export function BattlePage() {
               isGuestUser={isGuestUser}
               onSignupClick={() => setShowGuestSignupModal(true)}
               isMyTurn={hasStartedMyTurn || (battleState.isMyTurn ?? true)}
+              submitError={submitError}
             />
           </>
         );

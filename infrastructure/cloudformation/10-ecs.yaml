@@ -491,7 +491,7 @@ Resources:
             - worker
             - '--loglevel=info'
             - '-Q'
-            - 'celery,default,youtube_sync,youtube_import,battles'
+            - 'celery,weaviate'
             - '--concurrency=4'
           Environment:
             - Name: DEBUG

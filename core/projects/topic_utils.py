@@ -25,6 +25,7 @@ Usage:
 import logging
 from typing import TYPE_CHECKING
 
+from django.db import IntegrityError
 from django.utils.text import slugify
 
 if TYPE_CHECKING:
@@ -32,6 +33,80 @@ if TYPE_CHECKING:
     from core.taxonomy.models import Taxonomy
 
 logger = logging.getLogger(__name__)
+
+
+def _get_or_create_topic_taxonomy(topic_name: str, topic_slug: str) -> 'Taxonomy':
+    """
+    Get or create a topic taxonomy with proper handling of slug conflicts.
+
+    The Taxonomy.slug field is unique across ALL taxonomy types. This means if
+    a slug like 'images-video' exists as type='category', we can't create it
+    as type='topic'. This function handles that by appending '-topic' suffix.
+
+    Also handles race conditions where concurrent requests try to create
+    the same taxonomy simultaneously.
+    """
+    from core.taxonomy.models import Taxonomy
+
+    # First, try to get existing topic with this slug
+    existing = Taxonomy.objects.filter(slug=topic_slug, taxonomy_type='topic').first()
+    if existing:
+        return existing
+
+    # Try to create it
+    try:
+        topic_obj, created = Taxonomy.objects.get_or_create(
+            slug=topic_slug,
+            taxonomy_type='topic',
+            defaults={
+                'name': topic_name.title(),
+                'is_active': True,
+            },
+        )
+        if created:
+            logger.debug(f'Created new topic taxonomy: {topic_obj.name}')
+        return topic_obj
+    except IntegrityError:
+        # Slug already exists - either race condition or different taxonomy_type
+
+        # Check if it was a race condition (same slug+type created by another process)
+        existing = Taxonomy.objects.filter(slug=topic_slug, taxonomy_type='topic').first()
+        if existing:
+            return existing
+
+        # Slug exists with different taxonomy_type - try with '-topic' suffix
+        suffixed_slug = f'{topic_slug}-topic'[:120]  # Respect max_length
+        try:
+            topic_obj, created = Taxonomy.objects.get_or_create(
+                slug=suffixed_slug,
+                taxonomy_type='topic',
+                defaults={
+                    'name': topic_name.title(),
+                    'is_active': True,
+                },
+            )
+            if created:
+                logger.debug(f'Created topic taxonomy with suffix: {topic_obj.name} ({suffixed_slug})')
+            return topic_obj
+        except IntegrityError:
+            # Even suffixed slug exists - get it
+            existing = Taxonomy.objects.filter(slug=suffixed_slug, taxonomy_type='topic').first()
+            if existing:
+                return existing
+
+            # Last resort: try to get the original slug regardless of type
+            # (better to reuse existing taxonomy than fail completely)
+            fallback = Taxonomy.objects.filter(slug=topic_slug).first()
+            if fallback:
+                logger.warning(
+                    f'Using existing taxonomy {fallback.slug} (type={fallback.taxonomy_type}) '
+                    f'for topic {topic_name}'
+                )
+                return fallback
+
+            # This should rarely happen
+            logger.error(f'Failed to get or create topic taxonomy for: {topic_name}')
+            raise
 
 
 def set_project_topics(
@@ -89,18 +164,9 @@ def set_project_topics(
             topic_slug = topic_name.replace(' ', '-')[:50]
 
         if create_missing:
-            # Get or create the topic taxonomy
-            topic_obj, created = Taxonomy.objects.get_or_create(
-                slug=topic_slug,
-                taxonomy_type='topic',
-                defaults={
-                    'name': topic_name.title(),
-                    'is_active': True,
-                },
-            )
+            # Get or create the topic taxonomy (handles race conditions and slug conflicts)
+            topic_obj = _get_or_create_topic_taxonomy(topic_name, topic_slug)
             topic_objects.append(topic_obj)
-            if created:
-                logger.debug(f'Created new topic taxonomy: {topic_obj.name}')
         else:
             # Only use existing topics
             topic_obj = Taxonomy.objects.filter(
@@ -206,14 +272,8 @@ def add_project_topics(
             topic_slug = clean_name.replace(' ', '-')[:50]
 
         if create_missing:
-            topic_obj, created = Taxonomy.objects.get_or_create(
-                slug=topic_slug,
-                taxonomy_type='topic',
-                defaults={
-                    'name': clean_name.title(),
-                    'is_active': True,
-                },
-            )
+            # Get or create the topic taxonomy (handles race conditions and slug conflicts)
+            topic_obj = _get_or_create_topic_taxonomy(clean_name, topic_slug)
             topic_objects.append(topic_obj)
         else:
             topic_obj = Taxonomy.objects.filter(

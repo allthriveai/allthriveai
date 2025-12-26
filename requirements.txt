@@ -43,7 +43,13 @@ langchain-google-genai==2.0.10
 langgraph>=0.2.0
 langgraph-checkpoint-redis>=0.2.0
 langgraph-checkpoint-postgres>=3.0.1
-langsmith>=0.1.140
+
+# Observability - Phoenix (LLM tracing & evaluation)
+arize-phoenix>=8.0.0
+openinference-instrumentation-openai>=0.1.0
+openinference-instrumentation-langchain>=0.1.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-exporter-otlp>=1.20.0
 
 # Vector Database
 weaviate-client>=3.26.0,<4.0.0  # Vector database for personalization (v3 API)
@@ -63,6 +69,9 @@ stripe>=11.0.0
 # Storage
 minio>=7.2.9
 boto3>=1.35.0
+
+# Admin Log Streaming (Docker API access for local dev)
+docker>=7.0.0
 
 # Email (AWS SES)
 django-ses>=4.3.0

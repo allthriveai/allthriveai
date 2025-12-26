@@ -84,8 +84,11 @@ def trigger_agent_dm_response(sender, instance: Message, created: bool, **kwargs
         )
 
         # Dispatch async task
-        process_agent_dm_task.delay(
-            message_id=str(instance.id),
-            thread_id=str(dm_thread.id),
-            agent_user_id=agent.id,
+        process_agent_dm_task.apply_async(
+            kwargs={
+                'message_id': str(instance.id),
+                'thread_id': str(dm_thread.id),
+                'agent_user_id': agent.id,
+            },
+            expires=600,  # Expire after 10 min if not picked up
         )

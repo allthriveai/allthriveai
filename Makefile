@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db anonymize-users create-youtube-agent regenerate-battle-images regenerate-user-images
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db debug-logs debug-all celery-status redis-check test-channel-layer shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db anonymize-users create-youtube-agent regenerate-battle-images regenerate-user-images
 
 help:
 	@echo "Available commands:"
@@ -22,6 +22,13 @@ help:
 	@echo "  make logs-celery     - View Celery worker logs"
 	@echo "  make logs-redis      - View Redis logs"
 	@echo "  make logs-db         - View PostgreSQL logs"
+	@echo ""
+	@echo "Debugging:"
+	@echo "  make debug-all       - Run all debugging checks (Redis, Celery, Channels)"
+	@echo "  make debug-logs      - View combined backend/celery/redis logs"
+	@echo "  make celery-status   - Check Celery worker status and registered tasks"
+	@echo "  make redis-check     - Verify Redis connectivity and database sizes"
+	@echo "  make test-channel-layer - Test Django Channels Redis pub/sub"
 	@echo ""
 	@echo "Shells:"
 	@echo "  make shell-frontend  - Open shell in frontend container"
@@ -64,8 +71,9 @@ help:
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test            - Run unit tests (backend + frontend)"
-	@echo "  make test-all        - Run ALL tests (unit + E2E + AI integration)"
+	@echo "  make test-quick      - Unit tests only (~5 min) - while coding"
+	@echo "  make test-ci         - Full CI suite (~20 min) - before PRs"
+	@echo "  make test-nightly    - Everything + deep AI (~45-60 min) - nightly/releases"
 	@echo "  make test-backend    - Run all backend tests"
 	@echo "  make test-frontend   - Run all frontend tests"
 	@echo "  make test-backend-e2e - Run backend E2E tests (prompt battles)"
@@ -200,6 +208,51 @@ logs-redis:
 
 logs-db:
 	docker-compose logs -f db
+
+# Debugging commands for Celery/WebSocket issues
+debug-logs:
+	@echo "=== Viewing Backend + Celery + Redis logs ==="
+	docker-compose logs -f --tail=100 web celery redis
+
+celery-status:
+	@echo "=== Celery Worker Status ==="
+	@docker-compose exec -T celery celery -A config inspect active 2>/dev/null || echo "   ❌ Celery worker not responding"
+	@echo ""
+	@echo "=== Registered Tasks ==="
+	@docker-compose exec -T celery celery -A config inspect registered 2>/dev/null || echo "   ❌ Could not fetch registered tasks"
+	@echo ""
+	@echo "=== Active Queues ==="
+	@docker-compose exec -T celery celery -A config inspect active_queues 2>/dev/null || echo "   ❌ Could not fetch active queues"
+
+redis-check:
+	@echo "=== Redis Connectivity ==="
+	@docker-compose exec -T redis redis-cli PING
+	@echo ""
+	@echo "=== Redis DB Info ==="
+	@echo "DB 0 (Celery broker):"
+	@docker-compose exec -T redis redis-cli -n 0 DBSIZE
+	@echo "DB 2 (Django cache):"
+	@docker-compose exec -T redis redis-cli -n 2 DBSIZE
+	@echo "DB 3 (Channels layer):"
+	@docker-compose exec -T redis redis-cli -n 3 DBSIZE
+	@echo ""
+	@echo "=== Celery Queue Length ==="
+	@docker-compose exec -T redis redis-cli -n 0 LLEN celery
+
+test-channel-layer:
+	@echo "=== Testing Django Channels Redis Layer ==="
+	@docker-compose exec -T web python manage.py shell -c "from channels.layers import get_channel_layer; import asyncio; layer = get_channel_layer(); asyncio.get_event_loop().run_until_complete(layer.send('test', {'type': 'test'})); msg = asyncio.get_event_loop().run_until_complete(layer.receive('test')); print('Channel layer OK:', msg)"
+
+debug-all:
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║         CELERY & WEBSOCKET DEBUGGING                             ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@make redis-check
+	@echo ""
+	@make celery-status
+	@echo ""
+	@make test-channel-layer
 
 shell-frontend:
 	docker-compose exec frontend /bin/sh
@@ -429,10 +482,20 @@ reset-db:
 	@echo "✓ Database reset complete with initial data!"
 
 # Testing commands
-test: test-backend test-frontend
-	@echo "Unit tests completed!"
+# Three main test commands:
+#   test-quick   - Unit tests only (~5 min) - while coding
+#   test-ci      - Full CI suite (~20 min) - before PRs
+#   test-nightly - Everything + deep AI (~45-60 min) - nightly/releases
 
-test-all:
+test-quick: test-backend test-frontend
+	@echo "Quick unit tests completed!"
+
+# Aliases for backwards compatibility
+test: test-quick
+test-all: test-ci
+test-everything: test-nightly
+
+test-ci:
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════════════╗"
 	@echo "║                    RUNNING ALL TESTS                             ║"
@@ -476,6 +539,25 @@ test-all:
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════════════╗"
 	@echo "║                    ✅ ALL TESTS PASSED                            ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+
+# Nightly: Everything including deep AI tests (~45-60 min)
+test-nightly:
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║             NIGHTLY TESTS (Unit + E2E + Deep AI)                 ║"
+	@echo "║              Estimated time: 45-60 minutes                       ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@make test-ci
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 8/8: Deep E2E Tests (Real AI Calls)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-e2e-deep
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║              ✅ NIGHTLY TESTS PASSED (Including Deep AI)          ║"
 	@echo "╚══════════════════════════════════════════════════════════════════╝"
 
 # Backend E2E tests (prompt battles, etc.) - requires RUN_E2E_TESTS=1
@@ -1090,9 +1172,10 @@ aws-validate:
 	done; \
 	echo ""; \
 	echo "[ ] Recent Errors (Last Hour):"; \
+	START_TIME=$$(( $$(date +%s) * 1000 - 3600000 )); \
 	ERROR_COUNT=$$(aws logs filter-log-events \
 		--log-group-name "/ecs/$$ENVIRONMENT-allthrive-web" \
-		--start-time $$(( $$(date +%s) * 1000 - 3600000 )) \
+		--start-time $$START_TIME \
 		--filter-pattern "ERROR" \
 		--max-items 100 \
 		--region $$AWS_REGION \
@@ -1100,13 +1183,30 @@ aws-validate:
 	if [ -n "$$ERROR_COUNT" ] && [ "$$ERROR_COUNT" != "None" ] && [ "$$ERROR_COUNT" -eq "$$ERROR_COUNT" ] 2>/dev/null; then \
 		if [ "$$ERROR_COUNT" -gt 50 ]; then \
 			echo "   ❌ $$ERROR_COUNT errors in last hour (high!)"; \
-		elif [ "$$ERROR_COUNT" -gt 10 ]; then \
+		elif [ "$$ERROR_COUNT" -gt 0 ]; then \
 			echo "   ⚠️  $$ERROR_COUNT errors in last hour"; \
 		else \
-			echo "   ✅ $$ERROR_COUNT errors in last hour"; \
+			echo "   ✅ No errors in last hour"; \
+		fi; \
+		if [ "$$ERROR_COUNT" -gt 0 ]; then \
+			echo ""; \
+			echo "   Recent errors (latest 10):"; \
+			aws logs filter-log-events \
+				--log-group-name "/ecs/$$ENVIRONMENT-allthrive-web" \
+				--start-time $$START_TIME \
+				--filter-pattern "ERROR" \
+				--max-items 10 \
+				--region $$AWS_REGION \
+				--query 'events[*].[timestamp,message]' \
+				--output text 2>/dev/null | while IFS=$$'\t' read -r ts msg; do \
+					if [ -n "$$ts" ] && [ "$$ts" != "None" ]; then \
+						TIME=$$(date -r $$((ts/1000)) '+%H:%M:%S' 2>/dev/null || echo "$$ts"); \
+						echo "   [$$TIME] $${msg:0:100}"; \
+					fi; \
+				done; \
 		fi; \
 	else \
-		echo "   ⚠️  Could not fetch error count"; \
+		echo "   ⚠️  Could not fetch error logs"; \
 	fi; \
 	echo ""; \
 	echo "[ ] Last Deployment:"; \

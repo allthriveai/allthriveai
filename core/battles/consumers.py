@@ -9,6 +9,7 @@ Handles real-time battle communication:
 import asyncio
 import json
 import logging
+import uuid
 from datetime import timedelta
 from typing import Any
 
@@ -32,6 +33,58 @@ from core.battles.utils import sanitize_prompt, validate_prompt_for_battle
 from core.users.models import User
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_trace_id() -> str:
+    """Generate a short trace ID for request tracing."""
+    return uuid.uuid4().hex[:8]
+
+
+def _log_battle_event(
+    trace_id: str,
+    event: str,
+    battle_id: int | str,
+    user_id: int | str | None = None,
+    phase: str | None = None,
+    extra: dict | None = None,
+    level: str = 'info',
+) -> None:
+    """
+    Structured logging for battle events with trace ID.
+
+    Args:
+        trace_id: Unique identifier for tracing the request flow
+        event: Event name (e.g., 'ws_connect', 'submit_prompt', 'phase_change')
+        battle_id: Battle ID
+        user_id: User ID (if applicable)
+        phase: Current battle phase (if applicable)
+        extra: Additional context data
+        level: Log level ('debug', 'info', 'warning', 'error')
+    """
+    log_data = {
+        'trace_id': trace_id,
+        'event': event,
+        'battle_id': battle_id,
+    }
+    if user_id is not None:
+        log_data['user_id'] = user_id
+    if phase is not None:
+        log_data['phase'] = phase
+    if extra:
+        log_data.update(extra)
+
+    message = f'[BATTLE:{trace_id}] {event} | battle={battle_id}'
+    if user_id:
+        message += f' user={user_id}'
+    if phase:
+        message += f' phase={phase}'
+    if extra:
+        extra_str = ' '.join(f'{k}={v}' for k, v in extra.items())
+        message += f' | {extra_str}'
+
+    log_fn = getattr(logger, level)
+    log_fn(message, extra=log_data)
+
 
 # Countdown duration in seconds
 COUNTDOWN_SECONDS = 3
@@ -58,6 +111,15 @@ class BattleConsumer(AsyncWebsocketConsumer):
         self.battle_id = self.scope['url_route']['kwargs']['battle_id']
         self.user = self.scope.get('user')
         self.group_name = f'battle_{self.battle_id}'
+        self.trace_id = _generate_trace_id()
+
+        _log_battle_event(
+            self.trace_id,
+            'ws_connect_start',
+            self.battle_id,
+            user_id=getattr(self.user, 'id', None),
+            extra={'channel': self.channel_name},
+        )
 
         # Validate origin
         headers = dict(self.scope.get('headers', []))
@@ -67,25 +129,67 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
         allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
         if origin and origin not in allowed_origins:
-            logger.warning(f'Battle WebSocket from unauthorized origin: {origin}')
+            _log_battle_event(
+                self.trace_id,
+                'ws_connect_rejected',
+                self.battle_id,
+                extra={'reason': 'unauthorized_origin', 'origin': origin},
+                level='warning',
+            )
             await self.close(code=4003)
             return
 
         # Reject unauthenticated users
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
-            logger.warning(f'Unauthenticated battle WebSocket attempt for battle {self.battle_id}')
+            _log_battle_event(
+                self.trace_id,
+                'ws_connect_rejected',
+                self.battle_id,
+                extra={'reason': 'unauthenticated'},
+                level='warning',
+            )
             await self.close(code=4001)
             return
 
         # Validate battle access
         battle = await self._get_battle()
         if not battle:
-            logger.warning(f'Battle {self.battle_id} not found')
+            _log_battle_event(
+                self.trace_id,
+                'ws_connect_rejected',
+                self.battle_id,
+                user_id=self.user.id,
+                extra={'reason': 'battle_not_found'},
+                level='warning',
+            )
             await self.close(code=4004)
             return
 
+        _log_battle_event(
+            self.trace_id,
+            'ws_connect_battle_found',
+            self.battle_id,
+            user_id=self.user.id,
+            phase=battle.phase,
+            extra={
+                'status': battle.status,
+                'challenger_id': battle.challenger_id,
+                'opponent_id': battle.opponent_id,
+                'match_source': battle.match_source,
+                'challenger_connected': battle.challenger_connected,
+                'opponent_connected': battle.opponent_connected,
+            },
+        )
+
         if not await self._user_is_participant(battle):
-            logger.warning(f'User {self.user.id} is not a participant in battle {self.battle_id}')
+            _log_battle_event(
+                self.trace_id,
+                'ws_connect_rejected',
+                self.battle_id,
+                user_id=self.user.id,
+                extra={'reason': 'not_participant'},
+                level='warning',
+            )
             await self.close(code=4003)
             return
 
@@ -96,7 +200,18 @@ class BattleConsumer(AsyncWebsocketConsumer):
         # Mark user as connected
         await self._set_user_connected(True)
 
-        logger.info(f'Battle WebSocket connected: user={self.user.id}, battle={self.battle_id}')
+        is_challenger = self.user.id == battle.challenger_id
+        _log_battle_event(
+            self.trace_id,
+            'ws_connect_success',
+            self.battle_id,
+            user_id=self.user.id,
+            phase=battle.phase,
+            extra={
+                'is_challenger': is_challenger,
+                'group': self.group_name,
+            },
+        )
 
         # Send initial state
         await self.send_battle_state()
@@ -106,6 +221,16 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         """Handle WebSocket disconnection."""
+        trace_id = getattr(self, 'trace_id', _generate_trace_id())
+
+        _log_battle_event(
+            trace_id,
+            'ws_disconnect',
+            getattr(self, 'battle_id', 'unknown'),
+            user_id=getattr(self.user, 'id', None) if hasattr(self, 'user') else None,
+            extra={'close_code': close_code},
+        )
+
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
@@ -124,10 +249,10 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 },
             )
 
-        logger.info(f'Battle WebSocket disconnected: user={getattr(self.user, "id", "unknown")}, code={close_code}')
-
     async def receive(self, text_data: str):
         """Handle incoming WebSocket messages from client."""
+        trace_id = getattr(self, 'trace_id', _generate_trace_id())
+
         try:
             data = json.loads(text_data)
             message_type = data.get('type')
@@ -136,8 +261,24 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 await self.send(text_data=json.dumps({'event': 'pong', 'timestamp': self._get_timestamp()}))
                 return
 
+            _log_battle_event(
+                trace_id,
+                f'ws_receive_{message_type}',
+                self.battle_id,
+                user_id=getattr(self.user, 'id', None),
+                extra={'message_type': message_type},
+                level='debug',
+            )
+
             # Verify user is still authenticated for all non-ping messages
             if not self.user or not self.user.is_authenticated:
+                _log_battle_event(
+                    trace_id,
+                    'ws_receive_error',
+                    self.battle_id,
+                    extra={'reason': 'not_authenticated', 'message_type': message_type},
+                    level='warning',
+                )
                 await self._send_error('Authentication required')
                 await self.close(code=4001)
                 return
@@ -146,10 +287,28 @@ class BattleConsumer(AsyncWebsocketConsumer):
             if message_type in ('typing', 'submit_prompt'):
                 battle = await self._get_battle()
                 if not battle or not await self._user_is_participant(battle):
+                    _log_battle_event(
+                        trace_id,
+                        'ws_receive_error',
+                        self.battle_id,
+                        user_id=self.user.id,
+                        extra={'reason': 'not_authorized', 'message_type': message_type},
+                        level='warning',
+                    )
                     await self._send_error('Not authorized for this battle')
                     return
 
             if message_type == 'typing':
+                is_typing = data.get('is_typing', False)
+                _log_battle_event(
+                    trace_id,
+                    'typing_indicator',
+                    self.battle_id,
+                    user_id=self.user.id,
+                    extra={'is_typing': is_typing},
+                    level='debug',
+                )
+
                 # Broadcast typing status to opponent
                 await self.channel_layer.group_send(
                     self.group_name,
@@ -157,29 +316,67 @@ class BattleConsumer(AsyncWebsocketConsumer):
                         'type': 'battle_event',
                         'event': 'opponent_status',
                         'user_id': self.user.id,
-                        'status': 'typing' if data.get('is_typing', False) else 'idle',
+                        'status': 'typing' if is_typing else 'idle',
                     },
                 )
 
                 # For Pip battles: trigger Pip's submission on first typing event
                 # This ensures Pip uses the current challenge (after any refreshes)
                 # and generates in parallel while user types
-                if data.get('is_typing', False):
+                if is_typing:
                     battle = await self._get_battle()
                     if battle:
                         await self._maybe_trigger_pip_submission(battle)
 
             elif message_type == 'submit_prompt':
                 prompt_text = data.get('prompt_text', '').strip()
+                _log_battle_event(
+                    trace_id,
+                    'submit_prompt_received',
+                    self.battle_id,
+                    user_id=self.user.id,
+                    extra={'prompt_length': len(prompt_text)},
+                )
                 if prompt_text:
                     await self._handle_submission(prompt_text)
+                else:
+                    _log_battle_event(
+                        trace_id,
+                        'submit_prompt_error',
+                        self.battle_id,
+                        user_id=self.user.id,
+                        extra={'reason': 'empty_prompt'},
+                        level='warning',
+                    )
 
             elif message_type == 'request_state':
+                _log_battle_event(
+                    trace_id,
+                    'request_state',
+                    self.battle_id,
+                    user_id=self.user.id,
+                    level='debug',
+                )
                 await self.send_battle_state()
 
         except json.JSONDecodeError:
+            _log_battle_event(
+                trace_id,
+                'ws_receive_error',
+                self.battle_id,
+                extra={'reason': 'invalid_json'},
+                level='warning',
+            )
             await self._send_error('Invalid JSON format')
         except Exception as e:
+            _log_battle_event(
+                trace_id,
+                'ws_receive_error',
+                self.battle_id,
+                user_id=getattr(self.user, 'id', None),
+                extra={'reason': 'exception', 'error': str(e)},
+                level='error',
+            )
             logger.error(f'Error processing battle WebSocket message: {e}', exc_info=True)
             await self._send_error('Failed to process message')
 
@@ -232,15 +429,46 @@ class BattleConsumer(AsyncWebsocketConsumer):
         """Handle a user submitting their prompt."""
         from core.battles.phase_utils import can_submit_prompt
 
+        trace_id = getattr(self, 'trace_id', _generate_trace_id())
+
         battle = await self._get_battle()
         if not battle:
+            _log_battle_event(
+                trace_id,
+                'submit_error',
+                self.battle_id,
+                user_id=self.user.id,
+                extra={'reason': 'battle_not_found'},
+                level='error',
+            )
             await self._send_error('Battle not found')
             return
+
+        _log_battle_event(
+            trace_id,
+            'submit_validation_start',
+            self.battle_id,
+            user_id=self.user.id,
+            phase=battle.phase,
+            extra={
+                'prompt_length': len(prompt_text),
+                'match_source': battle.match_source,
+            },
+        )
 
         # Use centralized submission validation
         can_submit_result = await database_sync_to_async(lambda: can_submit_prompt(battle, self.user))()
 
         if not can_submit_result:
+            _log_battle_event(
+                trace_id,
+                'submit_validation_failed',
+                self.battle_id,
+                user_id=self.user.id,
+                phase=battle.phase,
+                extra={'reason': can_submit_result.error or 'unknown'},
+                level='warning',
+            )
             await self._send_error(can_submit_result.error or 'Cannot submit')
             return
 
@@ -258,17 +486,73 @@ class BattleConsumer(AsyncWebsocketConsumer):
         )
 
         if not is_valid:
+            _log_battle_event(
+                trace_id,
+                'submit_validation_failed',
+                self.battle_id,
+                user_id=self.user.id,
+                extra={'reason': 'prompt_invalid', 'error': error_message},
+                level='warning',
+            )
             await self._send_error(error_message)
+            return
+
+        # Prevent copy-pasting the challenge text exactly
+        submitted_normalized = sanitized_prompt.strip().lower()
+        challenge_normalized = (battle.challenge_text or '').strip().lower()
+        is_copy_paste = submitted_normalized == challenge_normalized
+
+        _log_battle_event(
+            trace_id,
+            'submit_copy_paste_check',
+            self.battle_id,
+            user_id=self.user.id,
+            extra={'is_copy_paste': is_copy_paste},
+            level='debug',
+        )
+
+        if is_copy_paste:
+            _log_battle_event(
+                trace_id,
+                'submit_validation_failed',
+                self.battle_id,
+                user_id=self.user.id,
+                extra={'reason': 'copy_paste_detected'},
+                level='warning',
+            )
+            await self._send_error(
+                'Come on, be more creative than that! ' 'Write your own unique prompt instead of copying the challenge.'
+            )
             return
 
         # Check if user already submitted
         existing_submission = await self._get_user_submission(battle)
         if existing_submission:
+            _log_battle_event(
+                trace_id,
+                'submit_validation_failed',
+                self.battle_id,
+                user_id=self.user.id,
+                extra={'reason': 'already_submitted', 'existing_submission_id': existing_submission.id},
+                level='warning',
+            )
             await self._send_error('You have already submitted')
             return
 
         # Create submission with sanitized prompt
         submission = await self._create_submission(battle, sanitized_prompt)
+
+        _log_battle_event(
+            trace_id,
+            'submission_created',
+            self.battle_id,
+            user_id=self.user.id,
+            phase=battle.phase,
+            extra={
+                'submission_id': submission.id,
+                'prompt_length': len(sanitized_prompt),
+            },
+        )
 
         # Notify opponent that this user submitted
         await self.channel_layer.group_send(
@@ -297,11 +581,33 @@ class BattleConsumer(AsyncWebsocketConsumer):
         # Pip's image is already generating from battle start
         from core.battles.tasks import generate_submission_image_task
 
-        generate_submission_image_task.delay(submission.id)
-        logger.info(f'Started image generation immediately for submission {submission.id}')
+        # Use unique task_id to prevent duplicate queueing from multiple code paths
+        task_id = f'image_gen_battle_{battle.id}_sub_{submission.id}'
+        generate_submission_image_task.apply_async(
+            args=[submission.id],
+            task_id=task_id,  # Unique ID prevents duplicate tasks
+            expires=600,  # Expire after 10 min if not picked up (user likely left)
+        )
+
+        _log_battle_event(
+            trace_id,
+            'image_generation_queued',
+            self.battle_id,
+            user_id=self.user.id,
+            extra={'submission_id': submission.id, 'task_id': task_id},
+        )
 
         # For async turn-based battles, transition to opponent's turn when challenger submits
         if battle.phase == BattlePhase.CHALLENGER_TURN and self.user.id == battle.challenger_id:
+            _log_battle_event(
+                trace_id,
+                'phase_transition_start',
+                self.battle_id,
+                user_id=self.user.id,
+                phase=battle.phase,
+                extra={'target_phase': BattlePhase.OPPONENT_TURN},
+            )
+
             await self._transition_phase(BattlePhase.OPPONENT_TURN)
 
             # Broadcast phase change so opponent knows it's their turn
@@ -322,7 +628,13 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 },
             )
 
-            logger.info(f'Battle {battle.id}: Transitioned from CHALLENGER_TURN to OPPONENT_TURN')
+            _log_battle_event(
+                trace_id,
+                'phase_transition_complete',
+                self.battle_id,
+                user_id=self.user.id,
+                phase=BattlePhase.OPPONENT_TURN,
+            )
 
         # For Pip battles, Pip's submission is already triggered at battle start
         # so we just need to check if both have submitted
@@ -331,15 +643,48 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
     async def _check_both_connected(self):
         """Check if both users are connected and start countdown if so."""
+        trace_id = getattr(self, 'trace_id', _generate_trace_id())
         battle = await self._get_battle()
         if not battle:
             return
 
+        _log_battle_event(
+            trace_id,
+            'check_both_connected',
+            battle.id,
+            phase=battle.phase,
+            extra={
+                'match_source': battle.match_source,
+                'challenger_connected': battle.challenger_connected,
+                'opponent_connected': battle.opponent_connected,
+            },
+        )
+
         # Check if both users are connected
         if not (battle.challenger_connected and battle.opponent_connected):
+            _log_battle_event(
+                trace_id,
+                'check_both_connected_waiting',
+                battle.id,
+                phase=battle.phase,
+                extra={
+                    'reason': 'not_both_connected',
+                    'challenger_connected': battle.challenger_connected,
+                    'opponent_connected': battle.opponent_connected,
+                },
+                level='debug',
+            )
             return
 
         if battle.phase == BattlePhase.WAITING:
+            _log_battle_event(
+                trace_id,
+                'starting_countdown',
+                battle.id,
+                phase=battle.phase,
+                extra={'countdown_seconds': COUNTDOWN_SECONDS},
+            )
+
             # Both connected! Transition to countdown
             await self._transition_phase(BattlePhase.COUNTDOWN)
 
@@ -359,6 +704,14 @@ class BattleConsumer(AsyncWebsocketConsumer):
         elif battle.phase == BattlePhase.COUNTDOWN:
             # Battle is stuck in countdown (previous countdown task was interrupted)
             # Restart the countdown
+            _log_battle_event(
+                trace_id,
+                'restarting_countdown',
+                battle.id,
+                phase=battle.phase,
+                extra={'reason': 'countdown_stuck'},
+                level='warning',
+            )
 
             # Broadcast countdown start
             await self.channel_layer.group_send(
@@ -375,6 +728,15 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
     async def _run_countdown(self):
         """Run the countdown sequence and transition to active phase."""
+        trace_id = getattr(self, 'trace_id', _generate_trace_id())
+
+        _log_battle_event(
+            trace_id,
+            'countdown_start',
+            self.battle_id,
+            extra={'countdown_seconds': COUNTDOWN_SECONDS},
+        )
+
         try:
             for i in range(COUNTDOWN_SECONDS, 0, -1):
                 await self.channel_layer.group_send(
@@ -386,6 +748,13 @@ class BattleConsumer(AsyncWebsocketConsumer):
                     },
                 )
                 await asyncio.sleep(1)
+
+            _log_battle_event(
+                trace_id,
+                'countdown_complete',
+                self.battle_id,
+                extra={'transitioning_to': BattlePhase.ACTIVE},
+            )
 
             # Countdown complete - transition to active
             battle = await self._transition_phase(BattlePhase.ACTIVE)
@@ -413,20 +782,66 @@ class BattleConsumer(AsyncWebsocketConsumer):
 
                 # Add 30s buffer for network latency
                 timeout_seconds = (battle.duration_minutes * 60) + 30
+
+                _log_battle_event(
+                    trace_id,
+                    'timeout_task_scheduled',
+                    self.battle_id,
+                    phase=BattlePhase.ACTIVE,
+                    extra={
+                        'timeout_seconds': timeout_seconds,
+                        'duration_minutes': battle.duration_minutes,
+                    },
+                )
+
                 handle_battle_timeout_task.apply_async(
                     args=[self.battle_id],
                     countdown=timeout_seconds,
+                    expires=timeout_seconds + 600,  # Expire 10 min after timeout
                 )
 
         except Exception as e:
+            _log_battle_event(
+                trace_id,
+                'countdown_error',
+                self.battle_id,
+                extra={'error': str(e)},
+                level='error',
+            )
             logger.error(f'Error during countdown: {e}', exc_info=True)
 
     async def _check_both_submitted(self, battle: PromptBattle):
         """Check if both users have submitted and transition to generating phase."""
         from core.battles.tasks import generate_submission_image_task
 
+        trace_id = getattr(self, 'trace_id', _generate_trace_id())
+
         submissions = await self._get_all_submissions(battle)
-        if len(submissions) >= 2:
+        submission_count = len(submissions)
+
+        _log_battle_event(
+            trace_id,
+            'check_both_submitted',
+            battle.id,
+            phase=battle.phase,
+            extra={
+                'submission_count': submission_count,
+                'submission_ids': [s.id for s in submissions],
+            },
+        )
+
+        if submission_count >= 2:
+            _log_battle_event(
+                trace_id,
+                'both_submitted_transitioning',
+                battle.id,
+                phase=battle.phase,
+                extra={
+                    'target_phase': BattlePhase.GENERATING,
+                    'submission_ids': [s.id for s in submissions],
+                },
+            )
+
             # Both submitted! Transition to generating phase
             await self._transition_phase(BattlePhase.GENERATING)
 
@@ -441,9 +856,49 @@ class BattleConsumer(AsyncWebsocketConsumer):
             )
 
             # Trigger AI image generation for all submissions
+            # Use unique task_id to prevent duplicate queueing from multiple code paths
             for submission in submissions:
                 if not submission.generated_output_url:
-                    generate_submission_image_task.delay(submission.id)
+                    task_id = f'image_gen_battle_{battle.id}_sub_{submission.id}'
+                    _log_battle_event(
+                        trace_id,
+                        'image_generation_queued_fallback',
+                        battle.id,
+                        extra={
+                            'submission_id': submission.id,
+                            'user_id': submission.user_id,
+                            'reason': 'both_submitted',
+                            'task_id': task_id,
+                        },
+                    )
+                    generate_submission_image_task.apply_async(
+                        args=[submission.id],
+                        task_id=task_id,  # Unique ID prevents duplicate tasks
+                        expires=600,  # Expire after 10 min if not picked up
+                    )
+                else:
+                    _log_battle_event(
+                        trace_id,
+                        'image_generation_already_complete',
+                        battle.id,
+                        extra={
+                            'submission_id': submission.id,
+                            'user_id': submission.user_id,
+                            'image_url': submission.generated_output_url[:50]
+                            if submission.generated_output_url
+                            else None,
+                        },
+                        level='debug',
+                    )
+        else:
+            _log_battle_event(
+                trace_id,
+                'waiting_for_second_submission',
+                battle.id,
+                phase=battle.phase,
+                extra={'current_submissions': submission_count},
+                level='debug',
+            )
 
     @database_sync_to_async
     def _get_battle(self) -> PromptBattle | None:
@@ -498,23 +953,60 @@ class BattleConsumer(AsyncWebsocketConsumer):
         2. Pip generates in parallel while user types (no wait after submit)
         3. Tokens aren't wasted on refreshed challenges
         """
+        trace_id = getattr(self, 'trace_id', _generate_trace_id())
+
         # Only for Pip battles
         is_pip_battle = await self._is_pip_battle(battle)
         if not is_pip_battle:
+            _log_battle_event(
+                trace_id,
+                'pip_submission_skip',
+                battle.id,
+                phase=battle.phase,
+                extra={'reason': 'not_pip_battle', 'match_source': battle.match_source},
+                level='debug',
+            )
             return
 
         # Check if Pip already has a submission (don't trigger twice)
         pip_submission_exists = await self._pip_has_submission(battle)
         if pip_submission_exists:
+            _log_battle_event(
+                trace_id,
+                'pip_submission_skip',
+                battle.id,
+                phase=battle.phase,
+                extra={'reason': 'already_exists'},
+                level='debug',
+            )
             return
+
+        _log_battle_event(
+            trace_id,
+            'pip_submission_trigger',
+            battle.id,
+            user_id=self.user.id,
+            phase=battle.phase,
+            extra={
+                'challenge_text_length': len(battle.challenge_text or ''),
+                'trigger': 'user_typing',
+            },
+        )
 
         # Trigger Pip's submission creation
         from core.battles.tasks import create_pip_submission_task
 
-        create_pip_submission_task.delay(battle.id)
-        logger.info(
-            f'Triggered Pip submission on user typing for battle {battle.id}',
-            extra={'battle_id': battle.id, 'user_id': self.user.id},
+        create_pip_submission_task.apply_async(
+            args=[battle.id],
+            expires=600,  # Expire after 10 min if not picked up
+        )
+
+        _log_battle_event(
+            trace_id,
+            'pip_submission_task_queued',
+            battle.id,
+            user_id=self.user.id,
+            phase=battle.phase,
         )
 
     @database_sync_to_async
