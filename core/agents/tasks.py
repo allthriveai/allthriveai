@@ -191,11 +191,20 @@ def _should_persist_conversation(conversation_id: str) -> bool:
     """Determine if this conversation should be persisted.
 
     Only sidebar chats are persisted. Project-specific chats are skipped.
+
+    Persisted patterns:
+    - ember-chat-{userId}: Main sidebar chat
+    - ember-learn-{userId}: Learn page chat
+    - ember-explore-{userId}: Explore page chat
+    - learn-{slug}-{userId}: Learning path detail chat
+    - avatar-{timestamp}: Avatar generation
+    - {timestamp}: Image generation
+
+    Skipped:
+    - project-{projectId}: Project-specific chats
     """
-    # Skip project conversations - only persist sidebar chats
     if conversation_id.startswith('project-'):
         return False
-    # Persist: ember-home-*, ember-chat-*, sage-learn-*, avatar-*, timestamps
     return True
 
 

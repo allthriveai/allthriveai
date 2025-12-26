@@ -3,6 +3,12 @@ services:
   db:
     image: postgres:18.1-alpine
     restart: unless-stopped
+    # Increase max_connections from default 100 to handle:
+    # - Django web workers (~20 connections)
+    # - Celery workers (~20 connections)
+    # - Celery beat (~5 connections)
+    # - E2E test workers (4 parallel × ~10 each)
+    command: postgres -c max_connections=200
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-allthrive_ai}
       POSTGRES_USER: ${POSTGRES_USER:-allthrive}

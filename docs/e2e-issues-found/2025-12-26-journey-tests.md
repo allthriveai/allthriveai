@@ -14,7 +14,7 @@ The new journey E2E tests (Phase 1 of nightly test expansion) found 3 real bugs 
 
 **Severity**: Critical
 **Component**: `core/agents/`
-**Status**: Open
+**Status**: ✅ FIXED (2025-12-26)
 
 ### Description
 
@@ -75,6 +75,28 @@ In `core/agents/tasks.py`, modify `process_chat_message_task` to:
        content=full_response
    )
    ```
+
+### Actual Fix Implemented
+
+**Files Changed:**
+- `core/agents/models.py` - Added `conversation_id`, `conversation_type` fields + user-scoped UniqueConstraint
+- `core/agents/tasks.py` - Added `persist_conversation_message` Celery task, response accumulator in `_process_with_ember()`, persistence call in `_process_image_generation()`
+- `core/agents/serializers.py` - Added new fields to `ConversationSerializer`
+- `core/agents/views.py` - Added `annotate(message_count=Count('messages'))` to ViewSet
+
+**Key Design Decisions:**
+- **Async persistence**: Via Celery task after streaming completes (no latency impact)
+- **User-scoped isolation**: UniqueConstraint on `(user, conversation_id)` for security
+- **Selective persistence**: Only sidebar chats persisted; project chats skipped
+
+**Tests Added:**
+- `core/agents/tests/test_conversation_persistence.py` - 33 unit tests
+- `core/agents/tests/test_e2e_issue_1_conversation_persistence.py` - 10 integration tests
+
+**Migrations:**
+- `0071_conversation_conversation_id_and_more.py`
+- `0072_update_conversation_type_choices.py`
+- `0073_fix_conversation_type_default.py`
 
 ---
 

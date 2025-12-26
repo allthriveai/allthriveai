@@ -762,7 +762,7 @@ function LessonSectionAccordion({ title, icon, iconColor, defaultOpen = false, c
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
+    <div className="border border-slate-200 dark:border-white/10 rounded overflow-hidden">
       {/* Accordion Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
