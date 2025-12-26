@@ -722,8 +722,17 @@ def create_agent_node(model_name: str | None = None):
 
     LEARNING_REGEX = re.compile('|'.join(LEARNING_QUESTION_PATTERNS), re.IGNORECASE)
 
-    def _is_learning_question(message_content: str) -> bool:
+    def _is_learning_question(message_content: str | list) -> bool:
         """Detect if a message is a learning/conceptual question that needs find_content."""
+        # Handle multimodal content (list format from image uploads)
+        if isinstance(message_content, list):
+            # Extract text from multimodal content
+            text_parts = [
+                part.get('text', '')
+                for part in message_content
+                if isinstance(part, dict) and part.get('type') == 'text'
+            ]
+            message_content = ' '.join(text_parts)
         return bool(LEARNING_REGEX.search(message_content))
 
     async def agent_node(state: EmberState) -> dict:

@@ -145,7 +145,7 @@ describe('BattleArena', () => {
       expect(leftPlayer).toHaveAttribute('data-is-current-user', 'true');
 
       expect(rightPlayer).toHaveAttribute('data-username', 'opponent');
-      expect(rightPlayer).toHaveAttribute('data-is-current-user', undefined);
+      expect(rightPlayer).not.toHaveAttribute('data-is-current-user', 'true');
     });
 
     it('should render VS badge', () => {

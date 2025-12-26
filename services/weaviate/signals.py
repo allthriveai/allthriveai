@@ -280,6 +280,11 @@ def sync_tool_on_save(sender, instance, created, **kwargs):
     if not _should_sync_to_weaviate():
         return
 
+    # Skip if only updating last_indexed_at (prevents infinite loop from sync task)
+    update_fields = kwargs.get('update_fields')
+    if update_fields and set(update_fields) <= {'last_indexed_at'}:
+        return
+
     # Only sync active tools
     if not getattr(instance, 'is_active', True):
         return
@@ -298,6 +303,11 @@ def sync_tool_on_save(sender, instance, created, **kwargs):
 def sync_micro_lesson_on_save(sender, instance, created, **kwargs):
     """Sync micro lesson to Weaviate when saved."""
     if not _should_sync_to_weaviate():
+        return
+
+    # Skip if only updating last_indexed_at (prevents infinite loop from sync task)
+    update_fields = kwargs.get('update_fields')
+    if update_fields and set(update_fields) <= {'last_indexed_at'}:
         return
 
     # Only sync active lessons
