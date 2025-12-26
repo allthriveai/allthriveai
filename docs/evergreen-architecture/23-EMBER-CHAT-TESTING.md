@@ -40,11 +40,11 @@ Ember tests differ from typical E2E tests because:
 ```
 frontend/e2e/
 ├── deep/
-│   ├── deep-helpers.ts          # Ember-specific helpers
-│   ├── ai-quality-assertions.ts # Response quality checks
-│   ├── chat-media-upload.spec.ts
-│   ├── chat-learning-path.spec.ts
-│   └── chat-url-import.spec.ts
+│   ├── deep-helpers.ts           # Ember-specific helpers
+│   ├── ai-quality-assertions.ts  # Response quality checks
+│   ├── chat-media-upload.spec.ts # Image/video upload → project
+│   ├── chat-url-import.spec.ts   # URL paste → project creation
+│   └── chat-learning-path.spec.ts # (planned)
 ```
 
 ---
@@ -286,12 +286,12 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 | Flow | File | Status |
 |------|------|--------|
 | Image upload → ownership → tool → project | `chat-media-upload.spec.ts` | ✅ |
+| URL import → ownership → project creation | `chat-url-import.spec.ts` | ✅ |
 
 ### To Be Tested
 
 | Flow | Priority | Notes |
 |------|----------|-------|
-| URL import (GitHub/YouTube) | High | User pastes URL → ownership question → project creation |
 | Learning path creation | High | Multi-turn: topic → clarifying questions → path created |
 | Avatar generation | Medium | "Make my avatar" → wizard opens → avatar generated |
 | Inline game launch | Medium | "Play a game" → game widget appears in chat |
