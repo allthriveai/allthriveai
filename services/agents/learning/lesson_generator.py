@@ -921,7 +921,15 @@ Remember to return valid JSON matching the required structure. Include a "title"
         User = get_user_model()
 
         # Validate exercise type
-        valid_types = {'terminal', 'code', 'ai_prompt'}
+        valid_types = {
+            'terminal',
+            'code',
+            'ai_prompt',  # Legacy types
+            'drag_sort',
+            'connect_nodes',
+            'code_walkthrough',
+            'timed_challenge',  # Interactive types
+        }
         if exercise_type not in valid_types:
             logger.error(f'Invalid exercise type: {exercise_type}')
             return None

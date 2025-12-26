@@ -684,7 +684,7 @@ class ConversationFeedbackView(APIView):
         """
         POST /api/v1/me/feedback/conversation/
 
-        Submit feedback on an Ember response.
+        Submit feedback on an Ava response.
 
         Request body:
         {
@@ -2438,7 +2438,15 @@ class RegenerateExerciseView(APIView):
 
         # Get and validate exercise type
         exercise_type = request.data.get('exercise_type', '')
-        valid_types = {'terminal', 'code', 'ai_prompt'}
+        valid_types = {
+            'terminal',
+            'code',
+            'ai_prompt',  # Legacy types
+            'drag_sort',
+            'connect_nodes',
+            'code_walkthrough',
+            'timed_challenge',  # Interactive types
+        }
 
         if exercise_type not in valid_types:
             return Response(
