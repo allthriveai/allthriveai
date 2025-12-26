@@ -975,7 +975,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   };
 
   // Handle regenerating just the exercise with a different type
-  const handleRegenerateExercise = async (exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review') => {
+  const handleRegenerateExercise = async (exerciseType: 'terminal' | 'code' | 'ai_prompt') => {
     if (!pathSlug) return;
 
     setIsRegeneratingExercise(true);

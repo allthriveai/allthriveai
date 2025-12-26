@@ -948,7 +948,7 @@ export interface RegenerateLessonRequest {
  * Request body for regenerating an exercise
  */
 export interface RegenerateExerciseRequest {
-  exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review';
+  exerciseType: 'terminal' | 'code' | 'ai_prompt';
 }
 
 /**

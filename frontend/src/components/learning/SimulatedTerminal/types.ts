@@ -5,7 +5,7 @@
  */
 import type { SkillLevel } from '@/services/personalization';
 
-export type ExerciseType = 'terminal' | 'git' | 'ai_prompt' | 'code_review';
+export type ExerciseType = 'terminal' | 'git' | 'ai_prompt' | 'code_review' | 'code';
 
 export interface ExerciseContentByLevel {
   instructions: string;
