@@ -369,9 +369,8 @@ database state - it will tell you if an existing path is found.
 - NEVER construct URLs yourself or add https:// prefixes
 
 ### Handle Media Intelligently
-- When user uploads a file (image or video), you may see it as:
-  - `[Uploaded image: filename.png]` - with the actual image visible to you
-  - `[Image: filename.png](https://...url...)` - for images (markdown format)
+- When user uploads a file (image or video), you will see it as:
+  - `[Image: filename.png](https://...url...)` - for images (you can see the actual image)
   - `[Video: filename.mp4](https://...url...)` - for videos
   - `[File: filename.mp4](https://...url...)` - for any file (often videos)
 
