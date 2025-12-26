@@ -983,7 +983,7 @@ class PipBattleImageGenerationTestCase(TestCase):
         self.assertIsNone(self.challenger_submission.generated_output_url)
         self.assertIsNone(self.pip_submission.generated_output_url)
 
-    @patch('core.battles.services.get_storage_service')
+    @patch('services.integrations.storage.storage_service.get_storage_service')
     @patch('services.ai.provider.AIProvider')
     @patch('core.battles.services.check_and_reserve_ai_request')
     def test_generate_image_for_challenger(self, mock_reserve, mock_ai_provider, mock_storage):
@@ -1008,7 +1008,7 @@ class PipBattleImageGenerationTestCase(TestCase):
         self.assertIsNotNone(image_url)
         self.assertEqual(image_url, 'https://example.com/image.png')
 
-    @patch('core.battles.services.get_storage_service')
+    @patch('services.integrations.storage.storage_service.get_storage_service')
     @patch('services.ai.provider.AIProvider')
     def test_generate_image_for_pip_no_quota_check(self, mock_ai_provider, mock_storage):
         """Test image generation for Pip doesn't check quota."""
