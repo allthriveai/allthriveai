@@ -408,10 +408,17 @@ def check_and_reserve_ai_request(
             return False, 'AI request limit exceeded and no tokens available'
 
     except Exception as e:
-        StructuredLogger.log_error(
+        # Critical failure - use alerting to catch systemic issues
+        StructuredLogger.log_critical_failure(
+            alert_type='credit_deduction_failure',
             message='Error in check_and_reserve_ai_request',
             error=e,
             user=user,
+            metadata={
+                'tokens_used': tokens_used,
+                'ai_provider': ai_provider,
+                'ai_model': ai_model,
+            },
             logger_instance=logger,
         )
         return False, f'Error checking quota: {str(e)}'
@@ -531,11 +538,18 @@ def deduct_tokens(user, amount: int, description: str = '', ai_provider: str = '
             return True
 
     except Exception as e:
-        StructuredLogger.log_error(
+        # Critical failure - use alerting to catch systemic issues
+        StructuredLogger.log_critical_failure(
+            alert_type='credit_deduction_failure',
             message='Failed to deduct tokens',
             error=e,
             user=user,
-            extra={'amount': amount},
+            metadata={
+                'amount': amount,
+                'ai_provider': ai_provider,
+                'ai_model': ai_model,
+                'description': description,
+            },
             logger_instance=logger,
         )
         return False
@@ -612,11 +626,18 @@ def reconcile_token_reservation(
             return True
 
     except Exception as e:
-        StructuredLogger.log_error(
+        # Critical failure - use alerting to catch systemic issues
+        StructuredLogger.log_critical_failure(
+            alert_type='credit_deduction_failure',
             message='Failed to reconcile token reservation',
             error=e,
             user=user,
-            extra={'reserved': reserved_amount, 'actual': actual_amount},
+            metadata={
+                'reserved': reserved_amount,
+                'actual': actual_amount,
+                'ai_provider': ai_provider,
+                'ai_model': ai_model,
+            },
             logger_instance=logger,
         )
         return False

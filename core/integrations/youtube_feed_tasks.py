@@ -5,6 +5,7 @@ import logging
 from celery import shared_task
 
 from core.integrations.youtube_feed_models import YouTubeFeedAgent
+from core.logging_utils import StructuredLogger, log_celery_task
 from services.integrations.youtube_feed import YouTubeFeedSyncService
 
 logger = logging.getLogger(__name__)
@@ -30,8 +31,24 @@ def sync_all_youtube_feed_agents_task(self):
 
         # Auto-recover agents in error status by resetting them to active
         # This allows transient errors (like quota limits) to auto-heal on the next sync
+        # IMPORTANT: Log original errors BEFORE clearing them for debugging
         error_agents = YouTubeFeedAgent.objects.filter(status=YouTubeFeedAgent.Status.ERROR)
         if error_agents.exists():
+            for agent in error_agents:
+                # Log the original error before clearing it (preserves root cause for debugging)
+                StructuredLogger.log_service_operation(
+                    service_name='YouTubeFeedSync',
+                    operation='auto_recovery',
+                    success=True,
+                    metadata={
+                        'agent_id': agent.id,
+                        'agent_name': agent.name,
+                        'channel_id': agent.channel_id,
+                        'original_error': agent.last_sync_error or 'unknown',
+                        'last_synced_at': agent.last_synced_at.isoformat() if agent.last_synced_at else None,
+                    },
+                    logger_instance=logger,
+                )
             count = error_agents.count()
             error_agents.update(status=YouTubeFeedAgent.Status.ACTIVE, last_sync_error='')
             logger.info(f'Auto-recovered {count} agents from error status')
@@ -50,11 +67,32 @@ def sync_all_youtube_feed_agents_task(self):
         # Sync all active agents
         results = YouTubeFeedSyncService.sync_all_active_agents()
 
-        logger.info(
-            f'YouTube feed sync complete: {results["agents_synced"]} agents, '
-            f'{results["total_created"]} created, {results["total_skipped"]} skipped, '
-            f'{results["total_errors"]} errors'
+        # Log sync results with structured logging
+        StructuredLogger.log_service_operation(
+            service_name='YouTubeFeedSync',
+            operation='sync_all_complete',
+            success=results['total_errors'] == 0,
+            metadata={
+                'agents_synced': results['agents_synced'],
+                'total_created': results['total_created'],
+                'total_skipped': results['total_skipped'],
+                'total_errors': results['total_errors'],
+            },
+            logger_instance=logger,
         )
+
+        # Alert if there were errors
+        if results['total_errors'] > 0:
+            StructuredLogger.log_critical_failure(
+                alert_type='sync_error',
+                message=f'YouTube feed sync completed with {results["total_errors"]} errors',
+                metadata={
+                    'service': 'youtube',
+                    'agents_synced': results['agents_synced'],
+                    'error_count': results['total_errors'],
+                },
+                logger_instance=logger,
+            )
 
         return {
             'success': True,
@@ -71,6 +109,7 @@ def sync_all_youtube_feed_agents_task(self):
 
 
 @shared_task(bind=True, max_retries=2, time_limit=600, soft_time_limit=540)
+@log_celery_task(service_name='YouTubeFeedSync')
 def sync_youtube_feed_agent_task(self, agent_id: int):
     """
     Sync a single YouTube feed agent.
@@ -87,11 +126,35 @@ def sync_youtube_feed_agent_task(self, agent_id: int):
 
         results = YouTubeFeedSyncService.sync_agent(agent)
 
-        logger.info(
-            f'YouTube feed agent sync complete: {agent.name} - '
-            f'{results["created"]} created, {results["updated"]} updated, '
-            f'{results["errors"]} errors'
+        # Log sync results with structured logging
+        StructuredLogger.log_service_operation(
+            service_name='YouTubeFeedSync',
+            operation='agent_sync_complete',
+            success=results['errors'] == 0,
+            metadata={
+                'agent_id': agent_id,
+                'agent_name': agent.name,
+                'created': results['created'],
+                'updated': results['updated'],
+                'errors': results['errors'],
+            },
+            logger_instance=logger,
         )
+
+        # Alert if there were errors
+        if results['errors'] > 0:
+            StructuredLogger.log_critical_failure(
+                alert_type='sync_error',
+                message=f'YouTube agent sync failed: {agent.name}',
+                metadata={
+                    'service': 'youtube',
+                    'agent_id': agent_id,
+                    'agent_name': agent.name,
+                    'error_count': results['errors'],
+                    'error_messages': results['error_messages'][:3],  # First 3 errors
+                },
+                logger_instance=logger,
+            )
 
         return {
             'success': results['errors'] == 0,
@@ -104,7 +167,13 @@ def sync_youtube_feed_agent_task(self, agent_id: int):
         }
 
     except YouTubeFeedAgent.DoesNotExist:
-        logger.error(f'YouTube feed agent {agent_id} not found')
+        StructuredLogger.log_service_operation(
+            service_name='YouTubeFeedSync',
+            operation='agent_not_found',
+            success=False,
+            metadata={'agent_id': agent_id},
+            logger_instance=logger,
+        )
         return {'success': False, 'error': f'Agent {agent_id} not found'}
 
     except Exception as e:

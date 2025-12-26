@@ -24,8 +24,60 @@ from django.db.models import F
 from django.utils import timezone
 
 from core.community.models import Message, Room, RoomMembership
+from core.logging_utils import StructuredLogger
 
 logger = logging.getLogger(__name__)
+
+
+def _log_community_event(
+    event: str,
+    room_id: str | int | None = None,
+    user_id: int | str | None = None,
+    message_id: str | None = None,
+    extra: dict | None = None,
+    level: str = 'info',
+) -> None:
+    """
+    Log community messaging events with full audit trail.
+
+    This provides visibility into community messaging operations in the admin logs.
+
+    Args:
+        event: Event type (e.g., 'room_joined', 'message_created', 'typing')
+        room_id: Room or thread ID
+        user_id: User ID
+        message_id: Message ID (if applicable)
+        extra: Additional context (content_preview, etc.)
+        level: Log level (info, warning, error)
+    """
+    metadata = {
+        'room_id': str(room_id) if room_id else None,
+        'user_id': str(user_id) if user_id else None,
+        'message_id': message_id,
+    }
+    if extra:
+        metadata.update(extra)
+
+    # Remove None values
+    metadata = {k: v for k, v in metadata.items() if v is not None}
+
+    if level == 'error':
+        StructuredLogger.log_service_operation(
+            service_name='CommunityMessaging',
+            operation=event,
+            success=False,
+            metadata=metadata,
+            logger_instance=logger,
+        )
+    else:
+        StructuredLogger.log_service_operation(
+            service_name='CommunityMessaging',
+            operation=event,
+            success=True,
+            metadata=metadata,
+            logger_instance=logger,
+        )
+
 
 # Constants
 MAX_MESSAGE_LENGTH = 4000
@@ -90,7 +142,13 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
         # Track presence
         await self._set_user_online(True)
 
-        logger.info(f'Community WebSocket connected: user={self.user.id}, room={self.room_id}')
+        # Audit trail: room joined
+        _log_community_event(
+            event='room_joined',
+            room_id=self.room_id,
+            user_id=self.user.id,
+            extra={'room_name': room.name, 'room_type': room.room_type},
+        )
 
         # Send initial state
         await self._send_room_state()
@@ -125,10 +183,13 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                 },
             )
 
-        logger.info(
-            f'Community WebSocket disconnected: user={getattr(self.user, "id", "unknown")}, '
-            f'room={getattr(self, "room_id", "unknown")}, code={close_code}'
-        )
+            # Audit trail: room left
+            _log_community_event(
+                event='room_left',
+                room_id=self.room_id,
+                user_id=self.user.id,
+                extra={'close_code': close_code},
+            )
 
     async def receive(self, text_data: str):
         """Handle incoming WebSocket messages from client."""
@@ -167,9 +228,21 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
                 await self._send_error(f'Unknown message type: {message_type}')
 
         except json.JSONDecodeError:
+            _log_community_event(
+                event='invalid_json',
+                room_id=getattr(self, 'room_id', None),
+                user_id=getattr(self.user, 'id', None),
+                level='warning',
+            )
             await self._send_error('Invalid JSON format')
         except Exception as e:
-            logger.error(f'Error processing community WebSocket message: {e}', exc_info=True)
+            _log_community_event(
+                event='message_error',
+                room_id=getattr(self, 'room_id', None),
+                user_id=getattr(self.user, 'id', None),
+                extra={'error': str(e)},
+                level='error',
+            )
             await self._send_error('Failed to process message')
 
     async def room_event(self, event: dict[str, Any]):
@@ -192,6 +265,12 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
 
         # Rate limiting
         if not await self._check_rate_limit():
+            _log_community_event(
+                event='rate_limit_exceeded',
+                room_id=self.room_id,
+                user_id=self.user.id,
+                level='warning',
+            )
             await self._send_error('Rate limit exceeded. Please slow down.')
             return
 
@@ -212,6 +291,19 @@ class CommunityRoomConsumer(AsyncWebsocketConsumer):
             content=content,
             reply_to_id=data.get('reply_to_id'),
             attachments=data.get('attachments', []),
+        )
+
+        # Audit trail: message created with truncated content preview
+        _log_community_event(
+            event='message_created',
+            room_id=self.room_id,
+            user_id=self.user.id,
+            message_id=str(message.id),
+            extra={
+                'content_preview': content[:100] + '...' if len(content) > 100 else content,
+                'has_attachments': bool(data.get('attachments')),
+                'is_reply': bool(data.get('reply_to_id')),
+            },
         )
 
         # Broadcast to room
@@ -537,7 +629,12 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
-        logger.info(f'DM WebSocket connected: user={self.user.id}, thread={self.thread_id}')
+        # Audit trail: DM thread joined
+        _log_community_event(
+            event='dm_joined',
+            room_id=self.thread_id,
+            user_id=self.user.id,
+        )
 
         # Send initial message history
         await self._send_dm_state()
@@ -547,10 +644,14 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
-        logger.info(
-            f'DM WebSocket disconnected: user={getattr(self.user, "id", "unknown")}, '
-            f'thread={getattr(self, "thread_id", "unknown")}, code={close_code}'
-        )
+        if hasattr(self, 'thread_id') and hasattr(self, 'user') and self.user.is_authenticated:
+            # Audit trail: DM thread left
+            _log_community_event(
+                event='dm_left',
+                room_id=self.thread_id,
+                user_id=self.user.id,
+                extra={'close_code': close_code},
+            )
 
     async def receive(self, text_data: str):
         """Handle incoming WebSocket messages."""
@@ -582,9 +683,21 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
                 await self._send_error(f'Unknown message type: {message_type}')
 
         except json.JSONDecodeError:
+            _log_community_event(
+                event='invalid_json',
+                room_id=getattr(self, 'thread_id', None),
+                user_id=getattr(self.user, 'id', None),
+                level='warning',
+            )
             await self._send_error('Invalid JSON format')
         except Exception as e:
-            logger.error(f'Error processing DM WebSocket message: {e}', exc_info=True)
+            _log_community_event(
+                event='dm_error',
+                room_id=getattr(self, 'thread_id', None),
+                user_id=getattr(self.user, 'id', None),
+                extra={'error': str(e)},
+                level='error',
+            )
             await self._send_error('Failed to process message')
 
     async def dm_event(self, event: dict[str, Any]):
@@ -606,6 +719,17 @@ class DirectMessageConsumer(AsyncWebsocketConsumer):
 
         # Create message
         message = await self._create_dm_message(content)
+
+        # Audit trail: DM created with truncated content preview
+        _log_community_event(
+            event='dm_created',
+            room_id=self.thread_id,
+            user_id=self.user.id,
+            message_id=str(message.id),
+            extra={
+                'content_preview': content[:100] + '...' if len(content) > 100 else content,
+            },
+        )
 
         # Broadcast to thread
         await self.channel_layer.group_send(

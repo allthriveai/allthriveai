@@ -464,7 +464,7 @@ IMPORTANT: Return your response as valid JSON matching this exact structure:
     "examples": [
         {
             "title": "Example Name",
-            "description": "Use markdown formatting: paragraphs, **bold**, bullets, lists."
+            "description": "Use markdown formatting: paragraphs, **bold**, bullets, code blocks, etc."
         }
     ],
     "practice_prompt": "An ACTIONABLE exercise the user can do RIGHT NOW. See examples below.",

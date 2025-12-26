@@ -25,6 +25,7 @@ from core.integrations.utils import (
     error_response,
     release_import_lock,
 )
+from core.logging_utils import StructuredLogger
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,19 @@ def import_from_url(request):
                 is_private=request.data.get('is_private', True),
             )
 
-            logger.info(f'Queued {integration.display_name} import task {task.id} for user {request.user.username}')
+            # Audit trail: import task queued
+            StructuredLogger.log_service_operation(
+                service_name='IntegrationImport',
+                operation='import_queued',
+                success=True,
+                metadata={
+                    'user_id': request.user.id,
+                    'task_id': task.id,
+                    'platform': integration.name,
+                    'url': url,
+                },
+                logger_instance=logger,
+            )
 
             # Extract identifier for display
             identifier_info = integration.extract_project_identifier(url)
@@ -206,7 +219,17 @@ def import_from_url(request):
             raise  # Re-raise to be caught by outer exception handler
 
     except Exception as e:
-        logger.error(f'Failed to import from URL: {e}', exc_info=True)
+        # Audit trail: import failed
+        StructuredLogger.log_critical_failure(
+            alert_type='sync_error',
+            message='Failed to import from URL',
+            error=e,
+            user=request.user,
+            metadata={
+                'url': url if 'url' in dir() else None,
+            },
+            logger_instance=logger,
+        )
 
         return error_response(
             error='Something went wrong while starting the import.',
@@ -334,8 +357,20 @@ def scrape_url_for_project(request):
         )
 
     try:
-        logger.info(f'User {request.user.username} scraping URL: {url}')
         project_data = scrape_url(url)
+
+        # Audit trail: scrape success
+        StructuredLogger.log_service_operation(
+            service_name='IntegrationImport',
+            operation='url_scraped',
+            success=True,
+            metadata={
+                'user_id': request.user.id,
+                'url': url,
+                'has_title': bool(project_data.title),
+            },
+            logger_instance=logger,
+        )
 
         return Response(
             {

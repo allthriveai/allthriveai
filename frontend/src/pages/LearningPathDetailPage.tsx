@@ -38,6 +38,8 @@ import {
   faCheck,
   faCheckCircle,
   faTrophy,
+  faExpand,
+  faCompress,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -927,7 +929,38 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
 
           {/* Main explanation */}
           <div className="learning-prose">
-            <ReactMarkdown>{content.explanation}</ReactMarkdown>
+            <ReactMarkdown
+              components={{
+                code({ node: _node, className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const codeString = String(children).replace(/\n$/, '');
+                  // If it's a fenced code block with language OR looks like code, use SyntaxHighlighter
+                  const isCodeBlock = match || (codeString.includes('\n') && !className?.includes('inline'));
+                  if (isCodeBlock) {
+                    const language = match ? match[1] : detectLanguage(codeString);
+                    return (
+                      <SyntaxHighlighter
+                        language={language}
+                        style={oneDark}
+                        customStyle={{
+                          margin: 0,
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem',
+                          padding: '1rem',
+                        }}
+                        showLineNumbers={codeString.split('\n').length > 3}
+                      >
+                        {codeString}
+                      </SyntaxHighlighter>
+                    );
+                  }
+                  // Inline code
+                  return <code className={className} {...props}>{children}</code>;
+                },
+              }}
+            >
+              {content.explanation}
+            </ReactMarkdown>
           </div>
 
           {/* Examples */}
@@ -940,7 +973,38 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
               {content.examples.map((example, i) => (
                 <div key={i} className="bg-slate-100 dark:bg-white/5 rounded-lg p-4">
                   <h5 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{example.title}</h5>
-                  <p className="text-slate-600 dark:text-gray-400 text-base mb-3">{example.description}</p>
+                  <div className="learning-prose text-slate-600 dark:text-gray-400 text-base mb-3">
+                    <ReactMarkdown
+                      components={{
+                        code({ className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          const codeString = String(children).replace(/\n$/, '');
+                          const isCodeBlock = match || (codeString.includes('\n') && !className?.includes('inline'));
+                          if (isCodeBlock) {
+                            const language = match ? match[1] : detectLanguage(codeString);
+                            return (
+                              <SyntaxHighlighter
+                                language={language}
+                                style={oneDark}
+                                customStyle={{
+                                  margin: 0,
+                                  borderRadius: '0.5rem',
+                                  fontSize: '0.875rem',
+                                  padding: '1rem',
+                                }}
+                                showLineNumbers={codeString.split('\n').length > 3}
+                              >
+                                {codeString}
+                              </SyntaxHighlighter>
+                            );
+                          }
+                          return <code className={className} {...props}>{children}</code>;
+                        },
+                      }}
+                    >
+                      {example.description}
+                    </ReactMarkdown>
+                  </div>
                   {example.code && (
                     <SyntaxHighlighter
                       language={detectLanguage(example.code)}
@@ -1289,6 +1353,9 @@ export default function LearningPathDetailPage() {
   const [progressData, setProgressData] = useState<PathProgress | null>(null);
   const [justCompletedLesson, setJustCompletedLesson] = useState<number | null>(null);
 
+  // Fullscreen mode for curriculum
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // Auto-dismiss celebration after 5 seconds (with proper cleanup to prevent memory leaks)
   useEffect(() => {
     if (justCompletedLesson !== null) {
@@ -1576,10 +1643,20 @@ export default function LearningPathDetailPage() {
 
               {/* Split-pane: Curriculum left, Chat right - fixed height with inner scroll */}
               <div className="flex-1 flex min-h-0 overflow-hidden">
-                {/* LEFT: Curriculum (scrollable) */}
-                <div className="flex-1 overflow-y-auto min-h-0">
+                {/* LEFT: Curriculum (scrollable) - expands to full width when fullscreen */}
+                <div className={`flex-1 overflow-y-auto min-h-0 ${isFullscreen ? 'max-w-4xl mx-auto' : ''}`}>
                   <div className="px-4 sm:px-6 py-4">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Curriculum</h2>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Curriculum</h2>
+                      <button
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                        title={isFullscreen ? 'Exit fullscreen' : 'Expand to fullscreen'}
+                      >
+                        <FontAwesomeIcon icon={isFullscreen ? faCompress : faExpand} className="text-xs" />
+                        <span>{isFullscreen ? 'Exit Focus' : 'Focus Mode'}</span>
+                      </button>
+                    </div>
                     <div className="space-y-3">
                       {path.curriculum?.map((item, index) => {
                         // Get progress for this lesson
@@ -1625,14 +1702,16 @@ export default function LearningPathDetailPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: Sage Chat Panel (desktop only - hidden on mobile) */}
-                <div className="hidden lg:flex w-[480px] border-l border-slate-200 dark:border-white/10 flex-shrink-0 h-full min-h-0 flex-col">
-                  <LearningChatPanel
-                    context={currentLessonContext}
-                    pathTitle={path.title}
-                    pathSlug={slug || ''}
-                  />
-                </div>
+                {/* RIGHT: Sage Chat Panel (desktop only - hidden on mobile or in fullscreen mode) */}
+                {!isFullscreen && (
+                  <div className="hidden lg:flex w-[480px] border-l border-slate-200 dark:border-white/10 flex-shrink-0 h-full min-h-0 flex-col">
+                    <LearningChatPanel
+                      context={currentLessonContext}
+                      pathTitle={path.title}
+                      pathSlug={slug || ''}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Mobile: Sage bottom sheet */}

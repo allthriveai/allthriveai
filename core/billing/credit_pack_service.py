@@ -154,11 +154,18 @@ class CreditPackService:
                 return True
 
         except Exception as e:
-            StructuredLogger.log_error(
+            # Critical failure - use alerting to catch systemic issues
+            StructuredLogger.log_critical_failure(
+                alert_type='credit_deduction_failure',
                 message='Failed to deduct credit pack credits',
                 error=e,
                 user=user,
-                extra={'amount': amount},
+                metadata={
+                    'amount': amount,
+                    'ai_provider': ai_provider,
+                    'ai_model': ai_model,
+                    'description': description,
+                },
                 logger_instance=logger,
             )
             return False

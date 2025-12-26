@@ -11,6 +11,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from core.logging_utils import StructuredLogger
 from core.taxonomy.models import UserInteraction
 from core.thrive_circle.signals import track_search_used
 from core.throttles import AuthenticatedProjectsThrottle, ProjectLikeThrottle, PublicProjectsThrottle
@@ -138,6 +139,20 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Bind project to the authenticated user
         project = serializer.save(user=request.user)
 
+        # Audit trail: project created
+        StructuredLogger.log_service_operation(
+            service_name='ProjectAPI',
+            operation='project_created',
+            success=True,
+            metadata={
+                'user_id': request.user.id,
+                'project_id': project.id,
+                'project_title': project.title[:100] if project.title else None,
+                'project_type': project.type,
+            },
+            logger_instance=logger,
+        )
+
         # Auto-assign category if project doesn't have one
         if not project.categories.exists():
             try:
@@ -145,9 +160,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
                 auto_assign_category_to_project(project)
             except Exception as e:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.warning(f'Failed to auto-assign category to project {project.id}: {e}')
 
         # Invalidate user projects cache
@@ -332,7 +344,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if instance.type == Project.ProjectType.REDDIT_THREAD and hasattr(instance, 'reddit_thread'):
             self._record_reddit_thread_deletion(instance, self.request.user)
 
+        project_id = instance.id
+        project_title = instance.title
         instance.delete()
+
+        # Audit trail: project deleted
+        StructuredLogger.log_service_operation(
+            service_name='ProjectAPI',
+            operation='project_deleted',
+            success=True,
+            metadata={
+                'deleted_by': self.request.user.id,
+                'project_owner': user.id,
+                'project_id': project_id,
+                'project_title': project_title[:100] if project_title else None,
+                'is_admin_delete': self.request.user.role == 'admin' and user != self.request.user,
+            },
+            logger_instance=logger,
+        )
+
         # Invalidate cache after delete
         self._invalidate_user_cache(user)
 
@@ -438,9 +468,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Invalidate cache
         self._invalidate_user_cache(project.user)
 
-        logger.info(
-            f'Admin {request.user.username} manually edited tags for project {project.id} '
-            f'({project.user.username}/{project.slug})'
+        # Audit trail: admin tag edit
+        StructuredLogger.log_service_operation(
+            service_name='ProjectAPI',
+            operation='admin_tags_updated',
+            success=True,
+            metadata={
+                'admin_id': request.user.id,
+                'admin_username': request.user.username,
+                'project_id': project.id,
+                'project_owner': project.user.username,
+                'updated_fields': list(set(request.data.keys()) & {'tools', 'categories', 'topics'}),
+            },
+            logger_instance=logger,
         )
 
         # Return updated project
@@ -548,11 +588,23 @@ class ProjectViewSet(viewsets.ModelViewSet):
             project.save()
             # Invalidate cache
             self._invalidate_user_cache(project.user)
-            edit_type = 'Owner' if is_owner and not is_admin else 'Admin'
-            logger.info(
-                f'{edit_type} {editor_username} edited project {project.id} '
-                f'({project.user.username}/{project.slug})'
-                f'{" (impersonating " + request.user.username + ")" if is_impersonating else ""}'
+
+            # Audit trail: project edit
+            StructuredLogger.log_service_operation(
+                service_name='ProjectAPI',
+                operation='project_edited',
+                success=True,
+                metadata={
+                    'editor_id': request.user.id,
+                    'editor_username': editor_username,
+                    'project_id': project.id,
+                    'project_owner': project.user.username,
+                    'is_owner_edit': is_owner and not is_admin,
+                    'is_admin_edit': is_admin,
+                    'is_impersonating': is_impersonating,
+                    'updated_fields': [k for k in ['title', 'description', 'regenerate_image'] if k in request.data],
+                },
+                logger_instance=logger,
             )
 
         # Return updated project
@@ -716,7 +768,23 @@ CRITICAL REQUIREMENTS:
 
         # Count projects before delete (delete() returns total including cascade-deleted related objects)
         project_count = queryset.count()
+        deleted_ids = list(queryset.values_list('id', flat=True))
         queryset.delete()
+
+        # Audit trail: bulk delete
+        if project_count > 0:
+            StructuredLogger.log_service_operation(
+                service_name='ProjectAPI',
+                operation='bulk_delete',
+                success=True,
+                metadata={
+                    'deleted_by': request.user.id,
+                    'deleted_count': project_count,
+                    'project_ids': deleted_ids[:20],  # Limit to first 20 to avoid log bloat
+                    'is_admin': request.user.role == 'admin',
+                },
+                logger_instance=logger,
+            )
 
         # Invalidate cache for all affected users
         if project_count > 0:

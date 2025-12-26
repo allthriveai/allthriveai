@@ -1,13 +1,74 @@
 """
 Secure logging utilities with user isolation and PII protection.
+
+This module provides:
+- SecureLogger: PII-safe logging with automatic masking
+- StructuredLogger: Structured logging for errors, DB ops, API calls, service operations
+- AlertThreshold: Threshold-based alerting for critical failures
+- log_celery_task: Decorator for Celery task logging
 """
 
 import logging
+import time
+from dataclasses import dataclass
+from functools import wraps
 from typing import Any
 
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Alert Thresholds Configuration
+# =============================================================================
+
+
+@dataclass
+class AlertThreshold:
+    """Configuration for threshold-based alerts."""
+
+    name: str
+    threshold: int
+    window_seconds: int
+    cooldown_seconds: int = 1800  # 30 min default cooldown
+    severity: str = 'warning'  # warning, critical, emergency
+
+
+# Alert configurations - tune these based on operational experience
+ALERT_THRESHOLDS = {
+    'credit_deduction_failure': AlertThreshold(
+        name='Credit Deduction Failures',
+        threshold=3,
+        window_seconds=300,  # 5 minutes
+        severity='critical',
+    ),
+    'sync_error': AlertThreshold(
+        name='Agent Sync Errors',
+        threshold=5,
+        window_seconds=900,  # 15 minutes
+        severity='warning',
+    ),
+    'llm_failure': AlertThreshold(
+        name='LLM Processing Failures',
+        threshold=5,
+        window_seconds=300,  # 5 minutes
+        severity='critical',
+    ),
+    'stripe_webhook_failure': AlertThreshold(
+        name='Stripe Webhook Failures',
+        threshold=2,
+        window_seconds=300,  # 5 minutes
+        severity='emergency',
+    ),
+    'websocket_error': AlertThreshold(
+        name='WebSocket Errors',
+        threshold=10,
+        window_seconds=300,  # 5 minutes
+        severity='warning',
+    ),
+}
 
 
 class SecureLogger:
@@ -487,6 +548,171 @@ class StructuredLogger:
             context['validation_errors'] = SecureLogger._sanitize_data(errors)
 
         log.warning(message, extra=context)
+
+    @staticmethod
+    def log_critical_failure(
+        alert_type: str,
+        message: str,
+        error: Exception | None = None,
+        user=None,
+        metadata: dict | None = None,
+        logger_instance: logging.Logger | None = None,
+    ) -> bool:
+        """
+        Log a critical failure and trigger alert if threshold exceeded.
+
+        This method combines error logging with threshold-based alerting.
+        When the number of failures exceeds the configured threshold within
+        the time window, a CRITICAL log is emitted for admin visibility.
+
+        Args:
+            alert_type: Type of failure (must match ALERT_THRESHOLDS key)
+            message: Description of the failure
+            error: Exception that was raised (optional)
+            user: User instance (optional)
+            metadata: Additional context (will be sanitized)
+            logger_instance: Specific logger to use
+
+        Returns:
+            True if alert threshold was exceeded and alert was triggered
+
+        Example:
+            StructuredLogger.log_critical_failure(
+                alert_type='credit_deduction_failure',
+                message='Credit deduction failed',
+                error=e,
+                user=user,
+                metadata={'amount': 100, 'provider': 'openai'}
+            )
+        """
+        log = logger_instance or logger
+        safe_metadata = SecureLogger._sanitize_data(metadata) if metadata else {}
+
+        # Build context
+        context = {'alert_type': alert_type, **safe_metadata}
+        if user and hasattr(user, 'id'):
+            context['user_id'] = user.id
+
+        # Always log the error
+        error_msg = f': {type(error).__name__}: {str(error)}' if error else ''
+        log.error(f'[CRITICAL] {message}{error_msg}', exc_info=error, extra=context)
+
+        # Check if alert type is configured
+        if alert_type not in ALERT_THRESHOLDS:
+            log.warning(f'Unknown alert type: {alert_type}')
+            return False
+
+        config = ALERT_THRESHOLDS[alert_type]
+        cache_key = f'alert_count:{alert_type}'
+        cooldown_key = f'alert_cooldown:{alert_type}'
+
+        # Increment failure counter
+        try:
+            count = cache.incr(cache_key)
+        except ValueError:
+            # Key doesn't exist, create it
+            cache.set(cache_key, 1, timeout=config.window_seconds)
+            count = 1
+
+        # Check threshold and cooldown
+        if count >= config.threshold and not cache.get(cooldown_key):
+            # Trigger alert
+            log.critical(
+                f'[ALERT:{config.severity.upper()}] {config.name}: ' f'{count} failures in {config.window_seconds}s',
+                extra={
+                    'severity': config.severity,
+                    'count': count,
+                    'threshold': config.threshold,
+                    **context,
+                },
+            )
+            # Set cooldown to prevent alert spam
+            cache.set(cooldown_key, True, timeout=config.cooldown_seconds)
+            # Reset counter after alert
+            cache.delete(cache_key)
+            return True
+
+        return False
+
+
+# =============================================================================
+# Celery Task Logging Decorator
+# =============================================================================
+
+
+def log_celery_task(service_name: str, track_duration: bool = True):
+    """
+    Decorator for Celery tasks that automatically logs start, success, and failure.
+
+    This decorator wraps Celery tasks to provide consistent logging without
+    modifying the task logic. It logs:
+    - Task start with task_id
+    - Task completion with duration
+    - Task failure with error details
+
+    Args:
+        service_name: Name of the service (e.g., 'YouTubeFeedSync', 'RedditSync')
+        track_duration: Whether to track and log task duration (default: True)
+
+    Example:
+        @shared_task(bind=True, max_retries=3)
+        @log_celery_task(service_name='YouTubeFeedSync')
+        def sync_youtube_feed_agent_task(self, agent_id: int):
+            # ... task logic ...
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Extract task_id from Celery task instance (first arg when bind=True)
+            task_id = 'unknown'
+            if args and hasattr(args[0], 'request'):
+                task_request = args[0].request
+                if hasattr(task_request, 'id'):
+                    task_id = task_request.id
+
+            start_time = time.time()
+
+            # Log task start
+            StructuredLogger.log_service_operation(
+                service_name=service_name,
+                operation=f'{func.__name__}_started',
+                success=True,
+                metadata={'task_id': task_id},
+            )
+
+            try:
+                result = func(*args, **kwargs)
+                duration_ms = (time.time() - start_time) * 1000
+
+                # Log task success
+                StructuredLogger.log_service_operation(
+                    service_name=service_name,
+                    operation=f'{func.__name__}_completed',
+                    success=True,
+                    duration_ms=duration_ms if track_duration else None,
+                    metadata={'task_id': task_id},
+                )
+                return result
+
+            except Exception as e:
+                duration_ms = (time.time() - start_time) * 1000
+
+                # Log task failure
+                StructuredLogger.log_error(
+                    message=f'{func.__name__} failed',
+                    error=e,
+                    extra={
+                        'task_id': task_id,
+                        'service': service_name,
+                        'duration_ms': round(duration_ms, 2),
+                    },
+                )
+                raise
+
+        return wrapper
+
+    return decorator
 
 
 def get_client_ip(request) -> str | None:

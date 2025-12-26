@@ -546,6 +546,20 @@ Focus on visual impact and artistic interpretation."""
         if error:
             return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Audit trail: battle saved to profile
+        StructuredLogger.log_service_operation(
+            service_name='BattleAPI',
+            operation='battle_saved_to_profile',
+            success=True,
+            metadata={
+                'user_id': request.user.id,
+                'battle_id': battle.id,
+                'project_id': project.id,
+                'won': won,
+                'is_tie': is_tie,
+            },
+        )
+
         return Response(
             {
                 'project_id': project.id,
@@ -619,6 +633,20 @@ Focus on visual impact and artistic interpretation."""
 
             except PromptBattle.DoesNotExist:
                 failed.append({'id': battle_id, 'reason': 'Battle not found'})
+
+        # Audit trail: bulk delete
+        if deleted_count > 0:
+            StructuredLogger.log_service_operation(
+                service_name='BattleAPI',
+                operation='bulk_delete',
+                success=True,
+                metadata={
+                    'user_id': user.id,
+                    'deleted_count': deleted_count,
+                    'failed_count': len(failed),
+                    'battle_ids': battle_ids[:20],  # Limit to first 20
+                },
+            )
 
         return Response(
             {
@@ -916,6 +944,19 @@ def generate_battle_link(request):
         sender=request.user,
         recipient=None,  # Will be set when user accepts
         invitation_type=InvitationType.LINK,
+    )
+
+    # Audit trail: battle link generated
+    StructuredLogger.log_service_operation(
+        service_name='BattleAPI',
+        operation='battle_link_generated',
+        success=True,
+        metadata={
+            'user_id': request.user.id,
+            'battle_id': battle.id,
+            'category_id': category_id,
+            'prompt_id': prompt.id,
+        },
     )
 
     serializer = BattleInvitationSerializer(invitation)

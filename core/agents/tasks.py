@@ -27,6 +27,7 @@ from core.billing.utils import (
     get_subscription_status,
     reconcile_token_reservation,
 )
+from core.logging_utils import StructuredLogger
 from services.agents.auth.checkpointer import cache_checkpoint
 from services.ai import AIProvider
 from services.integrations.storage import StorageService
@@ -222,7 +223,17 @@ def process_chat_message_task(
         # This prevents TOCTOU race conditions where concurrent requests could exceed quota
         can_request, quota_reason = check_and_reserve_ai_request(user)
         if not can_request:
-            logger.warning(f'User {user_id} quota exceeded: {quota_reason}')
+            StructuredLogger.log_service_operation(
+                service_name='AgentChat',
+                operation='quota_exceeded',
+                success=False,
+                metadata={
+                    'user_id': user_id,
+                    'conversation_id': conversation_id,
+                    'quota_reason': quota_reason,
+                },
+                logger_instance=logger,
+            )
             # Get subscription status for frontend to show upgrade options
             subscription_status = get_subscription_status(user)
 
@@ -253,7 +264,17 @@ def process_chat_message_task(
         prompt_filter = PromptInjectionFilter()
         is_safe, reason = prompt_filter.check_input(message)
         if not is_safe:
-            logger.warning(f'Prompt injection detected: user_id={user_id}, reason={reason}')
+            StructuredLogger.log_service_operation(
+                service_name='AgentChat',
+                operation='prompt_injection_blocked',
+                success=False,
+                metadata={
+                    'user_id': user_id,
+                    'conversation_id': conversation_id,
+                    'block_reason': reason,
+                },
+                logger_instance=logger,
+            )
             async_to_sync(channel_layer.group_send)(
                 channel_name,
                 {
@@ -380,7 +401,18 @@ def process_chat_message_task(
 
     except TRANSIENT_ERRORS as e:
         # Transient errors (connection, timeout) - retry with exponential backoff
-        logger.warning(f'Transient error processing message, will retry: {e}')
+        StructuredLogger.log_service_operation(
+            service_name='AgentChat',
+            operation='transient_error',
+            success=False,
+            metadata={
+                'user_id': user_id,
+                'conversation_id': conversation_id,
+                'error_type': type(e).__name__,
+                'retry_attempt': self.request.retries,
+            },
+            logger_instance=logger,
+        )
         MetricsCollector.record_circuit_breaker_failure('langgraph_agent')
 
         try:
@@ -399,7 +431,18 @@ def process_chat_message_task(
 
     except Exception as e:
         # Non-recoverable errors - don't retry, notify user
-        logger.error(f'Failed to process message (non-recoverable): {e}', exc_info=True)
+        StructuredLogger.log_critical_failure(
+            alert_type='llm_failure',
+            message='Non-recoverable LLM processing failure',
+            error=e,
+            user=user if 'user' in dir() else None,
+            metadata={
+                'user_id': user_id,
+                'conversation_id': conversation_id,
+                'error_type': type(e).__name__,
+            },
+            logger_instance=logger,
+        )
         MetricsCollector.record_circuit_breaker_failure('langgraph_agent')
 
         # Get user-friendly error message
@@ -1105,7 +1148,20 @@ def _process_image_generation(
             )
             return {'image_generated': False, 'session_id': session.id}
 
-        logger.info(f'Image generated and uploaded: {image_url}')
+        # Structured logging for image generation success
+        StructuredLogger.log_service_operation(
+            service_name='ImageGeneration',
+            operation='generate_success',
+            success=True,
+            metadata={
+                'user_id': user.id,
+                'conversation_id': conversation_id,
+                'session_id': session.id,
+                'image_size_bytes': len(image_bytes),
+                'latency_ms': latency_ms,
+            },
+            logger_instance=logger,
+        )
 
         # Track AI usage for image generation
         try:
@@ -1177,7 +1233,18 @@ def _process_image_generation(
         return {'image_generated': True, 'image_url': image_url, 'session_id': session.id}
 
     except Exception as e:
-        logger.error(f'Image generation failed: {e}', exc_info=True)
+        # Structured logging for image generation failure
+        StructuredLogger.log_critical_failure(
+            alert_type='llm_failure',
+            message='Image generation failed',
+            error=e,
+            user=user,
+            metadata={
+                'conversation_id': conversation_id,
+                'session_id': session.id if 'session' in dir() else None,
+            },
+            logger_instance=logger,
+        )
 
         # Check for content filter errors from Azure OpenAI
         error_str = str(e)
