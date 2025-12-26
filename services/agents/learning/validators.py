@@ -139,21 +139,52 @@ def validate_exercise(exercise_data: dict) -> LessonExercise | None:
         return None
 
     # Validate exercise type first (needed for conditional field validation)
-    valid_types = {'terminal', 'git', 'ai_prompt', 'code_review', 'code'}
+    valid_types = {
+        'terminal',
+        'git',
+        'ai_prompt',
+        'code_review',
+        'code',
+        # Interactive exercise types
+        'drag_sort',
+        'connect_nodes',
+        'code_walkthrough',
+        'timed_challenge',
+    }
     exercise_type = exercise_data.get('exercise_type', '').lower()
     if exercise_type not in valid_types:
         logger.warning(f'Invalid exercise type: {exercise_type}')
         return None
 
-    # Check required fields (different for code exercises)
+    # Check required fields (different for each exercise type)
+    interactive_types = {'drag_sort', 'connect_nodes', 'code_walkthrough', 'timed_challenge'}
+
     if exercise_type == 'code':
         required_fields = ['exercise_type', 'scenario', 'expected_patterns', 'content_by_level']
+    elif exercise_type in interactive_types:
+        # Interactive exercises have type-specific data fields instead of expected_inputs
+        required_fields = ['exercise_type', 'scenario', 'content_by_level']
     else:
         required_fields = ['exercise_type', 'scenario', 'expected_inputs', 'content_by_level']
 
     for field in required_fields:
         if field not in exercise_data:
             logger.warning(f'Missing required exercise field: {field}')
+            return None
+
+    # Validate type-specific data for interactive exercises
+    type_data_map = {
+        'drag_sort': 'drag_sort_data',
+        'connect_nodes': 'connect_nodes_data',
+        'code_walkthrough': 'code_walkthrough_data',
+        'timed_challenge': 'timed_challenge_data',
+    }
+
+    if exercise_type in interactive_types:
+        data_field = type_data_map[exercise_type]
+        type_data = exercise_data.get(data_field)
+        if not type_data or not isinstance(type_data, dict):
+            logger.warning(f'{exercise_type} exercise must have valid {data_field}')
             return None
 
     # Validate expected_inputs/expected_patterns based on exercise type
@@ -163,6 +194,10 @@ def validate_exercise(exercise_data: dict) -> LessonExercise | None:
             logger.warning('Code exercise must have at least one expected_pattern')
             return None
         expected_inputs = []  # Code exercises use expected_patterns instead
+    elif exercise_type in interactive_types:
+        # Interactive exercises don't use expected_inputs/patterns
+        expected_inputs = []
+        expected_patterns = None
     else:
         expected_inputs = exercise_data.get('expected_inputs', [])
         if not isinstance(expected_inputs, list) or len(expected_inputs) == 0:
@@ -228,6 +263,11 @@ def validate_exercise(exercise_data: dict) -> LessonExercise | None:
         exercise['language'] = exercise_data.get('language', 'python')
         exercise['starter_code'] = exercise_data.get('starter_code', '')
         exercise['expected_patterns'] = expected_patterns
+
+    # Add type-specific data fields for interactive exercises
+    if exercise_type in interactive_types:
+        data_field = type_data_map[exercise_type]
+        exercise[data_field] = exercise_data.get(data_field)
 
     return exercise
 
