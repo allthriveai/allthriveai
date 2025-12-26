@@ -654,10 +654,11 @@ Return ONLY the JSON, no other text.
                         )
                     return None
 
-            # Provider fallback chain: Gemini (primary) -> OpenAI (fallback)
+            # Provider fallback chain: OpenAI (primary) -> Gemini (fallback)
+            # GPT-4o is faster and more reliable for vision tasks
             providers_to_try = [
-                ('gemini', judging_model),  # Primary: Gemini with configured model
-                ('openai', 'gpt-4o'),  # Fallback: OpenAI GPT-4o with vision
+                ('openai', 'gpt-4o'),  # Primary: OpenAI GPT-4o with vision (fast, reliable)
+                ('gemini', judging_model),  # Fallback: Gemini (tends to timeout)
             ]
 
             result = None

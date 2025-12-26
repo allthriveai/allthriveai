@@ -71,8 +71,9 @@ help:
 	@echo "  make reset-db        - ⚠️  DANGER: Flush database and reseed"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test            - Run unit tests (backend + frontend)"
-	@echo "  make test-all        - Run ALL tests (unit + E2E + AI integration)"
+	@echo "  make test-quick      - Unit tests only (~5 min) - while coding"
+	@echo "  make test-ci         - Full CI suite (~20 min) - before PRs"
+	@echo "  make test-nightly    - Everything + deep AI (~45-60 min) - nightly/releases"
 	@echo "  make test-backend    - Run all backend tests"
 	@echo "  make test-frontend   - Run all frontend tests"
 	@echo "  make test-backend-e2e - Run backend E2E tests (prompt battles)"
@@ -481,10 +482,20 @@ reset-db:
 	@echo "✓ Database reset complete with initial data!"
 
 # Testing commands
-test: test-backend test-frontend
-	@echo "Unit tests completed!"
+# Three main test commands:
+#   test-quick   - Unit tests only (~5 min) - while coding
+#   test-ci      - Full CI suite (~20 min) - before PRs
+#   test-nightly - Everything + deep AI (~45-60 min) - nightly/releases
 
-test-all:
+test-quick: test-backend test-frontend
+	@echo "Quick unit tests completed!"
+
+# Aliases for backwards compatibility
+test: test-quick
+test-all: test-ci
+test-everything: test-nightly
+
+test-ci:
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════════════╗"
 	@echo "║                    RUNNING ALL TESTS                             ║"
@@ -528,6 +539,25 @@ test-all:
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════════════╗"
 	@echo "║                    ✅ ALL TESTS PASSED                            ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+
+# Nightly: Everything including deep AI tests (~45-60 min)
+test-nightly:
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║             NIGHTLY TESTS (Unit + E2E + Deep AI)                 ║"
+	@echo "║              Estimated time: 45-60 minutes                       ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@make test-ci
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "STEP 8/8: Deep E2E Tests (Real AI Calls)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@make test-e2e-deep
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║              ✅ NIGHTLY TESTS PASSED (Including Deep AI)          ║"
 	@echo "╚══════════════════════════════════════════════════════════════════╝"
 
 # Backend E2E tests (prompt battles, etc.) - requires RUN_E2E_TESTS=1
