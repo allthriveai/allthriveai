@@ -50,21 +50,57 @@ class ChatConsumer(AsyncWebsocketConsumer):
         origin = headers.get(b'origin', b'').decode()
         host = headers.get(b'host', b'').decode()
 
-        # Check if origin is allowed (for development, allow localhost)
+        # Check if origin is allowed
+        from urllib.parse import urlparse
+
         from django.conf import settings
 
         allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
 
+        # Build list of allowed domains (extract domain from URLs)
+        allowed_domains = set()
+        for allowed_origin in allowed_origins:
+            try:
+                parsed = urlparse(allowed_origin)
+                if parsed.netloc:
+                    # Add the full domain and the base domain (without subdomain)
+                    allowed_domains.add(parsed.netloc.lower())
+                    parts = parsed.netloc.lower().split('.')
+                    if len(parts) >= 2:
+                        # Add base domain (e.g., allthrive.ai from www.allthrive.ai)
+                        allowed_domains.add('.'.join(parts[-2:]))
+            except Exception:  # noqa: S112 - intentionally skip malformed origins
+                continue
+
+        # Also allow allthrive.ai and its subdomains in production
+        allowed_domains.add('allthrive.ai')
+        allowed_domains.add('www.allthrive.ai')
+
+        # Check if origin matches any allowed domain
+        origin_allowed = False
+        if origin:
+            try:
+                origin_parsed = urlparse(origin)
+                origin_domain = origin_parsed.netloc.lower()
+                # Check exact match or subdomain match
+                origin_allowed = (
+                    origin_domain in allowed_domains
+                    or any(origin_domain.endswith('.' + d) for d in allowed_domains)
+                    or origin in allowed_origins
+                )
+            except Exception:
+                origin_allowed = False  # Reject on parse error
+
         # Debug logging for production troubleshooting
         logger.info(
             f'WebSocket connect attempt: origin={origin!r}, host={host!r}, '
-            f'allowed_origins={allowed_origins}, user={getattr(self.user, "id", "anonymous")}'
+            f'origin_allowed={origin_allowed}, user={getattr(self.user, "id", "anonymous")}'
         )
 
-        if origin and origin not in allowed_origins:
+        if origin and not origin_allowed:
             logger.warning(
                 f'WebSocket rejected - unauthorized origin: origin={origin!r}, '
-                f'allowed={allowed_origins}, host={host!r}'
+                f'allowed_domains={allowed_domains}, host={host!r}'
             )
             await self.close(code=4003)
             return
