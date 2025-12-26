@@ -182,6 +182,119 @@ def _get_user_friendly_error(exception: Exception) -> str:
     return 'Something went wrong processing your request. Please try again or rephrase your message.'
 
 
+# =============================================================================
+# Conversation Persistence
+# =============================================================================
+
+
+def _should_persist_conversation(conversation_id: str) -> bool:
+    """Determine if this conversation should be persisted.
+
+    Only sidebar chats are persisted. Project-specific chats are skipped.
+    """
+    # Skip project conversations - only persist sidebar chats
+    if conversation_id.startswith('project-'):
+        return False
+    # Persist: ember-home-*, ember-chat-*, sage-learn-*, avatar-*, timestamps
+    return True
+
+
+def _generate_conversation_title(conversation_id: str) -> str:
+    """Generate human-readable title from conversation_id."""
+    if conversation_id.startswith('ember-chat'):
+        return 'Ember Chat'
+    elif conversation_id.startswith('ember-learn'):
+        return 'Ember Learn Chat'
+    elif conversation_id.startswith('ember-explore'):
+        return 'Ember Explore Chat'
+    elif conversation_id.startswith('learn-'):
+        return 'Learning Path Chat'
+    elif conversation_id.startswith('avatar-'):
+        return 'Avatar Generation'
+    return 'Image Generation'
+
+
+def _get_conversation_type(conversation_id: str) -> str:
+    """Determine conversation type from ID pattern."""
+    if conversation_id.startswith('ember-chat'):
+        return 'ember_chat'
+    elif conversation_id.startswith('ember-learn'):
+        return 'ember_learn'
+    elif conversation_id.startswith('ember-explore'):
+        return 'ember_explore'
+    elif conversation_id.startswith('learn-'):
+        return 'learning_path'
+    elif conversation_id.startswith('avatar-'):
+        return 'avatar'
+    return 'image'
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=5)
+def persist_conversation_message(
+    self,
+    user_id: int,
+    conversation_id: str,
+    user_message: str,
+    assistant_message: str,
+):
+    """Async task to persist chat messages to database.
+
+    Runs after streaming completes - no impact on chat latency.
+    Only persists sidebar chats (Ember, Sage, avatar, image gen).
+    Skips project-specific conversations.
+    """
+    from .models import Conversation, Message
+
+    # Skip project conversations - only persist sidebar chats
+    if not _should_persist_conversation(conversation_id):
+        logger.debug(f'Skipping persistence for project conversation: {conversation_id}')
+        return
+
+    conversation_type = _get_conversation_type(conversation_id)
+
+    try:
+        # SECURITY: User-scoped lookup - conversations are unique per user
+        conversation, created = Conversation.objects.get_or_create(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            defaults={
+                'conversation_type': conversation_type,
+                'title': _generate_conversation_title(conversation_id),
+            },
+        )
+
+        if created:
+            logger.info(f'Created new conversation record: user={user_id}, conversation_id={conversation_id}')
+
+        # Create user message
+        Message.objects.create(
+            conversation=conversation,
+            role='user',
+            content=user_message,
+        )
+
+        # Create assistant message
+        Message.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=assistant_message,
+        )
+
+        # Touch conversation to update timestamp
+        conversation.save(update_fields=['updated_at'])
+
+        logger.debug(f'Persisted messages for conversation: {conversation_id}')
+
+    except Exception as e:
+        logger.error(f'Failed to persist conversation message: {e}', exc_info=True)
+        raise self.retry(exc=e) from e
+
+
+# =============================================================================
+# Chat Message Processing
+# =============================================================================
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_chat_message_task(
     self,
@@ -616,6 +729,7 @@ def _process_with_ember(
         from channels.layers import get_channel_layer as get_async_channel_layer
 
         async_channel_layer = get_async_channel_layer()
+        full_response = []  # Accumulate chunks for persistence
 
         try:
             async for event in stream_ember_response(
@@ -634,6 +748,7 @@ def _process_with_ember(
                     chunk_content = event.get('content', '')
                     # Sanitize URLs to use correct domain
                     chunk_content = _sanitize_urls(chunk_content)
+                    full_response.append(chunk_content)  # Accumulate for persistence
                     logger.debug(
                         f'[EMBER] Sending chunk to {channel_name}: {chunk_content[:50]}...'
                         if len(str(chunk_content)) > 50
@@ -693,8 +808,15 @@ def _process_with_ember(
                     logger.info(f'Ember tool ended: {tool_name}')
 
                 elif event_type == 'complete':
-                    # Just log - the task function will send the final 'completed' event
-                    # with additional data (project_created, etc.)
+                    # Persist conversation to database (async via Celery)
+                    accumulated_text = ''.join(full_response)
+                    if accumulated_text.strip():
+                        persist_conversation_message.delay(
+                            user_id=user.id,
+                            conversation_id=conversation_id,
+                            user_message=message,
+                            assistant_message=accumulated_text,
+                        )
                     logger.info('Ember agent stream completed')
 
                 elif event_type == 'error':
@@ -1228,6 +1350,15 @@ def _process_image_generation(
                 'session_id': session.id,
                 'iteration_number': iteration_order + 1,
             },
+        )
+
+        # Persist the image generation interaction (async via Celery)
+        assistant_response = text_response or f'Generated image: {image_url}'
+        persist_conversation_message.delay(
+            user_id=user.id,
+            conversation_id=conversation_id,
+            user_message=message,
+            assistant_message=assistant_response,
         )
 
         return {'image_generated': True, 'image_url': image_url, 'session_id': session.id}

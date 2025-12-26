@@ -1,5 +1,6 @@
 import logging
 
+from django.db.models import Count
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -103,7 +104,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return Conversation.objects.filter(user=self.request.user)
+            return (
+                Conversation.objects.filter(user=self.request.user)
+                .annotate(message_count=Count('messages'))
+                .prefetch_related('messages')
+            )
         return Conversation.objects.none()
 
     def perform_create(self, serializer):

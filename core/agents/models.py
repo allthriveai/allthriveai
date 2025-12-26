@@ -51,10 +51,32 @@ class Conversation(BaseModel):
     Supports soft deletion to maintain audit trail even when user deletes conversations.
     """
 
+    CONVERSATION_TYPE_CHOICES = [
+        ('ember_chat', 'Ember Sidebar Chat'),
+        ('ember_learn', 'Ember Learn Chat'),
+        ('ember_explore', 'Ember Explore Chat'),
+        ('learning_path', 'Learning Path Chat'),
+        ('avatar', 'Avatar Generation'),
+        ('image', 'Image Generation'),
+    ]
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='conversations'
     )
     title = models.CharField(max_length=255, blank=True)
+    conversation_id = models.CharField(
+        max_length=255,
+        db_index=True,
+        default='',
+        blank=True,
+        help_text='WebSocket conversation ID (e.g., ember-chat-123, ember-learn-456)',
+    )
+    conversation_type = models.CharField(
+        max_length=50,
+        db_index=True,
+        default='ember_chat',
+        choices=CONVERSATION_TYPE_CHOICES,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -64,6 +86,14 @@ class Conversation(BaseModel):
             models.Index(fields=['user', '-updated_at']),
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['-updated_at', 'deleted_at']),
+        ]
+        constraints = [
+            # SECURITY: User-scoped uniqueness (only when user exists and conversation_id is not empty)
+            models.UniqueConstraint(
+                fields=['user', 'conversation_id'],
+                name='unique_user_conversation_id',
+                condition=models.Q(user__isnull=False) & ~models.Q(conversation_id=''),
+            )
         ]
 
     def __str__(self):
