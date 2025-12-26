@@ -1,6 +1,6 @@
 # WebSocket Implementation Guide
 
-**Last Updated**: 2025-12-12
+**Last Updated**: 2025-12-26
 **Status**: Production-ready ✅
 
 ---
@@ -35,29 +35,41 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 **CRITICAL**: The frontend WebSocket URL is **baked into the JavaScript bundle at build time**.
 
-In `.github/workflows/deploy-aws.yml`:
+**Architecture:** WebSocket connections use a **dedicated subdomain** that routes directly to the ALB (bypassing CloudFront for lower latency).
+
+```
+ws.allthrive.ai       → ALB (direct, for WebSocket)
+api.allthrive.ai      → CloudFront → ALB (for REST API)
+allthrive.ai          → CloudFront → S3 (Static frontend)
+```
+
+**GitHub Actions Variable (required):**
 ```yaml
 env:
-  VITE_WS_URL: ${{ vars.WS_URL || 'wss://ws.allthrive.ai' }}  # Must match DNS!
+  VITE_WS_URL: ${{ vars.WS_URL || 'wss://ws.allthrive.ai' }}
 ```
 
-**Infrastructure routing:**
+**Frontend URL Resolution** (`frontend/src/utils/websocket.ts`):
+```typescript
+// Priority chain:
+// 1. VITE_WS_URL env var (explicit - USE THIS IN PRODUCTION)
+// 2. Derive from VITE_API_URL (convert https→wss)
+// 3. Derive from current page domain (fallback)
+// 4. Default: ws://localhost:8000 (local development)
 ```
-ws.allthrive.ai  → ALB (direct, for WebSocket)
-api.allthrive.ai → CloudFront → ALB (for REST API)
-```
-
-**Common mistake:** Setting `VITE_WS_URL=wss://api.allthrive.ai` when DNS routes WebSocket traffic through `ws.allthrive.ai`.
 
 **Verification:**
 ```bash
+# Check DNS resolves to ALB
+dig ws.allthrive.ai
+# Should return: production-allthrive-alb-*.elb.amazonaws.com
+
 # Check what URL is in the deployed bundle
 curl -s "https://allthrive.ai/assets/index-*.js" | grep -o 'wss://[^"]*allthrive[^"]*'
-
-# Should output: wss://ws.allthrive.ai (or your WebSocket subdomain)
+# Should output: wss://ws.allthrive.ai
 ```
 
-**CI/CD Protection:** The deploy workflow now includes:
+**CI/CD Protection:** The deploy workflow validates:
 1. **Pre-upload verification** - Fails build if `ws://localhost` found in bundle
 2. **Post-deploy verification** - Fails deploy if production bundle has localhost URLs
 
@@ -112,11 +124,13 @@ Run `make aws-validate` and verify:
 [ ] WebSocket DNS (ws.allthrive.ai):
    ✅ ws.allthrive.ai -> production-allthrive-alb-*.elb.amazonaws.com (ALB direct)
 
-[ ] ALB WebSocket Target Group:
-   ✅ WebSocket target group: 2/2 healthy
+[ ] ALB Target Group:
+   ✅ Backend target group: 2/2 healthy
+   ✅ Health check passing on /health/
 
-[ ] CloudFront WebSocket Bypass:
-   ✅ api.allthrive.ai and ws.allthrive.ai resolve to different endpoints
+[ ] WebSocket Connectivity:
+   ✅ wss://ws.allthrive.ai/ws/chat/test/ connects successfully
+   ✅ Origin validation accepts allthrive.ai and ws.allthrive.ai domains
 ```
 
 ---
@@ -337,7 +351,6 @@ config/
 
 ```python
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import AllowedHostsOriginValidator
 from django.core.asgi import get_asgi_application
 
 # Initialize Django first
@@ -346,21 +359,21 @@ django_asgi_app = get_asgi_application()
 from core.agents.middleware import JWTAuthMiddlewareStack
 from core.agents.routing import websocket_urlpatterns
 
+# Note: AllowedHostsOriginValidator removed - origin validation is handled by:
+# 1. Custom origin validation in consumers.py (flexible domain matching)
+# 2. Connection token authentication (JWTAuthMiddlewareStack)
+# 3. ALB/CloudFront layer restrictions
 application = ProtocolTypeRouter({
     'http': django_asgi_app,
-    'websocket': AllowedHostsOriginValidator(
-        JWTAuthMiddlewareStack(
-            URLRouter(websocket_urlpatterns)
-        )
-    ),
+    'websocket': JWTAuthMiddlewareStack(URLRouter(websocket_urlpatterns)),
 })
 ```
 
 **Key points:**
 - `ProtocolTypeRouter` handles both HTTP and WebSocket protocols
-- `AllowedHostsOriginValidator` validates Origin header (CSRF protection)
-- `JWTAuthMiddlewareStack` authenticates WebSocket connections
+- `JWTAuthMiddlewareStack` authenticates WebSocket connections via connection tokens
 - `URLRouter` routes WebSocket URLs to consumers
+- Origin validation happens in `ChatConsumer.connect()` with flexible domain matching
 
 ### WebSocket Routing
 
@@ -390,24 +403,50 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
         self.user = self.scope.get('user')
         self.group_name = f'chat_{self.conversation_id}'
-        
-        # Validate origin (CSRF protection)
+
+        # Validate origin (CSRF protection) - flexible domain matching
         headers = dict(self.scope.get('headers', []))
         origin = headers.get(b'origin', b'').decode()
+
+        # Build allowed domains from CORS settings + explicit allowlist
         allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
-        if origin and origin not in allowed_origins:
+        allowed_domains = set()
+        for allowed_origin in allowed_origins:
+            parsed = urlparse(allowed_origin)
+            if parsed.netloc:
+                allowed_domains.add(parsed.netloc.lower())
+                # Also add base domain (e.g., allthrive.ai from www.allthrive.ai)
+                parts = parsed.netloc.lower().split('.')
+                if len(parts) >= 2:
+                    allowed_domains.add('.'.join(parts[-2:]))
+
+        # Explicitly allow production domains and WebSocket subdomain
+        allowed_domains.add('allthrive.ai')
+        allowed_domains.add('www.allthrive.ai')
+        allowed_domains.add('ws.allthrive.ai')
+
+        # Check origin matches allowed domain or subdomain
+        origin_allowed = False
+        if origin:
+            origin_domain = urlparse(origin).netloc.lower()
+            origin_allowed = (
+                origin_domain in allowed_domains
+                or any(origin_domain.endswith('.' + d) for d in allowed_domains)
+            )
+
+        if origin and not origin_allowed:
             await self.close(code=4003)
             return
-        
+
         # Reject unauthenticated users
         if not self.user.is_authenticated:
             await self.close(code=4001)
             return
-        
+
         # Join Redis Pub/Sub channel
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        
+
         # Send connection confirmation
         await self.send(text_data=json.dumps({
             'event': 'connected',
@@ -582,13 +621,15 @@ export function useIntelligentChat({
 ### Connection Flow
 
 ```typescript
+import { buildWebSocketUrl } from '@/utils/websocket';
+
 const connect = useCallback(async () => {
   // Prevent race conditions
   if (isConnecting) return;
   if (!isAuthenticated) return;
-  
+
   setIsConnecting(true);
-  
+
   // Step 1: Get connection token
   const response = await fetch('/api/v1/auth/ws-connection-token/', {
     method: 'POST',
@@ -601,32 +642,34 @@ const connect = useCallback(async () => {
       connection_id: `chat-${conversationId}-${Date.now()}`,
     }),
   });
-  
+
   const { connection_token } = await response.json();
-  
-  // Step 2: Connect to WebSocket
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsHost = import.meta.env.VITE_API_URL?.replace(/^https?:\/\//, '') || 'localhost:8000';
-  const wsUrl = `${protocol}//${wsHost}/ws/chat/${conversationId}/?connection_token=${connection_token}`;
-  
+
+  // Step 2: Connect to WebSocket using utility function
+  // buildWebSocketUrl handles URL derivation (env var → API URL → page domain → localhost)
+  const wsUrl = buildWebSocketUrl(
+    `/ws/chat/${conversationId}/`,
+    { connection_token }
+  );
+
   const ws = new WebSocket(wsUrl);
-  
+
   ws.onopen = () => {
     setIsConnected(true);
     setIsConnecting(false);
     setReconnectAttempts(0);
     startHeartbeat();
   };
-  
+
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
     handleWebSocketMessage(data);
   };
-  
+
   ws.onerror = (error) => {
     console.error('[WebSocket] Error:', error);
   };
-  
+
   ws.onclose = (event) => {
     setIsConnected(false);
     setIsConnecting(false);
@@ -634,9 +677,40 @@ const connect = useCallback(async () => {
       scheduleReconnect();
     }
   };
-  
+
   wsRef.current = ws;
 }, [isAuthenticated, conversationId]);
+```
+
+**WebSocket URL Utility** (`frontend/src/utils/websocket.ts`):
+
+```typescript
+/**
+ * Get the WebSocket base URL with fallback chain:
+ * 1. VITE_WS_URL (explicit configuration)
+ * 2. Derive from VITE_API_URL (convert https→wss)
+ * 3. Derive from current page domain (production)
+ * 4. Default: ws://localhost:8000 (development)
+ */
+export function getWebSocketBaseUrl(): string {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL.replace(/\/$/, '');
+  }
+
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    const wsProtocol = apiUrl.startsWith('https') ? 'wss:' : 'ws:';
+    return apiUrl.replace(/^https?:/, wsProtocol).replace(/\/$/, '');
+  }
+
+  // Production: use same domain as frontend (CloudFront routes /ws/*)
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProtocol}//${window.location.hostname}`;
+  }
+
+  return 'ws://localhost:8000';
+}
 ```
 
 ### Message Handling
@@ -1422,6 +1496,7 @@ If WebSocket issues arise in production:
 
 | Date       | Change                                      | Author |
 |------------|---------------------------------------------|--------|
+| 2025-12-26 | Updated ASGI config (AllowedHostsOriginValidator removed), flexible origin validation, frontend URL utility docs | Claude |
 | 2025-12-12 | Added CI/CD verification for WebSocket URLs | Claude |
 | 2025-12-12 | Fixed VITE_WS_URL: api → ws subdomain       | Claude |
 | 2025-12-12 | Added AWS timeout configuration docs        | Claude |
@@ -1433,5 +1508,5 @@ If WebSocket issues arise in production:
 ---
 
 **Maintainer**: Backend Team
-**Last Review**: 2025-12-12
-**Next Review**: 2026-03-12 (or when WebSocket issues arise)
+**Last Review**: 2025-12-26
+**Next Review**: 2026-03-26 (or when WebSocket issues arise)

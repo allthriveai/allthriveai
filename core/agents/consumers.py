@@ -75,6 +75,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Also allow allthrive.ai and its subdomains in production
         allowed_domains.add('allthrive.ai')
         allowed_domains.add('www.allthrive.ai')
+        allowed_domains.add('ws.allthrive.ai')
 
         # Check if origin matches any allowed domain
         origin_allowed = False

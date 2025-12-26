@@ -1,6 +1,6 @@
 # AWS Infrastructure
 
-**Source of Truth** | **Last Updated**: 2025-12-25
+**Source of Truth** | **Last Updated**: 2025-12-26
 
 Quick reference for all AWS services powering AllThrive. For detailed deployment instructions, see `infrastructure/cloudformation/README.md`.
 
@@ -11,39 +11,39 @@ Quick reference for all AWS services powering AllThrive. For detailed deployment
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Internet                                        │
-└─────────────────────────────────┬───────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         CloudFront Distribution                              │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                     │
-│   │  Frontend   │    │    API      │    │  WebSocket  │                     │
-│   │  (S3)       │    │  (/api/*)   │    │  (/ws/*)    │                     │
-│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘                     │
-└──────────┼──────────────────┼──────────────────┼────────────────────────────┘
-           │                  │                  │
-           ▼                  ▼                  ▼
-┌──────────────────┐  ┌─────────────────────────────────────────────────────┐
-│   S3 Bucket      │  │           Application Load Balancer                  │
-│   (Static)       │  │                                                      │
-└──────────────────┘  └──────────────────────┬──────────────────────────────┘
-                                             │
-                      ┌──────────────────────┼──────────────────────┐
-                      ▼                      ▼                      ▼
-              ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-              │  ECS Fargate  │      │  ECS Fargate  │      │  ECS Fargate  │
-              │  Web Service  │      │    Celery     │      │  Celery Beat  │
-              │  (Daphne)     │      │   Workers     │      │  (Scheduler)  │
-              └───────┬───────┘      └───────┬───────┘      └───────┬───────┘
-                      │                      │                      │
-                      └──────────────────────┼──────────────────────┘
-                                             │
-           ┌─────────────────┬───────────────┼───────────────┬─────────────────┐
-           ▼                 ▼               ▼               ▼                 ▼
-    ┌─────────────┐   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   ┌─────────────┐
-    │    RDS      │   │ ElastiCache │ │   Weaviate  │ │     S3      │   │  Secrets    │
-    │ PostgreSQL  │   │    Redis    │ │ (Vector DB) │ │   (Media)   │   │  Manager    │
-    └─────────────┘   └─────────────┘ └─────────────┘ └─────────────┘   └─────────────┘
+└───────────────────────┬───────────────────────────────┬─────────────────────┘
+                        │                               │
+                        ▼                               ▼
+┌───────────────────────────────────────────┐   ┌─────────────────────────────┐
+│         CloudFront Distribution           │   │     ws.allthrive.ai         │
+│   ┌─────────────┐    ┌─────────────┐      │   │   (Direct to ALB for        │
+│   │  Frontend   │    │    API      │      │   │    lower WebSocket latency) │
+│   │  (S3)       │    │  (/api/*)   │      │   └──────────────┬──────────────┘
+│   └──────┬──────┘    └──────┬──────┘      │                  │
+└──────────┼──────────────────┼─────────────┘                  │
+           │                  │                                │
+           ▼                  └────────────────┬───────────────┘
+┌──────────────────┐  ┌────────────────────────▼──────────────────────────────┐
+│   S3 Bucket      │  │           Application Load Balancer                    │
+│   (Static)       │  │                                                        │
+└──────────────────┘  └────────────────────────┬──────────────────────────────┘
+                                               │
+                        ┌──────────────────────┼──────────────────────┐
+                        ▼                      ▼                      ▼
+                ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
+                │  ECS Fargate  │      │  ECS Fargate  │      │  ECS Fargate  │
+                │  Web Service  │      │    Celery     │      │  Celery Beat  │
+                │  (Daphne)     │      │   Workers     │      │  (Scheduler)  │
+                └───────┬───────┘      └───────┬───────┘      └───────┬───────┘
+                        │                      │                      │
+                        └──────────────────────┼──────────────────────┘
+                                               │
+             ┌─────────────────┬───────────────┼───────────────┬─────────────────┐
+             ▼                 ▼               ▼               ▼                 ▼
+      ┌─────────────┐   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   ┌─────────────┐
+      │    RDS      │   │ ElastiCache │ │   Weaviate  │ │     S3      │   │  Secrets    │
+      │ PostgreSQL  │   │    Redis    │ │ (Vector DB) │ │   (Media)   │   │  Manager    │
+      └─────────────┘   └─────────────┘ └─────────────┘ └─────────────┘   └─────────────┘
 ```
 
 ---
@@ -76,7 +76,7 @@ Quick reference for all AWS services powering AllThrive. For detailed deployment
 |----------|-----|---------|
 | **Production Site** | [allthrive.ai](https://allthrive.ai) | User-facing frontend |
 | **API** | [api.allthrive.ai](https://api.allthrive.ai) | REST API (through CloudFront) |
-| **WebSocket** | wss://ws.allthrive.ai | Real-time connections (direct to ALB) |
+| **WebSocket** | wss://ws.allthrive.ai | Real-time connections (direct to ALB, bypasses CloudFront) |
 | **Health Check** | [api.allthrive.ai/api/health/](https://api.allthrive.ai/api/health/) | Quick API status check |
 
 ---
@@ -200,8 +200,10 @@ Validates: RDS, Redis, S3, Secrets, ECS services, env vars, SSL certs, CloudWatc
 - Check `DATABASE_URL` secret format
 
 ### WebSocket Connection Failures
+- Ensure `ws.allthrive.ai` is in Django's ALLOWED_HOSTS (set in `10-ecs.yaml`)
+- Verify DNS record `ws.allthrive.ai` points to ALB (not CloudFront)
 - ALB idle timeout must be ≥120s
-- Check CloudFront WebSocket behavior configuration
+- Check that SSL certificate covers `ws.allthrive.ai`
 
 ### Weaviate Not Responding
 - Check ECS task is running

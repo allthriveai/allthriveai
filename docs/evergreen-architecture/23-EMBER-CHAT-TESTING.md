@@ -44,7 +44,7 @@ frontend/e2e/
 │   ├── ai-quality-assertions.ts  # Response quality checks
 │   ├── chat-media-upload.spec.ts # Image/video upload → project
 │   ├── chat-url-import.spec.ts   # URL paste → project creation
-│   └── chat-learning-path.spec.ts # (planned)
+│   └── chat-learning-path.spec.ts # Topic question → learning path offer → creation
 ```
 
 ---
@@ -287,12 +287,12 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 |------|------|--------|
 | Image upload → ownership → tool → project | `chat-media-upload.spec.ts` | ✅ |
 | URL import → ownership → project creation | `chat-url-import.spec.ts` | ✅ |
+| Topic question → learning path offer → creation | `chat-learning-path.spec.ts` | ✅ |
 
 ### To Be Tested
 
 | Flow | Priority | Notes |
 |------|----------|-------|
-| Learning path creation | High | Multi-turn: topic → clarifying questions → path created |
 | Avatar generation | Medium | "Make my avatar" → wizard opens → avatar generated |
 | Inline game launch | Medium | "Play a game" → game widget appears in chat |
 | Project search/discovery | Medium | "Show me trending" → project cards appear |

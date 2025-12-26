@@ -238,11 +238,12 @@ Resources:
               Value: !Ref BetaMode
             - Name: DJANGO_SETTINGS_MODULE
               Value: config.settings
-            # IMPORTANT: Must include all domain variants for OAuth to work
+            # IMPORTANT: Must include all domain variants for OAuth and WebSocket to work
             # api.${Domain} is required for django-allauth OAuth callbacks
+            # ws.${Domain} is required for WebSocket connections (direct to ALB)
             - Name: ALLOWED_HOSTS
               Value: !Sub
-                - '${ALBDns},${Domain},www.${Domain},api.${Domain}'
+                - '${ALBDns},${Domain},www.${Domain},api.${Domain},ws.${Domain}'
                 - ALBDns: !ImportValue
                     Fn::Sub: ${EnvironmentName}-ALBDNSName
                   Domain: !If [HasDomain, !Ref DomainName, 'localhost']

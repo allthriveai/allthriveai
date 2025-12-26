@@ -1,4 +1,4 @@
-name: Nightly Deep E2E Tests
+name: Nightly E2E Tests (Full Suite)
 
 # Run nightly at 2 AM UTC (9 PM EST), or manually trigger
 on:
@@ -13,10 +13,12 @@ on:
         type: choice
         options:
           - all
-          - chat
-          - battles
-          - learning
-          - community
+          - standard
+          - deep-all
+          - deep-chat
+          - deep-battles
+          - deep-learning
+          - deep-community
 
 # Only allow one nightly run at a time
 concurrency:
@@ -24,9 +26,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deep-e2e-tests:
+  nightly-e2e-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # 1 hour max for all tests
+    timeout-minutes: 90  # 1.5 hours for full suite (standard + deep)
 
     services:
       postgres:
@@ -69,8 +71,14 @@ jobs:
       # Auth
       COOKIE_DOMAIN: ""
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
-      # AI API keys (from secrets)
+      # AI Configuration - Use Azure OpenAI for CI/CD (production uses OpenAI directly)
+      DEFAULT_AI_PROVIDER: "azure"
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+      # Anthropic for Claude-specific features
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # OpenAI for DALL-E image generation (Azure doesn't have this)
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # Deep E2E flag
       RUN_DEEP_E2E: "true"
@@ -176,6 +184,13 @@ jobs:
           # Test 2: Verify task discovery
           print("\n[Test 2] Task discovery verification...")
           from config.celery import app
+
+          # Force task discovery by importing task modules
+          # (autodiscover_tasks runs on import, not on app creation)
+          import core.battles.tasks
+          import core.billing.tasks
+          import core.notifications.tasks
+
           registered_tasks = list(app.tasks.keys())
           critical_tasks = [
               'core.battles.tasks.generate_submission_image_task',
@@ -215,8 +230,22 @@ jobs:
           VITE_API_PROXY_TARGET: http://127.0.0.1:8000
           VITE_WS_URL: ws://127.0.0.1:8000
 
+      # ===== STANDARD E2E TESTS (root + ai-chat) =====
+      # These tests were previously only run locally via `make test-nightly`
+      - name: Run Standard E2E Tests
+        if: github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'standard' || github.event.inputs.test_suite == ''
+        working-directory: frontend
+        run: |
+          echo "Running standard E2E tests (root + ai-chat folders)..."
+          echo "This includes: github-import, figma, oauth, profile, project, learning, etc."
+          npx playwright test 'e2e/*.spec.ts' 'e2e/ai-chat/*.spec.ts' --reporter=html
+        env:
+          TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+
+      # ===== DEEP E2E TESTS (real AI calls, longer timeouts) =====
       - name: Run Deep E2E Tests - All
-        if: github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == ''
+        if: github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'deep-all' || github.event.inputs.test_suite == ''
         working-directory: frontend
         run: |
           npx playwright test --project=deep --reporter=html
@@ -225,7 +254,7 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
 
       - name: Run Deep E2E Tests - Chat Only
-        if: github.event.inputs.test_suite == 'chat'
+        if: github.event.inputs.test_suite == 'deep-chat'
         working-directory: frontend
         run: |
           npx playwright test e2e/deep/chat*.spec.ts --project=deep --reporter=html
@@ -234,7 +263,7 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
 
       - name: Run Deep E2E Tests - Battles Only
-        if: github.event.inputs.test_suite == 'battles'
+        if: github.event.inputs.test_suite == 'deep-battles'
         working-directory: frontend
         run: |
           npx playwright test e2e/deep/battles*.spec.ts --project=deep --reporter=html
@@ -243,7 +272,7 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
 
       - name: Run Deep E2E Tests - Learning Only
-        if: github.event.inputs.test_suite == 'learning'
+        if: github.event.inputs.test_suite == 'deep-learning'
         working-directory: frontend
         run: |
           npx playwright test e2e/deep/learning*.spec.ts --project=deep --reporter=html
@@ -252,7 +281,7 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
 
       - name: Run Deep E2E Tests - Community Only
-        if: github.event.inputs.test_suite == 'community'
+        if: github.event.inputs.test_suite == 'deep-community'
         working-directory: frontend
         run: |
           npx playwright test e2e/deep/community*.spec.ts --project=deep --reporter=html
@@ -279,7 +308,7 @@ jobs:
           retention-days: 7
 
   notify-on-failure:
-    needs: deep-e2e-tests
+    needs: nightly-e2e-tests
     if: failure()
     runs-on: ubuntu-latest
     steps:
@@ -288,23 +317,24 @@ jobs:
         with:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const title = `Nightly Deep E2E Tests Failed - ${new Date().toISOString().split('T')[0]}`;
-            const body = `## Deep E2E Test Failure\n\n` +
-              `The nightly deep E2E tests failed.\n\n` +
+            const title = `Nightly E2E Tests Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Nightly E2E Test Failure\n\n` +
+              `The nightly E2E tests (standard + deep) failed.\n\n` +
               `**Run URL:** ${runUrl}\n\n` +
               `Please investigate and fix any regressions.\n\n` +
               `### Common Causes\n` +
               `- AI response quality degradation\n` +
               `- WebSocket connection issues\n` +
               `- UI changes breaking selectors\n` +
-              `- Backend API changes\n`;
+              `- Backend API changes\n` +
+              `- GitHub/OAuth integration issues\n`;
 
             // Check for existing open issue
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              labels: 'deep-e2e-failure',
+              labels: 'nightly-e2e-failure',
               per_page: 1
             });
 
@@ -314,7 +344,7 @@ jobs:
                 repo: context.repo.repo,
                 title: title,
                 body: body,
-                labels: ['deep-e2e-failure', 'automated']
+                labels: ['nightly-e2e-failure', 'automated']
               });
             } else {
               // Comment on existing issue

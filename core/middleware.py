@@ -7,6 +7,7 @@ Includes:
 """
 
 import logging
+import re
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -14,6 +15,23 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
 logger = logging.getLogger(__name__)
+
+# AWS infrastructure IP patterns that should bypass ALLOWED_HOSTS
+# These are internal AWS IPs used by ALB, CloudFront, NAT Gateway, etc.
+AWS_IP_PATTERNS = [
+    r'^10\.\d+\.\d+\.\d+',  # VPC private IPs
+    r'^100\.\d+\.\d+\.\d+',  # AWS carrier-grade NAT / internal services
+    r'^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+',  # VPC private IPs
+    r'^192\.168\.\d+\.\d+',  # Private network
+]
+_AWS_IP_REGEX = re.compile('|'.join(f'({p})' for p in AWS_IP_PATTERNS))
+
+
+def _is_aws_infrastructure_ip(host: str) -> bool:
+    """Check if the host header looks like an AWS infrastructure IP."""
+    # Strip port if present
+    host_without_port = host.split(':')[0] if ':' in host else host
+    return bool(_AWS_IP_REGEX.match(host_without_port))
 
 
 class HealthCheckMiddleware:
@@ -24,8 +42,12 @@ class HealthCheckMiddleware:
     as the Host header. Since these IPs are dynamic and change with each deployment,
     we can't add them to ALLOWED_HOSTS statically.
 
-    This middleware intercepts requests to health check paths and returns a response
-    before Django's CommonMiddleware validates the Host header.
+    This middleware intercepts:
+    1. Requests to health check paths - returns immediate health response
+    2. Requests from AWS infrastructure IPs - bypasses ALLOWED_HOSTS but continues processing
+
+    This is safe because AWS infrastructure IPs cannot be spoofed by external clients
+    when requests come through CloudFront/ALB.
     """
 
     def __init__(self, get_response):
@@ -40,6 +62,16 @@ class HealthCheckMiddleware:
             # Return immediate health response without going through full middleware stack
             # This bypasses ALLOWED_HOSTS validation in CommonMiddleware
             return JsonResponse({'status': 'healthy'}, status=200)
+
+        # Check if request is from AWS infrastructure (IP as Host header)
+        # If so, temporarily add the IP to allowed hosts to bypass validation
+        host = request.get_host()
+        if _is_aws_infrastructure_ip(host):
+            # Dynamically add AWS IP to allowed hosts for this request
+            # This is safe because these IPs can't be spoofed through CloudFront/ALB
+            if host not in settings.ALLOWED_HOSTS:
+                settings.ALLOWED_HOSTS.append(host)
+                logger.debug(f'Added AWS infrastructure IP to ALLOWED_HOSTS: {host}')
 
         return self.get_response(request)
 

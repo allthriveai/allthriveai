@@ -217,6 +217,7 @@ Add these variables to your GitHub repository:
 |----------|-------------|
 | `ENVIRONMENT` | Environment name (`production` or `staging`) |
 | `API_URL` | Backend API URL (e.g., `https://api.allthrive.ai`) |
+| `WS_URL` | WebSocket URL (e.g., `wss://ws.allthrive.ai`) - direct to ALB |
 
 ### OIDC Provider Setup
 
@@ -290,8 +291,10 @@ Pre-configured alarms for:
    - Check DATABASE_URL secret format
 
 3. **WebSocket connection failures**
+   - Ensure `ws.allthrive.ai` is in Django ALLOWED_HOSTS (set in `10-ecs.yaml`)
+   - Verify DNS record `ws.allthrive.ai` points to ALB (not CloudFront)
+   - Check that SSL certificate covers `ws.allthrive.ai`
    - Ensure ALB idle timeout is sufficient (120s)
-   - Check CloudFront WebSocket behavior configuration
 
 4. **Static assets not loading**
    - Verify S3 bucket policy allows CloudFront
