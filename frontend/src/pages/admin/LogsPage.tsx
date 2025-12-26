@@ -190,8 +190,37 @@ export default function LogsPage() {
     setAutoScroll(isAtBottom);
   };
 
-  // Logs to display (memoized for stable reference)
-  const displayedLogs = logs;
+  // Filter logs client-side for immediate feedback
+  const displayedLogs = useMemo(() => {
+    return logs.filter((log) => {
+      // Level filter
+      if (levelFilter && log.level !== levelFilter) return false;
+
+      // Service filter
+      if (serviceFilter && log.service !== serviceFilter) return false;
+
+      // User ID filter
+      if (userIdFilter) {
+        const uid = parseInt(userIdFilter, 10);
+        if (!isNaN(uid) && log.userId !== uid) return false;
+      }
+
+      // Request ID filter
+      if (requestIdFilter && log.requestId !== requestIdFilter) return false;
+
+      // Search pattern (regex)
+      if (searchPattern) {
+        try {
+          const regex = new RegExp(searchPattern, 'i');
+          if (!regex.test(log.message)) return false;
+        } catch {
+          // Invalid regex, skip filter
+        }
+      }
+
+      return true;
+    });
+  }, [logs, levelFilter, serviceFilter, userIdFilter, requestIdFilter, searchPattern]);
 
   // Redirect non-admins
   if (!authLoading && (!user || user.role !== 'admin')) {

@@ -197,7 +197,7 @@ describe('PromptEditor', () => {
 
       // onTyping(false) should NOT have been called yet with only 500ms since last type
       const falseCallsAfterFirstType = defaultProps.onTyping.mock.calls.filter(
-        (call: [boolean]) => call[0] === false
+        (call: unknown[]) => call[0] === false
       );
       expect(falseCallsAfterFirstType.length).toBe(0);
     });
