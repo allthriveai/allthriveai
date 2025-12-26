@@ -1517,7 +1517,35 @@ export default function LearningPathDetailPage() {
             <NotFoundState />
           ) : (
             <>
-              {/* Header - compact, with cover image background */}
+              {/* Focus Mode Header - minimal bar with title and exit button */}
+              {isFullscreen && (
+                <div className="flex-shrink-0 bg-slate-900 border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setIsFullscreen(false)}
+                      className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                      title="Exit Focus Mode"
+                    >
+                      <FontAwesomeIcon icon={faCompress} />
+                    </button>
+                    <h1 className="text-lg font-semibold text-white truncate">{path.title}</h1>
+                  </div>
+                  {progressData && progressData.percentage > 0 && (
+                    <div className="hidden sm:flex items-center gap-2">
+                      <div className="w-32 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full"
+                          style={{ width: `${progressData.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-emerald-300">{progressData.percentage}%</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Header - compact, with cover image background - hidden in focus mode */}
+              {!isFullscreen && (
               <header className="relative border-b border-white/10 flex-shrink-0 overflow-hidden">
                 {/* Cover image background */}
                 {path.coverImage ? (
@@ -1640,6 +1668,7 @@ export default function LearningPathDetailPage() {
                     </div>
                   </div>
                 </header>
+              )}
 
               {/* Split-pane: Curriculum left, Chat right - fixed height with inner scroll */}
               <div className="flex-1 flex min-h-0 overflow-hidden">
