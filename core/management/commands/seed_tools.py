@@ -21,6 +21,7 @@ import yaml
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from core.taxonomy.models import Taxonomy
 from core.tools.models import Company, Tool
 
 
@@ -197,13 +198,21 @@ class Command(BaseCommand):
                 'has_free_tier': tool_data.get('has_free_tier', True),
                 'requires_api_key': tool_data.get('requires_api_key', False),
                 'requires_waitlist': tool_data.get('requires_waitlist', False),
-                'tags': tool_data.get('tags', []),
                 'key_features': tool_data.get('key_features', []),
                 'use_cases': tool_data.get('use_cases', []),
                 'usage_tips': tool_data.get('usage_tips', []),
                 'best_practices': tool_data.get('best_practices', []),
                 'limitations': tool_data.get('limitations', []),
                 'alternatives': tool_data.get('alternatives', []),
+                # Decision/comparison metadata
+                'pricing_tiers': tool_data.get('pricing_tiers', []),
+                'ideal_for': tool_data.get('ideal_for', []),
+                'not_ideal_for': tool_data.get('not_ideal_for', []),
+                'differentiators': tool_data.get('differentiators', []),
+                'sdk_languages': tool_data.get('sdk_languages', []),
+                'hosting_options': tool_data.get('hosting_options', []),
+                'compliance_certs': tool_data.get('compliance_certs', []),
+                'support_tiers': tool_data.get('support_tiers', []),
                 'overview': tool_data.get('overview', ''),
                 'model_info': tool_data.get('model_info', {}),
                 'integrations': tool_data.get('integrations', []),
@@ -258,6 +267,22 @@ class Command(BaseCommand):
                 if created or tool.company != company:
                     stats['tools_linked'] += 1
 
+            # Link topics via M2M (from topic_slugs in YAML)
+            topic_slugs = tool_data.get('topic_slugs', [])
+            if topic_slugs:
+                topics = Taxonomy.objects.filter(
+                    slug__in=topic_slugs,
+                    taxonomy_type='topic',
+                    is_active=True,
+                )
+                tool.topics.set(topics)
+                linked_count = topics.count()
+                if linked_count != len(topic_slugs):
+                    missing = set(topic_slugs) - set(topics.values_list('slug', flat=True))
+                    self.stdout.write(self.style.WARNING(f'    ! Missing topics for {name}: {missing}'))
+                if linked_count > 0:
+                    stats['topics_linked'] = stats.get('topics_linked', 0) + linked_count
+
     def print_summary(self, stats, dry_run):
         """Print summary of operations."""
         self.stdout.write('\n' + '=' * 60)
@@ -274,6 +299,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  Created: {stats["tools_created"]}')
         self.stdout.write(f'  Updated: {stats["tools_updated"]}')
         self.stdout.write(f'  Linked to companies: {stats["tools_linked"]}')
+        self.stdout.write(f'  Topics linked: {stats.get("topics_linked", 0)}')
 
         total = (
             stats['companies_created'] + stats['companies_updated'] + stats['tools_created'] + stats['tools_updated']

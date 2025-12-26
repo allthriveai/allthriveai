@@ -1,4 +1,4 @@
-.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db debug-logs debug-all celery-status redis-check test-channel-layer shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db anonymize-users create-youtube-agent regenerate-battle-images regenerate-user-images
+.PHONY: help up down restart restart-all restart-frontend restart-backend build rebuild logs logs-frontend logs-backend logs-celery logs-redis logs-db debug-logs debug-all celery-status redis-check test-channel-layer shell-frontend shell-backend shell-db shell-redis django-shell test test-backend test-frontend test-username test-coverage test-e2e test-e2e-chat test-e2e-chat-ai test-e2e-chat-edge test-e2e-ui test-e2e-debug test-e2e-deep-journeys frontend create-pip recreate-pip seed-quizzes seed-challenge-types seed-all add-tool export-tools load-tools enrich-tools-ai export-tasks load-tasks reset-db sync-backend sync-frontend sync-all diagnose-sync clean clean-all clean-volumes clean-cache migrate makemigrations collectstatic createsuperuser dbshell lint lint-backend lint-frontend format format-backend format-frontend type-check pre-commit security-check ps status setup-test-login reset-onboarding stop-impersonation end-all-impersonations aws-validate cloudfront-clear-cache pull-prod-db anonymize-users create-youtube-agent regenerate-battle-images regenerate-user-images
 
 help:
 	@echo "Available commands:"
@@ -59,6 +59,7 @@ help:
 	@echo "  make add-tool        - Add a new tool (interactive, or: WEBSITE=url LOGO=filename.png)"
 	@echo "  make export-tools    - Export tools from database to YAML file"
 	@echo "  make load-tools      - Load tools from YAML file into database"
+	@echo "  make enrich-tools-ai - Enrich tools with AI (TOOL=name, LIMIT=n, DRY_RUN=1, SKIP_EXISTING=1)"
 	@echo "  make export-tasks    - Export tasks from database to YAML file"
 	@echo "  make load-tasks      - Load tasks from YAML file into database"
 	@echo "  make export-uat-scenarios - Export UAT scenarios from database to YAML file"
@@ -101,6 +102,7 @@ help:
 	@echo "  make test-e2e-deep-battles - Run deep battle tests only"
 	@echo "  make test-e2e-deep-community - Run deep community tests only"
 	@echo "  make test-e2e-deep-learning - Run deep learning tests only"
+	@echo "  make test-e2e-deep-journeys - Run deep user journey tests only"
 	@echo "  make setup-test-login - Set password for test user (for Chrome DevTools MCP)"
 	@echo "  make reset-onboarding - Print JS to reset Ember onboarding (run in browser console)"
 	@echo "  make stop-impersonation - Print JS to stop admin impersonation (run in browser console)"
@@ -417,6 +419,16 @@ export-tools:
 	@echo "Exporting tools to YAML..."
 	docker-compose exec -T web python manage.py export_tools
 
+enrich-tools-ai:
+	@echo "Enriching tools with AI-generated metadata..."
+ifdef TOOL
+	docker-compose exec -T web python manage.py enrich_tools_ai --tool "$(TOOL)" $(if $(DRY_RUN),--dry-run,) $(if $(SKIP_EXISTING),--skip-existing,)
+else ifdef LIMIT
+	docker-compose exec -T web python manage.py enrich_tools_ai --limit $(LIMIT) $(if $(DRY_RUN),--dry-run,) $(if $(SKIP_EXISTING),--skip-existing,)
+else
+	docker-compose exec -T web python manage.py enrich_tools_ai $(if $(DRY_RUN),--dry-run,) $(if $(SKIP_EXISTING),--skip-existing,)
+endif
+
 refresh-tool-news:
 	@echo "Refreshing tool news..."
 ifdef TOOL
@@ -577,7 +589,7 @@ test-e2e-smoke:
 
 test-backend:
 	@echo "Running backend tests..."
-	docker-compose exec -T web python manage.py test --verbosity=2 --noinput --keepdb
+	docker-compose exec -T -e CI=true web python manage.py test --verbosity=2 --noinput --keepdb
 
 # Mission Critical E2E Tests - These should NEVER fail
 test-e2e-github:
@@ -730,6 +742,10 @@ test-e2e-deep-community:
 test-e2e-deep-learning:
 	@echo "Running Deep Learning tests (progression, quizzes, skill levels)..."
 	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/learning*.spec.ts
+
+test-e2e-deep-journeys:
+	@echo "Running Deep User Journey tests (activation, retention, AI chat)..."
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/journeys/*.spec.ts
 
 test-e2e-deep-headed:
 	@echo "Running Deep E2E tests with UI (headed mode)..."

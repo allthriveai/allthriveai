@@ -679,29 +679,13 @@ Return ONLY the JSON, no other text.
                 logger.error(f'All providers failed to judge submission {submission.id}')
                 return None
 
-            # Process successful result
+            # Process successful result - return data for main thread to save
+            # NOTE: Database writes are done in main thread to avoid threading + DB contention
             eval_result = result['eval_result']
             tokens_used = result['tokens_used']
 
             # Calculate weighted score
             weighted_score = self._calculate_weighted_score(eval_result['scores'], criteria)
-
-            # Update submission
-            submission.criteria_scores = eval_result['scores']
-            submission.score = weighted_score
-            submission.evaluation_feedback = eval_result.get('feedback', '')
-            submission.evaluated_at = timezone.now()
-            submission.save()
-
-            # Create AI vote record
-            BattleVote.objects.create(
-                battle=battle,
-                submission=submission,
-                vote_source=VoteSource.AI,
-                score=weighted_score,
-                criteria_scores=eval_result['scores'],
-                feedback=eval_result.get('feedback', ''),
-            )
 
             logger.info(
                 f'Evaluated submission {submission.id}: score={weighted_score} (via {result["provider"]})',
@@ -715,6 +699,7 @@ Return ONLY the JSON, no other text.
 
             return {
                 'submission_id': submission.id,
+                'submission': submission,  # Include submission object for DB update
                 'user_id': submission.user_id,
                 'score': weighted_score,
                 'criteria_scores': eval_result['scores'],
@@ -723,6 +708,7 @@ Return ONLY the JSON, no other text.
             }
 
         # Judge both submissions in parallel for ~2x speedup
+        # AI calls happen in threads, but DB writes happen in main thread to avoid contention
         results = []
         total_judging_tokens = 0
 
@@ -733,6 +719,25 @@ Return ONLY the JSON, no other text.
                 if result:
                     results.append(result)
                     total_judging_tokens += result.get('tokens_used', 0)
+
+        # Save results to database in main thread (avoids threading + DB contention)
+        for result in results:
+            submission = result['submission']
+            submission.criteria_scores = result['criteria_scores']
+            submission.score = result['score']
+            submission.evaluation_feedback = result.get('feedback', '')
+            submission.evaluated_at = timezone.now()
+            submission.save()
+
+            # Create AI vote record
+            BattleVote.objects.create(
+                battle=battle,
+                submission=submission,
+                vote_source=VoteSource.AI,
+                score=result['score'],
+                criteria_scores=result['criteria_scores'],
+                feedback=result.get('feedback', ''),
+            )
 
         # Determine winner
         if results:

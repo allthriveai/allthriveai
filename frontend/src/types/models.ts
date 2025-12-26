@@ -442,6 +442,13 @@ export interface ToolWhatsNew {
   description: string;
 }
 
+export interface ToolTopic {
+  id: number;
+  name: string;
+  slug: string;
+  color?: string;
+}
+
 export interface LearningPathMinimal {
   id: number;
   title: string;
@@ -523,6 +530,9 @@ export interface Tool {
 
   // Taxonomy Link
   taxonomy?: number;
+
+  // Topics (taxonomy items associated with this tool)
+  topics?: ToolTopic[];
 
   // Related Learning Paths
   learningPaths?: LearningPathMinimal[];

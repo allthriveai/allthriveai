@@ -112,6 +112,17 @@ urlpatterns = [
         views.PersistLessonView.as_view(),
         name='persist-lesson',
     ),
+    # Lesson regeneration endpoints
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/regenerate/',
+        views.RegenerateLessonView.as_view(),
+        name='regenerate-lesson',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/regenerate-exercise/',
+        views.RegenerateExerciseView.as_view(),
+        name='regenerate-exercise',
+    ),
     # Lesson rating endpoints
     path(
         'lessons/<int:project_id>/rate/',

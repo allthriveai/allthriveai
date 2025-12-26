@@ -834,12 +834,50 @@ tools:
   logo_url: https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg
   pricing_model: freemium
   has_free_tier: true
-  tags:
-  - NLP
-  - OpenAI
-  - Conversation
-  - GPT
-  - ChatBot
+  # Topics for discovery (M2M linked via slugs)
+  topic_slugs:
+    - llm-providers
+    - code-assistants
+    - image-generation
+  # Decision/comparison metadata
+  pricing_tiers:
+    - name: Free
+      price: "$0/mo"
+      features: ["GPT-4o mini", "Limited GPT-5", "Web browsing", "DALL-E"]
+    - name: Plus
+      price: "$20/mo"
+      features: ["GPT-5 Thinking", "Higher limits", "Advanced Voice", "Projects"]
+    - name: Pro
+      price: "$200/mo"
+      features: ["Unlimited GPT-5", "o3 models", "Extended context"]
+    - name: Team
+      price: "$30/seat/mo"
+      features: ["Shared workspaces", "Admin console", "Higher limits"]
+  ideal_for:
+    - "General-purpose AI assistance"
+    - "Content creation and writing"
+    - "Code generation and debugging"
+    - "Teams wanting consumer-friendly interface"
+  not_ideal_for:
+    - "Privacy-sensitive applications (cloud only)"
+    - "Custom model fine-tuning needs"
+  sdk_languages: ["api_only"]
+  hosting_options: ["managed_cloud"]
+  compliance_certs: ["soc2", "gdpr"]
+  support_tiers:
+    - tier: "Community"
+      response_time: "Best effort"
+      channels: ["Help Center", "Community Forum"]
+    - tier: "Enterprise"
+      response_time: "4h"
+      channels: ["Email", "Dedicated CSM"]
+  differentiators:
+    - vs: claude
+      pros: ["Larger ecosystem", "Voice mode", "Web browsing", "Image generation"]
+      cons: ["Less nuanced reasoning", "Less transparent"]
+    - vs: gemini
+      pros: ["Better code generation", "More integrations", "Established ecosystem"]
+      cons: ["Less real-time information", "Higher Pro pricing"]
   key_features:
   - title: GPT-5 with Thinking Mode
     description: Choose Fast mode for quick replies or Thinking mode for multi-step reasoning
@@ -1889,13 +1927,51 @@ tools:
   logo_url: https://simpleicons.org/icons/langchain.svg
   pricing_model: open_source
   has_free_tier: true
-  tags:
-  - AI Agents
-  - Framework
-  - LLM
-  - Open Source
-  - Python
-  - JavaScript
+  # Topics for discovery (M2M linked via slugs)
+  topic_slugs:
+    - agent-frameworks
+    - orchestration
+    - rag
+    - llm-providers
+  # Decision/comparison metadata
+  pricing_tiers:
+    - name: Open Source
+      price: "$0"
+      features: ["Full framework", "LangGraph", "Community support"]
+    - name: LangSmith Developer
+      price: "Free"
+      features: ["5K traces/mo", "Debugging", "Playground"]
+    - name: LangSmith Plus
+      price: "$39/seat/mo"
+      features: ["100K traces/mo", "Automations", "Evals"]
+    - name: Enterprise
+      price: "Custom"
+      features: ["Unlimited", "SSO", "Dedicated support", "SLA"]
+  ideal_for:
+    - "Building production AI agents"
+    - "RAG applications with complex retrieval"
+    - "Teams wanting observability for LLM apps"
+    - "Projects needing multi-provider flexibility"
+  not_ideal_for:
+    - "Simple single-prompt applications"
+    - "Teams wanting minimal abstraction"
+  sdk_languages: ["python", "javascript"]
+  hosting_options: ["self_hosted", "langsmith_cloud"]
+  compliance_certs: ["soc2"]
+  support_tiers:
+    - tier: "Community"
+      response_time: "Best effort"
+      channels: ["Discord", "GitHub"]
+    - tier: "Enterprise"
+      response_time: "1h"
+      channels: ["Slack", "Email", "Dedicated CSM"]
+  differentiators:
+    - vs: llamaindex
+      pros: ["More flexible agent architectures", "LangGraph for complex flows", "Better observability"]
+      cons: ["Steeper learning curve", "More verbose for simple tasks"]
+    - vs: dspy
+      pros: ["Production-ready", "Rich ecosystem", "Better tooling"]
+      cons: ["Less automatic optimization", "More boilerplate"]
   key_features:
   - title: LangChain Framework
     description: Pre-built components for chains, agents, and retrieval systems
@@ -4138,13 +4214,48 @@ tools:
   logo_url: /logos/qdrant-logo.svg
   pricing_model: freemium
   has_free_tier: true
-  tags:
-  - Vector Database
-  - Vector Search
-  - Open Source
-  - RAG
-  - Semantic Search
-  - AI Infrastructure
+  # Topics for discovery (M2M linked via slugs)
+  topic_slugs:
+    - vector-databases
+    - rag
+    - embedding-providers
+  # Decision/comparison metadata
+  pricing_tiers:
+    - name: Free
+      price: "$0/mo"
+      features: ["1GB storage", "Unlimited collections", "Community support"]
+      limits: { vectors: "1M" }
+    - name: Qdrant Cloud
+      price: "From $25/mo"
+      features: ["Managed hosting", "Auto-scaling", "Backups", "Monitoring"]
+    - name: Enterprise
+      price: "Custom"
+      features: ["Dedicated cluster", "SLA", "24/7 support", "SOC 2"]
+  ideal_for:
+    - "Developers building RAG applications"
+    - "Teams needing self-hosted vector search"
+    - "High-throughput production workloads"
+    - "Startups with limited budgets"
+  not_ideal_for:
+    - "Simple key-value lookups"
+    - "Teams wanting fully-managed only"
+  sdk_languages: ["python", "rust", "go", "typescript", "java", ".net"]
+  hosting_options: ["managed_cloud", "self_hosted", "kubernetes", "docker"]
+  compliance_certs: ["soc2", "gdpr"]
+  support_tiers:
+    - tier: "Community"
+      response_time: "Best effort"
+      channels: ["Discord", "GitHub Issues"]
+    - tier: "Enterprise"
+      response_time: "24h"
+      channels: ["Email", "Slack", "Phone"]
+  differentiators:
+    - vs: pinecone
+      pros: ["Open source", "Self-hostable", "No vendor lock-in", "Lower cost at scale"]
+      cons: ["Less managed features", "Requires more ops work"]
+    - vs: weaviate
+      pros: ["Better raw performance", "Lighter weight", "Lower memory footprint"]
+      cons: ["Fewer built-in integrations", "No multimodal built-in"]
   key_features:
   - title: Advanced Filtering
     description: Rich payload support with full-text search and complex query conditions
@@ -4437,13 +4548,47 @@ tools:
   logo_url: /logos/weviate-logo.png
   pricing_model: freemium
   has_free_tier: true
-  tags:
-  - Vector Database
-  - RAG
-  - Hybrid Search
-  - Open Source
-  - AI Infrastructure
-  - Embeddings
+  # Topics for discovery (M2M linked via slugs)
+  topic_slugs:
+    - vector-databases
+    - rag
+    - embedding-providers
+  # Decision/comparison metadata
+  pricing_tiers:
+    - name: Free
+      price: "$0/mo"
+      features: ["Self-hosted", "Unlimited vectors", "Community support"]
+    - name: Weaviate Cloud
+      price: "From $25/mo"
+      features: ["Managed hosting", "Auto-scaling", "Monitoring", "Backups"]
+    - name: Enterprise
+      price: "Custom"
+      features: ["Dedicated clusters", "SLA", "Priority support", "SOC 2"]
+  ideal_for:
+    - "Teams building RAG applications"
+    - "Multimodal search applications"
+    - "Projects needing built-in vectorization"
+    - "Enterprise with compliance requirements"
+  not_ideal_for:
+    - "Extreme low-latency requirements (<10ms)"
+    - "Simple keyword-only search"
+  sdk_languages: ["python", "javascript", "go", "java"]
+  hosting_options: ["managed_cloud", "self_hosted", "kubernetes", "docker"]
+  compliance_certs: ["soc2", "gdpr", "hipaa"]
+  support_tiers:
+    - tier: "Community"
+      response_time: "Best effort"
+      channels: ["Slack", "GitHub", "Forum"]
+    - tier: "Enterprise"
+      response_time: "4h"
+      channels: ["Email", "Slack", "Phone"]
+  differentiators:
+    - vs: pinecone
+      pros: ["Open source", "Self-hostable", "Built-in vectorizers", "Generative search"]
+      cons: ["More complex setup", "Higher resource usage"]
+    - vs: qdrant
+      pros: ["More integrations", "Multimodal support", "Generative search built-in"]
+      cons: ["Higher memory footprint", "Slightly slower raw performance"]
   key_features:
   - title: Vector Search
     description: Sub-50ms query latency with HNSW indexing for billions of objects

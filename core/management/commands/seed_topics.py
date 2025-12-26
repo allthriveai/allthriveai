@@ -88,33 +88,126 @@ class Command(BaseCommand):
                 'description': 'Data visualization, analytics dashboards, and insights projects.',
                 'color': 'yellow',
             },
+            # Tool-focused topics for discovery (used by Tools M2M)
+            {
+                'name': 'Vector Databases',
+                'description': 'Tools for storing and searching vector embeddings.',
+                'color': 'indigo',
+            },
+            {
+                'name': 'RAG',
+                'description': 'Retrieval-Augmented Generation tools and frameworks.',
+                'color': 'violet',
+            },
+            {
+                'name': 'LLM Providers',
+                'description': 'Large language model APIs and services.',
+                'color': 'blue',
+            },
+            {
+                'name': 'Embedding Providers',
+                'description': 'APIs for generating text and image embeddings.',
+                'color': 'cyan',
+            },
+            {
+                'name': 'Authentication',
+                'description': 'Auth, SSO, and identity management tools.',
+                'color': 'emerald',
+            },
+            {
+                'name': 'Image Generation',
+                'description': 'AI image generation and editing tools.',
+                'color': 'pink',
+            },
+            {
+                'name': 'Video Generation',
+                'description': 'AI video creation and editing tools.',
+                'color': 'red',
+            },
+            {
+                'name': 'Voice AI',
+                'description': 'Text-to-speech, speech-to-text, and voice cloning.',
+                'color': 'amber',
+            },
+            {
+                'name': 'Code Assistants',
+                'description': 'AI coding assistants and IDE integrations.',
+                'color': 'slate',
+            },
+            {
+                'name': 'Agent Frameworks',
+                'description': 'Frameworks for building AI agents.',
+                'color': 'purple',
+            },
+            {
+                'name': 'Observability',
+                'description': 'LLM monitoring, tracing, and evaluation tools.',
+                'color': 'orange',
+            },
+            {
+                'name': 'Orchestration',
+                'description': 'LLM orchestration and workflow frameworks.',
+                'color': 'teal',
+            },
+            # Technology/infrastructure topics (for non-AI tools)
+            {
+                'name': 'Web Frameworks',
+                'description': 'Frontend and backend web development frameworks.',
+                'color': 'blue',
+            },
+            {
+                'name': 'Databases',
+                'description': 'Relational, NoSQL, and graph database systems.',
+                'color': 'green',
+            },
+            {
+                'name': 'DevOps',
+                'description': 'Infrastructure, CI/CD, containers, and deployment tools.',
+                'color': 'orange',
+            },
+            {
+                'name': 'Cloud Platforms',
+                'description': 'Cloud computing and hosting services.',
+                'color': 'sky',
+            },
+            {
+                'name': 'Programming Languages',
+                'description': 'General-purpose and domain-specific programming languages.',
+                'color': 'slate',
+            },
+            {
+                'name': 'Testing',
+                'description': 'Testing frameworks and quality assurance tools.',
+                'color': 'lime',
+            },
         ]
 
         created_count = 0
         updated_count = 0
 
         for data in topics_data:
-            topic, created = Taxonomy.objects.get_or_create(
-                name=data['name'],
-                defaults={
-                    'taxonomy_type': 'topic',
-                    'description': data['description'],
-                    'color': data['color'],
-                    'is_active': True,
-                },
-            )
+            # Handle potential duplicates by using filter + first
+            existing = Taxonomy.objects.filter(name=data['name']).first()
 
-            if created:
+            if existing:
+                # Update existing topic
+                existing.taxonomy_type = 'topic'
+                existing.description = data['description']
+                existing.color = data['color']
+                existing.is_active = True
+                existing.save()
+                updated_count += 1
+                self.stdout.write(self.style.WARNING(f'↻ Updated topic: {existing.name}'))
+            else:
+                # Create new topic
+                topic = Taxonomy.objects.create(
+                    name=data['name'],
+                    taxonomy_type='topic',
+                    description=data['description'],
+                    color=data['color'],
+                    is_active=True,
+                )
                 created_count += 1
                 self.stdout.write(self.style.SUCCESS(f'✓ Created topic: {topic.name}'))
-            else:
-                # Update existing topic
-                topic.taxonomy_type = 'topic'
-                topic.description = data['description']
-                topic.color = data['color']
-                topic.is_active = True
-                topic.save()
-                updated_count += 1
-                self.stdout.write(self.style.WARNING(f'↻ Updated topic: {topic.name}'))
 
         self.stdout.write(self.style.SUCCESS(f'\n✓ Topics seeded! Created: {created_count}, Updated: {updated_count}'))

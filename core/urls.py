@@ -83,6 +83,7 @@ from .integrations.linkedin.views import (
     import_linkedin_content,
 )
 from .integrations.views import import_from_url, list_integrations, scrape_url_for_project
+from .learning.code_validation.views import ValidateCodeView
 from .projects.comment_views import ProjectCommentViewSet
 from .projects.topic_suggestions import get_topic_suggestions
 from .projects.tracking_views import track_batch_clicks, track_project_click, track_project_view
@@ -505,6 +506,8 @@ urlpatterns = [
     path('games/', include('core.games.urls')),
     # Community messaging (forums, DMs, circle chat)
     path('community/', include('core.community.urls')),
+    # Code validation for code exercises
+    path('code/validate/', ValidateCodeView.as_view(), name='validate_code'),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

@@ -600,3 +600,163 @@ class TestAllTopicsView:
             zebra_idx = names.index('Zebra Topic')
             alpha_idx = names.index('Alpha Topic')
             assert alpha_idx < zebra_idx  # Alpha comes before Zebra alphabetically
+
+
+@pytest.fixture
+def saved_path_with_ai_lesson(db, user):
+    """Create a saved learning path with an AI lesson."""
+    return SavedLearningPath.objects.create(
+        user=user,
+        slug='test-path-with-lesson',
+        title='Test Path with AI Lesson',
+        difficulty='beginner',
+        estimated_hours=2,
+        path_data={
+            'title': 'Test Path with AI Lesson',
+            'curriculum': [
+                {
+                    'type': 'ai_lesson',
+                    'title': 'Introduction to Git',
+                    'order': 1,
+                    'difficulty': 'beginner',
+                    'content': {
+                        'summary': 'Learn Git basics',
+                        'explanation': 'Git is a version control system...',
+                        'key_concepts': ['version control', 'commits', 'branches'],
+                        'examples': [
+                            {'title': 'First Commit', 'description': 'Creating your first commit'},
+                        ],
+                        'exercise': {
+                            'exercise_type': 'ai_prompt',
+                            'scenario': 'Practice Git commands',
+                            'expected_inputs': ['git init'],
+                            'success_message': 'Great job!',
+                            'expected_output': 'Initialized repository',
+                            'content_by_level': {
+                                'beginner': {'instructions': 'Initialize a repo', 'hints': []},
+                                'intermediate': {'instructions': 'Initialize a repo', 'hints': []},
+                                'advanced': {'instructions': 'Initialize a repo', 'hints': []},
+                            },
+                        },
+                    },
+                },
+            ],
+        },
+    )
+
+
+@pytest.mark.django_db
+class TestRegenerateLessonView:
+    """Tests for lesson regeneration endpoint."""
+
+    def test_regenerate_requires_authentication(self, api_client, user, saved_path_with_ai_lesson):
+        """Regenerating a lesson requires authentication."""
+        path = saved_path_with_ai_lesson
+        response = api_client.post(f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_regenerate_lesson_not_found(self, api_client, user, saved_path_with_ai_lesson):
+        """Returns 404 when lesson doesn't exist at the specified order."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/999/regenerate/',
+            {},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_regenerate_path_not_found(self, api_client, user):
+        """Returns 404 when path doesn't exist."""
+        api_client.force_authenticate(user=user)
+
+        response = api_client.post(
+            '/api/v1/me/saved-paths/nonexistent-path/lessons/1/regenerate/',
+            {},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_regenerate_other_users_path(self, api_client, other_user, saved_path_with_ai_lesson):
+        """Cannot regenerate lessons in another user's path."""
+        api_client.force_authenticate(user=other_user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate/',
+            {},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestRegenerateExerciseView:
+    """Tests for exercise regeneration endpoint."""
+
+    def test_regenerate_exercise_requires_authentication(self, api_client, user, saved_path_with_ai_lesson):
+        """Regenerating an exercise requires authentication."""
+        path = saved_path_with_ai_lesson
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_regenerate_exercise_invalid_type(self, api_client, user, saved_path_with_ai_lesson):
+        """Returns 400 for invalid exercise type."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+            {'exercise_type': 'invalid_type'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_regenerate_exercise_valid_types(self, api_client, user, saved_path_with_ai_lesson):
+        """Accepts valid exercise types."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        valid_types = ['terminal', 'code', 'ai_prompt']
+        for exercise_type in valid_types:
+            response = api_client.post(
+                f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+                {'exercise_type': exercise_type},
+                format='json',
+            )
+            # Should not return 400 for valid types
+            # May return 500 if AI service is not available in tests
+            assert response.status_code != status.HTTP_400_BAD_REQUEST
+
+    def test_regenerate_exercise_lesson_not_found(self, api_client, user, saved_path_with_ai_lesson):
+        """Returns 404 when lesson doesn't exist."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/999/regenerate-exercise/',
+            {'exercise_type': 'terminal'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_regenerate_exercise_other_users_path(self, api_client, other_user, saved_path_with_ai_lesson):
+        """Cannot regenerate exercises in another user's path."""
+        api_client.force_authenticate(user=other_user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+            {'exercise_type': 'terminal'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND

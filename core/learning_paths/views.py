@@ -2276,6 +2276,218 @@ class CompleteLessonExerciseView(APIView):
         )
 
 
+class RegenerateLessonView(APIView):
+    """View for regenerating an AI lesson with user guidance."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug, order):
+        """
+        POST /api/v1/me/saved-paths/{slug}/lessons/{order}/regenerate/
+
+        Regenerate a single AI lesson with optional user guidance.
+
+        Request body:
+        {
+            "focus": "I want more hands-on examples",  # optional
+            "reason": "The current explanation is too abstract"  # optional
+        }
+
+        Returns the regenerated lesson content.
+        """
+        from services.agents.learning.lesson_generator import AILessonGenerator
+
+        # Get the saved path owned by this user
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        lesson_order = int(order)
+
+        # Find the AI lesson in the curriculum
+        curriculum = path.path_data.get('curriculum', [])
+        lesson_index = None
+        lesson_item = None
+
+        for i, item in enumerate(curriculum):
+            if item.get('order') == lesson_order and item.get('type') == 'ai_lesson':
+                lesson_index = i
+                lesson_item = item
+                break
+
+        if lesson_item is None:
+            return Response(
+                {'error': 'AI lesson not found at this order'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get user guidance from request body
+        focus = request.data.get('focus', '')
+        reason = request.data.get('reason', '')
+
+        try:
+            # Regenerate the lesson
+            new_content = AILessonGenerator.regenerate_single_lesson(
+                saved_path=path,
+                lesson_order=lesson_order,
+                focus=focus,
+                reason=reason,
+                user_id=request.user.id,
+            )
+
+            if not new_content:
+                return Response(
+                    {'error': 'Failed to regenerate lesson'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            # Update the curriculum with new content and optionally new title
+            lesson_item['content'] = new_content
+
+            # If AI generated a new title, update it
+            new_title = new_content.get('title')
+            if new_title:
+                lesson_item['title'] = new_title
+
+            curriculum[lesson_index] = lesson_item
+            path.path_data['curriculum'] = curriculum
+            path.save(update_fields=['path_data', 'updated_at'])
+
+            # Return camelCase response (axios will convert from snake_case)
+            return Response(
+                {
+                    'success': True,
+                    'lesson': {
+                        'order': lesson_order,
+                        'title': lesson_item.get('title', 'Untitled'),
+                        'content': new_content,
+                    },
+                }
+            )
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f'Lesson regeneration failed: {e}', exc_info=True)
+            return Response(
+                {'error': 'Failed to regenerate lesson. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class RegenerateExerciseView(APIView):
+    """View for regenerating a lesson exercise with a different type."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug, order):
+        """
+        POST /api/v1/me/saved-paths/{slug}/lessons/{order}/regenerate-exercise/
+
+        Regenerate just the exercise with a different type.
+
+        Request body:
+        {
+            "exercise_type": "git"  # terminal, git, ai_prompt, code_review
+        }
+
+        Returns the regenerated exercise.
+        """
+        from services.agents.learning.lesson_generator import AILessonGenerator
+
+        # Get the saved path owned by this user
+        path = SavedLearningPath.objects.filter(
+            user=request.user,
+            slug=slug,
+            is_archived=False,
+        ).first()
+
+        if not path:
+            return Response(
+                {'error': 'Learning path not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        lesson_order = int(order)
+
+        # Find the AI lesson in the curriculum
+        curriculum = path.path_data.get('curriculum', [])
+        lesson_index = None
+        lesson_item = None
+
+        for i, item in enumerate(curriculum):
+            if item.get('order') == lesson_order and item.get('type') == 'ai_lesson':
+                lesson_index = i
+                lesson_item = item
+                break
+
+        if lesson_item is None:
+            return Response(
+                {'error': 'AI lesson not found at this order'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Get and validate exercise type
+        exercise_type = request.data.get('exercise_type', '')
+        valid_types = {'terminal', 'code', 'ai_prompt'}
+
+        if exercise_type not in valid_types:
+            return Response(
+                {'error': f'Invalid exercise type. Must be one of: {", ".join(valid_types)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Regenerate just the exercise
+            new_exercise = AILessonGenerator.regenerate_exercise(
+                lesson_content=lesson_item.get('content', {}),
+                lesson_title=lesson_item.get('title', ''),
+                exercise_type=exercise_type,
+                user_id=request.user.id,
+            )
+
+            if not new_exercise:
+                return Response(
+                    {'error': 'Failed to regenerate exercise'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            # Update the lesson content with new exercise
+            content = lesson_item.get('content', {})
+            content['exercise'] = new_exercise
+            lesson_item['content'] = content
+            curriculum[lesson_index] = lesson_item
+            path.path_data['curriculum'] = curriculum
+            path.save(update_fields=['path_data', 'updated_at'])
+
+            # Return camelCase response (axios will convert from snake_case)
+            return Response(
+                {
+                    'success': True,
+                    'exercise': new_exercise,
+                }
+            )
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f'Exercise regeneration failed: {e}', exc_info=True)
+            return Response(
+                {'error': 'Failed to regenerate exercise. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 class CompleteLessonQuizView(APIView):
     """View for marking a lesson quiz as completed."""
 

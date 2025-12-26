@@ -288,6 +288,7 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 | Image upload → ownership → tool → project | `chat-media-upload.spec.ts` | ✅ |
 | URL import → ownership → project creation | `chat-url-import.spec.ts` | ✅ |
 | Topic question → learning path offer → creation | `chat-learning-path.spec.ts` | ✅ |
+| Tool discovery → projects using tools → preview tray | `chat-tool-discovery.spec.ts` | ✅ |
 
 ### To Be Tested
 
@@ -295,7 +296,6 @@ test('multi-turn conversation with Ember', async ({ page }) => {
 |------|----------|-------|
 | Avatar generation | Medium | "Make my avatar" → wizard opens → avatar generated |
 | Inline game launch | Medium | "Play a game" → game widget appears in chat |
-| Project search/discovery | Medium | "Show me trending" → project cards appear |
 | Profile building questions | Low | Ember asks pill question → user clicks → saved |
 
 ---

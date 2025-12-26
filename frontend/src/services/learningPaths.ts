@@ -208,11 +208,16 @@ export interface ExerciseContentByLevel {
  * Interactive exercise for "Try It Yourself" sections
  */
 export interface LessonExercise {
-  exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review';
+  exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review' | 'code';
   scenario: string;
-  expectedInputs: string[]; // Regex patterns for validation
+  expectedInputs: string[]; // Regex patterns for validation (terminal/git)
+  expectedPatterns?: string[]; // Regex patterns for code exercises
   successMessage: string;
   expectedOutput: string;
+  /** Language for code exercises */
+  language?: 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+  /** Starter code for code exercises */
+  starterCode?: string;
   contentByLevel: Record<SkillLevel, ExerciseContentByLevel>;
 }
 
@@ -923,6 +928,138 @@ export async function completeQuiz(
   const response = await api.post<CompletionResponse>(
     `/learning-paths/${pathId}/lessons/${lessonOrder}/complete-quiz/`,
     score !== undefined ? { score } : {}
+  );
+  return response.data;
+}
+
+// =============================================================================
+// LESSON & EXERCISE REGENERATION APIs
+// =============================================================================
+
+/**
+ * Request body for regenerating a lesson
+ */
+export interface RegenerateLessonRequest {
+  focus?: string; // "I want more hands-on examples"
+  reason?: string; // "The current explanation is too abstract"
+}
+
+/**
+ * Request body for regenerating an exercise
+ */
+export interface RegenerateExerciseRequest {
+  exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review';
+}
+
+/**
+ * Response from lesson regeneration
+ */
+export interface RegenerateLessonResponse {
+  success: boolean;
+  lesson: {
+    order: number;
+    title: string;
+    content: AILessonContent;
+  };
+}
+
+/**
+ * Response from exercise regeneration
+ */
+export interface RegenerateExerciseResponse {
+  success: boolean;
+  exercise: LessonExercise;
+}
+
+// =============================================================================
+// CODE VALIDATION APIs
+// =============================================================================
+
+/**
+ * Code languages supported by the code editor exercise
+ */
+export type CodeLanguage = 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+
+/**
+ * Single issue from code validation
+ */
+export interface CodeFeedbackIssue {
+  type: 'error' | 'warning' | 'suggestion';
+  line?: number;
+  message: string;
+  explanation?: string;
+  hint?: string;
+}
+
+/**
+ * Request body for code validation
+ */
+export interface ValidateCodeRequest {
+  code: string;
+  language: CodeLanguage;
+  expectedPatterns: string[];
+  skillLevel: SkillLevel;
+  exerciseId?: string;
+}
+
+/**
+ * Response from code validation endpoint
+ */
+export interface ValidateCodeResponse {
+  isCorrect: boolean;
+  status: 'correct' | 'almost_there' | 'needs_work' | 'major_issues';
+  issues: CodeFeedbackIssue[];
+  positives?: string[];
+  nextStep?: string;
+  aiUsed: boolean;
+  patternResults?: Array<{
+    pattern: string;
+    found: boolean;
+    line?: number;
+  }>;
+}
+
+/**
+ * Validate code for a code exercise
+ * Uses tiered validation: regex patterns (Tier 2) and optionally AI (Tier 3)
+ */
+export async function validateCode(request: ValidateCodeRequest): Promise<ValidateCodeResponse> {
+  const response = await api.post<ValidateCodeResponse>('/code/validate/', {
+    code: request.code,
+    language: request.language,
+    expected_patterns: request.expectedPatterns,
+    skill_level: request.skillLevel,
+    exercise_id: request.exerciseId,
+  });
+  return response.data;
+}
+
+/**
+ * Regenerate an AI lesson with optional user guidance
+ */
+export async function regenerateLesson(
+  slug: string,
+  lessonOrder: number,
+  data?: RegenerateLessonRequest
+): Promise<RegenerateLessonResponse> {
+  const response = await api.post<RegenerateLessonResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate/`,
+    data || {}
+  );
+  return response.data;
+}
+
+/**
+ * Regenerate an exercise with a different exercise type
+ */
+export async function regenerateExercise(
+  slug: string,
+  lessonOrder: number,
+  data: RegenerateExerciseRequest
+): Promise<RegenerateExerciseResponse> {
+  const response = await api.post<RegenerateExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate-exercise/`,
+    data
   );
   return response.data;
 }

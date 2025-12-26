@@ -468,7 +468,7 @@ def _parse_tool_names(query: str) -> list[str]:
     return tool_names[:5]  # Limit to 5 tools max
 
 
-def _serialize_tool(tool: 'Tool') -> ContentItem:  # noqa: F821 - Tool imported inside function
+def _serialize_tool(tool: 'Tool', match_reason: str = 'Official tool information') -> ContentItem:  # noqa: F821
     """Serialize a Tool model to ContentItem with comparison fields."""
     # Safely get display values
     try:
@@ -480,6 +480,13 @@ def _serialize_tool(tool: 'Tool') -> ContentItem:  # noqa: F821 - Tool imported 
         pricing_display = tool.get_pricing_model_display() if tool.pricing_model else ''
     except (AttributeError, ValueError):
         pricing_display = tool.pricing_model or ''
+
+    # Get topics for this tool
+    topics = []
+    try:
+        topics = [t.name for t in tool.topics.all()[:5]]
+    except Exception:
+        topics = []  # Silently fallback if topics not loaded
 
     return {
         'type': 'toolInfo',
@@ -500,31 +507,247 @@ def _serialize_tool(tool: 'Tool') -> ContentItem:  # noqa: F821 - Tool imported 
         'gameStats': tool.game_stats or {},
         'alternatives': tool.alternatives[:5] if tool.alternatives else [],
         'synergyTools': tool.synergy_tools[:5] if tool.synergy_tools else [],
-        'matchReason': 'Official tool information',
+        # New comparison metadata fields
+        'idealFor': tool.ideal_for[:5] if tool.ideal_for else [],
+        'pricingTiers': tool.pricing_tiers[:3] if tool.pricing_tiers else [],
+        'sdkLanguages': tool.sdk_languages[:8] if tool.sdk_languages else [],
+        'hostingOptions': tool.hosting_options[:5] if tool.hosting_options else [],
+        'complianceCerts': tool.compliance_certs[:5] if tool.compliance_certs else [],
+        'topics': topics,
+        'matchReason': match_reason,
     }
 
 
-def _find_tool_info(query: str) -> list[ContentItem]:
-    """
-    Find tool info for the query.
+# Decision query patterns for topic-based search
+DECISION_PATTERNS = [
+    r'\bwhich\s+.+\s+should\s+i\s+use\b',
+    r'\bbest\s+(?!practice|way|thing|part)\w+',  # "best X" but not "best practice/way"
+    r'\bhelp\s+me\s+(decide|choose)\b',
+    r'\brecommend\s+a?\b',
+    r'\bwhat\s+.+\s+should\s+i\s+use\b',
+    r'\btop\s+.+\s*(tools?|options?|choices?|frameworks?|databases?)\b',
+    r'\bi\s+need\s+a\s+\w+',  # "I need a vector database"
+]
 
-    Supports multiple tools for comparison queries like:
-    - "Midjourney vs DALL-E"
-    - "help me decide between ChatGPT and Claude"
 
-    Returns a list of tool info items with comparison-friendly fields.
+def _is_decision_query(query: str) -> bool:
+    """Check if query is asking for a decision/recommendation."""
+    query_lower = query.lower()
+    return any(re.search(p, query_lower) for p in DECISION_PATTERNS)
+
+
+def _extract_topic_keywords(query: str) -> list[str]:
     """
-    if not query:
+    Extract potential topic keywords from a query.
+
+    E.g., "which vector database should I use" -> ["vector database", "vector", "database"]
+    """
+    # Remove common decision-making words
+    stop_words = {
+        'which',
+        'what',
+        'should',
+        'i',
+        'use',
+        'best',
+        'help',
+        'me',
+        'decide',
+        'choose',
+        'between',
+        'recommend',
+        'a',
+        'an',
+        'the',
+        'for',
+        'to',
+        'is',
+        'are',
+        'need',
+        'want',
+        'looking',
+        'find',
+        'top',
+        'tools',
+        'tool',
+        'options',
+    }
+
+    words = query.lower().strip().split()
+    keywords = [w for w in words if w not in stop_words and len(w) > 2]
+
+    # Generate bigrams (two-word phrases)
+    bigrams = []
+    for i in range(len(keywords) - 1):
+        bigrams.append(f'{keywords[i]} {keywords[i + 1]}')
+
+    # Return bigrams first (more specific), then single words
+    return bigrams + keywords
+
+
+def _find_tools_by_topic(query: str, limit: int = 5) -> tuple[list[ContentItem], list[int]]:
+    """
+    Find tools matching a topic like 'vector database'.
+
+    Searches the topics M2M relationship on Tool model.
+    Extracts keywords from longer queries for better matching.
+
+    Returns:
+        Tuple of (serialized tools, tool IDs for project lookup)
+    """
+    try:
+        from core.taxonomy.models import Taxonomy
+        from core.tools.models import Tool
+
+        # Extract potential topic keywords from the query
+        keywords = _extract_topic_keywords(query)
+        if not keywords:
+            keywords = [query.lower().strip()]
+
+        # Try each keyword until we find matching topics
+        topics = None
+        matched_keyword = None  # Track which keyword matched for better match reason
+        for keyword in keywords:
+            topics = Taxonomy.objects.filter(
+                taxonomy_type='topic',
+                is_active=True,
+            ).filter(Q(name__icontains=keyword) | Q(slug__icontains=keyword.replace(' ', '-')))[:3]
+
+            if topics.exists():
+                matched_keyword = keyword
+                break
+
+        if not topics:
+            return [], []
+
+        topic_names = [t.name for t in topics]
+        logger.info(f'Found matching topics for "{query}": {topic_names}')
+
+        # Get tools linked to these topics, ordered by popularity
+        tools = (
+            Tool.objects.filter(
+                topics__in=topics,
+                is_active=True,
+            )
+            .select_related('company')
+            .prefetch_related('topics')
+            .order_by('-popularity_score', '-view_count', 'name')
+            .distinct()[:limit]
+        )
+
+        if not tools:
+            return [], []
+
+        # Collect tool IDs for project lookup
+        tool_ids = [tool.id for tool in tools]
+
+        # Serialize with topic-based match reason
+        results = []
+        for tool in tools:
+            # Use matched keyword if available for more specific match reason
+            match_reason = f'{matched_keyword.title() if matched_keyword else topic_names[0]} tool'
+            results.append(_serialize_tool(tool, match_reason=match_reason))
+
+        logger.info(f'Topic-based search returned {len(results)} tools for "{query}"')
+        return results, tool_ids
+
+    except Exception as e:
+        logger.warning(f'Topic-based tool search failed: {e}')
+        return [], []
+
+
+def _find_projects_using_tools(tool_ids: list[int], context: SearchContext, limit: int = 5) -> list[tuple]:
+    """
+    Find projects that use specific tools.
+
+    This connects tool discovery to real community examples:
+    "which LLM should I use" → finds LLM tools → finds projects using those LLMs
+
+    Returns list of (project, match_reason, relevance_score) tuples.
+    """
+    if not tool_ids:
         return []
 
     try:
+        from core.projects.models import Project
         from core.tools.models import Tool
+
+        # Get tool names for match reasons
+        tool_name_map = dict(Tool.objects.filter(id__in=tool_ids).values_list('id', 'name'))
+
+        # Find projects using any of these tools
+        projects = (
+            Project.objects.filter(
+                tools__id__in=tool_ids,
+                is_private=False,
+                is_showcased=True,
+            )
+            .select_related('user', 'content_type_taxonomy', 'difficulty_taxonomy')
+            .prefetch_related('categories', 'tools', 'likes')
+            .annotate(like_count=Count('likes', distinct=True))
+            .order_by('-like_count', '-created_at')
+            .distinct()[:limit]
+        )
+
+        results = []
+        for project in projects:
+            # Find which tools from our list this project uses
+            project_tool_ids = set(project.tools.values_list('id', flat=True))
+            matching_tool_ids = project_tool_ids & set(tool_ids)
+
+            if matching_tool_ids:
+                # Get names of matching tools
+                matching_tool_names = [tool_name_map.get(tid, 'this tool') for tid in matching_tool_ids]
+                if len(matching_tool_names) == 1:
+                    match_reason = f'Built with {matching_tool_names[0]}'
+                else:
+                    match_reason = f'Uses {", ".join(matching_tool_names[:2])}'
+
+                # Higher score for projects using multiple of our target tools
+                score = 0.8 + (0.05 * min(len(matching_tool_ids), 3))
+                results.append((project, match_reason, score))
+
+        logger.info(f'Found {len(results)} projects using {len(tool_ids)} tools')
+        return results
+
+    except Exception as e:
+        logger.warning(f'Projects-using-tools search failed: {e}')
+        return []
+
+
+def _find_tool_info(query: str) -> tuple[list[ContentItem], list[int]]:
+    """
+    Find tool info for the query.
+
+    Supports:
+    - Multiple tools for comparison queries like "Midjourney vs DALL-E"
+    - Decision queries like "which vector database should I use"
+    - Direct tool lookups by name/slug
+
+    Returns:
+        Tuple of (tool info items, tool IDs for related project lookup)
+    """
+    if not query:
+        return [], []
+
+    try:
+        from core.tools.models import Tool
+
+        # Check for decision query first (topic-based search)
+        if _is_decision_query(query):
+            results, tool_ids = _find_tools_by_topic(query)
+            if results:
+                return results, tool_ids
 
         # Parse potential tool names from query
         tool_names = _parse_tool_names(query)
 
         if not tool_names:
-            return []
+            # No explicit tool names found, try topic-based search
+            results, tool_ids = _find_tools_by_topic(query)
+            if results:
+                return results, tool_ids
+            return [], []
 
         # Build query for multiple tools - prioritize exact matches
         # First try exact matches only
@@ -535,7 +758,11 @@ def _find_tool_info(query: str) -> list[ContentItem]:
             exact_query |= Q(name__iexact=name)
 
         tools = list(
-            Tool.objects.filter(exact_query, is_active=True).select_related('company').order_by('name').distinct()[:5]
+            Tool.objects.filter(exact_query, is_active=True)
+            .select_related('company')
+            .prefetch_related('topics')
+            .order_by('name')
+            .distinct()[:5]
         )
 
         # If we didn't find enough exact matches, try partial matches
@@ -554,6 +781,7 @@ def _find_tool_info(query: str) -> list[ContentItem]:
                     Tool.objects.filter(partial_query, is_active=True)
                     .exclude(id__in=existing_ids)
                     .select_related('company')
+                    .prefetch_related('topics')
                     .order_by('name')
                     .distinct()[: 5 - len(tools)]
                 )
@@ -568,12 +796,18 @@ def _find_tool_info(query: str) -> list[ContentItem]:
                     is_active=True,
                 )
                 .select_related('company')
+                .prefetch_related('topics')
                 .first()
             )
 
             if tool:
-                return [_serialize_tool(tool)]
-            return []
+                return [_serialize_tool(tool)], [tool.id]
+
+            # Last resort: try topic-based search
+            return _find_tools_by_topic(query)
+
+        # Collect tool IDs for project lookup
+        tool_ids = [tool.id for tool in tools]
 
         # Serialize all found tools
         results = [_serialize_tool(tool) for tool in tools]
@@ -583,11 +817,11 @@ def _find_tool_info(query: str) -> list[ContentItem]:
             for i, result in enumerate(results):
                 result['matchReason'] = f'Tool {i + 1} of {len(results)} for comparison'
 
-        return results
+        return results, tool_ids
 
     except Exception as e:
         logger.warning(f'Tool finder failed: {e}')
-        return []
+        return [], []
 
 
 def _find_quizzes(query: str, context: SearchContext, limit: int = 2) -> list[ContentItem]:
@@ -1200,8 +1434,10 @@ def find_content(
         logger.warning(f'Game finder failed: {e}')
 
     # 2. Find tool info (supports multiple tools for comparison)
+    # Also returns tool IDs for finding related projects
+    discovered_tool_ids = []
     try:
-        tool_infos = _find_tool_info(query)
+        tool_infos, discovered_tool_ids = _find_tool_info(query)
         if tool_infos:
             response['content'].extend(tool_infos)
     except Exception as e:
@@ -1214,8 +1450,23 @@ def find_content(
             # "More like this" mode
             project_tuples = _get_similar_projects(similar_to, context, limit)
         elif query:
-            # Search mode - intelligent personalized search
-            project_tuples = _search_projects_personalized(query, context, content_types, category, limit)
+            # If we found tools, prioritize projects using those tools
+            # This connects "which LLM should I use" → projects using Claude, ChatGPT, etc.
+            if discovered_tool_ids:
+                tool_projects = _find_projects_using_tools(discovered_tool_ids, context, limit=limit)
+                project_tuples.extend(tool_projects)
+                logger.info(f'Found {len(tool_projects)} projects using discovered tools')
+
+            # Supplement with general search if we need more projects
+            if len(project_tuples) < limit:
+                remaining = limit - len(project_tuples)
+                existing_ids = {p.id for p, _, _ in project_tuples}
+                search_results = _search_projects_personalized(query, context, content_types, category, remaining + 3)
+                # Dedupe and add
+                for p, reason, score in search_results:
+                    if p.id not in existing_ids and len(project_tuples) < limit:
+                        project_tuples.append((p, reason, score))
+                        existing_ids.add(p.id)
         else:
             # Feed mode - personalized feed
             if context.user_id:
@@ -1276,7 +1527,16 @@ def find_content(
             parts.append('tool information')
 
         if project_count > 0:
-            parts.append(f'{project_count} community projects')
+            # Check if projects are specifically using discovered tools
+            using_tools = sum(
+                1
+                for p in response['projects']
+                if 'Built with' in p.get('matchReason', '') or 'Uses' in p.get('matchReason', '')
+            )
+            if using_tools > 0 and tool_count > 0:
+                parts.append(f'{project_count} projects by people using these tools')
+            else:
+                parts.append(f'{project_count} community projects')
         if any(c.get('type') == 'quizCard' for c in response['content']):
             parts.append('quizzes')
 
