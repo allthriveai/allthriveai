@@ -83,17 +83,25 @@ class FeedbackViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Create feedback item and return full serialized response."""
+        import logging
+
         from .tasks import generate_haven_response
+
+        logger = logging.getLogger(__name__)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save(user=request.user)
 
         # Trigger Haven's auto-comment (async via Celery)
-        generate_haven_response.apply_async(
-            args=[instance.id, request.user.id],
-            expires=600,  # Expire after 10 min if not picked up
-        )
+        try:
+            result = generate_haven_response.apply_async(
+                args=[instance.id, request.user.id],
+                expires=600,  # Expire after 10 min if not picked up
+            )
+            logger.info(f'Queued Haven response for feedback {instance.id}, task_id={result.id}')
+        except Exception as e:
+            logger.error(f'Failed to queue Haven response for feedback {instance.id}: {e}', exc_info=True)
 
         # Return the full serialized object with user data
         response_serializer = FeedbackItemSerializer(instance, context={'request': request})
@@ -133,7 +141,11 @@ class FeedbackViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get', 'post'], url_path='comments')
     def comments(self, request, pk=None):
         """List or add comments on a feedback item."""
+        import logging
+
         from .tasks import generate_haven_comment_reply
+
+        logger = logging.getLogger(__name__)
 
         item = self.get_object()
 
@@ -148,10 +160,14 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         comment = serializer.save(user=request.user, feedback_item=item)
 
         # Trigger Haven's reply (async via Celery)
-        generate_haven_comment_reply.apply_async(
-            args=[item.id, comment.id],
-            expires=600,  # Expire after 10 min if not picked up
-        )
+        try:
+            result = generate_haven_comment_reply.apply_async(
+                args=[item.id, comment.id],
+                expires=600,  # Expire after 10 min if not picked up
+            )
+            logger.info(f'Queued Haven reply for feedback {item.id} comment {comment.id}, task_id={result.id}')
+        except Exception as e:
+            logger.error(f'Failed to queue Haven reply for feedback {item.id}: {e}', exc_info=True)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
