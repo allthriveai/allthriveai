@@ -57,6 +57,12 @@ def initialize_phoenix():
         _phoenix_initialized = True
         return
 
+    # Skip Phoenix in CI environments (GitHub Actions, etc.)
+    if os.getenv('CI'):
+        logger.info('Phoenix tracing disabled in CI environment')
+        _phoenix_initialized = True
+        return
+
     try:
         from openinference.instrumentation.langchain import LangChainInstrumentor
         from openinference.instrumentation.openai import OpenAIInstrumentor
