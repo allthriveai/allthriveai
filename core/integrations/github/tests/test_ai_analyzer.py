@@ -28,16 +28,19 @@ class AIAnalyzerTestCase(TestCase):
             'dependencies': {},
         }
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
-    def test_analyze_with_readme(self, mock_diagram, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai):
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.optimize_layout_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.parse')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
+    def test_analyze_with_readme(
+        self, mock_diagram, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai_class
+    ):
         """Test analysis with README content."""
-        # Mock AI response - must match what test expects
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance and its complete method
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {
                 'description': 'A test Python repository for testing',
                 'category_ids': [1, 9],  # Include category 1 that test expects
@@ -45,6 +48,7 @@ class AIAnalyzerTestCase(TestCase):
                 'tool_names': [],
             }
         )
+        mock_ai_instance.last_usage = None
 
         # Mock generate_architecture_diagram to avoid AI calls
         mock_diagram.return_value = None
@@ -80,15 +84,17 @@ class AIAnalyzerTestCase(TestCase):
         self.assertIn('python', result['topics'])
         self.assertEqual(result['hero_image'], 'https://example.com/hero.png')
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
-    def test_analyze_without_readme(self, mock_diagram, mock_scan, mock_ai):
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
+    def test_analyze_without_readme(self, mock_diagram, mock_scan, mock_ai_class):
         """Test analysis without README (generates blocks from repo structure)."""
-        # Mock AI response
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {'description': 'A Python project', 'category_ids': [9], 'topics': ['python'], 'tool_names': []}
         )
+        mock_ai_instance.last_usage = None
 
         # Mock scan_repository_for_images
         mock_scan.return_value = {'screenshots': [], 'logo': None, 'banner': None}
@@ -113,13 +119,14 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(blocks[0]['type'], 'text')
         self.assertEqual(blocks[0]['style'], 'heading')
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
-    def test_analyze_handles_ai_error(self, mock_diagram, mock_scan, mock_ai):
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
+    def test_analyze_handles_ai_error(self, mock_diagram, mock_scan, mock_ai_class):
         """Test fallback when AI fails."""
         # Mock AI error
-        mock_ai.side_effect = Exception('AI service error')
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.side_effect = Exception('AI service error')
 
         # Mock other methods that will be called in fallback
         mock_scan.return_value = {'screenshots': [], 'logo': None, 'banner': None}
@@ -132,13 +139,14 @@ class AIAnalyzerTestCase(TestCase):
         self.assertIn('description', result)
         self.assertEqual(result['category_ids'], [9])  # Default to Developer & Coding
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
-    def test_analyze_validates_category_ids(self, mock_diagram, mock_scan, mock_ai):
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
+    def test_analyze_validates_category_ids(self, mock_diagram, mock_scan, mock_ai_class):
         """Test category ID validation."""
-        # Mock AI with invalid category IDs
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance with invalid category IDs
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {
                 'description': 'Test',
                 'category_ids': [1, 999, -1, 9],  # 999 and -1 are invalid
@@ -146,6 +154,7 @@ class AIAnalyzerTestCase(TestCase):
                 'tool_names': [],
             }
         )
+        mock_ai_instance.last_usage = None
 
         # Mock scan and diagram generation
         mock_scan.return_value = {'screenshots': [], 'logo': None, 'banner': None}
@@ -159,19 +168,25 @@ class AIAnalyzerTestCase(TestCase):
         self.assertNotIn(999, result['category_ids'])
         self.assertNotIn(-1, result['category_ids'])
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.optimize_layout_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.parse')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
     def test_analyze_uses_logo_as_hero_when_no_og_image(
-        self, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai
+        self, mock_diagram, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai_class
     ):
         """Test analyze_github_repo uses extracted logo/banner as hero image when no open graph image."""
-        # Mock AI response
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {'description': 'Test repo', 'category_ids': [9], 'topics': ['test'], 'tool_names': []}
         )
+        mock_ai_instance.last_usage = None
+
+        # Mock generate_architecture_diagram to avoid AI calls
+        mock_diagram.return_value = None
 
         # Mock visual assets with logo and banner
         mock_scan.return_value = {
@@ -202,19 +217,25 @@ class AIAnalyzerTestCase(TestCase):
         # Should use logo as hero image (logo preferred over banner)
         self.assertEqual(result['hero_image'], 'https://raw.githubusercontent.com/testowner/test-repo/HEAD/logo.svg')
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.optimize_layout_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.parse')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
     def test_analyze_uses_banner_as_hero_when_no_logo(
-        self, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai
+        self, mock_diagram, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai_class
     ):
         """Test analyze_github_repo uses banner when no logo available."""
-        # Mock AI response
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {'description': 'Test repo', 'category_ids': [9], 'topics': ['test'], 'tool_names': []}
         )
+        mock_ai_instance.last_usage = None
+
+        # Mock generate_architecture_diagram to avoid AI calls
+        mock_diagram.return_value = None
 
         # Mock visual assets with only banner (no logo)
         mock_scan.return_value = {
@@ -245,19 +266,25 @@ class AIAnalyzerTestCase(TestCase):
         # Should use banner as hero image
         self.assertEqual(result['hero_image'], 'https://raw.githubusercontent.com/testowner/test-repo/HEAD/banner.png')
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.optimize_layout_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.transform_readme_content_with_ai')
-    @patch('core.integrations.base.parser.BaseParser.parse')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.optimize_layout_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.transform_readme_content_with_ai')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.parse')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
     def test_analyze_adds_screenshots_as_image_grid(
-        self, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai
+        self, mock_diagram, mock_scan, mock_parse, mock_transform, mock_optimize, mock_ai_class
     ):
         """Test analyze_github_repo correctly adds extracted screenshots as an imageGrid block."""
-        # Mock AI response
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {'description': 'Test repo', 'category_ids': [9], 'topics': ['test'], 'tool_names': []}
         )
+        mock_ai_instance.last_usage = None
+
+        # Mock generate_architecture_diagram to avoid AI calls
+        mock_diagram.return_value = None
 
         # Mock scan to be called with correct args
         mock_scan.return_value = {
@@ -302,15 +329,17 @@ class AIAnalyzerTestCase(TestCase):
             self.assertIn('url', img)
             self.assertIn('screenshots', img['url'])
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
-    def test_analyze_without_readme_adds_screenshots(self, mock_diagram, mock_scan, mock_ai):
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
+    def test_analyze_without_readme_adds_screenshots(self, mock_diagram, mock_scan, mock_ai_class):
         """Test analyze_github_repo adds screenshots even without README."""
-        # Mock AI response
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {'description': 'Test repo', 'category_ids': [9], 'topics': ['test'], 'tool_names': []}
         )
+        mock_ai_instance.last_usage = None
 
         # Mock visual assets
         mock_scan.return_value = {
@@ -332,15 +361,17 @@ class AIAnalyzerTestCase(TestCase):
         self.assertEqual(len(image_grid_blocks), 1)
         self.assertEqual(len(image_grid_blocks[0]['images']), 2)
 
-    @patch('services.ai.provider.AIProvider.complete')
-    @patch('core.integrations.base.parser.BaseParser.scan_repository_for_images')
-    @patch('core.integrations.base.parser.BaseParser.generate_architecture_diagram')
-    def test_analyze_limits_screenshots_to_six(self, mock_diagram, mock_scan, mock_ai):
+    @patch('core.integrations.github.ai_analyzer.AIProvider')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.scan_repository_for_images')
+    @patch('core.integrations.github.ai_analyzer.BaseParser.generate_architecture_diagram')
+    def test_analyze_limits_screenshots_to_six(self, mock_diagram, mock_scan, mock_ai_class):
         """Test analyze_github_repo limits screenshots in imageGrid to 6."""
-        # Mock AI response
-        mock_ai.return_value = json.dumps(
+        # Mock AI provider instance
+        mock_ai_instance = mock_ai_class.return_value
+        mock_ai_instance.complete.return_value = json.dumps(
             {'description': 'Test repo', 'category_ids': [9], 'topics': ['test'], 'tool_names': []}
         )
+        mock_ai_instance.last_usage = None
 
         # Mock visual assets with more than 6 screenshots
         mock_scan.return_value = {
