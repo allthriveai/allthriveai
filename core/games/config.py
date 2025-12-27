@@ -4,7 +4,7 @@ Game definitions - Single source of truth.
 All game metadata lives here. Imported by:
 - seed_games.py (Weaviate indexing)
 - content_finder.py (learning tool discovery)
-- Ember prompts (game suggestions)
+- Ava prompts (game suggestions)
 
 To add a new game:
 1. Add entry to GAMES list below

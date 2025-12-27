@@ -1,5 +1,5 @@
 """
-Learning tools for Ember agent.
+Learning tools for Ava agent.
 
 Tools for creating learning paths and updating learner profiles.
 
@@ -426,8 +426,8 @@ def update_learner_profile(
     Use this when:
     - User expresses a learning preference ("I prefer videos", "I learn better hands-on")
     - User shows interest in a topic ("I'm interested in RAG", "I want to learn about agents")
-    - Ember infers user skill level ("You seem advanced at prompt engineering")
-    - Ember observes something worth remembering about the learner
+    - Ava infers user skill level ("You seem advanced at prompt engineering")
+    - Ava observes something worth remembering about the learner
 
     This updates the user's profile for future personalization.
 
@@ -540,7 +540,7 @@ def update_learner_profile(
                         skill=skill_taxonomy,
                         defaults={
                             'proficiency_level': level_normalized,
-                            'is_self_assessed': False,  # Inferred by Ember
+                            'is_self_assessed': False,  # Inferred by Ava
                         },
                     )
                     updated_fields.append(f'skills.{skill_slug}')
@@ -550,14 +550,14 @@ def update_learner_profile(
             # Store notes in generated_path metadata
             if not profile.generated_path:
                 profile.generated_path = {}
-            existing_notes = profile.generated_path.get('ember_notes', [])
+            existing_notes = profile.generated_path.get('ava_notes', [])
             existing_notes.append(
                 {
                     'note': notes,
                     'timestamp': timezone.now().isoformat(),
                 }
             )
-            profile.generated_path['ember_notes'] = existing_notes[-10:]  # Keep last 10
+            profile.generated_path['ava_notes'] = existing_notes[-10:]  # Keep last 10
             updated_fields.append('notes')
 
         # Save profile

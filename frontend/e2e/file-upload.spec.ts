@@ -208,7 +208,7 @@ test.describe('File Upload - Error Handling', () => {
     await page.keyboard.press('Escape');
 
     // AND: Chat input should still be functional
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled();
   });
 
@@ -227,7 +227,7 @@ test.describe('File Upload - Error Handling', () => {
     await page.waitForTimeout(300);
 
     // THEN: Chat input should still work
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled();
 
     // AND: I can type a message

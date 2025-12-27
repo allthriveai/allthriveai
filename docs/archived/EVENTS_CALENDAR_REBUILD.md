@@ -46,7 +46,7 @@ All Events Calendar functionality has been successfully rebuilt and integrated.
 ## How to Use
 
 ### For Users:
-1. Click **"Events Calendar"** in the left sidebar under **MEMBERSHIP**
+1. Click **"Events Calendar"** in the left sidebar under **MAVASHIP**
 2. The events panel slides in from the right
 3. Toggle between **Calendar** and **List** views
 4. View event details, dates, locations, and links

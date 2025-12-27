@@ -1,7 +1,7 @@
 # Scalable Taxonomy System for Content Discovery via Chat
 
 ## Goal
-Build a **fully agentic** taxonomy system that tags all content (Projects, Tools, Quizzes, MicroLessons) with **zero human intervention** so that Ember chat can surface relatable content to users through:
+Build a **fully agentic** taxonomy system that tags all content (Projects, Tools, Quizzes, MicroLessons) with **zero human intervention** so that Ava chat can surface relatable content to users through:
 - Vector embeddings (semantic similarity via Weaviate)
 - Flat tag matching (taxonomy filters)
 - Fuzzy semantic search (hybrid keyword + vector)
@@ -177,7 +177,7 @@ Ensure all taxonomy types have seed data via `seed_taxonomies` management comman
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         CHAT (Ember Agent)                          │
+│                         CHAT (Ava Agent)                          │
 │  User: "Show me beginner content about RAG"                        │
 └────────────────────────────┬────────────────────────────────────────┘
                              │
@@ -560,7 +560,7 @@ class IntentRouter:
 
 ---
 
-## Phase 5: Ember Agent Integration
+## Phase 5: Ava Agent Integration
 
 ### 5.1 New Discovery Tool
 
@@ -679,8 +679,8 @@ def compute_user_similarity_batch():
 3. Add user profile vectors to Weaviate for collaborative filtering
 4. Implement Redis caching for user embeddings
 
-### Phase 4: Ember Integration
-1. Add `unified_search` tool to Ember agent
+### Phase 4: Ava Integration
+1. Add `unified_search` tool to Ava agent
 2. Add `get_related_content` tool using Weaviate cross-references
 3. Performance testing at scale
 4. Backfill existing content to Weaviate

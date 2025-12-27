@@ -6,7 +6,7 @@ import { QuestCompletionProvider } from '@/contexts/QuestCompletionContext';
 import { SubscribeModalProvider } from '@/components/billing';
 import { BattleNotificationProvider } from '@/components/battles/BattleNotificationProvider';
 import { AsyncBattleProvider } from '@/contexts/AsyncBattleContext';
-import { EmberOnboardingProvider } from '@/components/onboarding';
+import { AvaOnboardingProvider } from '@/components/onboarding';
 import { MessagesTrayProvider } from '@/context/MessagesTrayContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AppRoutes } from '@/routes';
@@ -68,7 +68,7 @@ function App() {
                   <AuthProvider>
                     <BattleNotificationProvider>
                       <AsyncBattleProvider>
-                        <EmberOnboardingProvider>
+                        <AvaOnboardingProvider>
                           <QuestCompletionProvider>
                             <MessagesTrayProvider>
                               <MainLayout>
@@ -76,7 +76,7 @@ function App() {
                               </MainLayout>
                             </MessagesTrayProvider>
                           </QuestCompletionProvider>
-                        </EmberOnboardingProvider>
+                        </AvaOnboardingProvider>
                       </AsyncBattleProvider>
                     </BattleNotificationProvider>
                   </AuthProvider>

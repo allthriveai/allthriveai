@@ -61,40 +61,40 @@ When new taxonomy terms are added, learning tools automatically:
 ### Flow 1: "I want to learn something new"
 ```
 User: I want to learn something new
-Ember: What do you want to learn about?
+Ava: What do you want to learn about?
 User: LangChain
-Ember: [Knows user prefers videos from injected state]
-Ember: Here's a quiz and a video project about LangChain
+Ava: [Knows user prefers videos from injected state]
+Ava: Here's a quiz and a video project about LangChain
         [Quiz Teaser Card] [Project Teaser Card]
 ```
 
 ### Flow 2: "Surprise me"
 ```
 User: Surprise me
-Ember: Try this Context Window Snake Game!
+Ava: Try this Context Window Snake Game!
         [Live game embedded in chat]
 ```
 
 ### Flow 3: "Structured learning path"
 ```
 User: I want a structured learning path about AI architecture
-Ember: Great, I'm creating a personalized learning path for you.
-Ember: [Creates curriculum with videos, quizzes, articles, code repos]
-Ember: Access it here: /learn/ai-architecture-abc123
+Ava: Great, I'm creating a personalized learning path for you.
+Ava: [Creates curriculum with videos, quizzes, articles, code repos]
+Ava: Access it here: /learn/ai-architecture-abc123
 ```
 
 ### Flow 4: "What is X?"
 ```
 User: What is LangChain?
-Ember: [Uses Tool info + own knowledge to explain]
-Ember: Here are 3 projects using LangChain:
+Ava: [Uses Tool info + own knowledge to explain]
+Ava: Here are 3 projects using LangChain:
         [Project Cards]
 ```
 
 ### Flow 5: "User expresses preference"
 ```
 User: I learn better with videos
-Ember: Got it! I'll prioritize video content for you.
+Ava: Got it! I'll prioritize video content for you.
         [Calls update_learner_profile]
 ```
 
@@ -228,7 +228,7 @@ notes: str = ""            # Free-form observation about the learner
 **Use cases**:
 - User says "I prefer videos" → `update_learner_profile(preferences={"learning_style": "video"})`
 - User shows interest in RAG → `update_learner_profile(interests=["rag"])`
-- Ember infers user is advanced → `update_learner_profile(skills={"ai-agents": "advanced"})`
+- Ava infers user is advanced → `update_learner_profile(skills={"ai-agents": "advanced"})`
 - User struggles with concept → `update_learner_profile(notes="Needs more help with embeddings")`
 
 ---
@@ -262,13 +262,13 @@ learner_context = {
 }
 ```
 
-Ember always has this context available - no tool call needed to personalize.
+Ava always has this context available - no tool call needed to personalize.
 
 ---
 
 ### Backend Middleware (Automatic Tracking)
 
-These events are tracked automatically without Ember calling a tool:
+These events are tracked automatically without Ava calling a tool:
 
 | Event | Trigger | Data Captured |
 |-------|---------|---------------|
@@ -306,13 +306,13 @@ Implementation: Middleware observes tool calls and API requests, creates `Learni
 | `get_concept_mastery` | Injected state |
 | `find_knowledge_gaps` | Injected state (suggestions) |
 | `get_due_reviews` | Injected state |
-| `start_learning_session` | Not needed - Ember uses context |
+| `start_learning_session` | Not needed - Ava uses context |
 | `set_learning_topic` | Merged into `find_learning_content` |
 | `get_learning_content` | Merged into `find_learning_content` |
 | `suggest_next_activity` | Injected state (suggestions) |
 | `deliver_micro_lesson` | Merged into `find_learning_content` |
 | `get_quiz_details` | Merged into `find_learning_content` |
-| `explain_concept` | Tool info + Ember's knowledge |
+| `explain_concept` | Tool info + Ava's knowledge |
 | `get_quiz_hint` | Removed - not needed |
 | `record_learning_event` | Backend middleware |
 
@@ -767,7 +767,7 @@ class ContentFinder:
 
 1. **Phase 1: Injected State**
    - Create learner context aggregation service
-   - Inject into Ember agent state at conversation start
+   - Inject into Ava agent state at conversation start
 
 2. **Phase 2: find_learning_content**
    - Unified content discovery across Tool + Projects + Quizzes + Games
@@ -785,4 +785,4 @@ class ContentFinder:
 
 6. **Phase 6: Cleanup**
    - Delete 14 old tools
-   - Update Ember prompts
+   - Update Ava prompts

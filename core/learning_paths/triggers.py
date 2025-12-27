@@ -1,9 +1,9 @@
 """
 Proactive Triggers for Learning System.
 
-When Ember should proactively engage about learning.
+When Ava should proactively engage about learning.
 Triggers are evaluated by Celery tasks and push messages via WebSocket
-to the frontend, where Ember can display contextual nudges.
+to the frontend, where Ava can display contextual nudges.
 """
 
 import logging

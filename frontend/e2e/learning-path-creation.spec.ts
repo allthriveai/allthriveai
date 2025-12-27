@@ -1,7 +1,7 @@
 /**
  * Learning Path Creation E2E Tests
  *
- * Tests that a user can ask Ember to create a learning path
+ * Tests that a user can ask Ava to create a learning path
  * and then access it on the /learn page.
  *
  * RUN: npx playwright test e2e/learning-path-creation.spec.ts
@@ -18,7 +18,7 @@ const AI_RESPONSE_TIMEOUT = 90000;
  * Helper: Send a chat message
  */
 async function sendChatMessage(page: Page, message: string) {
-  const chatInput = page.locator('input[placeholder="Message Ember..."]');
+  const chatInput = page.locator('input[placeholder="Message Ava..."]');
   await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
   await chatInput.fill(message);
@@ -80,14 +80,14 @@ test.describe('Learning Path Creation', () => {
   });
 
   test('user can request a learning path and it appears on /learn', async ({ page }) => {
-    // GIVEN: I am on the home page with Ember chat ready
+    // GIVEN: I am on the home page with Ava chat ready
     await page.waitForTimeout(1000);
 
-    // WHEN: I ask Ember to create a learning path
+    // WHEN: I ask Ava to create a learning path
     await sendChatMessage(page, 'make me a learning path about prompt engineering');
     await waitForResponseComplete(page);
 
-    // THEN: Ember should confirm the learning path was created
+    // THEN: Ava should confirm the learning path was created
     // Look for the response in the chat message area (not footer)
     const messageArea = page.locator('main').first();
     const responseText = await messageArea.textContent();
@@ -104,7 +104,7 @@ test.describe('Learning Path Creation', () => {
       fullResponse.includes('prompt engineering');
 
     expect(hasLearningPath).toBe(true);
-    console.log('✓ Ember confirmed learning path creation');
+    console.log('✓ Ava confirmed learning path creation');
 
     // AND: When I navigate to /learn, I should see my learning path
     await page.goto('/learn');

@@ -177,7 +177,7 @@ interface LearningSetupContext {
 }
 
 /**
- * Authenticated user learning view with inline Ember chat
+ * Authenticated user learning view with inline Ava chat
  */
 function AuthenticatedLearnPage() {
   const { data: savedPaths, isLoading: pathsLoading } = useSavedPaths();
@@ -264,7 +264,7 @@ function AuthenticatedLearnPage() {
       return <WaitingForSetupView />;
     }
 
-    // Show the path library grid
+    // Show the path library grid with section organization
     return (
       <PathLibraryGrid
         onCreateNew={handleCreateNew}
@@ -300,7 +300,7 @@ function AuthenticatedLearnPage() {
           {renderMainContent()}
         </div>
 
-        {/* Ember inline chat panel - fixed width on right (desktop only) */}
+        {/* Ava inline chat panel - fixed width on right (desktop only) */}
         <div className="w-96 flex-shrink-0 hidden lg:block">
           <InlineChatLayout
             conversationId={conversationId}

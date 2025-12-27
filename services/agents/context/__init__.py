@@ -1,5 +1,5 @@
 """
-Member context service for Ember agent.
+Member context service for Ava agent.
 
 Provides unified context about a member including:
 - Learning preferences and progress

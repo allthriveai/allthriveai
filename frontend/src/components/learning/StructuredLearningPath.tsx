@@ -5,6 +5,7 @@
  * - Current focus card
  * - Progress header
  * - Topic sections with concept nodes
+ * - Optional section organization (drag-and-drop)
  */
 
 import { motion } from 'framer-motion';
@@ -23,6 +24,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from 'react';
 import type { StructuredPath, TopicSection, ConceptNode, ConceptStatus } from '@/types/models';
+import { LearningSectionEditorProvider } from '@/context/LearningSectionEditorContext';
+import { LearningSections } from './sections';
 
 // Concept click context passed to parent
 export interface ConceptClickContext {
@@ -118,7 +121,7 @@ function CurrentFocusCard({ concept, topicName, topicSlug, onConceptClick }: Cur
           className="flex-shrink-0 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg font-medium text-white hover:opacity-90 transition-opacity flex items-center gap-2"
         >
           <FontAwesomeIcon icon={faComments} />
-          Learn with Ember
+          Learn with Ava
         </button>
       </div>
     </motion.div>
@@ -308,6 +311,13 @@ function TopicSectionCard({ topic, defaultExpanded = false, onConceptClick }: To
 
 
 /**
+ * View mode for the learning path
+ * - 'default': Original flat topic list view
+ * - 'organized': Custom sections with drag-and-drop organization
+ */
+type ViewMode = 'default' | 'organized';
+
+/**
  * Main StructuredLearningPath component
  */
 export interface StructuredLearningPathProps {
@@ -318,6 +328,8 @@ export interface StructuredLearningPathProps {
 }
 
 export function StructuredLearningPath({ pathData, onResetPath, isResetting, onConceptClick }: StructuredLearningPathProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('default');
+
   // Find the topic that contains the current focus
   const currentTopicSlug = pathData.currentFocus?.topicSlug || '';
   const currentTopicName = pathData.currentFocus?.topicName || '';
@@ -341,17 +353,50 @@ export function StructuredLearningPath({ pathData, onResetPath, isResetting, onC
         />
       </div>
 
-      {/* Topic sections */}
-      <div className="space-y-4">
-        {pathData.topics.map((topic) => (
-          <TopicSectionCard
-            key={topic.slug}
-            topic={topic}
-            defaultExpanded={topic.slug === currentTopicSlug}
-            onConceptClick={onConceptClick}
-          />
-        ))}
+      {/* View Mode Toggle */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-white">Topics</h2>
+        <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('default')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              viewMode === 'default'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Default
+          </button>
+          <button
+            onClick={() => setViewMode('organized')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              viewMode === 'organized'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Organized
+          </button>
+        </div>
       </div>
+
+      {/* Topic sections - either flat or organized view */}
+      {viewMode === 'organized' ? (
+        <LearningSectionEditorProvider>
+          <LearningSections />
+        </LearningSectionEditorProvider>
+      ) : (
+        <div className="space-y-4">
+          {pathData.topics.map((topic) => (
+            <TopicSectionCard
+              key={topic.slug}
+              topic={topic}
+              defaultExpanded={topic.slug === currentTopicSlug}
+              onConceptClick={onConceptClick}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Change Learning Goal button */}
       {onResetPath && (

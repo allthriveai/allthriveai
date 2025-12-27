@@ -15,7 +15,7 @@ This document outlines a comprehensive, scalable plan for implementing a real ac
 
 1. **Points System** (`User` model in `core/users/models.py`)
    - `total_points` - Global XP tracking
-   - `tier` - Ember → Spark → Blaze → Beacon → Phoenix
+   - `tier` - Ava → Spark → Blaze → Beacon → Phoenix
    - `level` - Progressive leveling (1-23+ with formula)
    - `current_streak_days` / `longest_streak_days` - Daily streak tracking
    - `lifetime_*` counters (projects, quizzes, side quests, comments)

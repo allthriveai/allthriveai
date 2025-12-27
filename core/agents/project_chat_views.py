@@ -17,7 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from core.agents.circuit_breaker import CircuitBreakerOpenError, get_cached_faq_response
 from core.agents.security import output_validator, validate_chat_input
 from core.billing.permissions import CanMakeAIRequest
-from services.agents.ember import stream_ember_response
+from services.agents.ava import stream_ava_response
 from services.agents.hallucination_tracker import tracker
 
 logger = logging.getLogger(__name__)
@@ -66,9 +66,9 @@ def project_chat_stream_v2(request):
         logger.info(f'[PROJECT_CHAT_V2] Session: {session_id}, Message: {user_message[:100]}')
 
         async def event_stream():
-            """Generator for SSE events using unified Ember agent."""
+            """Generator for SSE events using unified Ava agent."""
             try:
-                logger.info('[PROJECT_CHAT_V2] Invoking Ember agent')
+                logger.info('[PROJECT_CHAT_V2] Invoking Ava agent')
 
                 # Stream agent execution
                 full_response = ''
@@ -77,8 +77,8 @@ def project_chat_stream_v2(request):
                 tool_outputs = []  # Collect tool outputs for hallucination tracking
 
                 try:
-                    # Use unified Ember agent for project chat
-                    async for event in stream_ember_response(
+                    # Use unified Ava agent for project chat
+                    async for event in stream_ava_response(
                         user_message=user_message,
                         user_id=request.user.id,
                         username=request.user.username,

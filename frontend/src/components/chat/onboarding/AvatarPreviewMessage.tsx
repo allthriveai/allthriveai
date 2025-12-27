@@ -2,19 +2,19 @@
  * AvatarPreviewMessage - Shows generated avatar with action buttons
  *
  * Displays the AI-generated avatar with options to accept, refine, or skip.
- * Uses orange Ember theme with larger fonts.
+ * Uses orange Ava theme with larger fonts.
  */
 
 import { motion } from 'framer-motion';
 import { SparklesIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/solid';
 
-// Ember avatar component - positioned at bottom
-function EmberAvatar() {
+// Ava avatar component - positioned at bottom
+function AvaAvatar() {
   return (
     <div className="relative flex-shrink-0 self-end">
       <img
-        src="/ember-avatar.png"
-        alt="Ember"
+        src="/ava-avatar.png"
+        alt="Ava"
         className="w-12 h-12 rounded-full border-2 border-cyan-500/50"
       />
     </div>
@@ -42,9 +42,9 @@ export function AvatarPreviewMessage({
       animate={{ opacity: 1, y: 0 }}
       className="py-4"
     >
-      {/* Layout with Ember avatar alongside */}
+      {/* Layout with Ava avatar alongside */}
       <div className="flex items-end gap-4">
-        <EmberAvatar />
+        <AvaAvatar />
 
         <div className="flex-1 max-w-2xl space-y-4">
           {/* Header message */}

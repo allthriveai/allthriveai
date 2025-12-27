@@ -1,7 +1,7 @@
 """
 Shared Platform Knowledge for All AI Agents.
 
-This module contains platform help information that all AI agents (Ember, Haven, Pip, Sage)
+This module contains platform help information that all AI agents (Ava, Haven, Pip, Sage)
 can access. It provides a single source of truth for:
 - Platform features and capabilities
 - Navigation (available pages)
@@ -221,7 +221,7 @@ PLATFORM_HELP = """
 
 ### Getting Help
 - **Haven** - community support, feedback, concerns (that's me!)
-- **Ember** - platform guide, learning, project creation
+- **Ava** - platform guide, learning, project creation
 - **Pip** - prompt battles and playful challenges
 - **Sage** - deep learning explanations and teaching
 - **Help room** - ask the community in The Lounge → Help & Support
@@ -232,8 +232,8 @@ PLATFORM_HELP = """
 # =============================================================================
 
 AGENT_CAPABILITIES = {
-    'ember': """
-### Ember's Capabilities
+    'ava': """
+### Ava's Capabilities
 - Help you get started on All Thrive
 - Create learning paths on any AI topic
 - Import projects from URLs (GitHub, YouTube, Figma, etc.)
@@ -327,7 +327,7 @@ def get_agent_knowledge(agent_name: str) -> str:
     Get platform knowledge formatted for a specific agent.
 
     Args:
-        agent_name: The agent's name (ember, haven, pip, sage)
+        agent_name: The agent's name (ava, haven, pip, sage)
 
     Returns:
         Formatted platform knowledge string

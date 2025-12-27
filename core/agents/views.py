@@ -1,5 +1,6 @@
 import logging
 
+from django.db.models import Count
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -103,7 +104,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return Conversation.objects.filter(user=self.request.user)
+            return (
+                Conversation.objects.filter(user=self.request.user)
+                .annotate(message_count=Count('messages'))
+                .prefetch_related('messages')
+            )
         return Conversation.objects.none()
 
     def perform_create(self, serializer):
@@ -265,7 +270,7 @@ def clear_conversation(request):
 
     Request body:
     {
-        "conversation_id": "ember-chat-2"  // optional, defaults to ember-chat-{user_id}
+        "conversation_id": "ava-chat-2"  // optional, defaults to ava-chat-{user_id}
     }
 
     This clears:
@@ -276,7 +281,7 @@ def clear_conversation(request):
     from django.db import connection
 
     user_id = request.user.id
-    conversation_id = request.data.get('conversation_id', f'ember-chat-{user_id}')
+    conversation_id = request.data.get('conversation_id', f'ava-chat-{user_id}')
 
     # Security: ensure conversation_id belongs to this user
     if not conversation_id.endswith(f'-{user_id}'):

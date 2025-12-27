@@ -15,6 +15,7 @@ import type {
   LearningGoal,
 } from '@/types/models';
 import type { SkillLevel } from './personalization';
+import type { SectionsOrganization, TopicSectionData } from '@/types/learningSections';
 
 /**
  * Get all learning paths for the current user
@@ -208,12 +209,123 @@ export interface ExerciseContentByLevel {
  * Interactive exercise for "Try It Yourself" sections
  */
 export interface LessonExercise {
-  exerciseType: 'terminal' | 'git' | 'ai_prompt' | 'code_review';
+  /** Unique ID for this exercise (UUID) */
+  id: string;
+  exerciseType:
+    | 'terminal'
+    | 'git'
+    | 'ai_prompt'
+    | 'code_review'
+    | 'code'
+    // New interactive exercise types
+    | 'drag_sort'
+    | 'connect_nodes'
+    | 'code_walkthrough'
+    | 'timed_challenge';
   scenario: string;
-  expectedInputs: string[]; // Regex patterns for validation
+  expectedInputs: string[]; // Regex patterns for validation (terminal/git)
+  expectedPatterns?: string[]; // Regex patterns for code exercises
   successMessage: string;
   expectedOutput: string;
+  /** Language for code exercises */
+  language?: 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+  /** Starter code for code exercises */
+  starterCode?: string;
   contentByLevel: Record<SkillLevel, ExerciseContentByLevel>;
+
+  // New interactive exercise data (only one populated based on exerciseType)
+  /** Data for drag_sort exercise type */
+  dragSortData?: DragSortExerciseData;
+  /** Data for connect_nodes exercise type */
+  connectNodesData?: ConnectNodesExerciseData;
+  /** Data for code_walkthrough exercise type */
+  codeWalkthroughData?: CodeWalkthroughExerciseData;
+  /** Data for timed_challenge exercise type */
+  timedChallengeData?: TimedChallengeExerciseData;
+}
+
+// =============================================================================
+// NEW INTERACTIVE EXERCISE DATA TYPES
+// =============================================================================
+
+/** Drag and sort exercise data */
+export interface DragSortExerciseData {
+  variant: 'sequence' | 'match' | 'categorize';
+  items: Array<{
+    id: string;
+    content: string;
+    code?: string;
+    codeLanguage?: 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+    category?: string;
+  }>;
+  correctOrder?: string[];
+  correctMatches?: Record<string, string>;
+  categories?: Array<{ id: string; label: string; description?: string }>;
+  correctCategories?: Record<string, string>;
+  showImmediateFeedback?: boolean;
+}
+
+/** Connect nodes exercise data */
+export interface ConnectNodesExerciseData {
+  nodes: Array<{
+    id: string;
+    label: string;
+    position: { x: number; y: number };
+    nodeType: 'concept' | 'action' | 'data' | 'decision' | 'start' | 'end';
+    isFixed?: boolean;
+    side?: 'left' | 'right' | 'any';
+  }>;
+  expectedConnections: Array<{ fromId: string; toId: string; label?: string }>;
+  presetConnections?: Array<{ fromId: string; toId: string; label?: string }>;
+  showConnectionHints?: boolean;
+  oneToOne?: boolean;
+}
+
+/** Code walkthrough exercise data */
+export interface CodeWalkthroughExerciseData {
+  code: string;
+  language: 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+  steps: Array<{
+    stepNumber: number;
+    highlightLines: number[];
+    explanation: string;
+    annotation?: {
+      line: number;
+      text: string;
+      type: 'info' | 'important' | 'warning';
+    };
+    question?: {
+      prompt: string;
+      options: string[];
+      correctIndex: number;
+      explanation: string;
+    };
+  }>;
+  autoAdvanceMs?: number;
+  showVariablePanel?: boolean;
+  variableStates?: Record<number, Record<string, string>>;
+}
+
+/** Timed challenge exercise data */
+export interface TimedChallengeExerciseData {
+  questions: Array<{
+    id: string;
+    question: string;
+    code?: string;
+    codeLanguage?: 'python' | 'javascript' | 'typescript';
+    options: string[];
+    correctAnswer: string;
+    points: number;
+    timeLimitSeconds?: number;
+    explanation?: string;
+  }>;
+  totalTimeSeconds?: number;
+  defaultTimePerQuestion?: number;
+  passingScore: number;
+  maxScore: number;
+  lives?: number;
+  showCorrectOnWrong?: boolean;
+  enableStreakMultiplier?: boolean;
 }
 
 /**
@@ -256,10 +368,39 @@ export interface AILessonContent {
   practicePrompt?: string;
   /** Optional mermaid diagram code for visual learners */
   mermaidDiagram?: string;
-  /** Interactive exercise for hands-on practice */
+  /** @deprecated Use exercises array instead. Single exercise for backwards compatibility */
   exercise?: LessonExercise;
+  /** Array of interactive exercises (supports multiple exercises per lesson) */
+  exercises?: LessonExercise[];
   /** Inline quiz to check understanding */
   quiz?: LessonQuiz;
+}
+
+/**
+ * Helper function to get exercises from lesson content.
+ * Handles backwards compatibility by converting single 'exercise' to array format.
+ *
+ * @param content - The AI lesson content
+ * @returns Array of exercises (may be empty)
+ */
+export function getExercises(content: AILessonContent | undefined): LessonExercise[] {
+  if (!content) return [];
+
+  // Prefer exercises array if it exists
+  if (content.exercises?.length) {
+    return content.exercises;
+  }
+
+  // Fall back to single exercise for backwards compatibility
+  // Return a new object to avoid mutating the original
+  if (content.exercise) {
+    return [{
+      ...content.exercise,
+      id: content.exercise.id || 'legacy',
+    }];
+  }
+
+  return [];
 }
 
 /**
@@ -923,6 +1064,288 @@ export async function completeQuiz(
   const response = await api.post<CompletionResponse>(
     `/learning-paths/${pathId}/lessons/${lessonOrder}/complete-quiz/`,
     score !== undefined ? { score } : {}
+  );
+  return response.data;
+}
+
+// =============================================================================
+// LESSON & EXERCISE REGENERATION APIs
+// =============================================================================
+
+/**
+ * Request body for regenerating a lesson
+ */
+export interface RegenerateLessonRequest {
+  focus?: string; // "I want more hands-on examples"
+  reason?: string; // "The current explanation is too abstract"
+}
+
+/**
+ * Request body for regenerating an exercise
+ */
+export interface RegenerateExerciseRequest {
+  exerciseType: 'terminal' | 'code' | 'ai_prompt' | 'drag_sort' | 'connect_nodes' | 'code_walkthrough' | 'timed_challenge';
+}
+
+/**
+ * Response from lesson regeneration
+ */
+export interface RegenerateLessonResponse {
+  success: boolean;
+  lesson: {
+    order: number;
+    title: string;
+    content: AILessonContent;
+  };
+}
+
+/**
+ * Response from exercise regeneration
+ */
+export interface RegenerateExerciseResponse {
+  success: boolean;
+  exercise: LessonExercise;
+}
+
+// =============================================================================
+// CODE VALIDATION APIs
+// =============================================================================
+
+/**
+ * Code languages supported by the code editor exercise
+ */
+export type CodeLanguage = 'python' | 'javascript' | 'typescript' | 'html' | 'css';
+
+/**
+ * Single issue from code validation
+ */
+export interface CodeFeedbackIssue {
+  type: 'error' | 'warning' | 'suggestion';
+  line?: number;
+  message: string;
+  explanation?: string;
+  hint?: string;
+}
+
+/**
+ * Request body for code validation
+ */
+export interface ValidateCodeRequest {
+  code: string;
+  language: CodeLanguage;
+  expectedPatterns: string[];
+  skillLevel: SkillLevel;
+  exerciseId?: string;
+}
+
+/**
+ * Response from code validation endpoint
+ */
+export interface ValidateCodeResponse {
+  isCorrect: boolean;
+  status: 'correct' | 'almost_there' | 'needs_work' | 'major_issues';
+  issues: CodeFeedbackIssue[];
+  positives?: string[];
+  nextStep?: string;
+  aiUsed: boolean;
+  patternResults?: Array<{
+    pattern: string;
+    found: boolean;
+    line?: number;
+  }>;
+}
+
+/**
+ * Validate code for a code exercise
+ * Uses tiered validation: regex patterns (Tier 2) and optionally AI (Tier 3)
+ */
+export async function validateCode(request: ValidateCodeRequest): Promise<ValidateCodeResponse> {
+  const response = await api.post<ValidateCodeResponse>('/code/validate/', {
+    code: request.code,
+    language: request.language,
+    expected_patterns: request.expectedPatterns,
+    skill_level: request.skillLevel,
+    exercise_id: request.exerciseId,
+  });
+  return response.data;
+}
+
+/**
+ * Regenerate an AI lesson with optional user guidance
+ */
+export async function regenerateLesson(
+  slug: string,
+  lessonOrder: number,
+  data?: RegenerateLessonRequest
+): Promise<RegenerateLessonResponse> {
+  const response = await api.post<RegenerateLessonResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate/`,
+    data || {}
+  );
+  return response.data;
+}
+
+/**
+ * Regenerate an exercise with a different exercise type
+ */
+export async function regenerateExercise(
+  slug: string,
+  lessonOrder: number,
+  data: RegenerateExerciseRequest
+): Promise<RegenerateExerciseResponse> {
+  const response = await api.post<RegenerateExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate-exercise/`,
+    data
+  );
+  return response.data;
+}
+
+// =============================================================================
+// MULTIPLE EXERCISES PER LESSON APIs
+// =============================================================================
+
+/**
+ * Request body for adding a new exercise to a lesson
+ */
+export interface AddExerciseRequest {
+  /** Optional exercise type - AI chooses if omitted */
+  exerciseType?: LessonExercise['exerciseType'];
+  /** Optional skill level for the exercise */
+  skillLevel?: 'beginner' | 'intermediate' | 'advanced';
+}
+
+/**
+ * Response from adding an exercise
+ */
+export interface AddExerciseResponse {
+  success: boolean;
+  exercise: LessonExercise;
+  totalExercises: number;
+}
+
+/**
+ * Request body for removing an exercise
+ */
+export interface RemoveExerciseRequest {
+  exerciseId: string;
+}
+
+/**
+ * Response from removing an exercise
+ */
+export interface RemoveExerciseResponse {
+  success: boolean;
+  remainingCount: number;
+}
+
+/**
+ * Request body for regenerating a specific exercise
+ */
+export interface RegenerateSpecificExerciseRequest {
+  exerciseId: string;
+  /** Optional new exercise type - uses same type if omitted */
+  exerciseType?: LessonExercise['exerciseType'];
+}
+
+/**
+ * Add a new exercise to a lesson (max 3 exercises per lesson)
+ *
+ * @param slug - The learning path slug
+ * @param lessonOrder - The lesson order number
+ * @param data - Optional exercise type and skill level
+ */
+export async function addExercise(
+  slug: string,
+  lessonOrder: number,
+  data?: AddExerciseRequest
+): Promise<AddExerciseResponse> {
+  const response = await api.post<AddExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/add-exercise/`,
+    data || {}
+  );
+  return response.data;
+}
+
+/**
+ * Remove an exercise from a lesson by ID
+ *
+ * @param slug - The learning path slug
+ * @param lessonOrder - The lesson order number
+ * @param exerciseId - The UUID of the exercise to remove
+ */
+export async function removeExercise(
+  slug: string,
+  lessonOrder: number,
+  exerciseId: string
+): Promise<RemoveExerciseResponse> {
+  const response = await api.post<RemoveExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/remove-exercise/`,
+    { exerciseId }
+  );
+  return response.data;
+}
+
+/**
+ * Regenerate a specific exercise by ID with optionally a different type
+ *
+ * @param slug - The learning path slug
+ * @param lessonOrder - The lesson order number
+ * @param data - Exercise ID and optional new type
+ */
+export async function regenerateSpecificExercise(
+  slug: string,
+  lessonOrder: number,
+  data: RegenerateSpecificExerciseRequest
+): Promise<RegenerateExerciseResponse> {
+  const response = await api.post<RegenerateExerciseResponse>(
+    `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate-specific-exercise/`,
+    data
+  );
+  return response.data;
+}
+
+// =============================================================================
+// SECTIONS ORGANIZATION APIs - Drag-and-drop topic organization
+// =============================================================================
+
+/**
+ * Response from the sections organization endpoint
+ */
+export interface SectionsOrganizationResponse {
+  sectionsOrganization: SectionsOrganization | null;
+  topics: TopicSectionData[];
+}
+
+/**
+ * Get the user's section organization and topic data for the /learn page
+ */
+export async function getSectionsOrganization(): Promise<SectionsOrganizationResponse> {
+  const response = await api.get<SectionsOrganizationResponse>(
+    '/me/learning-paths/sections-organization/'
+  );
+  return response.data;
+}
+
+/**
+ * Update the user's section organization (autosave)
+ */
+export async function updateSectionsOrganization(
+  data: SectionsOrganization
+): Promise<{ status: string }> {
+  const response = await api.patch<{ status: string }>(
+    '/me/learning-paths/sections-organization/',
+    { sectionsOrganization: data }
+  );
+  return response.data;
+}
+
+/**
+ * Reorder top-level sections by section IDs
+ */
+export async function reorderSections(sectionIds: string[]): Promise<{ status: string }> {
+  const response = await api.post<{ status: string }>(
+    '/me/learning-paths/reorder-sections/',
+    { sectionIds }
   );
   return response.data;
 }

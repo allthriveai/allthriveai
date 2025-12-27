@@ -28,7 +28,7 @@ test.describe('Chat WebSocket - Connection', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // WHEN: I wait for chat to initialize
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeVisible({ timeout: WS_CONNECT_TIMEOUT });
 
     // THEN: Chat input should be enabled (WebSocket connected)
@@ -40,7 +40,7 @@ test.describe('Chat WebSocket - Connection', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeVisible({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I type a message
@@ -63,7 +63,7 @@ test.describe('Chat WebSocket - Connection', () => {
     await page.waitForTimeout(500);
 
     // THEN: Chat should be available
-    const chatInput = page.locator('input[placeholder="Ask me anything..."], input[placeholder="Message Ember..."]').first();
+    const chatInput = page.locator('input[placeholder="Ask me anything..."], input[placeholder="Message Ava..."]').first();
     await expect(chatInput).toBeVisible({ timeout: WS_CONNECT_TIMEOUT });
     await expect(chatInput).toBeEnabled();
   });
@@ -79,7 +79,7 @@ test.describe('Chat WebSocket - Messaging', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I send a message
@@ -102,7 +102,7 @@ test.describe('Chat WebSocket - Messaging', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I send a message
@@ -133,7 +133,7 @@ test.describe('Chat WebSocket - Messaging', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I send a message
@@ -153,7 +153,7 @@ test.describe('Chat WebSocket - Messaging', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I send multiple messages
@@ -184,7 +184,7 @@ test.describe('Chat WebSocket - Streaming', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I send a message that requires a longer response
@@ -212,7 +212,7 @@ test.describe('Chat WebSocket - Streaming', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I send a message
@@ -251,7 +251,7 @@ test.describe('Chat WebSocket - Error Handling', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I try to send an empty message
@@ -277,7 +277,7 @@ test.describe('Chat WebSocket - Error Handling', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I send a normal message
@@ -312,7 +312,7 @@ test.describe('Chat WebSocket - Error Handling', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I navigate away and back
@@ -323,7 +323,7 @@ test.describe('Chat WebSocket - Error Handling', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // THEN: Chat should still work
-    const chatInputAfter = page.locator('input[placeholder="Message Ember..."]');
+    const chatInputAfter = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInputAfter).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
   });
 });
@@ -340,7 +340,7 @@ test.describe('Chat WebSocket - Session Persistence', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     const uniqueMessage = `Test message ${Date.now()}`;
@@ -359,7 +359,7 @@ test.describe('Chat WebSocket - Session Persistence', () => {
     // THEN: My previous message should still be visible (chat history preserved)
     // Note: This depends on implementation - some apps clear on reload
     // At minimum, chat should be functional again
-    const chatInputAfter = page.locator('input[placeholder="Message Ember..."]');
+    const chatInputAfter = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInputAfter).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
   });
 
@@ -379,7 +379,7 @@ test.describe('Chat WebSocket - Session Persistence', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // THEN: I should still be authenticated (chat works)
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
   });
 });

@@ -31,7 +31,7 @@ This document tracks technical debt items identified during code review of the `
 - [x] `DashboardLayout.tsx` - Fixed 3 useEffect hooks missing `handleOpenAddProject` dependency
 
 ### Test Coverage Added
-- [x] `services/agents/ember/tests/test_agent.py` - Tests for Ember agent utilities (error handling, serialization, locking, truncation)
+- [x] `services/agents/ember/tests/test_agent.py` - Tests for Ava agent utilities (error handling, serialization, locking, truncation)
 - [x] `core/community/tests/test_consumers.py` - WebSocket consumer tests (connection, auth, messaging, DM)
 - [x] `core/learning_paths/tests/test_api.py` - API endpoint tests for learning paths
 
@@ -146,7 +146,7 @@ Files that may have incomplete dependency arrays:
 
 ---
 
-## Ember Agent Critical Issues (Added 2024-12-21)
+## Ava Agent Critical Issues (Added 2024-12-21)
 
 These issues were discovered during investigation of chat getting "stuck" with multiple messages.
 
@@ -239,7 +239,7 @@ lock_key = f'{cache_key}:lock'
 if cache.add(lock_key, '1', timeout=30):  # Only one request wins
     try:
         context = await cls._aggregate_context_async(user_id)
-        cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+        cache.set(cache_key, context, timeout=MAVA_CONTEXT_CACHE_TTL)
     finally:
         cache.delete(lock_key)
 else:
@@ -271,7 +271,7 @@ else:
 
 ## Notes
 
-- This branch introduces significant architectural changes (unified Ember agent, learning paths)
+- This branch introduces significant architectural changes (unified Ava agent, learning paths)
 - Overall code quality is good - these are refinements, not critical issues
-- **All Ember Agent critical/high/medium issues have been fixed or reviewed**
+- **All Ava Agent critical/high/medium issues have been fixed or reviewed**
 - Remaining priority: Tests > Type Safety > TODOs > Hook Fixes

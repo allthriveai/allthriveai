@@ -8,7 +8,7 @@
  * - Buy tokens button (if available)
  * - Upgrade plan button
  * - Dismiss button
- * - Two variants: default (sidebar) and neon (EmberHomePage)
+ * - Two variants: default (sidebar) and neon (AvaHomePage)
  */
 
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -23,7 +23,7 @@ export function QuotaExceededBanner({
   const isNeon = variant === 'neon';
 
   if (isNeon) {
-    // Neon Glass variant (EmberHomePage)
+    // Neon Glass variant (AvaHomePage)
     return (
       <div className="mx-4 mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
         <div className="flex flex-col gap-3">

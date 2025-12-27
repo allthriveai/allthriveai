@@ -33,7 +33,7 @@ This document outlines a phased approach to building Thrive Circle (gamification
   - `UserTier` (basic fields only: user, tier, total_xp)
   - `XPActivity` (user, amount, activity_type, created_at)
 - [ ] Create initial migration
-- [ ] Write migration script to create UserTier for existing users (all start at Ember with 0 XP)
+- [ ] Write migration script to create UserTier for existing users (all start at Ava with 0 XP)
 
 ### Testing Criteria
 ```bash
@@ -115,7 +115,7 @@ test('User earns XP from quiz and sees tier update', async () => {
   await navigateTo('/thrive-circle');
 
   // 4. Should see tier badge with updated XP
-  expect(screen.getByText('Ember')).toBeInTheDocument();
+  expect(screen.getByText('Ava')).toBeInTheDocument();
   expect(screen.getByText('10 XP')).toBeInTheDocument();
 });
 ```
@@ -123,7 +123,7 @@ test('User earns XP from quiz and sees tier update', async () => {
 **Success Criteria:**
 - ✅ Completing a quiz awards correct XP
 - ✅ XP increments user's total
-- ✅ Crossing 500 XP threshold upgrades Ember → Spark
+- ✅ Crossing 500 XP threshold upgrades Ava → Spark
 - ✅ Frontend displays current tier and XP
 - ✅ Navigation to Thrive Circle page works
 - ✅ XP toast notification appears on quiz completion
@@ -242,7 +242,7 @@ We celebrate everyone's journey, show what peers are learning, and inspire throu
   - Personal progress (tier, XP, progress to next tier)
   - NO rank, NO percentile, NO position
 - [ ] Create component: `components/thrive-circle/DiscoverPanel.tsx`
-  - Browse users by tier: "See what other Embers are working on"
+  - Browse users by tier: "See what other Avas are working on"
   - Browse by topic: "Who else is learning about LangChain?"
 - [ ] Create page: `pages/ThriveCirclePage.tsx` with 3-column layout:
   - Left: Your Journey + Weekly Community Highlights
@@ -297,7 +297,7 @@ def test_discover_by_tier():
         UserTier.objects.create(user=user, tier='ember')
     UserTier.objects.create(user=spark_user, tier='spark', total_xp=600)
 
-    # Discover other Embers
+    # Discover other Avas
     ember_tiers = UserTier.objects.filter(tier='ember')
     assert ember_tiers.count() == 3
 ```

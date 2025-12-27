@@ -3,7 +3,7 @@
  *
  * Features:
  * - Sliding panel from right side
- * - Ember header with avatar and connection status
+ * - Ava header with avatar and connection status
  * - Context-aware quick actions
  * - Integration picker and flows
  * - Architecture regeneration support
@@ -573,8 +573,8 @@ export function SidebarChatLayout({
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
                 <div className="flex items-center gap-3">
                   <img
-                    src="/ember-avatar.png"
-                    alt="Ember"
+                    src="/ava-avatar.png"
+                    alt="Ava"
                     className="w-10 h-10 rounded-full object-cover -scale-x-100"
                   />
                   <div>
@@ -582,7 +582,7 @@ export function SidebarChatLayout({
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-green-500 dark:bg-green-400' : 'bg-amber-500 dark:bg-amber-400 animate-pulse'}`} />
                       <span className="text-slate-500 dark:text-slate-400">
-                        Ember {state.isConnected ? '· Online' : '· Connecting...'}
+                        Ava {state.isConnected ? '· Online' : '· Connecting...'}
                       </span>
                     </div>
                   </div>
@@ -702,7 +702,7 @@ export function SidebarChatLayout({
                   isLoading={state.isLoading}
                   isUploading={state.isUploading}
                   onCancelUpload={state.cancelUpload}
-                  placeholder="Message Ember..."
+                  placeholder="Message Ava..."
                   enableAttachments={true}
                   onFileSelectRef={(fn) => { triggerFileSelectRef.current = fn; }}
                   onDropFilesRef={(fn) => { dropFilesRef.current = fn; }}

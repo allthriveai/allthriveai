@@ -52,7 +52,7 @@ def auto_tag_from_search(sender, instance, created, **kwargs):
 @receiver(post_save, sender=UserInteraction)
 def auto_tag_from_conversation(sender, instance, created, **kwargs):
     """
-    Automatically create/update UserTags when a user has a conversation with Ember.
+    Automatically create/update UserTags when a user has a conversation with Ava.
 
     When a UserInteraction with type 'CONVERSATION' is created, we extract any
     tool names from the message content and create/update UserTags with

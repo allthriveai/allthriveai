@@ -1,7 +1,7 @@
 # Unified Chat Architecture
 
 **Last Updated:** 2025-12-20
-**Status:** Active - Unified ChatCore + Ember Agent
+**Status:** Active - Unified ChatCore + Ava Agent
 **Purpose:** Document the intelligent chat system with unified frontend and backend
 
 ---
@@ -11,7 +11,7 @@
 AllThrive AI's intelligent chat system uses a **unified architecture** on both frontend and backend:
 
 - **Frontend**: Single `ChatCore` component with render props pattern, consumed by two layouts
-- **Backend**: Unified Ember agent with access to all 31 tools
+- **Backend**: Unified Ava agent with access to all 31 tools
 
 ### Key Design Principles
 - **One backend, two UIs**: Same WebSocket connection, different visual presentations
@@ -21,7 +21,7 @@ AllThrive AI's intelligent chat system uses a **unified architecture** on both f
 
 ### Key Stats
 - **Total Tools:** 31 across 5 categories
-- **Architecture:** Single unified Ember agent (no supervisor routing)
+- **Architecture:** Single unified Ava agent (no supervisor routing)
 - **Token Tracking:** Full usage tracking via `AIUsageTracker`
 - **Frontend:** ChatCore + 2 layouts (EmbeddedChatLayout, SidebarChatLayout)
 - **Scalability Settings:** Max 50 context messages, 30s tool timeout, 10 max iterations
@@ -93,7 +93,7 @@ frontend/src/components/chat/
 ### Component Hierarchy
 
 ```
-EmberHomePage / DashboardLayout
+AvaHomePage / DashboardLayout
     │
     ├── EmbeddedChatLayout           ← /home (full-page)
     │   └── ChatCore
@@ -158,7 +158,7 @@ export function ChatCore({
 
 **File:** `frontend/src/components/chat/layouts/EmbeddedChatLayout.tsx`
 
-Used by `/home` (EmberHomePage). Features:
+Used by `/home` (AvaHomePage). Features:
 - Typewriter greeting animation
 - Feeling pills based on user's signup interests
 - Full-page embedded design
@@ -170,7 +170,7 @@ Used by `/home` (EmberHomePage). Features:
 
 Used when clicking chat icon in header. Features:
 - Sliding panel from right side
-- Ember header with connection status
+- Ava header with connection status
 - Context-aware quick actions
 - Integration flows (GitHub/GitLab/Figma)
 
@@ -212,7 +212,7 @@ Backend (Django Channels + Celery)
 ├── ChatConsumer                   # WebSocket handling
 ├── process_chat_message_task      # Celery async processing
 │
-└── Unified Ember Agent            # Single agent with all tools
+└── Unified Ava Agent            # Single agent with all tools
     ├── services/agents/ember/
     │   ├── agent.py               # LangGraph agent + streaming
     │   ├── prompts.py             # System prompts
@@ -230,10 +230,10 @@ Backend (Django Channels + Celery)
 
 | Setting | Default | Location |
 |---------|---------|----------|
-| `EMBER_MAX_TOOL_ITERATIONS` | 10 | Django settings |
-| `EMBER_MAX_CONTEXT_MESSAGES` | 50 | Django settings |
-| `EMBER_TOOL_EXECUTION_TIMEOUT` | 30s | Django settings |
-| `EMBER_DEFAULT_MODEL` | gpt-4o-mini | AI gateway config |
+| `AVA_MAX_TOOL_ITERATIONS` | 10 | Django settings |
+| `AVA_MAX_CONTEXT_MESSAGES` | 50 | Django settings |
+| `AVA_TOOL_EXECUTION_TIMEOUT` | 30s | Django settings |
+| `AVA_DEFAULT_MODEL` | gpt-4o-mini | AI gateway config |
 
 ### WebSocket Protocol
 
@@ -243,7 +243,7 @@ ws://backend:8000/ws/chat/{conversation_id}/
 ```
 
 **Conversation ID Patterns:**
-- `ember-home-{timestamp}` - EmberHomePage full-page chat
+- `ember-home-{timestamp}` - AvaHomePage full-page chat
 - `ember-learn-{timestamp}` - Learn page context
 - `ember-explore-{timestamp}` - Explore page context
 - `ember-project-{timestamp}` - Project page context
@@ -480,13 +480,13 @@ This provides:
 | useOnboardingChat | `frontend/src/hooks/useOnboardingChat.ts` |
 | useOrchestrationActions | `frontend/src/hooks/useOrchestrationActions.ts` |
 
-### Backend (Ember Agent)
+### Backend (Ava Agent)
 
 | Component | Location |
 |-----------|----------|
-| Ember Agent | `services/agents/ember/agent.py` |
-| Ember Prompts | `services/agents/ember/prompts.py` |
-| Ember Tools Registry | `services/agents/ember/tools.py` |
+| Ava Agent | `services/agents/ember/agent.py` |
+| Ava Prompts | `services/agents/ember/prompts.py` |
+| Ava Tools Registry | `services/agents/ember/tools.py` |
 
 ### Backend (Specialized Tool Modules)
 
@@ -528,7 +528,7 @@ This provides:
    ├─► Image generation keywords? → Gemini 2.0 Flash
    └─► Everything else → stream_ember_response()
 
-4. Ember agent (LangGraph)
+4. Ava agent (LangGraph)
    ├─► Build message history (max 50 messages)
    ├─► LLM with tools bound (gpt-4o-mini)
    ├─► Stream chunks via Redis Pub/Sub

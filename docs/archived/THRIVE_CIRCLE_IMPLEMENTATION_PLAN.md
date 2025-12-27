@@ -8,7 +8,7 @@ Build an inclusive, participation-focused progression system that rewards engage
 ### Core Principles
 1. **Participation Over Skill**: Everyone earns XP for showing up and engaging, not just for being "the best"
 2. **Always Progress**: Tiers never decrease - you always move forward
-3. **No Hierarchy**: Tier names celebrate growth, not rank - an Ember can start a revolution!
+3. **No Hierarchy**: Tier names celebrate growth, not rank - an Ava can start a revolution!
 4. **Community Over Competition**: Thrive Circle is about **shared learning and inspiration**, NOT rankings or leaderboards
 5. **Inclusive Discovery**: See what like-minded individuals are learning and celebrate everyone's journey
 6. **Habit Formation**: Daily streaks and weekly goals encourage consistent engagement
@@ -27,7 +27,7 @@ Build an inclusive, participation-focused progression system that rewards engage
 Users accumulate total XP throughout their lifetime on the platform. Tiers unlock based on milestones:
 
 ```
-Ember   → 0-499 XP       (🔥 Small spark with big potential)
+Ava   → 0-499 XP       (🔥 Small spark with big potential)
 Spark   → 500-1,999 XP   (⚡ Igniting the fire)
 Blaze   → 2,000-4,999 XP (🔥 Burning bright)
 Beacon  → 5,000-9,999 XP (💡 Lighting the way for others)
@@ -36,7 +36,7 @@ Phoenix → 10,000+ XP     (🐦 Reborn stronger, inspiring transformation)
 
 **Why These Names?**
 - All fire/energy themed - cohesive with "Side Quests" adventure theme
-- Non-hierarchical - an Ember isn't "worse" than a Phoenix, just different stage
+- Non-hierarchical - an Ava isn't "worse" than a Phoenix, just different stage
 - Positive progression - each tier celebrates growth
 - Memorable and visual - easy to understand and represent
 
@@ -131,7 +131,7 @@ Special events/tournaments:      Variable (100-1000 XP)
 ### Initial Tier Assignment
 
 **For New Users:**
-- Start at Ember tier (0 XP)
+- Start at Ava tier (0 XP)
 - Welcome bonus: 50 XP for completing profile
 - Guided onboarding quest: +30 XP
 
@@ -165,7 +165,7 @@ class UserTier(models.Model):
     """User's permanent tier based on total XP"""
 
     TIER_CHOICES = [
-        ('ember', 'Ember'),
+        ('ember', 'Ava'),
         ('spark', 'Spark'),
         ('blaze', 'Blaze'),
         ('beacon', 'Beacon'),
@@ -991,7 +991,7 @@ export function ThriveCirclePage() {
 import type { TierName } from '@/types/thriveCircle';
 
 const tierConfig = {
-  ember: { emoji: '🔥', color: 'orange', gradient: 'from-orange-500 to-red-500', label: 'Ember' },
+  ember: { emoji: '🔥', color: 'orange', gradient: 'from-orange-500 to-red-500', label: 'Ava' },
   spark: { emoji: '⚡', color: 'yellow', gradient: 'from-yellow-500 to-amber-500', label: 'Spark' },
   blaze: { emoji: '🔥', color: 'red', gradient: 'from-red-500 to-pink-500', label: 'Blaze' },
   beacon: { emoji: '💡', color: 'blue', gradient: 'from-blue-500 to-cyan-500', label: 'Beacon' },
@@ -1374,7 +1374,7 @@ Once Thrive Circle is live, Side Quests will integrate naturally:
 5. **Quest Recommendations**: Personalized based on tier and interests
 
 **Full System (Inclusive Community Philosophy):**
-- **Permanent Tiers**: Ember → Spark → Blaze → Beacon → Phoenix
+- **Permanent Tiers**: Ava → Spark → Blaze → Beacon → Phoenix
 - **Activities**: Side Quests, Quizzes, Projects, Community Engagement
 - **Rewards**: XP, Unlocks, Achievements, Shared Celebrations
 - **Habits**: Daily logins, Weekly goals, Streaks

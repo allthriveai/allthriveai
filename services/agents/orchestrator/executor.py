@@ -211,7 +211,7 @@ class OrchestratorExecutor:
             enhanced_message = user_message
 
         # Route to appropriate agent streamer
-        # Note: All chat now goes through unified Ember agent (see tasks.py)
+        # Note: All chat now goes through unified Ava agent (see tasks.py)
         # Discovery, Learning, and Project agent types now route to support fallback
         if agent_type == AgentType.IMAGE_GENERATION:
             async for event in self._stream_image_generation(enhanced_message):

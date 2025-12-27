@@ -218,8 +218,43 @@ class SavedLearningPathSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_curriculum(self, obj):
-        """Get curriculum from path_data."""
-        return obj.path_data.get('curriculum', []) if obj.path_data else []
+        """Get curriculum from path_data with normalized exercises."""
+        curriculum = obj.path_data.get('curriculum', []) if obj.path_data else []
+        return self._normalize_curriculum_exercises(curriculum)
+
+    def _normalize_curriculum_exercises(self, curriculum: list) -> list:
+        """Normalize exercises in each lesson to always use 'exercises' array.
+
+        Handles backwards compatibility by converting single 'exercise' field
+        to 'exercises' array format.
+        """
+        import uuid
+
+        for item in curriculum:
+            if item.get('type') != 'ai_lesson':
+                continue
+
+            content = item.get('content', {})
+            if not content:
+                continue
+
+            # If already has exercises array, ensure each has an ID
+            if 'exercises' in content and content['exercises']:
+                for exercise in content['exercises']:
+                    if 'id' not in exercise:
+                        exercise['id'] = str(uuid.uuid4())
+                continue
+
+            # Convert single exercise to array format
+            if 'exercise' in content and content['exercise']:
+                exercise = content['exercise']
+                if 'id' not in exercise:
+                    exercise['id'] = str(uuid.uuid4())
+                content['exercises'] = [exercise]
+            else:
+                content['exercises'] = []
+
+        return curriculum
 
     def get_curriculum_count(self, obj):
         """Get total curriculum item count."""
@@ -270,7 +305,7 @@ class PublicLearningPathSerializer(serializers.ModelSerializer):
     """Serializer for learning paths in the explore feed (public view).
 
     AI-generated learning paths show Sage as the author instead of the user,
-    since Ember (the AI guide) creates these paths.
+    since Ava (the AI guide) creates these paths.
     """
 
     username = serializers.SerializerMethodField()
@@ -777,3 +812,54 @@ class CreateLessonRatingSerializer(serializers.Serializer):
 
     rating = serializers.ChoiceField(choices=LessonRating.Rating.choices)
     feedback = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+
+
+# ============================================================================
+# SECTIONS ORGANIZATION SERIALIZERS
+# ============================================================================
+
+
+class SectionOrganizationSerializer(serializers.Serializer):
+    """
+    Serializer for validating user-customized section organization for saved learning paths.
+
+    Structure (simplified for path library):
+    {
+        "version": 1,
+        "sections": [
+            {
+                "id": "uuid-1",
+                "title": "Getting Started",
+                "isCollapsed": false,
+                "pathSlugs": ["intro-to-ai", "prompt-basics"]
+            }
+        ]
+    }
+    """
+
+    version = serializers.IntegerField(required=True)
+    sections = serializers.ListField(child=serializers.DictField(), default=list)
+
+    def validate_sections(self, value):
+        """Validate section structure."""
+        for section in value:
+            # Validate required fields for sections
+            required_fields = ['id', 'title']
+            for field in required_fields:
+                if field not in section:
+                    raise serializers.ValidationError(f"Section missing required field: '{field}'")
+
+            # Validate isCollapsed is boolean if present
+            if 'isCollapsed' in section:
+                if not isinstance(section['isCollapsed'], bool):
+                    raise serializers.ValidationError('isCollapsed must be a boolean')
+
+            # Validate pathSlugs is a list if present
+            if 'pathSlugs' in section:
+                if not isinstance(section['pathSlugs'], list):
+                    raise serializers.ValidationError('pathSlugs must be a list')
+                for slug in section['pathSlugs']:
+                    if not isinstance(slug, str):
+                        raise serializers.ValidationError('Each pathSlug must be a string')
+
+        return value

@@ -130,7 +130,7 @@ test.describe('Avatar Generation - WebSocket Connection', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for main chat to be ready
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // WHEN: I trigger avatar creation by typing "make my avatar"
@@ -161,7 +161,7 @@ test.describe('Avatar Generation - WebSocket Connection', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Listen for WebSocket messages
@@ -250,7 +250,7 @@ test.describe('Avatar Generation - UI Flow', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     await chatInput.fill('make my avatar');
@@ -284,7 +284,7 @@ test.describe('Avatar Generation - UI Flow', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     await chatInput.fill('make my avatar');
@@ -325,7 +325,7 @@ test.describe('Avatar Generation - UI Flow', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     await chatInput.fill('make my avatar');
@@ -384,7 +384,7 @@ test.describe('Avatar Generation - Sidebar Chat', () => {
       // Find sidebar chat input
       const sidebarInput = page
         .locator(
-          'input[placeholder="Ask me anything..."], input[placeholder="Message Ember..."]'
+          'input[placeholder="Ask me anything..."], input[placeholder="Message Ava..."]'
         )
         .first();
       await expect(sidebarInput).toBeVisible({ timeout: WS_CONNECT_TIMEOUT });

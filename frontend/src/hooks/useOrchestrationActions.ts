@@ -1,5 +1,5 @@
 /**
- * Hook for executing orchestration actions from Ember (the site guide).
+ * Hook for executing orchestration actions from Ava (the site guide).
  *
  * Orchestration actions are commands returned by the orchestration agent's tools.
  * They enable the chat to control the UI: navigate, highlight elements, open trays, etc.
@@ -32,16 +32,16 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
       const el = document.querySelector(highlightedElement);
       if (el) {
         el.classList.remove(
-          'ember-highlight-pulse',
-          'ember-highlight-glow',
-          'ember-highlight-spotlight',
-          'ember-highlight-arrow'
+          'ava-highlight-pulse',
+          'ava-highlight-glow',
+          'ava-highlight-spotlight',
+          'ava-highlight-arrow'
         );
       }
       setHighlightedElement(null);
     }
     // Also remove any spotlight overlay
-    const overlay = document.querySelector('.ember-spotlight-overlay');
+    const overlay = document.querySelector('.ava-spotlight-overlay');
     if (overlay) {
       overlay.remove();
     }
@@ -60,19 +60,19 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
 
     const el = document.querySelector(target);
     if (!el) {
-      console.warn(`[Ember] Element not found: ${target}`);
+      console.warn(`[Ava] Element not found: ${target}`);
       return;
     }
 
     // Add highlight class based on style
-    const className = `ember-highlight-${style}`;
+    const className = `ava-highlight-${style}`;
     el.classList.add(className);
     setHighlightedElement(target);
 
     // For spotlight style, add overlay
     if (style === 'spotlight') {
       const overlay = document.createElement('div');
-      overlay.className = 'ember-spotlight-overlay';
+      overlay.className = 'ava-spotlight-overlay';
       document.body.appendChild(overlay);
     }
 
@@ -81,7 +81,7 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
       el.classList.remove(className);
       setHighlightedElement(null);
       // Remove spotlight overlay
-      const overlay = document.querySelector('.ember-spotlight-overlay');
+      const overlay = document.querySelector('.ava-spotlight-overlay');
       if (overlay) {
         overlay.remove();
       }
@@ -94,7 +94,7 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
    */
   const showToast = useCallback((message: string, variant: string = 'info') => {
     // Dispatch custom event that the app's toast system can handle
-    window.dispatchEvent(new CustomEvent('ember-toast', {
+    window.dispatchEvent(new CustomEvent('ava-toast', {
       detail: { message, variant }
     }));
   }, []);
@@ -160,7 +160,7 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
         }
         break;
       default:
-        console.warn(`[Ember] Unknown trigger action: ${action.trigger_action}`);
+        console.warn(`[Ava] Unknown trigger action: ${action.trigger_action}`);
     }
   }, [navigate]);
 
@@ -219,7 +219,7 @@ export function useOrchestrationActions(options: UseOrchestrationActionsOptions 
         break;
 
       default:
-        console.warn(`[Ember] Unknown action type: ${action.action}`);
+        console.warn(`[Ava] Unknown action type: ${action.action}`);
         return false;
     }
 

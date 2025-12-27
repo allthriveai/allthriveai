@@ -600,3 +600,339 @@ class TestAllTopicsView:
             zebra_idx = names.index('Zebra Topic')
             alpha_idx = names.index('Alpha Topic')
             assert alpha_idx < zebra_idx  # Alpha comes before Zebra alphabetically
+
+
+@pytest.fixture
+def saved_path_with_ai_lesson(db, user):
+    """Create a saved learning path with an AI lesson."""
+    return SavedLearningPath.objects.create(
+        user=user,
+        slug='test-path-with-lesson',
+        title='Test Path with AI Lesson',
+        difficulty='beginner',
+        estimated_hours=2,
+        path_data={
+            'title': 'Test Path with AI Lesson',
+            'curriculum': [
+                {
+                    'type': 'ai_lesson',
+                    'title': 'Introduction to Git',
+                    'order': 1,
+                    'difficulty': 'beginner',
+                    'content': {
+                        'summary': 'Learn Git basics',
+                        'explanation': 'Git is a version control system...',
+                        'key_concepts': ['version control', 'commits', 'branches'],
+                        'examples': [
+                            {'title': 'First Commit', 'description': 'Creating your first commit'},
+                        ],
+                        'exercise': {
+                            'exercise_type': 'ai_prompt',
+                            'scenario': 'Practice Git commands',
+                            'expected_inputs': ['git init'],
+                            'success_message': 'Great job!',
+                            'expected_output': 'Initialized repository',
+                            'content_by_level': {
+                                'beginner': {'instructions': 'Initialize a repo', 'hints': []},
+                                'intermediate': {'instructions': 'Initialize a repo', 'hints': []},
+                                'advanced': {'instructions': 'Initialize a repo', 'hints': []},
+                            },
+                        },
+                    },
+                },
+            ],
+        },
+    )
+
+
+@pytest.mark.django_db
+class TestRegenerateLessonView:
+    """Tests for lesson regeneration endpoint."""
+
+    def test_regenerate_requires_authentication(self, api_client, user, saved_path_with_ai_lesson):
+        """Regenerating a lesson requires authentication."""
+        path = saved_path_with_ai_lesson
+        response = api_client.post(f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_regenerate_lesson_not_found(self, api_client, user, saved_path_with_ai_lesson):
+        """Returns 404 when lesson doesn't exist at the specified order."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/999/regenerate/',
+            {},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_regenerate_path_not_found(self, api_client, user):
+        """Returns 404 when path doesn't exist."""
+        api_client.force_authenticate(user=user)
+
+        response = api_client.post(
+            '/api/v1/me/saved-paths/nonexistent-path/lessons/1/regenerate/',
+            {},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_regenerate_other_users_path(self, api_client, other_user, saved_path_with_ai_lesson):
+        """Cannot regenerate lessons in another user's path."""
+        api_client.force_authenticate(user=other_user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate/',
+            {},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestRegenerateExerciseView:
+    """Tests for exercise regeneration endpoint."""
+
+    def test_regenerate_exercise_requires_authentication(self, api_client, user, saved_path_with_ai_lesson):
+        """Regenerating an exercise requires authentication."""
+        path = saved_path_with_ai_lesson
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_regenerate_exercise_invalid_type(self, api_client, user, saved_path_with_ai_lesson):
+        """Returns 400 for invalid exercise type."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+            {'exercise_type': 'invalid_type'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_regenerate_exercise_valid_types(self, api_client, user, saved_path_with_ai_lesson):
+        """Accepts valid exercise types."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        valid_types = ['terminal', 'code', 'ai_prompt']
+        for exercise_type in valid_types:
+            response = api_client.post(
+                f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+                {'exercise_type': exercise_type},
+                format='json',
+            )
+            # Should not return 400 for valid types
+            # May return 500 if AI service is not available in tests
+            assert response.status_code != status.HTTP_400_BAD_REQUEST
+
+    def test_regenerate_exercise_lesson_not_found(self, api_client, user, saved_path_with_ai_lesson):
+        """Returns 404 when lesson doesn't exist."""
+        api_client.force_authenticate(user=user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/999/regenerate-exercise/',
+            {'exercise_type': 'terminal'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_regenerate_exercise_other_users_path(self, api_client, other_user, saved_path_with_ai_lesson):
+        """Cannot regenerate exercises in another user's path."""
+        api_client.force_authenticate(user=other_user)
+        path = saved_path_with_ai_lesson
+
+        response = api_client.post(
+            f'/api/v1/me/saved-paths/{path.slug}/lessons/1/regenerate-exercise/',
+            {'exercise_type': 'terminal'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestSectionsOrganizationView:
+    """Tests for the sections organization endpoint."""
+
+    def test_get_sections_organization_requires_auth(self, api_client):
+        """Unauthenticated requests should return 401."""
+        response = api_client.get('/api/v1/me/learning-paths/sections-organization/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_sections_organization_empty(self, api_client, user):
+        """Returns empty sections when user has no organization set."""
+        api_client.force_authenticate(user=user)
+
+        response = api_client.get('/api/v1/me/learning-paths/sections-organization/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sectionsOrganization'] is None
+        assert 'topics' in response.data
+
+    def test_get_sections_organization_with_data(self, api_client, user, learner_profile):
+        """Returns saved sections organization."""
+        api_client.force_authenticate(user=user)
+
+        # Set up sections organization
+        learner_profile.sections_organization = {
+            'version': 1,
+            'sections': [
+                {
+                    'id': 'section-1',
+                    'title': 'My Section',
+                    'isCollapsed': False,
+                    'pathSlugs': ['path-1', 'path-2'],
+                }
+            ],
+        }
+        learner_profile.save()
+
+        response = api_client.get('/api/v1/me/learning-paths/sections-organization/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sectionsOrganization'] is not None
+        assert response.data['sectionsOrganization']['version'] == 1
+        assert len(response.data['sectionsOrganization']['sections']) == 1
+        assert response.data['sectionsOrganization']['sections'][0]['title'] == 'My Section'
+
+    def test_patch_sections_organization_requires_auth(self, api_client):
+        """Unauthenticated requests should return 401."""
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': {'version': 1, 'sections': []}},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_patch_sections_organization_success(self, api_client, user):
+        """Successfully saves sections organization."""
+        api_client.force_authenticate(user=user)
+
+        sections_data = {
+            'version': 1,
+            'sections': [
+                {
+                    'id': 'section-abc',
+                    'title': 'Beginner Paths',
+                    'isCollapsed': False,
+                    'pathSlugs': ['intro-to-ai', 'prompt-basics'],
+                },
+                {
+                    'id': 'section-def',
+                    'title': 'Advanced Topics',
+                    'isCollapsed': True,
+                    'pathSlugs': ['ml-deep-dive'],
+                },
+            ],
+        }
+
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': sections_data},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == 'success'
+
+        # Verify it was saved
+        profile = LearnerProfile.objects.get(user=user)
+        assert profile.sections_organization is not None
+        assert profile.sections_organization['version'] == 1
+        assert len(profile.sections_organization['sections']) == 2
+
+    def test_patch_sections_organization_reset_to_null(self, api_client, user, learner_profile):
+        """Can reset sections organization to null."""
+        api_client.force_authenticate(user=user)
+
+        # First set some data
+        learner_profile.sections_organization = {'version': 1, 'sections': []}
+        learner_profile.save()
+
+        # Then reset to null
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': None},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        learner_profile.refresh_from_db()
+        assert learner_profile.sections_organization is None
+
+    def test_patch_sections_organization_invalid_structure(self, api_client, user):
+        """Rejects invalid sections structure."""
+        api_client.force_authenticate(user=user)
+
+        # Missing required 'version' field
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': {'sections': []}},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_sections_organization_invalid_section(self, api_client, user):
+        """Rejects sections missing required fields."""
+        api_client.force_authenticate(user=user)
+
+        # Section missing 'title' field
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {
+                'sectionsOrganization': {
+                    'version': 1,
+                    'sections': [
+                        {
+                            'id': 'section-1',
+                            # missing 'title'
+                            'isCollapsed': False,
+                            'pathSlugs': [],
+                        }
+                    ],
+                }
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_sections_organization_creates_profile_if_missing(self, api_client, db):
+        """Creates learner profile if user doesn't have one."""
+        # Create a fresh user with no profile
+        new_user = User.objects.create_user(
+            username='noprofileuser',
+            email='noprofile@example.com',
+            password='testpass123',
+        )
+        # Delete any auto-created profile
+        LearnerProfile.objects.filter(user=new_user).delete()
+
+        api_client.force_authenticate(user=new_user)
+
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {
+                'sectionsOrganization': {
+                    'version': 1,
+                    'sections': [],
+                }
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert LearnerProfile.objects.filter(user=new_user).exists()

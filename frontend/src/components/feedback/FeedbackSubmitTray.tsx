@@ -54,7 +54,7 @@ const categoryGroups: { label: string; categories: { value: FeedbackCategory; la
   {
     label: 'Agents',
     categories: [
-      { value: 'ember', label: 'Ember' },
+      { value: 'ava', label: 'Ava' },
       { value: 'sage', label: 'Sage' },
       { value: 'haven', label: 'Haven' },
       { value: 'guide', label: 'Guide' },

@@ -1,8 +1,8 @@
 /**
- * LearningGoalSelectionMessage - Learning goal selection for Ember chat
+ * LearningGoalSelectionMessage - Learning goal selection for Ava chat
  *
  * Shows learning goal options as interactive buttons in chat.
- * Uses orange Ember theme with larger fonts.
+ * Uses orange Ava theme with larger fonts.
  */
 
 import { useState } from 'react';
@@ -56,13 +56,13 @@ export const learningGoalOptions: LearningGoalOption[] = [
   },
 ];
 
-// Ember avatar component - positioned at bottom
-function EmberAvatar() {
+// Ava avatar component - positioned at bottom
+function AvaAvatar() {
   return (
     <div className="relative flex-shrink-0 self-start">
       <img
-        src="/ember-avatar.png"
-        alt="Ember"
+        src="/ava-avatar.png"
+        alt="Ava"
         className="w-12 h-12 rounded-full border-2 border-cyan-500/50"
       />
     </div>
@@ -93,9 +93,9 @@ export function LearningGoalSelectionMessage({
       animate={{ opacity: 1, y: 0 }}
       className="py-4"
     >
-      {/* Layout with Ember avatar alongside */}
+      {/* Layout with Ava avatar alongside */}
       <div className="flex items-start gap-4">
-        <EmberAvatar />
+        <AvaAvatar />
 
         <div className="flex-1 max-w-2xl space-y-4">
           {/* Header messages */}
@@ -105,7 +105,7 @@ export function LearningGoalSelectionMessage({
             className="glass-subtle px-5 py-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20"
           >
             <p className="text-orange-100 text-lg leading-relaxed">
-              Hey there! I'm Ember, your AI learning companion.
+              Hey there! I'm Ava, your AI learning companion.
             </p>
           </motion.div>
 

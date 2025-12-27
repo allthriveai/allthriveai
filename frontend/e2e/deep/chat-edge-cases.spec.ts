@@ -74,7 +74,7 @@ test.describe('Error Recovery', () => {
     assertNoTechnicalErrors(response, 'special characters');
 
     // Page should still be functional
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: 5000 });
   });
 
@@ -129,7 +129,7 @@ test.describe('Session Edge Cases', () => {
     await page.waitForTimeout(3000);
 
     // Wait for WebSocket to reconnect
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Check if previous messages are visible
@@ -163,7 +163,7 @@ test.describe('Session Edge Cases', () => {
     await page.waitForTimeout(5000);
 
     // Check if WebSocket reconnected
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Try to send another message
@@ -186,7 +186,7 @@ test.describe('Input Validation', () => {
   test('empty message does not send', async ({ page }) => {
     test.setTimeout(30000);
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Try to send empty message
@@ -211,7 +211,7 @@ test.describe('Input Validation', () => {
   test('whitespace-only message handled correctly', async ({ page }) => {
     test.setTimeout(30000);
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Try to send whitespace-only message
@@ -241,7 +241,7 @@ test.describe('WebSocket Connection', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Chat input should become enabled when WS connects
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
   });
 
@@ -252,7 +252,7 @@ test.describe('WebSocket Connection', () => {
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     await expect(chatInput).toBeEnabled({ timeout: WS_CONNECT_TIMEOUT });
 
     // Navigate away

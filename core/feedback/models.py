@@ -23,7 +23,7 @@ class FeedbackItem(models.Model):
         LOUNGE = 'lounge', 'Lounge'
         LEARN = 'learn', 'Learn'
         # Agents
-        EMBER = 'ember', 'Ember'
+        AVA = 'ava', 'Ava'
         SAGE = 'sage', 'Sage'
         HAVEN = 'haven', 'Haven'
         GUIDE = 'guide', 'Guide'

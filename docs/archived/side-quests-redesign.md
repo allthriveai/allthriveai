@@ -167,7 +167,7 @@ Each topic has a clear progression path:
 Your Progress in Images & Design
 ████████░░░░ 65% to Advanced
 • 325 / 500 XP earned
-• Rank #12 in your Ember Circle
+• Rank #12 in your Ava Circle
 • 2 quests in progress
 ```
 
@@ -275,7 +275,7 @@ When user clicks a topic card:
 ┌────────────────────────────────────────────────────────┐
 │  🤖 Chatbots & Conversation                            │
 │  Your Level: Intermediate (325/500 XP)                 │
-│  Rank: #12 in Ember Circle                             │
+│  Rank: #12 in Ava Circle                             │
 ├────────────────────────────────────────────────────────┤
 │  🎯 Your Active Quests (2)                             │
 │  ┌──────────┐ ┌──────────┐                            │
@@ -368,7 +368,7 @@ When user clicks a topic card:
 ### Circle-Based Challenges
 
 **Tier-Specific Community Quests**:
-- **Ember Circle**: Help each other get to Spark
+- **Ava Circle**: Help each other get to Spark
   - "First Steps Together": Complete 5 beginner quests as a circle
   - "Circle Support": Give feedback to 10 circle members
 
@@ -377,7 +377,7 @@ When user clicks a topic card:
   - "Spark Challenge": Circle-wide monthly challenge
 
 - **Blaze+**: Advanced community leadership
-  - "Mentor Circle": Help Ember/Spark members
+  - "Mentor Circle": Help Ava/Spark members
   - "Circle Innovation": Lead a circle-wide project
 
 ### Topic Communities

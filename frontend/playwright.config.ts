@@ -45,11 +45,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     // Deep E2E tests - run nightly with extended timeouts for real AI calls
+    // Reduced workers to avoid DB connection pool exhaustion
     {
       name: 'deep',
       testMatch: '**/deep/**/*.spec.ts',
       timeout: 300 * 1000, // 5 minutes per test
       retries: 1,
+      workers: 2, // Reduced from default 4 to prevent DB connection exhaustion
       use: {
         ...devices['Desktop Chrome'],
         video: 'on',

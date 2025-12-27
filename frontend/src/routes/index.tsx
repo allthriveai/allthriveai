@@ -42,7 +42,7 @@ import AuthPage from '@/pages/AuthPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 // Core pages - lazy loaded
-const EmberHomePage = lazy(() => import('@/pages/EmberHomePage'));
+const AvaHomePage = lazy(() => import('@/pages/AvaHomePage'));
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
 const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
@@ -102,7 +102,7 @@ const AdminImpersonatePage = lazy(() => import('@/pages/admin/ImpersonatePage'))
 const AdminCircleManagementPage = lazy(() => import('@/pages/admin/CircleManagementPage'));
 const AdminTasksPage = lazy(() => import('@/pages/admin/TasksPage'));
 const AdminUATScenariosPage = lazy(() => import('@/pages/admin/UATScenariosPage'));
-const AdminEmberFlowsPage = lazy(() => import('@/pages/admin/EmberFlowsPage'));
+const AdminAvaFlowsPage = lazy(() => import('@/pages/admin/AvaFlowsPage'));
 const AdminLessonsPage = lazy(() => import('@/pages/admin/LessonsPage'));
 const AdminLogsPage = lazy(() => import('@/pages/admin/LogsPage'));
 
@@ -137,12 +137,12 @@ export function AppRoutes() {
       {/* Landing page - public, redirects authenticated users to /home */}
       <Route path="/" element={<LandingPage />} />
 
-      {/* Home - Ember chat-first experience for authenticated users */}
+      {/* Home - Ava chat-first experience for authenticated users */}
       <Route
         path="/home"
         element={
           <ProtectedRoute>
-            <EmberHomePage />
+            <AvaHomePage />
           </ProtectedRoute>
         }
       />
@@ -369,7 +369,7 @@ export function AppRoutes() {
         }
       />
 
-      {/* Ember's Onboarding - protected */}
+      {/* Ava's Onboarding - protected */}
       <Route
         path="/onboarding"
         element={
@@ -539,10 +539,10 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/admin/ember-flows"
+        path="/admin/ava-flows"
         element={
           <ProtectedRoute>
-            <AdminEmberFlowsPage />
+            <AdminAvaFlowsPage />
           </ProtectedRoute>
         }
       />

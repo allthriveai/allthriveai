@@ -6,7 +6,7 @@ generates personalized AI responses using the agent's personality_prompt
 combined with shared platform knowledge.
 
 Core Team Agents:
-- Ember: Core guide, onboarding, learning journeys
+- Ava: Core guide, onboarding, learning journeys
 - Pip: Prompt battle champion, playful competition
 - Sage: Professor/teacher, deep learning explanations
 - Haven: Community support, handles feedback and concerns

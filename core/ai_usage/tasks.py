@@ -59,7 +59,7 @@ def aggregate_platform_daily_stats(self, date_str=None):
 
         # Base queryset excluding internal users:
         # - Curation tier (RSS/YouTube AI agents)
-        # - Team tier (Core Team AI agents: Ember, Pip, Sage, Haven)
+        # - Team tier (Core Team AI agents: Ava, Pip, Sage, Haven)
         # - Internal emails (@allthrive.ai) and test emails (@test.allthrive.ai)
         real_users = User.objects.exclude(tier__in=['curation', 'team']).exclude(email__icontains='allthrive.ai')
 

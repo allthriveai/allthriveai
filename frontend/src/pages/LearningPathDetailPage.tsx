@@ -2,7 +2,7 @@
  * Learning Path Detail Page
  *
  * Displays a generated learning path by its slug with split-pane layout.
- * Curriculum on left, Ember chat panel on right when active.
+ * Curriculum on left, Ava chat panel on right when active.
  * Accessed via /:username/learn/:slug
  */
 import { useState, useEffect, useRef } from 'react';
@@ -40,6 +40,7 @@ import {
   faTrophy,
   faExpand,
   faCompress,
+  faSync,
 } from '@fortawesome/free-solid-svg-icons';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
@@ -51,12 +52,13 @@ import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/ga
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
-import { getLessonImage, rateLesson, getLessonProgress, completeExercise, completeQuiz, type CurriculumItem, type RelatedProject, type PathProgress } from '@/services/learningPaths';
+import { getLessonImage, rateLesson, getLessonProgress, completeExercise, completeQuiz, regenerateLesson, type CurriculumItem, type RelatedProject, type PathProgress, type AILessonContent } from '@/services/learningPaths';
 import { getToolBySlug } from '@/services/tools';
 import { getTaxonomyPreferences, type SkillLevel } from '@/services/personalization';
-import { SimulatedTerminal } from '@/components/learning/SimulatedTerminal';
 import { InlineAIChat } from '@/components/learning/InlineAIChat';
 import { LessonQuiz } from '@/components/learning/LessonQuiz';
+import { ExerciseCollection } from '@/components/learning/exercises';
+import { getExercises } from '@/services/learningPaths';
 import type { Tool } from '@/types/models';
 
 /**
@@ -557,10 +559,10 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
   const [isAddingProject, setIsAddingProject] = useState(false);
   const projects = item.projects || [];
 
-  // Open Ember with project creation context
+  // Open Ava with project creation context
   const handleShareProject = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent toggle when clicking button
-    // Dispatch custom event to open Ember chat in project mode
+    // Dispatch custom event to open Ava chat in project mode
     window.dispatchEvent(new CustomEvent('openAddProject'));
   };
 
@@ -698,6 +700,56 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
 }
 
 /**
+ * Expandable accordion section for lesson content (Exercise, Quiz, Diagram)
+ */
+interface LessonSectionAccordionProps {
+  title: string;
+  icon: typeof faCode;
+  iconColor: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+  badge?: string;
+}
+
+function LessonSectionAccordion({ title, icon, iconColor, defaultOpen = false, children, badge }: LessonSectionAccordionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="border border-slate-200 dark:border-white/10 rounded overflow-hidden">
+      {/* Accordion Header */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-slate-100 dark:bg-white/5 px-4 py-3 flex items-center justify-between hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <FontAwesomeIcon
+            icon={isOpen ? faChevronDown : faChevronRight}
+            className="text-slate-400 dark:text-gray-500 text-xs w-3"
+          />
+          <FontAwesomeIcon icon={icon} className={iconColor} />
+          <h4 className="text-slate-900 dark:text-white font-semibold">{title}</h4>
+          {badge && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-400">
+              {badge}
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-slate-500 dark:text-gray-500">
+          {isOpen ? 'Click to collapse' : 'Click to expand'}
+        </span>
+      </button>
+
+      {/* Accordion Content */}
+      {isOpen && (
+        <div className="p-4 border-t border-slate-200 dark:border-white/10">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * AI Lesson Card component - renders expandable AI-generated lesson content
  */
 interface AILessonCardProps {
@@ -712,9 +764,10 @@ interface AILessonCardProps {
   cardRef?: (el: HTMLDivElement | null) => void;
   isCompleted?: boolean;
   showCelebration?: boolean;
+  onLessonUpdated?: (lessonOrder: number, newContent: AILessonContent, newTitle?: string) => void;
 }
 
-function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete, autoExpand, cardRef: externalCardRef, isCompleted, showCelebration }: AILessonCardProps) {
+function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete, autoExpand, cardRef: externalCardRef, isCompleted, showCelebration, onLessonUpdated }: AILessonCardProps) {
   const [isExpanded, setIsExpanded] = useState(autoExpand ?? false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -724,7 +777,19 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   const [isRating, setIsRating] = useState(false);
   const [hasStartedLoading, setHasStartedLoading] = useState(false);
   const internalCardRef = useRef<HTMLDivElement>(null);
-  const content = item.content;
+
+  // Regeneration state
+  const [showRegenerateForm, setShowRegenerateForm] = useState(false);
+  const [regenerateFocus, setRegenerateFocus] = useState('');
+  const [regenerateReason, setRegenerateReason] = useState('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerationError, setRegenerationError] = useState<string | null>(null);
+
+  // Use local state for content and title to allow real-time updates after regeneration
+  const [localContent, setLocalContent] = useState(item.content);
+  const [localTitle, setLocalTitle] = useState(item.title);
+  const content = localContent;
+  const title = localTitle;
 
   // Auto-expand when autoExpand prop changes to true
   useEffect(() => {
@@ -789,7 +854,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   const handleOpenChat = () => {
     if (onOpenChat && content) {
       onOpenChat({
-        lessonTitle: item.title,
+        lessonTitle: title,
         explanation: content.explanation,
         examples: content.examples,
         practicePrompt: content.practicePrompt,
@@ -820,6 +885,42 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
       console.error('Failed to rate lesson:', error);
     } finally {
       setIsRating(false);
+    }
+  };
+
+  // Handle regenerating the entire lesson
+  const handleRegenerateLesson = async () => {
+    if (!pathSlug) return;
+
+    setIsRegenerating(true);
+    setRegenerationError(null);
+
+    try {
+      const result = await regenerateLesson(pathSlug, item.order, {
+        focus: regenerateFocus || undefined,
+        reason: regenerateReason || undefined,
+      });
+
+      if (result.success && result.lesson?.content) {
+        setLocalContent(result.lesson.content);
+        // Update title if a new one was generated
+        if (result.lesson.title) {
+          setLocalTitle(result.lesson.title);
+        }
+        // Reset image so it regenerates based on new content
+        setImageUrl(null);
+        setImageError(false);
+        setHasStartedLoading(false);
+        onLessonUpdated?.(item.order, result.lesson.content, result.lesson.title);
+        setShowRegenerateForm(false);
+        setRegenerateFocus('');
+        setRegenerateReason('');
+      }
+    } catch (error) {
+      console.error('Failed to regenerate lesson:', error);
+      setRegenerationError('Failed to regenerate lesson. Please try again.');
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -858,7 +959,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
               </span>
             )}
           </div>
-          <h3 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{item.title}</h3>
+          <h3 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{title}</h3>
           <p className="text-slate-600 dark:text-gray-400 text-base line-clamp-2">{content.summary}</p>
 
           {/* Key concepts chips */}
@@ -906,7 +1007,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
               >
                 <img
                   src={imageUrl}
-                  alt={`Illustration for ${item.title}`}
+                  alt={`Illustration for ${title}`}
                   className="w-full h-auto transition-transform duration-300 group-hover:scale-[1.02]"
                 />
                 {/* Hover overlay with zoom icon */}
@@ -920,7 +1021,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
               {showLightbox && (
                 <ImageLightbox
                   imageUrl={imageUrl}
-                  alt={`Illustration for ${item.title}`}
+                  alt={`Illustration for ${title}`}
                   onClose={() => setShowLightbox(false)}
                 />
               )}
@@ -963,130 +1064,148 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
             </ReactMarkdown>
           </div>
 
-          {/* Examples */}
+          {/* Examples - expandable accordion */}
           {content.examples && content.examples.length > 0 && (
-            <div className="space-y-4">
-              <h4 className="text-slate-900 dark:text-white font-medium flex items-center gap-2">
-                <FontAwesomeIcon icon={faCode} className="text-green-500 dark:text-green-400" />
-                Examples
-              </h4>
-              {content.examples.map((example, i) => (
-                <div key={i} className="bg-slate-100 dark:bg-white/5 rounded-lg p-4">
-                  <h5 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{example.title}</h5>
-                  <div className="learning-prose text-slate-600 dark:text-gray-400 text-base mb-3">
-                    <ReactMarkdown
-                      components={{
-                        code({ className, children, ...props }) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          const codeString = String(children).replace(/\n$/, '');
-                          const isCodeBlock = match || (codeString.includes('\n') && !className?.includes('inline'));
-                          if (isCodeBlock) {
-                            const language = match ? match[1] : detectLanguage(codeString);
-                            return (
-                              <SyntaxHighlighter
-                                language={language}
-                                style={oneDark}
-                                customStyle={{
-                                  margin: 0,
-                                  borderRadius: '0.5rem',
-                                  fontSize: '0.875rem',
-                                  padding: '1rem',
-                                }}
-                                showLineNumbers={codeString.split('\n').length > 3}
-                              >
-                                {codeString}
-                              </SyntaxHighlighter>
-                            );
-                          }
-                          return <code className={className} {...props}>{children}</code>;
-                        },
-                      }}
-                    >
-                      {example.description}
-                    </ReactMarkdown>
+            <LessonSectionAccordion
+              title="Examples"
+              icon={faCode}
+              iconColor="text-green-500 dark:text-green-400"
+              badge={`${content.examples.length}`}
+            >
+              <div className="space-y-4">
+                {content.examples.map((example, i) => (
+                  <div key={i} className="bg-slate-50 dark:bg-white/5 rounded-lg p-4">
+                    <h5 className="text-slate-900 dark:text-white font-medium text-lg mb-2">{example.title}</h5>
+                    <div className="learning-prose text-slate-600 dark:text-gray-400 text-base mb-3">
+                      <ReactMarkdown
+                        components={{
+                          code({ className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const codeString = String(children).replace(/\n$/, '');
+                            const isCodeBlock = match || (codeString.includes('\n') && !className?.includes('inline'));
+                            if (isCodeBlock) {
+                              const language = match ? match[1] : detectLanguage(codeString);
+                              return (
+                                <SyntaxHighlighter
+                                  language={language}
+                                  style={oneDark}
+                                  customStyle={{
+                                    margin: 0,
+                                    borderRadius: '0.5rem',
+                                    fontSize: '0.875rem',
+                                    padding: '1rem',
+                                  }}
+                                  showLineNumbers={codeString.split('\n').length > 3}
+                                >
+                                  {codeString}
+                                </SyntaxHighlighter>
+                              );
+                            }
+                            return <code className={className} {...props}>{children}</code>;
+                          },
+                        }}
+                      >
+                        {example.description}
+                      </ReactMarkdown>
+                    </div>
+                    {example.code && (
+                      <SyntaxHighlighter
+                        language={detectLanguage(example.code)}
+                        style={oneDark}
+                        customStyle={{
+                          margin: 0,
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem',
+                          padding: '1rem',
+                        }}
+                        showLineNumbers={example.code.split('\n').length > 3}
+                      >
+                        {example.code}
+                      </SyntaxHighlighter>
+                    )}
                   </div>
-                  {example.code && (
-                    <SyntaxHighlighter
-                      language={detectLanguage(example.code)}
-                      style={oneDark}
-                      customStyle={{
-                        margin: 0,
-                        borderRadius: '0.5rem',
-                        fontSize: '0.875rem',
-                        padding: '1rem',
-                      }}
-                      showLineNumbers={example.code.split('\n').length > 3}
-                    >
-                      {example.code}
-                    </SyntaxHighlighter>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </LessonSectionAccordion>
           )}
 
-          {/* Interactive Exercise */}
-          {content.exercise && content.exercise.exerciseType === 'ai_prompt' ? (
-            /* AI Prompt exercises use inline chat */
-            <InlineAIChat
-              exercise={content.exercise}
-              skillLevel={skillLevel}
-              lessonId={`lesson-${item.order}`}
-              pathSlug={pathSlug}
-              onAskForHelp={handleOpenChat}
-              onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
-            />
-          ) : content.exercise ? (
-            /* Terminal/Git/Code exercises use SimulatedTerminal */
-            <SimulatedTerminal
-              exercise={content.exercise}
-              skillLevel={skillLevel}
-              onAskForHelp={handleOpenChat}
-              onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
-            />
-          ) : content.practicePrompt && (
-            /* Fallback: convert practicePrompt to inline chat */
-            <InlineAIChat
-              exercise={{
-                exerciseType: 'ai_prompt',
-                scenario: content.practicePrompt,
-                expectedInputs: ['.*'],
-                successMessage: 'Great work!',
-                expectedOutput: '',
-                contentByLevel: {
-                  beginner: { instructions: content.practicePrompt, hints: [] },
-                  intermediate: { instructions: content.practicePrompt, hints: [] },
-                  advanced: { instructions: content.practicePrompt, hints: [] },
-                },
-              }}
-              skillLevel={skillLevel}
-              lessonId={`lesson-${item.order}`}
-              pathSlug={pathSlug}
-              onAskForHelp={handleOpenChat}
-              onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
-            />
+          {/* Exercise Section - expandable accordion with multiple exercises support */}
+          {(getExercises(content).length > 0 || content.practicePrompt) && (
+            <LessonSectionAccordion
+              title="Exercises"
+              icon={faCode}
+              iconColor="text-emerald-500"
+              badge={getExercises(content).length > 0 ? `${getExercises(content).length} exercise${getExercises(content).length > 1 ? 's' : ''}` : 'Practice'}
+            >
+              {getExercises(content).length > 0 && pathSlug ? (
+                /* Multiple exercises with collection UI */
+                <ExerciseCollection
+                  pathSlug={pathSlug}
+                  lessonOrder={item.order}
+                  content={content}
+                  skillLevel={skillLevel}
+                  onExerciseComplete={() => {
+                    // Call the lesson completion handler with placeholder stats
+                    onExerciseComplete?.(item.order, { hintsUsed: 0, attempts: 1, timeSpentMs: 0 });
+                  }}
+                  onContentUpdate={(exercises) => {
+                    // Update local content with new exercises array
+                    setLocalContent(prev => prev ? { ...prev, exercises } : prev);
+                  }}
+                />
+              ) : content.practicePrompt && (
+                /* Fallback: convert practicePrompt to inline chat when no exercises */
+                <InlineAIChat
+                  exercise={{
+                    exerciseType: 'ai_prompt',
+                    scenario: content.practicePrompt,
+                    expectedInputs: ['.*'],
+                    successMessage: 'Great work!',
+                    expectedOutput: '',
+                    contentByLevel: {
+                      beginner: { instructions: content.practicePrompt, hints: [] },
+                      intermediate: { instructions: content.practicePrompt, hints: [] },
+                      advanced: { instructions: content.practicePrompt, hints: [] },
+                    },
+                  }}
+                  skillLevel={skillLevel}
+                  lessonId={`lesson-${item.order}`}
+                  pathSlug={pathSlug}
+                  onAskForHelp={handleOpenChat}
+                  onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+                />
+              )}
+            </LessonSectionAccordion>
           )}
 
-          {/* Inline Quiz - check understanding at the end of the lesson */}
+          {/* Inline Quiz - expandable accordion */}
           {content.quiz && (
-            <LessonQuiz
-              quiz={content.quiz}
-              onComplete={onQuizComplete ? (score, total) => onQuizComplete(item.order, score, total) : undefined}
-            />
+            <LessonSectionAccordion
+              title="Quiz"
+              icon={faQuestion}
+              iconColor="text-amber-500"
+              badge={`${content.quiz.questions?.length || 0} questions`}
+            >
+              <LessonQuiz
+                quiz={content.quiz}
+                onComplete={onQuizComplete ? (score, total) => onQuizComplete(item.order, score, total) : undefined}
+              />
+            </LessonSectionAccordion>
           )}
 
-          {/* Mermaid diagram */}
+          {/* Mermaid diagram - expandable accordion */}
           {content.mermaidDiagram && (
-            <div className="bg-slate-100 dark:bg-white/5 rounded-lg p-4">
-              <h4 className="text-slate-900 dark:text-white font-medium mb-3 flex items-center gap-2">
-                <FontAwesomeIcon icon={faSignal} className="text-purple-500 dark:text-purple-400" />
-                Diagram
-              </h4>
+            <LessonSectionAccordion
+              title="Diagram"
+              icon={faSignal}
+              iconColor="text-purple-500 dark:text-purple-400"
+              badge="Visual"
+            >
               <MermaidDiagram
                 code={content.mermaidDiagram}
                 className="[&_svg]:max-w-full [&_svg]:h-auto"
               />
-            </div>
+            </LessonSectionAccordion>
           )}
 
           {/* Completion celebration - shows when lesson is just completed */}
@@ -1115,15 +1234,15 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
             </div>
           )}
 
-          {/* Rating section */}
+          {/* Rating and regenerate section */}
           <div className="border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <p className="text-slate-600 dark:text-gray-400 text-base">Was this lesson helpful?</p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleRating('helpful')}
                   disabled={isRating}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-base font-medium transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                     userRating === 'helpful'
                       ? 'bg-emerald-500 text-white'
                       : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'
@@ -1135,7 +1254,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                 <button
                   onClick={() => handleRating('not_helpful')}
                   disabled={isRating}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-base font-medium transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                     userRating === 'not_helpful'
                       ? 'bg-red-500 text-white'
                       : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400'
@@ -1144,12 +1263,95 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                   <FontAwesomeIcon icon={faThumbsDown} />
                   Not Helpful
                 </button>
+                {/* Separator */}
+                {pathSlug && (
+                  <>
+                    <div className="w-px h-6 bg-slate-200 dark:bg-white/20 mx-1" />
+                    <button
+                      onClick={() => setShowRegenerateForm(!showRegenerateForm)}
+                      disabled={isRegenerating}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        showRegenerateForm
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-blue-500/20 hover:text-blue-600 dark:hover:text-blue-400'
+                      } ${isRegenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <FontAwesomeIcon icon={isRegenerating ? faSpinner : faSync} className={isRegenerating ? 'animate-spin' : ''} />
+                      {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             {userRating && (
               <p className="text-emerald-600 dark:text-emerald-400 text-xs mt-2">
                 Thanks for your feedback!
               </p>
+            )}
+            {/* Regenerate form - expands when button is clicked */}
+            {showRegenerateForm && pathSlug && (
+              <div className="mt-4 p-4 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
+                      What would you like to focus on? (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={regenerateFocus}
+                      onChange={(e) => setRegenerateFocus(e.target.value)}
+                      placeholder="e.g., More hands-on examples, simpler explanations..."
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                      disabled={isRegenerating}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
+                      Why are you regenerating? (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={regenerateReason}
+                      onChange={(e) => setRegenerateReason(e.target.value)}
+                      placeholder="e.g., Too abstract, missing context..."
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                      disabled={isRegenerating}
+                    />
+                  </div>
+                  {regenerationError && (
+                    <p className="text-sm text-red-500 dark:text-red-400">{regenerationError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleRegenerateLesson}
+                      disabled={isRegenerating}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isRegenerating ? (
+                        <>
+                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <FontAwesomeIcon icon={faSync} />
+                          Generate New Lesson
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowRegenerateForm(false);
+                        setRegenerationError(null);
+                      }}
+                      disabled={isRegenerating}
+                      className="px-4 py-2 text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -1355,6 +1557,7 @@ export default function LearningPathDetailPage() {
 
   // Fullscreen mode for curriculum
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSagePanelOpen, setIsSagePanelOpen] = useState(false);
 
   // Auto-dismiss celebration after 5 seconds (with proper cleanup to prevent memory leaks)
   useEffect(() => {
@@ -1530,17 +1733,32 @@ export default function LearningPathDetailPage() {
                     </button>
                     <h1 className="text-lg font-semibold text-white truncate">{path.title}</h1>
                   </div>
-                  {progressData && progressData.percentage > 0 && (
-                    <div className="hidden sm:flex items-center gap-2">
-                      <div className="w-32 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full"
-                          style={{ width: `${progressData.percentage}%` }}
-                        />
+                  <div className="flex items-center gap-3">
+                    {progressData && progressData.percentage > 0 && (
+                      <div className="hidden sm:flex items-center gap-2">
+                        <div className="w-32 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full"
+                            style={{ width: `${progressData.percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-emerald-300">{progressData.percentage}%</span>
                       </div>
-                      <span className="text-xs text-emerald-300">{progressData.percentage}%</span>
-                    </div>
-                  )}
+                    )}
+                    {/* Sage toggle button */}
+                    <button
+                      onClick={() => setIsSagePanelOpen(!isSagePanelOpen)}
+                      className={`hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        isSagePanelOpen
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          : 'text-gray-400 hover:text-white hover:bg-white/10'
+                      }`}
+                      title={isSagePanelOpen ? 'Close Sage' : 'Ask Sage for help'}
+                    >
+                      <img src="/sage-avatar.png" alt="Sage" className="w-5 h-5 rounded-full" />
+                      <span>Sage</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1674,7 +1892,7 @@ export default function LearningPathDetailPage() {
               <div className="flex-1 flex min-h-0 overflow-hidden">
                 {/* LEFT: Curriculum (scrollable) - full width in focus mode */}
                 <div className="flex-1 overflow-y-auto min-h-0">
-                  <div className={`px-4 sm:px-6 lg:px-8 py-4 ${isFullscreen ? 'max-w-5xl mx-auto' : ''}`}>
+                  <div className="px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                         {isFullscreen ? 'Lessons' : 'Curriculum'}
@@ -1736,7 +1954,7 @@ export default function LearningPathDetailPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: Sage Chat Panel (desktop only - hidden on mobile or in fullscreen mode) */}
+                {/* RIGHT: Sage Chat Panel - normal mode (always visible on desktop) */}
                 {!isFullscreen && (
                   <div className="hidden lg:flex w-[480px] border-l border-slate-200 dark:border-white/10 flex-shrink-0 h-full min-h-0 flex-col">
                     <LearningChatPanel
@@ -1744,6 +1962,39 @@ export default function LearningPathDetailPage() {
                       pathTitle={path.title}
                       pathSlug={slug || ''}
                     />
+                  </div>
+                )}
+
+                {/* RIGHT: Sage Chat Panel - focus mode (pushes content) */}
+                {isFullscreen && (
+                  <div
+                    className={`hidden lg:flex flex-col border-l border-slate-200 dark:border-white/10 flex-shrink-0 h-full min-h-0 transition-all duration-300 ease-in-out overflow-hidden ${
+                      isSagePanelOpen ? 'w-[480px]' : 'w-0 border-l-0'
+                    }`}
+                  >
+                    <div className="w-[480px] h-full flex flex-col">
+                      {/* Panel header with close button */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          <img src="/sage-avatar.png" alt="Sage" className="w-6 h-6 rounded-full" />
+                          <span className="font-medium text-slate-900 dark:text-white">Sage</span>
+                        </div>
+                        <button
+                          onClick={() => setIsSagePanelOpen(false)}
+                          className="p-2 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                          title="Close"
+                        >
+                          <FontAwesomeIcon icon={faTimes} />
+                        </button>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        <LearningChatPanel
+                          context={currentLessonContext}
+                          pathTitle={path.title}
+                          pathSlug={slug || ''}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

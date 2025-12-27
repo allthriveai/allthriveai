@@ -119,7 +119,7 @@ export function MobileMenu({ isOpen, onClose, menuSections, onMenuClick }: Mobil
               }}
             >
               <ChatBubbleLeftRightIcon className="w-5 h-5" />
-              Chat with Ember
+              Chat with Ava
             </button>
           </div>
         )}

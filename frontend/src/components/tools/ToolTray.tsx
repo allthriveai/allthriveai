@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import { useTopicTraySafe } from '@/context/TopicTrayContext';
 import { getToolBySlug } from '@/services/tools';
 import { exploreProjects } from '@/services/explore';
 import { ProjectCard } from '@/components/projects/ProjectCard';
@@ -21,6 +22,7 @@ import {
   faBolt,
   faFolderOpen,
   faGraduationCap,
+  faLightbulb,
 } from '@fortawesome/free-solid-svg-icons';
 
 interface ToolTrayProps {
@@ -34,6 +36,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showLinksDropdown, setShowLinksDropdown] = useState(false);
+  const topicTray = useTopicTraySafe();
 
   // Track if tray should be rendered (for slide-out animation)
   const [shouldRender, setShouldRender] = useState(false);
@@ -237,7 +240,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
                     <div className="relative">
                       <button
                         onClick={() => setShowLinksDropdown(!showLinksDropdown)}
-                        className="px-3 py-1 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-sm transition-colors"
+                        className="px-3 py-1 text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-primary-900/30 hover:bg-primary-200 dark:hover:bg-primary-800/40 rounded-lg transition-colors"
                         aria-label="More links"
                       >
                         Links
@@ -312,7 +315,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             {/* Taxonomy Categories */}
-            {tool.tags.length > 0 && (
+            {tool.tags && tool.tags.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-2 flex items-center gap-2">
                   <FontAwesomeIcon icon={faTags} className="w-3.5 h-3.5" />
@@ -345,7 +348,7 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
             </section>
 
             {/* Use Cases */}
-            {tool.useCases.length > 0 && (
+            {tool.useCases && tool.useCases.length > 0 && (
               <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-2 flex items-center gap-2">
                   <FontAwesomeIcon icon={faListCheck} className="w-3.5 h-3.5" />
@@ -492,6 +495,38 @@ export function ToolTray({ isOpen, onClose, toolSlug }: ToolTrayProps) {
                 </>
               )}
             </section>
+
+            {/* Topics */}
+            {tool.topics && tool.topics.length > 0 && (
+              <section className="bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700" style={{ borderRadius: 'var(--radius)' }}>
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-3 flex items-center gap-2">
+                  <FontAwesomeIcon icon={faLightbulb} className="w-3.5 h-3.5" />
+                  Related Topics
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {tool.topics.map((topic) => (
+                    <button
+                      key={topic.id}
+                      onClick={() => {
+                        if (topicTray) {
+                          onClose();
+                          topicTray.openTopicTray(topic.name);
+                        }
+                      }}
+                      className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors hover:opacity-80"
+                      style={{
+                        backgroundColor: topic.color ? `${topic.color}20` : 'rgb(var(--color-primary-100))',
+                        color: topic.color || 'rgb(var(--color-primary-700))',
+                        borderWidth: '1px',
+                        borderColor: topic.color ? `${topic.color}40` : 'rgb(var(--color-primary-200))',
+                      }}
+                    >
+                      {topic.name}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         </div>
       </>

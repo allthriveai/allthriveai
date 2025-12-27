@@ -1,11 +1,12 @@
 from rest_framework import serializers
 
+from core.serializers.mixins import AnnotatedFieldMixin
 from core.users.serializers import UserMinimalSerializer
 
 from .models import FeedbackComment, FeedbackItem
 
 
-class FeedbackItemSerializer(serializers.ModelSerializer):
+class FeedbackItemSerializer(AnnotatedFieldMixin, serializers.ModelSerializer):
     """Serializer for reading feedback items."""
 
     user = UserMinimalSerializer(read_only=True)
@@ -40,23 +41,23 @@ class FeedbackItemSerializer(serializers.ModelSerializer):
         ]
 
     def get_has_voted(self, obj):
-        """Check if current user has voted on this item."""
-        # Use annotated value from queryset (avoids N+1)
-        if hasattr(obj, 'user_has_voted'):
-            return obj.user_has_voted
-        # Fallback for single object retrieval
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return obj.votes.filter(user=request.user).exists()
-        return False
+        """Check if current user has voted on this item (N+1 safe)."""
+        return self.get_annotated_or_query(
+            obj=obj,
+            annotation_attr='user_has_voted',
+            fallback_query=lambda: obj.votes.filter(user=self.context['request'].user).exists(),
+            requires_auth=True,
+        )
 
     def get_comment_count(self, obj):
-        """Get count of comments on this item."""
-        # Use annotated value from queryset (avoids N+1)
-        if hasattr(obj, 'annotated_comment_count'):
-            return obj.annotated_comment_count
-        # Fallback for single object retrieval
-        return obj.comments.count()
+        """Get count of comments on this item (N+1 safe)."""
+        return self.get_annotated_or_query(
+            obj=obj,
+            annotation_attr='annotated_comment_count',
+            fallback_query=lambda: obj.comments.count(),
+            requires_auth=False,
+            default_unauthenticated=0,
+        )
 
 
 class FeedbackItemCreateSerializer(serializers.ModelSerializer):

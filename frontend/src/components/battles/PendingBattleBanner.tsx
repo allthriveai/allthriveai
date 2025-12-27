@@ -3,7 +3,7 @@
  *
  * Banner displayed below the navigation when the user has a pending battle challenge.
  * Uses localStorage to persist battle data across page navigations.
- * Designed to be placed in DashboardLayout after EmberAdventureBanner.
+ * Designed to be placed in DashboardLayout after AvaAdventureBanner.
  */
 
 import { useState, useEffect, useCallback } from 'react';

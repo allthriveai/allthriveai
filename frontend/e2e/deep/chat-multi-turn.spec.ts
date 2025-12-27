@@ -1,7 +1,7 @@
 /**
  * Multi-Turn Conversation Quality Tests
  *
- * These tests verify that Ember maintains context across multiple turns
+ * These tests verify that Ava maintains context across multiple turns
  * in a conversation. Context loss is a critical regression.
  *
  * CRITICAL: Tests for context preservation when:

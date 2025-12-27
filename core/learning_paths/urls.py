@@ -12,6 +12,18 @@ router.register(r'me/concept-mastery', views.UserConceptMasteryViewSet, basename
 router.register(r'admin/learning/lessons', views.AdminLessonViewSet, basename='admin-lessons')
 
 urlpatterns = [
+    # Section organization endpoints - MUST come before router to avoid conflict with me/learning-paths/<pk>/
+    path(
+        'me/learning-paths/sections-organization/',
+        views.SectionsOrganizationView.as_view(),
+        name='sections-organization',
+    ),
+    path(
+        'me/learning-paths/reorder-sections/',
+        views.ReorderSectionsView.as_view(),
+        name='reorder-sections',
+    ),
+    # Router endpoints (includes me/learning-paths/<pk>/ which would otherwise match above)
     path('', include(router.urls)),
     path('users/<str:username>/learning-paths/', views.UserLearningPathsView.as_view(), name='user-learning-paths'),
     path(
@@ -111,6 +123,33 @@ urlpatterns = [
         'me/saved-paths/<str:slug>/lessons/<int:order>/persist/',
         views.PersistLessonView.as_view(),
         name='persist-lesson',
+    ),
+    # Lesson regeneration endpoints
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/regenerate/',
+        views.RegenerateLessonView.as_view(),
+        name='regenerate-lesson',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/regenerate-exercise/',
+        views.RegenerateExerciseView.as_view(),
+        name='regenerate-exercise',
+    ),
+    # Multiple exercises per lesson endpoints
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/add-exercise/',
+        views.AddExerciseView.as_view(),
+        name='add-exercise',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/remove-exercise/',
+        views.RemoveExerciseView.as_view(),
+        name='remove-exercise',
+    ),
+    path(
+        'me/saved-paths/<str:slug>/lessons/<int:order>/regenerate-specific-exercise/',
+        views.RegenerateSpecificExerciseView.as_view(),
+        name='regenerate-specific-exercise',
     ),
     # Lesson rating endpoints
     path(

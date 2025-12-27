@@ -187,7 +187,7 @@ This document outlines creative side quest ideas to engage learners, encourage c
 ## 💎 Tier & Achievement Progress (Additional Ideas)
 
 ### Tier-Specific Challenges
-- **Ember Milestone** - Reach 100 total XP
+- **Ava Milestone** - Reach 100 total XP
 - **Spark Celebration** - Reach Spark tier (500 XP)
 - **Blaze Path** - Reach Blaze tier (2000 XP)
 - **Beacon Achievement** - Reach Beacon tier (5000 XP)

@@ -325,15 +325,15 @@ export default function ProfilePage() {
     };
   }, []);
 
-  // Listen for Ember-generated profile sections (from AI profile generation)
+  // Listen for Ava-generated profile sections (from AI profile generation)
   useEffect(() => {
     // Only listen for events on own profile
     if (!isOwnProfile) return;
 
-    const handleEmberSections = (event: CustomEvent<{ sections: ProfileSection[]; toolName?: string }>) => {
+    const handleAvaSections = (event: CustomEvent<{ sections: ProfileSection[]; toolName?: string }>) => {
       const { sections, toolName } = event.detail;
       if (sections && Array.isArray(sections) && sections.length > 0) {
-        console.log('[Profile] Received', sections.length, 'sections from Ember', toolName ? `(${toolName})` : '');
+        console.log('[Profile] Received', sections.length, 'sections from Ava', toolName ? `(${toolName})` : '');
 
         // Update profile sections with AI-generated content
         setProfileSections(sections);
@@ -352,8 +352,8 @@ export default function ProfilePage() {
       }
     };
 
-    window.addEventListener('emberProfileSectionsGenerated', handleEmberSections as EventListener);
-    return () => window.removeEventListener('emberProfileSectionsGenerated', handleEmberSections as EventListener);
+    window.addEventListener('avaProfileSectionsGenerated', handleAvaSections as EventListener);
+    return () => window.removeEventListener('avaProfileSectionsGenerated', handleAvaSections as EventListener);
   }, [isOwnProfile, setSearchParams]);
 
   // Close "More" menu when clicking outside
@@ -418,17 +418,17 @@ export default function ProfilePage() {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Check for Ember onboarding "Personalize Profile" adventure - open AI profile generator tray
+  // Check for Ava onboarding "Personalize Profile" adventure - open AI profile generator tray
   useEffect(() => {
-    const emberOpenProfileGenerator = localStorage.getItem('ember_open_profile_generator');
+    const avaOpenProfileGenerator = localStorage.getItem('ava_open_profile_generator');
 
-    if (emberOpenProfileGenerator === 'true' && isOwnProfile) {
+    if (avaOpenProfileGenerator === 'true' && isOwnProfile) {
       // Clear immediately to prevent re-triggering
-      localStorage.removeItem('ember_open_profile_generator');
+      localStorage.removeItem('ava_open_profile_generator');
 
       // Short delay to let the page render first
       const timeoutId = setTimeout(() => {
-        // Dispatch custom event to open Ember with profile generation context
+        // Dispatch custom event to open Ava with profile generation context
         if (user) {
           window.dispatchEvent(new CustomEvent('openProfileGenerate', {
             detail: {
@@ -448,8 +448,8 @@ export default function ProfilePage() {
     if (!isOwnProfile || !user) return;
 
     const handleOpenProfileGenerator = () => {
-      localStorage.removeItem('ember_open_profile_generator');
-      // Dispatch custom event to open Ember with profile generation context
+      localStorage.removeItem('ava_open_profile_generator');
+      // Dispatch custom event to open Ava with profile generation context
       window.dispatchEvent(new CustomEvent('openProfileGenerate', {
         detail: {
           userId: user.id,
@@ -458,8 +458,8 @@ export default function ProfilePage() {
       }));
     };
 
-    window.addEventListener('ember-open-profile-generator', handleOpenProfileGenerator);
-    return () => window.removeEventListener('ember-open-profile-generator', handleOpenProfileGenerator);
+    window.addEventListener('ava-open-profile-generator', handleOpenProfileGenerator);
+    return () => window.removeEventListener('ava-open-profile-generator', handleOpenProfileGenerator);
   }, [isOwnProfile, user, username]);
 
   // Update URL when tab changes
@@ -730,10 +730,10 @@ export default function ProfilePage() {
     setProfileSections(reorderedSections);
   }, []);
 
-  // Open Ember chat with profile generation context
+  // Open Ava chat with profile generation context
   const handleGenerateProfile = useCallback(() => {
     if (!username || !user) return;
-    // Dispatch custom event to open Ember with profile generation context
+    // Dispatch custom event to open Ava with profile generation context
     window.dispatchEvent(new CustomEvent('openProfileGenerate', {
       detail: {
         userId: user.id,

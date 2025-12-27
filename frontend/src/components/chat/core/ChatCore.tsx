@@ -4,7 +4,7 @@
  * This is the single source of truth for chat logic. It composes:
  * - useIntelligentChat for WebSocket connection and messages
  * - useOnboardingChat for onboarding flow
- * - useOrchestrationActions for Ember's navigation/highlight actions
+ * - useOrchestrationActions for Ava's navigation/highlight actions
  * - useIntegrationFlow for GitHub/GitLab/Figma integrations
  *
  * Features:
@@ -143,11 +143,11 @@ export function ChatCore({
         }
 
         // If there's exactly one image and no other files, use multimodal message
-        // so Ember can see the image for the upload → ownership → tool flow
+        // so Ava can see the image for the upload → ownership → tool flow
         if (uploadedImages.length === 1 && uploadedFiles.length === 0) {
           const imageUrl = uploadedImages[0].url;
           // Use markdown format that UserMessage can render as an inline image
-          // Don't ask to "analyze" - Ember should ask about ownership and tool used
+          // Don't ask to "analyze" - Ava should ask about ownership and tool used
           const imageMarkdown = `[Image: ${uploadedImages[0].name}](${imageUrl})`;
           const messageText = content.trim() ? `${content.trim()}\n\n${imageMarkdown}` : imageMarkdown;
           rawSendMessageWithImage(messageText, imageUrl);

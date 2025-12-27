@@ -12,9 +12,7 @@ These tests cover:
 - Judging flow
 """
 
-import os
 from datetime import timedelta
-from unittest import skipIf
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
@@ -1096,7 +1094,6 @@ class PipBattleJudgingTestCase(TestCase):
             generated_output_url='https://example.com/pip_robot.png',
         )
 
-    @skipIf(os.environ.get('CI'), 'Skipped in CI due to database statement timeout with threaded operations')
     @patch('services.ai.provider.AIProvider')
     @patch('core.battles.services.BattleVote')
     def test_judge_battle_determines_winner(self, mock_vote_class, mock_ai_provider):

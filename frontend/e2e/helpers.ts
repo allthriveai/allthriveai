@@ -43,21 +43,21 @@ export async function waitForAuth(page: Page, timeoutMs = 10000) {
 }
 
 /**
- * Dismiss the Ember onboarding modal by setting localStorage keys
+ * Dismiss the Ava onboarding modal by setting localStorage keys
  * This prevents the modal from blocking E2E test interactions.
  * Must be called after login when we know the user ID.
  */
 export async function dismissOnboardingModal(page: Page, userId?: number | string) {
   await page.evaluate((uid) => {
-    // If we have a user ID, set the user-specific Ember onboarding key
+    // If we have a user ID, set the user-specific Ava onboarding key
     if (uid) {
-      const emberState = {
+      const avaState = {
         hasSeenModal: true,
         completedAdventures: ['battle_pip', 'add_project', 'explore'],
         isDismissed: true,
         welcomePointsAwarded: true,
       };
-      localStorage.setItem(`ember_onboarding_${uid}`, JSON.stringify(emberState));
+      localStorage.setItem(`ava_onboarding_${uid}`, JSON.stringify(avaState));
     }
 
     // Also set the legacy keys for backwards compatibility

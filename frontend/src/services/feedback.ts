@@ -20,7 +20,7 @@ export type FeedbackCategory =
   | 'lounge'
   | 'learn'
   // Agents
-  | 'ember'
+  | 'ava'
   | 'sage'
   | 'haven'
   | 'guide'

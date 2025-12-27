@@ -438,7 +438,7 @@ export default function PrivacySettingsPage() {
                 </h2>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Control how AllThrive learns from your activity to personalize recommendations. These settings also affect what Ember knows about you.
+                Control how AllThrive learns from your activity to personalize recommendations. These settings also affect what Ava knows about you.
               </p>
 
               {personalizationLoading ? (
@@ -636,7 +636,7 @@ export default function PrivacySettingsPage() {
                         <h3 className="font-medium text-slate-900 dark:text-slate-100">Delete Personalization Data</h3>
                       </div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Remove all personalization data including tags, interaction history, and learned preferences.</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500">This will reset Ember's knowledge about you. Your account and projects remain unaffected.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">This will reset Ava's knowledge about you. Your account and projects remain unaffected.</p>
                     </div>
                     <button onClick={() => setShowDeleteDataModal(true)} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex-shrink-0">Delete Data</button>
                   </div>
@@ -731,10 +731,10 @@ export default function PrivacySettingsPage() {
                   </p>
                   <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 list-disc list-inside">
                     <li><strong>Profile Visibility:</strong> Control what appears publicly on your profile, including achievements and projects.</li>
-                    <li><strong>Personalization:</strong> Control how AllThrive learns from your activity. These settings also affect what Ember knows about you.</li>
+                    <li><strong>Personalization:</strong> Control how AllThrive learns from your activity. These settings also affect what Ava knows about you.</li>
                     <li><strong>Similarity Matching:</strong> When disabled, recommendations use only your activity - not patterns from similar users.</li>
                     <li><strong>AI Training:</strong> Opt-out by default. Enable to help improve external AI models.</li>
-                    <li><strong>Your Data:</strong> Export your data anytime or delete personalization data to reset Ember's knowledge.</li>
+                    <li><strong>Your Data:</strong> Export your data anytime or delete personalization data to reset Ava's knowledge.</li>
                   </ul>
                 </div>
               </div>
@@ -892,7 +892,7 @@ export default function PrivacySettingsPage() {
                     <li>All your interest tags</li>
                     <li>Interaction history (views, likes)</li>
                     <li>Learned preferences</li>
-                    <li>Ember's knowledge about you</li>
+                    <li>Ava's knowledge about you</li>
                   </ul>
                   <p className="text-xs text-slate-500 dark:text-slate-500">
                     Your account, projects, and profile remain unaffected.

@@ -11,13 +11,13 @@ import { AvatarTemplateSelector, defaultAvatarTemplates } from '../onboarding/Av
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
 import type { UseStandaloneAvatarCreationReturn } from '@/hooks/useStandaloneAvatarCreation';
 
-// Ember avatar component - positioned at bottom
-function EmberAvatar() {
+// Ava avatar component - positioned at bottom
+function AvaAvatar() {
   return (
     <div className="relative flex-shrink-0 self-end">
       <img
-        src="/ember-avatar.png"
-        alt="Ember"
+        src="/ava-avatar.png"
+        alt="Ava"
         className="w-12 h-12 rounded-full border-2 border-cyan-500/50"
       />
     </div>
@@ -46,7 +46,7 @@ function AvatarPreview({
       className="py-4"
     >
       <div className="flex items-end gap-4">
-        <EmberAvatar />
+        <AvaAvatar />
 
         <div className="flex-1 max-w-2xl space-y-4">
           {/* Header message */}
@@ -210,7 +210,7 @@ export function AvatarCreationMessage({ avatarCreation }: AvatarCreationMessageP
         className="py-4"
       >
         <div className="flex items-end gap-4">
-          <EmberAvatar />
+          <AvaAvatar />
 
           <div className="flex-1 max-w-2xl">
             {/* Close button */}

@@ -9,7 +9,7 @@
  * - Optional GitHub connect button when AI asks user to connect
  * - Optional learning content cards below the message
  * - Optional inline game widget below cards (consolidated from find_content)
- * - Two variants: default (sidebar) and neon (EmberHomePage)
+ * - Two variants: default (sidebar) and neon (AvaHomePage)
  */
 
 import { useState } from 'react';
@@ -535,13 +535,13 @@ export function AssistantMessage({
   };
 
   if (isNeon) {
-    // Neon Glass variant (EmberHomePage)
+    // Neon Glass variant (AvaHomePage)
     return (
       <div className="flex flex-col justify-start w-full">
         <div className="flex items-end">
           <img
-            src="/ember-avatar.png"
-            alt="Ember"
+            src="/ava-avatar.png"
+            alt="Ava"
             className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover -scale-x-100"
           />
           <div className="flex-1 min-w-0">

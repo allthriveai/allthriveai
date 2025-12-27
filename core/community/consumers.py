@@ -6,7 +6,7 @@ Handles real-time community communication:
 - DirectMessageConsumer: Private messaging
 - CommunityPresenceConsumer: Online status tracking
 
-Key differences from Ember AI chat:
+Key differences from Ava AI chat:
 - No Celery processing (direct consumer handling)
 - Redis key prefix: community: (not chat_)
 - Human-to-human only (no AI responses)

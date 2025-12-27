@@ -177,7 +177,7 @@ export interface ChatMessageListProps {
   userAvatarUrl?: string | null;
   // Custom empty state
   customEmptyState?: ReactNode;
-  // Greeting configuration (for EmberHomePage)
+  // Greeting configuration (for AvaHomePage)
   greetingConfig?: {
     message: string;
     isTyping: boolean;
@@ -238,7 +238,7 @@ export interface ChatInputAreaProps {
 export interface LoadingMessageProps {
   currentTool: string | null;
   onCancel?: () => void;
-  variant?: 'default' | 'neon'; // default for sidebar, neon for EmberHomePage
+  variant?: 'default' | 'neon'; // default for sidebar, neon for AvaHomePage
 }
 
 // User message props

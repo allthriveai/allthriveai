@@ -36,6 +36,39 @@ class Company(models.Model):
     headquarters = models.CharField(max_length=200, blank=True, help_text='e.g., San Francisco, CA')
     company_size = models.CharField(max_length=50, blank=True, help_text='e.g., 100-500 employees')
 
+    # Funding & Size (for enterprise decision-making)
+    funding_stage = models.CharField(
+        max_length=20,
+        choices=[
+            ('bootstrapped', 'Bootstrapped'),
+            ('seed', 'Seed'),
+            ('series_a', 'Series A'),
+            ('series_b', 'Series B'),
+            ('series_c_plus', 'Series C+'),
+            ('public', 'Public'),
+            ('acquired', 'Acquired'),
+        ],
+        blank=True,
+    )
+    total_funding = models.CharField(max_length=50, blank=True, help_text='e.g., "$50M"')
+    employee_count_range = models.CharField(
+        max_length=20,
+        choices=[
+            ('1-10', '1-10'),
+            ('11-50', '11-50'),
+            ('51-200', '51-200'),
+            ('201-500', '201-500'),
+            ('501-1000', '501-1000'),
+            ('1000+', '1000+'),
+        ],
+        blank=True,
+    )
+
+    # Compliance certifications
+    has_soc2 = models.BooleanField(default=False)
+    has_hipaa = models.BooleanField(default=False)
+    has_gdpr = models.BooleanField(default=False)
+
     # Status
     is_active = models.BooleanField(default=True, db_index=True)
     is_featured = models.BooleanField(default=False, help_text='Featured companies appear prominently')
@@ -146,8 +179,13 @@ class Tool(WeaviateSyncMixin, models.Model):
         related_name='tools',
         help_text='Parent company/vendor (e.g., Anthropic for Claude)',
     )
-    tags = models.JSONField(
-        default=list, blank=True, help_text="List of tags for filtering (e.g., ['NLP', 'GPT', 'OpenAI'])"
+    # Topics for discovery (replaces tags JSONField)
+    topics = models.ManyToManyField(
+        Taxonomy,
+        blank=True,
+        related_name='tools',
+        limit_choices_to={'taxonomy_type': 'topic', 'is_active': True},
+        help_text='Topics for discovery (e.g., Vector Databases, RAG, Authentication)',
     )
 
     # Media & Branding
@@ -188,6 +226,48 @@ class Tool(WeaviateSyncMixin, models.Model):
     usage_tips = models.JSONField(default=list, blank=True, help_text='Practical tips for using the tool effectively')
     best_practices = models.JSONField(default=list, blank=True, help_text='Best practices and recommendations')
     limitations = models.JSONField(default=list, blank=True, help_text='Known limitations or considerations')
+
+    # Comparison & Decision Metadata (for Ava discovery)
+    pricing_tiers = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Pricing tier breakdown: [{name, price, features, limits}]',
+    )
+    ideal_for = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Ideal user profiles: ["startups", "RAG applications", "high-throughput"]',
+    )
+    not_ideal_for = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Use cases where NOT recommended (for Ava to cite)',
+    )
+    differentiators = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Comparison vs competitors: [{vs: slug, pros: [], cons: []}]',
+    )
+    sdk_languages = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Official SDKs: ["python", "javascript", "go"]',
+    )
+    hosting_options = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Deployment options: ["managed_cloud", "self_hosted", "kubernetes"]',
+    )
+    compliance_certs = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Certifications: ["soc2", "hipaa", "gdpr", "iso27001"]',
+    )
+    support_tiers = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Support options: [{tier, response_time, channels}]',
+    )
 
     # Game/Trading Card Attributes
     superpowers = models.JSONField(
@@ -269,7 +349,6 @@ class Tool(WeaviateSyncMixin, models.Model):
             models.Index(fields=['is_active', '-popularity_score']),
             models.Index(fields=['is_active', '-created_at']),
             models.Index(fields=['is_featured', 'is_active']),
-            GinIndex(fields=['tags'], name='tool_tags_gin_idx'),
             GinIndex(fields=['keywords'], name='tool_keywords_gin_idx'),
         ]
 

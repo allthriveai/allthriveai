@@ -1,6 +1,15 @@
+/**
+ * useIntelligentChat Hook
+ *
+ * Manages WebSocket connection for AI-powered chat with streaming responses.
+ * Handles message streaming, tool execution, image generation, and orchestration actions.
+ *
+ * Refactored to use useWebSocketBase for connection management.
+ */
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { buildWebSocketUrl, logWebSocketUrl } from '@/utils/websocket';
+import { useWebSocketBase } from '@/hooks/websocket';
 import { saveChatMessages, loadChatMessages, clearChatMessages } from '@/utils/chatStorage';
 import { trackInteraction } from '@/services/personalization';
 import type { ChatMessage as SharedChatMessage } from '@/types/chat';
@@ -19,11 +28,6 @@ function getCookie(name: string): string | null {
 
 // Constants
 const MAX_MESSAGE_LENGTH = 10000;
-const MAX_RECONNECT_ATTEMPTS = 5;
-const INITIAL_RECONNECT_DELAY = 1000; // 1 second
-const MAX_RECONNECT_DELAY = 30000; // 30 seconds
-const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-const CONNECTION_TIMEOUT = 10000; // 10 seconds
 
 /**
  * WebSocket Message Interface
@@ -56,7 +60,7 @@ export interface WebSocketMessage {
     title?: string;
     message?: string;
     error?: string;
-    // Orchestration action fields (Ember)
+    // Orchestration action fields (Ava)
     action?: 'navigate' | 'highlight' | 'open_tray' | 'toast' | 'trigger';
     path?: string;
     target?: string;
@@ -272,7 +276,7 @@ export interface ChatMessage extends Omit<SharedChatMessage, 'metadata'> {
   metadata?: IntelligentChatMetadata;
 }
 
-// Orchestration action types for Ember
+// Orchestration action types for Ava
 export interface OrchestrationAction {
   action: 'navigate' | 'highlight' | 'open_tray' | 'toast' | 'trigger';
   path?: string;
@@ -313,29 +317,20 @@ export function useIntelligentChat({
     const loaded = loadChatMessages(conversationId);
     return loaded.slice(-100); // Limit to last 100 messages on load
   });
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   // Track current tool being executed for UI feedback
   const [currentTool, setCurrentTool] = useState<string | null>(null);
 
   // Constants
   const MAX_MESSAGES = 100; // Limit message history to prevent memory issues
 
-  const wsRef = useRef<WebSocket | null>(null);
   const currentMessageRef = useRef<string>('');
   const currentMessageIdRef = useRef<string>('');
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const intentionalCloseRef = useRef(false);
-  const connectFnRef = useRef<(() => void) | null>(null);
-  const isConnectingRef = useRef(false); // Ref-based lock to prevent duplicate connections
   const seenMessageIdsRef = useRef<Set<string>>(new Set()); // Track seen message IDs for deduplication
   const lastConversationIdRef = useRef<string>(conversationId); // Track conversation changes for cleanup
   const isCancelledRef = useRef(false); // Track if processing was cancelled
   const pendingContentMessagesRef = useRef<ChatMessage[]>([]); // Content messages to add after streaming completes
+  const sendRef = useRef<((message: unknown) => boolean) | null>(null);
   const pendingLearningContentRef = useRef<{
     topicDisplay: string;
     contentType: string;
@@ -349,6 +344,19 @@ export function useIntelligentChat({
       explanation?: string;
     };
   } | null>(null); // Learning content to attach to current message on complete
+
+  // Callback refs to avoid stale closures
+  const onErrorRef = useRef(onError);
+  const onProjectCreatedRef = useRef(onProjectCreated);
+  const onQuotaExceededRef = useRef(onQuotaExceeded);
+  const onOrchestrationActionRef = useRef(onOrchestrationAction);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onProjectCreatedRef.current = onProjectCreated;
+    onQuotaExceededRef.current = onQuotaExceeded;
+    onOrchestrationActionRef.current = onOrchestrationAction;
+  }, [onError, onProjectCreated, onQuotaExceeded, onOrchestrationAction]);
 
   // Helper to add a message with deduplication
   const addMessageWithDedup = useCallback((newMessage: ChatMessage) => {
@@ -371,252 +379,113 @@ export function useIntelligentChat({
     });
   }, []);
 
-  // Clear all timers
-  const clearTimers = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-    if (connectionTimeoutRef.current) {
-      clearTimeout(connectionTimeoutRef.current);
-      connectionTimeoutRef.current = null;
-    }
-  }, []);
-
-  // Start heartbeat to keep connection alive
-  const startHeartbeat = useCallback(() => {
-    clearTimers();
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        try {
-          wsRef.current.send(JSON.stringify({ type: 'ping' }));
-        } catch (error) {
-          console.error('Failed to send heartbeat:', error);
-        }
-      }
-    }, HEARTBEAT_INTERVAL);
-  }, [clearTimers]);
-
-  // Reconnect with exponential backoff
-  const scheduleReconnect = useCallback(() => {
-    if (!autoReconnect || intentionalCloseRef.current) return;
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      onError?.('Max reconnection attempts reached. Please refresh the page.');
-      return;
-    }
-
-    const delay = Math.min(
-      INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts),
-      MAX_RECONNECT_DELAY
-    );
-
-    reconnectTimeoutRef.current = setTimeout(() => {
-      setReconnectAttempts(prev => prev + 1);
-      connectFnRef.current?.();
-    }, delay);
-  }, [autoReconnect, reconnectAttempts, onError]);
-
-  // Connect to WebSocket
-  const connect = useCallback(async () => {
-    if (authLoading) {
-      return;
-    }
-    if (!isAuthenticated) {
-      onError?.('Please log in to use chat');
-      return;
-    }
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-    // Use ref-based lock to prevent race conditions with React StrictMode
-    if (isConnecting || isConnectingRef.current) {
-      return;
-    }
-
-    // Set ref lock immediately (sync) before any async operations
-    isConnectingRef.current = true;
-
-    // Clear existing connection
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    clearTimers();
-    setIsConnecting(true);
-
-    // Step 1: Fetch connection token from backend
-    let connectionToken: string;
+  // Handle incoming WebSocket messages
+  const handleMessage = useCallback((rawData: unknown) => {
     try {
-      const csrfToken = getCookie('csrftoken');
+      const data = rawData as WebSocketMessage;
 
-      const response = await fetch('/api/v1/auth/ws-connection-token/', {
-        method: 'POST',
-        credentials: 'include', // Include HTTP-only cookie
-        headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
-        },
-        body: JSON.stringify({
-          connection_id: `chat-${conversationId}-${Date.now()}`,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch connection token: ${response.status}`);
+      // Ignore pong responses from server
+      if (data.event === 'pong') {
+        return;
       }
 
-      const data = await response.json();
-      connectionToken = data.connection_token;
-    } catch (error) {
-      console.error('[WebSocket] Failed to fetch connection token:', error);
-      setIsConnecting(false);
-      isConnectingRef.current = false;
-      onError?.('Failed to get connection token. Please try again.');
-      return;
-    }
+      switch (data.event) {
+        case 'connected':
+          // Connection confirmed
+          break;
 
-    // Step 2: Connect to WebSocket with connection token
-    // Uses direct connection to backend (see src/utils/websocket.ts for architecture docs)
-    const wsUrl = buildWebSocketUrl(`/ws/chat/${conversationId}/`, {
-      connection_token: connectionToken,
-    });
+        case 'task_queued':
+          setIsLoading(true);
+          break;
 
-    logWebSocketUrl(wsUrl, '[WebSocket] Creating connection');
-    try {
-      const ws = new WebSocket(wsUrl);
+        case 'processing_started':
+          setIsLoading(true);
+          // Create a new assistant message
+          currentMessageIdRef.current = `msg-${Date.now()}`;
+          currentMessageRef.current = '';
+          break;
 
-      // Connection timeout
-      connectionTimeoutRef.current = setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-          ws.close();
-          onError?.('Connection timeout');
-          scheduleReconnect();
-        }
-      }, CONNECTION_TIMEOUT);
-
-      ws.onopen = () => {
-        if (connectionTimeoutRef.current) {
-          clearTimeout(connectionTimeoutRef.current);
-          connectionTimeoutRef.current = null;
-        }
-        setIsConnected(true);
-        setIsConnecting(false);
-        isConnectingRef.current = false;
-        setReconnectAttempts(0); // Reset on successful connection
-        startHeartbeat();
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data: WebSocketMessage = JSON.parse(event.data);
-
-          // Ignore pong responses from server
-          if (data.event === 'pong') {
+        case 'chunk':
+          // Ignore chunks if processing was cancelled
+          if (isCancelledRef.current) {
             return;
           }
-
-          switch (data.event) {
-            case 'connected':
-              // Connection confirmed
-              break;
-
-            case 'task_queued':
-              setIsLoading(true);
-              break;
-
-            case 'processing_started':
-              setIsLoading(true);
-              // Create a new assistant message
+          // Append chunk to current message
+          if (data.chunk) {
+            // If no message ID exists (e.g., error from image generation), create one
+            if (!currentMessageIdRef.current) {
               currentMessageIdRef.current = `msg-${Date.now()}`;
               currentMessageRef.current = '';
-              break;
+            }
+            currentMessageRef.current += data.chunk;
 
-            case 'chunk':
-              // Ignore chunks if processing was cancelled
-              if (isCancelledRef.current) {
-                return;
-              }
-              // Append chunk to current message
-              if (data.chunk) {
-                // If no message ID exists (e.g., error from image generation), create one
-                if (!currentMessageIdRef.current) {
-                  currentMessageIdRef.current = `msg-${Date.now()}`;
-                  currentMessageRef.current = '';
-                }
-                currentMessageRef.current += data.chunk;
+            // Update or add the assistant message
+            setMessages((prev) => {
+              // First, remove any "generating" type message since this chunk replaces it
+              const filteredPrev = prev.filter(m => m.metadata?.type !== 'generating');
 
-                // Update or add the assistant message
-                setMessages((prev) => {
-                  // First, remove any "generating" type message since this chunk replaces it
-                  const filteredPrev = prev.filter(m => m.metadata?.type !== 'generating');
-
-                  const existingIndex = filteredPrev.findIndex(m => m.id === currentMessageIdRef.current);
-                  if (existingIndex >= 0) {
-                    const updated = [...filteredPrev];
-                    updated[existingIndex] = {
-                      ...updated[existingIndex],
-                      content: currentMessageRef.current,
-                    };
-                    return updated;
-                  } else {
-                    const newMessages = [
-                      ...filteredPrev,
-                      {
-                        id: currentMessageIdRef.current,
-                        content: currentMessageRef.current,
-                        sender: 'assistant' as const,
-                        timestamp: new Date(),
-                      },
-                    ];
-                    // Limit message history to prevent memory issues
-                    return newMessages.slice(-MAX_MESSAGES);
-                  }
-                });
-              }
-              break;
-
-            case 'tool_start':
-              // Tool execution started - show which tool is running
-              if (data.tool) {
-                setCurrentTool(data.tool);
-              }
-              break;
-
-            case 'tool_end':
-              // Tool execution completed - clear current tool
-              setCurrentTool(null);
-              // Check for project creation
-              // Handle create_project, import_github_project, and import_from_url
-              if ((data.tool === 'create_project' || data.tool === 'import_github_project' || data.tool === 'import_from_url') &&
-                  data.output?.success && data.output?.url) {
-                // Project was created successfully - trigger callback
-                onProjectCreated?.(data.output.url, data.output.title || 'Project');
-              }
-              // Check for orchestration actions (Ember)
-              // These are actions like navigate, highlight, open_tray, toast, trigger
-              if (data.output?.action && onOrchestrationAction) {
-                const orchestrationAction: OrchestrationAction = {
-                  action: data.output.action,
-                  path: data.output.path,
-                  message: data.output.message,
-                  target: data.output.target,
-                  style: data.output.style,
-                  duration: data.output.duration,
-                  tray: data.output.tray,
-                  context: data.output.context,
-                  variant: data.output.variant,
-                  trigger_action: data.output.trigger_action,
-                  params: data.output.params,
-                  auto_execute: data.output.auto_execute,
-                  requires_confirmation: data.output.requires_confirmation,
+              const existingIndex = filteredPrev.findIndex(m => m.id === currentMessageIdRef.current);
+              if (existingIndex >= 0) {
+                const updated = [...filteredPrev];
+                updated[existingIndex] = {
+                  ...updated[existingIndex],
+                  content: currentMessageRef.current,
                 };
-                onOrchestrationAction(orchestrationAction);
+                return updated;
+              } else {
+                const newMessages = [
+                  ...filteredPrev,
+                  {
+                    id: currentMessageIdRef.current,
+                    content: currentMessageRef.current,
+                    sender: 'assistant' as const,
+                    timestamp: new Date(),
+                  },
+                ];
+                // Limit message history to prevent memory issues
+                return newMessages.slice(-MAX_MESSAGES);
               }
+            });
+          }
+          break;
+
+        case 'tool_start':
+          // Tool execution started - show which tool is running
+          if (data.tool) {
+            setCurrentTool(data.tool);
+          }
+          break;
+
+        case 'tool_end':
+          // Tool execution completed - clear current tool
+          setCurrentTool(null);
+          // Check for project creation
+          // Handle create_project, import_github_project, and import_from_url
+          if ((data.tool === 'create_project' || data.tool === 'import_github_project' || data.tool === 'import_from_url') &&
+              data.output?.success && data.output?.url) {
+            // Project was created successfully - trigger callback
+            onProjectCreatedRef.current?.(data.output.url, data.output.title || 'Project');
+          }
+          // Check for orchestration actions (Ava)
+          // These are actions like navigate, highlight, open_tray, toast, trigger
+          if (data.output?.action && onOrchestrationActionRef.current) {
+            const orchestrationAction: OrchestrationAction = {
+              action: data.output.action,
+              path: data.output.path,
+              message: data.output.message,
+              target: data.output.target,
+              style: data.output.style,
+              duration: data.output.duration,
+              tray: data.output.tray,
+              context: data.output.context,
+              variant: data.output.variant,
+              trigger_action: data.output.trigger_action,
+              params: data.output.params,
+              auto_execute: data.output.auto_execute,
+              requires_confirmation: data.output.requires_confirmation,
+            };
+            onOrchestrationActionRef.current(orchestrationAction);
+          }
               // Check for inline game launch
               if (data.tool === 'launch_inline_game' && data.output?.game_type) {
                 const gameMessageId = `inline-game-${Date.now()}`;
@@ -871,7 +740,7 @@ export function useIntelligentChat({
 
                     if (validSections.length > 0) {
                       // Dispatch custom event for ProfilePage to handle
-                      window.dispatchEvent(new CustomEvent('emberProfileSectionsGenerated', {
+                      window.dispatchEvent(new CustomEvent('avaProfileSectionsGenerated', {
                         detail: { sections: validSections, toolName: data.tool }
                       }));
                     }
@@ -974,107 +843,79 @@ export function useIntelligentChat({
               }
               break;
 
-            case 'error':
-              setIsLoading(false);
-              currentMessageRef.current = '';
-              currentMessageIdRef.current = '';
-              onError?.(data.error || 'An error occurred');
-              break;
+        case 'error':
+          setIsLoading(false);
+          currentMessageRef.current = '';
+          currentMessageIdRef.current = '';
+          onErrorRef.current?.(data.error || 'An error occurred');
+          break;
 
-            case 'quota_exceeded': {
-              // User has exceeded their AI usage limit
-              setIsLoading(false);
-              currentMessageRef.current = '';
-              currentMessageIdRef.current = '';
+        case 'quota_exceeded': {
+          // User has exceeded their AI usage limit
+          setIsLoading(false);
+          currentMessageRef.current = '';
+          currentMessageIdRef.current = '';
 
-              // Build quota info object for callback
-              const quotaInfo: QuotaExceededInfo = {
-                reason: data.reason || 'AI request limit exceeded',
-                tier: data.subscription?.tier || 'Free',
-                aiRequestsLimit: data.subscription?.ai_requests?.limit || 0,
-                aiRequestsUsed: data.subscription?.ai_requests?.used || 0,
-                aiRequestsRemaining: data.subscription?.ai_requests?.remaining || 0,
-                tokenBalance: data.subscription?.tokens?.balance || 0,
-                canPurchaseTokens: data.can_purchase_tokens || false,
-                upgradeUrl: data.upgrade_url || '/settings/billing',
-              };
+          // Build quota info object for callback
+          const quotaInfo: QuotaExceededInfo = {
+            reason: data.reason || 'AI request limit exceeded',
+            tier: data.subscription?.tier || 'Free',
+            aiRequestsLimit: data.subscription?.ai_requests?.limit || 0,
+            aiRequestsUsed: data.subscription?.ai_requests?.used || 0,
+            aiRequestsRemaining: data.subscription?.ai_requests?.remaining || 0,
+            tokenBalance: data.subscription?.tokens?.balance || 0,
+            canPurchaseTokens: data.can_purchase_tokens || false,
+            upgradeUrl: data.upgrade_url || '/settings/billing',
+          };
 
-              // Call the quota exceeded callback if provided
-              onQuotaExceeded?.(quotaInfo);
+          // Call the quota exceeded callback if provided
+          onQuotaExceededRef.current?.(quotaInfo);
 
-              // Also show error message
-              onError?.(data.error || 'You\'ve reached your AI usage limit. Please upgrade your plan or purchase tokens.');
-              break;
-            }
-
-            default:
-              // Unknown event, ignore
-              break;
-          }
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setIsConnected(false);
-        setIsConnecting(false);
-        isConnectingRef.current = false;
-        onError?.('WebSocket connection error');
-      };
-
-      ws.onclose = (event) => {
-        setIsConnected(false);
-        setIsConnecting(false);
-        isConnectingRef.current = false;
-        setIsLoading(false);
-        clearTimers();
-
-        // Clear partial message on disconnect
-        currentMessageRef.current = '';
-        currentMessageIdRef.current = '';
-
-        // Check for authentication failure (code 4001)
-        if (event.code === 4001) {
-          onError?.('Authentication required. Please log in to use chat.');
-          return; // Don't attempt reconnect for auth failures
+          // Also show error message
+          onErrorRef.current?.(data.error || 'You\'ve reached your AI usage limit. Please upgrade your plan or purchase tokens.');
+          break;
         }
 
-        // Attempt reconnect if not intentional close
-        if (!intentionalCloseRef.current) {
-          scheduleReconnect();
-        }
-      };
-
-      wsRef.current = ws;
+        default:
+          // Unknown event, ignore
+          break;
+      }
     } catch (error) {
-      console.error('Failed to create WebSocket:', error);
-      setIsConnecting(false);
-      isConnectingRef.current = false;
-      onError?.('Failed to establish WebSocket connection');
-      scheduleReconnect();
+      console.error('Failed to parse WebSocket message:', error);
     }
-  }, [conversationId, isAuthenticated, authLoading, isConnecting, onError, startHeartbeat, scheduleReconnect, clearTimers]);
+  }, [conversationId]);
 
-  // Store connect function in ref via effect to avoid assignment during render
+  // Handle connection errors
+  const handleError = useCallback((errorMsg: string) => {
+    onErrorRef.current?.(errorMsg);
+  }, []);
+
+  // Handle disconnect - clear partial messages
+  const handleDisconnected = useCallback(() => {
+    setIsLoading(false);
+    currentMessageRef.current = '';
+    currentMessageIdRef.current = '';
+  }, []);
+
+  // Should we auto-connect?
+  const shouldConnect = !authLoading && isAuthenticated;
+
+  // Use the base WebSocket hook
+  const { isConnected, isConnecting, send, connect, disconnect, reconnectAttempts } = useWebSocketBase({
+    endpoint: `/ws/chat/${conversationId}/`,
+    connectionIdPrefix: `chat-${conversationId}`,
+    onMessage: handleMessage,
+    onError: handleError,
+    onDisconnected: handleDisconnected,
+    autoConnect: shouldConnect,
+    autoReconnect,
+    requiresAuth: true,
+  });
+
+  // Store send function in ref
   useEffect(() => {
-    connectFnRef.current = connect;
-  }, [connect]);
-
-  // Disconnect from WebSocket
-  const disconnect = useCallback(() => {
-    intentionalCloseRef.current = true;
-    clearTimers();
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setIsConnected(false);
-    setReconnectAttempts(0);
-  }, [clearTimers]);
+    sendRef.current = send;
+  }, [send]);
 
   // Send message through WebSocket
   const sendMessage = useCallback((content: string) => {
@@ -1083,7 +924,7 @@ export function useIntelligentChat({
 
     // Validate message length
     if (content.length > MAX_MESSAGE_LENGTH) {
-      onError?.(`Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`);
+      onErrorRef.current?.(`Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`);
       return;
     }
 
@@ -1119,21 +960,19 @@ export function useIntelligentChat({
     });
 
     // Check WebSocket connection AFTER adding user message
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+    if (!isConnected || !sendRef.current) {
       // Don't show alarming error - just try to reconnect silently
       // The connection status indicator shows "Offline" which is enough feedback
-      connectFnRef.current?.();
+      connect();
       return;
     }
 
     // Send to WebSocket
-    try {
-      wsRef.current.send(JSON.stringify({ message: content }));
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      onError?.('Failed to send message');
+    const sent = sendRef.current({ message: content });
+    if (!sent) {
+      onErrorRef.current?.('Failed to send message');
     }
-  }, [onError, addMessageWithDedup, conversationId]);
+  }, [isConnected, connect, addMessageWithDedup, conversationId]);
 
   // Send message with an image through WebSocket (for multimodal messages like LinkedIn screenshots)
   const sendMessageWithImage = useCallback((content: string, imageUrl: string) => {
@@ -1142,7 +981,7 @@ export function useIntelligentChat({
 
     // Validate message length
     if (content.length > MAX_MESSAGE_LENGTH) {
-      onError?.(`Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`);
+      onErrorRef.current?.(`Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.`);
       return;
     }
 
@@ -1180,19 +1019,17 @@ export function useIntelligentChat({
     });
 
     // Check WebSocket connection AFTER adding user message
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      connectFnRef.current?.();
+    if (!isConnected || !sendRef.current) {
+      connect();
       return;
     }
 
     // Send to WebSocket with image_url
-    try {
-      wsRef.current.send(JSON.stringify({ message: content, image_url: imageUrl }));
-    } catch (error) {
-      console.error('Failed to send message with image:', error);
-      onError?.('Failed to send message');
+    const sent = sendRef.current({ message: content, image_url: imageUrl });
+    if (!sent) {
+      onErrorRef.current?.('Failed to send message');
     }
-  }, [onError, addMessageWithDedup, conversationId]);
+  }, [isConnected, connect, addMessageWithDedup, conversationId]);
 
   // Clear dedup Set when conversation changes to prevent memory leak
   useEffect(() => {
@@ -1211,48 +1048,10 @@ export function useIntelligentChat({
     }
   }, [messages]);
 
-  // Connect on mount, disconnect on unmount
+  // Clear dedup Set on unmount to free memory
   useEffect(() => {
-    intentionalCloseRef.current = false;
-    connectFnRef.current?.();
-
     return () => {
-      intentionalCloseRef.current = true;
-      clearTimers();
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      setIsConnected(false);
-      // Clear dedup Set on unmount to free memory
       seenMessageIdsRef.current.clear();
-    };
-
-  }, []); // Only run on mount/unmount
-
-  // Retry connection when auth finishes loading
-  useEffect(() => {
-    if (!authLoading && isAuthenticated && !wsRef.current && !isConnecting) {
-      connectFnRef.current?.();
-    }
-  }, [authLoading, isAuthenticated, isConnecting]);
-
-  // Reconnect when user returns to the page (mobile tab switching, etc.)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // User returned to the page - check if we need to reconnect
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-          // Reset reconnect attempts for fresh start
-          setReconnectAttempts(0);
-          connectFnRef.current?.();
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

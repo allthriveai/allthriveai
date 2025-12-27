@@ -1,7 +1,7 @@
 /**
  * Chat Scroll Behavior Tests
  *
- * Tests for Ember chat scroll behavior during streaming/typing.
+ * Tests for Ava chat scroll behavior during streaming/typing.
  * Ensures content stays visible and scroll isn't too aggressive.
  */
 
@@ -13,7 +13,7 @@ test.describe('Chat Scroll Behavior', () => {
     // Login using the API helper
     await loginViaAPI(page);
 
-    // Navigate to the Ember home page where chat is visible
+    // Navigate to the Ava home page where chat is visible
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000); // Let the page fully render
@@ -23,13 +23,13 @@ test.describe('Chat Scroll Behavior', () => {
     // Take a screenshot to see what we're working with
     await page.screenshot({ path: 'test-results/chat-home-page.png' });
 
-    // Look for greeting text - Ember always shows a greeting
+    // Look for greeting text - Ava always shows a greeting
     const greeting = page.getByText(/Good (morning|afternoon|evening)/i).first();
     const hasGreeting = await greeting.isVisible({ timeout: 5000 }).catch(() => false);
     console.log('Greeting visible:', hasGreeting);
 
     // Also check for the input field
-    const chatInput = page.locator('input[placeholder*="Message Ember"]').first();
+    const chatInput = page.locator('input[placeholder*="Message Ava"]').first();
     const hasInput = await chatInput.isVisible({ timeout: 3000 }).catch(() => false);
     console.log('Chat input visible:', hasInput);
 
@@ -42,7 +42,7 @@ test.describe('Chat Scroll Behavior', () => {
 
     // Find the messages container (has overflow-y-auto)
     const hasMessagesContainer = await page.evaluate(() => {
-      // Look for the scrollable container in EmberHomePage
+      // Look for the scrollable container in AvaHomePage
       const containers = document.querySelectorAll('[class*="overflow-y-auto"]');
       for (const container of containers) {
         // Check if it has the onScroll handler (indicated by having a ref)
@@ -63,7 +63,7 @@ test.describe('Chat Scroll Behavior', () => {
 
   test('user message appears in chat when sent', async ({ page }) => {
     // Find the chat input
-    const chatInput = page.locator('input[placeholder*="Message Ember"]').first();
+    const chatInput = page.locator('input[placeholder*="Message Ava"]').first();
     await expect(chatInput).toBeVisible({ timeout: 5000 });
 
     // Type a test message

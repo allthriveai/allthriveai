@@ -1,7 +1,7 @@
 /**
  * Chat Routing Tests - Tool/Agent Selection Verification
  *
- * These tests verify that Ember routes to the correct tool/action
+ * These tests verify that Ava routes to the correct tool/action
  * based on user intent. Wrong routing causes confusing responses.
  */
 

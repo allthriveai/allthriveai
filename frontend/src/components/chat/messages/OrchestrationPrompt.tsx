@@ -1,13 +1,13 @@
 /**
- * OrchestrationPrompt - Confirmation dialog for Ember's orchestration actions
+ * OrchestrationPrompt - Confirmation dialog for Ava's orchestration actions
  *
- * When Ember wants to perform an action that requires user confirmation
+ * When Ava wants to perform an action that requires user confirmation
  * (navigate, highlight, open tray, etc.), this component shows a prompt.
  *
  * Features:
- * - Description of the action Ember wants to perform
+ * - Description of the action Ava wants to perform
  * - Yes/Cancel buttons
- * - Two variants: default (sidebar) and neon (EmberHomePage)
+ * - Two variants: default (sidebar) and neon (AvaHomePage)
  */
 
 import { SparklesIcon } from '@heroicons/react/24/outline';
@@ -22,7 +22,7 @@ export function OrchestrationPrompt({
   const isNeon = variant === 'neon';
 
   if (isNeon) {
-    // Neon Glass variant (EmberHomePage)
+    // Neon Glass variant (AvaHomePage)
     return (
       <div className="mx-4 mb-2 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
         <div className="flex items-center gap-2 mb-3">
@@ -55,7 +55,7 @@ export function OrchestrationPrompt({
         <div className="flex items-center gap-2">
           <span className="text-xl">🔥</span>
           <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-            Ember wants to perform an action
+            Ava wants to perform an action
           </p>
         </div>
         <p className="text-sm text-amber-700 dark:text-amber-400">

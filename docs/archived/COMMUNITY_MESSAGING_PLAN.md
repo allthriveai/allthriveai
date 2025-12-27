@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Build a community messaging system for human-to-human communication, separate from Ember AI chat. Three core features:
+Build a community messaging system for human-to-human communication, separate from Ava AI chat. Three core features:
 
 1. **Forums (The Lounge)** - User-created topic-based discussion rooms, starting with a General forum
 2. **Direct Messages** - 1:1 and group messaging between users
@@ -12,16 +12,16 @@ Target: 100K users with hybrid AI/human moderation. Leverages existing Django Ch
 
 ---
 
-## Relationship to Ember AI Chat
+## Relationship to Ava AI Chat
 
-The community messaging system is **separate from Ember AI chat**:
+The community messaging system is **separate from Ava AI chat**:
 
 | System | Purpose | Participants | Infrastructure |
 |--------|---------|--------------|----------------|
-| **Ember Chat** | AI assistant for help, projects, learning | User ↔ AI | Celery for LLM processing |
+| **Ava Chat** | AI assistant for help, projects, learning | User ↔ AI | Celery for LLM processing |
 | **Community Chat** | Human-to-human communication | User ↔ User(s) | Direct consumer (no Celery) |
 
-See `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` for Ember details.
+See `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` for Ava details.
 
 ---
 
@@ -61,7 +61,7 @@ Push Notification Flow:
 
 ## Navigation & Naming
 
-**Replace "MEMBERSHIP" with "COMMUNITY"** in top navigation:
+**Replace "MAVASHIP" with "COMMUNITY"** in top navigation:
 
 ```
 COMMUNITY (nav dropdown)
@@ -115,7 +115,7 @@ Channel Layer delivers to connected clients
 [Async] Celery: mentions, notifications only (NOT message processing)
 ```
 
-**Key difference from Ember**: Community messages are handled directly in the consumer without Celery queuing.
+**Key difference from Ava**: Community messages are handled directly in the consumer without Celery queuing.
 
 ---
 
@@ -194,7 +194,7 @@ Add to `core/community/routing.py`:
 
 ### Redis Structure (DB 3 - existing Channels DB)
 
-Key prefix: `community:` (distinct from Ember's `chat_` prefix)
+Key prefix: `community:` (distinct from Ava's `chat_` prefix)
 
 ```
 community:room:{id}              # Room message channel group
@@ -457,7 +457,7 @@ Decision Thresholds:
 | `core/users/models.py` | Add DM preferences, notification settings |
 | `core/thrive_circle/models.py` | Add Room FK for circle chat |
 | `frontend/src/App.tsx` | Add community routes |
-| `frontend/src/components/navigation/menuData.ts` | Replace MEMBERSHIP with COMMUNITY |
+| `frontend/src/components/navigation/menuData.ts` | Replace MAVASHIP with COMMUNITY |
 
 ## New Files to Create
 
@@ -540,6 +540,6 @@ frontend/src/
 
 ## Related Documentation
 
-- `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` - Ember AI chat (separate system)
+- `/docs/evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md` - Ava AI chat (separate system)
 - `/docs/evergreen-architecture/07-WEBSOCKET-IMPLEMENTATION.md` - WebSocket patterns
 - `/docs/evergreen-architecture/13-TAXONOMY-SYSTEM.md` - Could use for forum categorization later

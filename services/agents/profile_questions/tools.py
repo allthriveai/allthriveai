@@ -1,5 +1,5 @@
 """
-Profile Question Tools for Ember.
+Profile Question Tools for Ava.
 
 LangChain tool for asking interactive profile-building questions.
 """

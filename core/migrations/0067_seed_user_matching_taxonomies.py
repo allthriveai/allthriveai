@@ -7,7 +7,7 @@ These taxonomies enable matching users based on shared:
 - interests: Topics users are passionate about
 - industries: Professional domains users work in
 
-This migration is required for the find_people_to_connect Ember tool.
+This migration is required for the find_people_to_connect Ava tool.
 """
 
 from django.db import migrations

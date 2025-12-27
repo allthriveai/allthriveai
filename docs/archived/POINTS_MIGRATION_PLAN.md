@@ -108,7 +108,7 @@ At any phase, can rollback by:
 # Migration 0001_add_gamification_fields_to_user.py
 tier = models.CharField(
     max_length=20,
-    choices=[('ember', 'Ember'), ('spark', 'Spark'), ('blaze', 'Blaze'),
+    choices=[('ember', 'Ava'), ('spark', 'Spark'), ('blaze', 'Blaze'),
              ('beacon', 'Beacon'), ('phoenix', 'Phoenix')],
     default='ember',
     db_index=True,
@@ -161,7 +161,7 @@ WHERE u.id = ut.user_id;
 # core/users/models.py
 class User(AbstractUser):
     TIER_CHOICES = [
-        ('ember', 'Ember'),
+        ('ember', 'Ava'),
         ('spark', 'Spark'),
         ('blaze', 'Blaze'),
         ('beacon', 'Beacon'),

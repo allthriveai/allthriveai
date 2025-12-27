@@ -119,7 +119,7 @@ class User(AbstractUser):
         ('bloom', 'Bloom'),
         ('evergreen', 'Evergreen'),
         ('curation', 'Curation'),  # Special tier for RSS/YouTube AI agents - no points
-        ('team', 'All Thrive Team'),  # Core Team agents (Ember, Pip, Sage, Haven) - no points
+        ('team', 'All Thrive Team'),  # Core Team agents (Ava, Pip, Sage, Haven) - no points
     ]
 
     TIER_THRESHOLDS = {

@@ -8,8 +8,8 @@
  * loses all context from previous messages.
  *
  * ID Format:
- * - Main Ember chat: `ember-chat-{userId}` (stable per user)
- * - Context-specific: `ember-{context}-{userId}` (stable per user+context)
+ * - Main Ava chat: `ava-chat-{userId}` (stable per user)
+ * - Context-specific: `ava-{context}-{userId}` (stable per user+context)
  * - Project chat: `project-{projectId}` (stable per project)
  * - Anonymous: Falls back to timestamp-based (no persistence)
  */
@@ -22,7 +22,7 @@ export type ChatContext = 'default' | 'learn' | 'explore' | 'project' | 'home';
 interface UseStableConversationIdOptions {
   /**
    * Context for the chat. Different contexts get separate conversation threads.
-   * - 'home' and 'default' share the same main Ember chat thread
+   * - 'home' and 'default' share the same main Ava chat thread
    * - 'learn', 'explore', 'project' each get their own thread
    */
   context?: ChatContext;
@@ -41,12 +41,12 @@ interface UseStableConversationIdOptions {
 }
 
 /**
- * Generate a stable conversation ID for the Ember chat.
+ * Generate a stable conversation ID for the Ava chat.
  *
  * @example
- * // Main Ember chat (home page)
+ * // Main Ava chat (home page)
  * const conversationId = useStableConversationId({ context: 'home' });
- * // Returns: 'ember-chat-123' for user ID 123
+ * // Returns: 'ava-chat-123' for user ID 123
  *
  * @example
  * // Project-specific chat
@@ -74,15 +74,15 @@ export function useStableConversationId(options: UseStableConversationIdOptions 
       // 'home' and 'default' share the same main conversation thread
       // This ensures chat history persists whether accessed from sidebar or home page
       if (context === 'home' || context === 'default') {
-        return `ember-chat-${user.id}`;
+        return `ava-chat-${user.id}`;
       }
       // Other contexts get separate threads
-      return `ember-${context}-${user.id}`;
+      return `ava-${context}-${user.id}`;
     }
 
     // Anonymous users get a timestamp-based ID (no persistence, but prevents errors)
     // This will be regenerated on page refresh, which is expected for non-authenticated users
-    return `ember-anon-${Date.now()}`;
+    return `ava-anon-${Date.now()}`;
   }, [user?.id, context, projectId, subContext]);
 }
 
@@ -103,10 +103,10 @@ export function getStableConversationId(
 
   if (userId) {
     if (context === 'home' || context === 'default') {
-      return `ember-chat-${userId}`;
+      return `ava-chat-${userId}`;
     }
-    return `ember-${context}-${userId}`;
+    return `ava-${context}-${userId}`;
   }
 
-  return `ember-anon-${Date.now()}`;
+  return `ava-anon-${Date.now()}`;
 }

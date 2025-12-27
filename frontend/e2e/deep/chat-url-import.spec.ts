@@ -2,12 +2,12 @@
  * Chat URL Import Tests
  *
  * Tests for the URL paste → ownership question → project creation flow.
- * Verifies that users can paste URLs and Ember will:
+ * Verifies that users can paste URLs and Ava will:
  * 1. Ask if it's their own project or something to clip
  * 2. Create the project with correct ownership status
  * 3. Return a working link to the created project
  *
- * See: docs/evergreen-architecture/23-EMBER-CHAT-TESTING.md
+ * See: docs/evergreen-architecture/23-AVA-CHAT-TESTING.md
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -40,10 +40,10 @@ async function waitForWebSocketConnected(page: Page, timeout = 30000): Promise<v
 }
 
 /**
- * Wait for Ember to actually respond (new message appears in chat)
+ * Wait for Ava to actually respond (new message appears in chat)
  * This is more reliable than just checking if input is enabled
  */
-async function waitForEmberResponse(
+async function waitForAvaResponse(
   page: Page,
   _previousMessageCount: number,
   timeout = 120000
@@ -54,24 +54,24 @@ async function waitForEmberResponse(
   while (Date.now() - startTime < timeout) {
     const content = await getPageContent(page);
 
-    // Check for thinking states (Ember is processing)
+    // Check for thinking states (Ava is processing)
     const isThinking =
       content.includes('Thinking') ||
       content.includes('Consulting my') ||
-      content.includes('Fanning the embers') ||
+      content.includes('Finding the way') ||
       content.includes('treasure trove');
 
     if (isThinking) {
       sawThinking = true;
       console.log(
-        `Ember is thinking... (${Math.round((Date.now() - startTime) / 1000)}s)`
+        `Ava is thinking... (${Math.round((Date.now() - startTime) / 1000)}s)`
       );
       await page.waitForTimeout(2000);
       continue;
     }
 
     // Check if input is disabled (still processing but no thinking text)
-    const chatInput = page.locator('input[placeholder="Message Ember..."]');
+    const chatInput = page.locator('input[placeholder="Message Ava..."]');
     const isDisabled = await chatInput.isDisabled().catch(() => true);
 
     if (isDisabled) {
@@ -83,33 +83,33 @@ async function waitForEmberResponse(
     }
 
     // Input is enabled - check if we have a meaningful response
-    // Look for patterns that indicate Ember responded about ownership
-    const hasEmberResponse =
+    // Look for patterns that indicate Ava responded about ownership
+    const hasAvaResponse =
       /is this your|your own project|your project|something you found|clip|save|import|create|portfolio/i.test(
         content
       );
 
-    if (hasEmberResponse) {
-      console.log('Ember responded!');
+    if (hasAvaResponse) {
+      console.log('Ava responded!');
       return content;
     }
 
-    // If we saw thinking but now input is enabled, Ember finished responding
+    // If we saw thinking but now input is enabled, Ava finished responding
     // even if response doesn't match our expected patterns
     if (sawThinking) {
-      console.log('Ember finished (saw thinking state earlier)');
+      console.log('Ava finished (saw thinking state earlier)');
       return content;
     }
 
     // Haven't seen thinking yet - keep waiting
     console.log(
-      `Waiting for Ember to start... (${Math.round((Date.now() - startTime) / 1000)}s)`
+      `Waiting for Ava to start... (${Math.round((Date.now() - startTime) / 1000)}s)`
     );
     await page.waitForTimeout(2000);
   }
 
   // Return whatever content we have even if no clear response
-  console.log('Timeout waiting for Ember response');
+  console.log('Timeout waiting for Ava response');
   return await getPageContent(page);
 }
 
@@ -137,9 +137,9 @@ test.describe('Chat - URL Import Flow', () => {
     // Step 1: Paste a generic URL (not GitHub/YouTube/etc.)
     await sendHomeChat(page, 'https://example.com');
 
-    // Step 2: Wait for Ember to ACTUALLY respond (not just input enabled)
-    console.log('Waiting for Ember to respond to URL...');
-    const afterUrl = await waitForEmberResponse(page, 0, 90000);
+    // Step 2: Wait for Ava to ACTUALLY respond (not just input enabled)
+    console.log('Waiting for Ava to respond to URL...');
+    const afterUrl = await waitForAvaResponse(page, 0, 90000);
     assertNoTechnicalErrors(afterUrl, 'after URL paste');
     console.log('After URL paste:', afterUrl.substring(0, 500));
 
@@ -154,7 +154,7 @@ test.describe('Chat - URL Import Flow', () => {
     await sendHomeChat(page, "Yes, it's my own project. Please create it.");
 
     // Step 4: Wait for project creation
-    // Ember may either:
+    // Ava may either:
     // A) Show a link in chat → we detect it and navigate
     // B) Navigate directly to the project page → we detect URL change
     console.log('Waiting for project creation...');
@@ -203,12 +203,12 @@ test.describe('Chat - URL Import Flow', () => {
       const isStillThinking =
         afterCreation.includes('Thinking') ||
         afterCreation.includes('Consulting my') ||
-        afterCreation.includes('Fanning the embers') ||
+        afterCreation.includes('Finding the way') ||
         afterCreation.includes('Cancel');
 
       if (isStillThinking) {
         console.log(
-          `Ember still processing... (${Math.round((Date.now() - startTime) / 1000)}s)`
+          `Ava still processing... (${Math.round((Date.now() - startTime) / 1000)}s)`
         );
       } else {
         console.log(
@@ -263,9 +263,9 @@ test.describe('Chat - URL Import Flow', () => {
     // Step 1: Paste a URL
     await sendHomeChat(page, 'https://example.org');
 
-    // Step 2: Wait for Ember to respond
-    console.log('Waiting for Ember to respond...');
-    const afterUrl = await waitForEmberResponse(page, 0, 90000);
+    // Step 2: Wait for Ava to respond
+    console.log('Waiting for Ava to respond...');
+    const afterUrl = await waitForAvaResponse(page, 0, 90000);
     assertNoTechnicalErrors(afterUrl, 'after URL paste');
 
     // Step 3: Say it's NOT mine - want to clip/save it
@@ -315,7 +315,7 @@ test.describe('Chat - URL Import Flow', () => {
       const isStillThinking =
         afterClip.includes('Thinking') ||
         afterClip.includes('Consulting my') ||
-        afterClip.includes('Fanning the embers');
+        afterClip.includes('Finding the way');
 
       console.log(
         `Waiting for clip... (${Math.round((Date.now() - startTime) / 1000)}s)${isStillThinking ? ' [thinking]' : ''}`
@@ -345,9 +345,9 @@ test.describe('Chat - URL Import Flow', () => {
     // YouTube URLs should auto-import since videos are always "clipped"
     await sendHomeChat(page, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 
-    // Wait for Ember to respond
+    // Wait for Ava to respond
     console.log('Waiting for YouTube import...');
-    const afterYoutube = await waitForEmberResponse(page, 0, 90000);
+    const afterYoutube = await waitForAvaResponse(page, 0, 90000);
     assertNoTechnicalErrors(afterYoutube, 'after YouTube URL');
     console.log('After YouTube URL:', afterYoutube.substring(0, 500));
 
@@ -427,7 +427,7 @@ test.describe('Chat - URL Import Flow', () => {
     await sendHomeChat(page, 'https://github.com/facebook/react');
 
     console.log('Waiting for GitHub import response...');
-    const afterGithub = await waitForEmberResponse(page, 0, 90000);
+    const afterGithub = await waitForAvaResponse(page, 0, 90000);
     assertNoTechnicalErrors(afterGithub, 'after GitHub URL');
     console.log('After GitHub URL:', afterGithub.substring(0, 500));
 
@@ -508,11 +508,11 @@ test.describe('Chat - URL Import Flow', () => {
     // Send an invalid/broken URL
     await sendHomeChat(page, 'https://this-domain-definitely-does-not-exist-xyz123.com/page');
 
-    const response = await waitForEmberResponse(page, 0, 60000);
+    const response = await waitForAvaResponse(page, 0, 60000);
     assertNoTechnicalErrors(response, 'after invalid URL');
 
     // Should handle gracefully - not crash, give helpful message
-    // Ember may ask about the URL, say it couldn't access it, or offer alternatives
+    // Ava may ask about the URL, say it couldn't access it, or offer alternatives
     const handlesGracefully =
       /couldn't|unable|error|problem|invalid|try again|screenshot|different|your project|access|reach/i.test(
         response
@@ -536,14 +536,14 @@ test.describe('Chat - URL Import Flow', () => {
       "I found this cool site at https://example.net that I want to save"
     );
 
-    const turn1 = await waitForEmberResponse(page, 0, 60000);
+    const turn1 = await waitForAvaResponse(page, 0, 60000);
     assertNoTechnicalErrors(turn1, 'turn 1');
     console.log('Turn 1:', turn1.substring(0, 300));
 
     // Turn 2: Clarify ownership when asked
     await sendHomeChat(page, "It's not mine, just something I want to bookmark");
 
-    const turn2 = await waitForEmberResponse(page, 0, 90000);
+    const turn2 = await waitForAvaResponse(page, 0, 90000);
     assertNoTechnicalErrors(turn2, 'turn 2');
     console.log('Turn 2:', turn2.substring(0, 300));
 
@@ -588,7 +588,7 @@ test.describe('Chat - URL Import Flow', () => {
       const isStillThinking =
         content.includes('Thinking') ||
         content.includes('Consulting my') ||
-        content.includes('Fanning the embers');
+        content.includes('Finding the way');
 
       console.log(
         `Multi-turn: waiting... (${Math.round((Date.now() - startTime) / 1000)}s)${isStillThinking ? ' [thinking]' : ''}`
@@ -631,17 +631,17 @@ test.describe('Chat - URL Context Memory', () => {
     // First, mention a URL
     await sendHomeChat(page, 'I want to save https://iana.org to my projects');
 
-    const turn1 = await waitForEmberResponse(page, 0, 60000);
+    const turn1 = await waitForAvaResponse(page, 0, 60000);
     assertNoTechnicalErrors(turn1, 'URL mention');
     console.log('Turn 1:', turn1.substring(0, 300));
 
     // Have some conversation about it
     await sendHomeChat(page, "It's a project I built last month");
 
-    const turn2 = await waitForEmberResponse(page, 0, 90000);
+    const turn2 = await waitForAvaResponse(page, 0, 90000);
     assertNoTechnicalErrors(turn2, 'ownership clarification');
 
-    // Ember should remember the URL and understand we want to save it
+    // Ava should remember the URL and understand we want to save it
     // Could either ask for confirmation, offer to save, or navigate to creation
     const understandsContext =
       /save|import|create|project|iana|your|got it|understood|ready/i.test(turn2) ||

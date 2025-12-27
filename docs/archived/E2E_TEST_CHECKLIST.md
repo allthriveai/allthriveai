@@ -131,7 +131,7 @@ Comprehensive checklist of Playwright E2E tests to implement for AllThrive AI.
 - [ ] View challenge leaderboard (if applicable)
 
 ### 9. `onboarding.spec.ts` - New User Flow
-- [ ] New user sees Ember onboarding on first login
+- [ ] New user sees Ava onboarding on first login
 - [ ] Complete onboarding step 1
 - [ ] Complete onboarding step 2
 - [ ] Complete all onboarding steps

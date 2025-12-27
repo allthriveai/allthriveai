@@ -30,7 +30,7 @@ class LearningEventTracker:
     """
     Tracks learning events for analytics and progress.
 
-    Events are recorded automatically without Ember calling a tool.
+    Events are recorded automatically without Ava calling a tool.
     Uses async methods for integration with Django Channels and Celery.
     """
 

@@ -26,7 +26,7 @@ import type { Project, UserSideQuest, LearningGoal } from '@/types/models';
 
 // Constants
 const GITHUB_OAUTH_TIMESTAMP_KEY = 'github_oauth_timestamp';
-const EMBER_OPEN_CHAT_KEY = 'ember_open_chat';
+const AVA_OPEN_CHAT_KEY = 'ava_open_chat';
 const OVERLAY_CLASSNAME = 'fixed inset-0 bg-black/20 z-30 md:hidden';
 
 /**
@@ -62,7 +62,7 @@ interface LearningSetupContext {
   isPending: boolean;
 }
 
-// Chat context determines which quick actions to show in the Ember chat
+// Chat context determines which quick actions to show in the Ava chat
 type ChatContext = 'learn' | 'explore' | 'project' | 'default';
 
 interface OpenChatOptions {
@@ -115,7 +115,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
   // Learning setup context state
   const [learningSetupContext, setLearningSetupContext] = useState<LearningSetupContext | null>(null);
 
-  // Chat context state - determines which quick actions to show in Ember chat
+  // Chat context state - determines which quick actions to show in Ava chat
   const [chatContext, setChatContext] = useState<ChatContext>('default');
 
   // Chat expanded state - for learning sessions in expanded mode
@@ -178,7 +178,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
       ? { welcomeMode: options }
       : options;
 
-    // Open Ember chat panel with context-aware quick actions
+    // Open Ava chat panel with context-aware quick actions
     setAddProjectOpen(true);
     setChatContext(opts.context ?? 'default');
     setChatExpanded(opts.expanded ?? false);
@@ -215,13 +215,13 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
     handleOpenAddProject();
   }, [handleOpenAddProject]);
 
-  // Check for Ember onboarding "Add Project" adventure - open chat in welcome mode
+  // Check for Ava onboarding "Add Project" adventure - open chat in welcome mode
   useEffect(() => {
-    const emberOpenChat = localStorage.getItem(EMBER_OPEN_CHAT_KEY);
+    const avaOpenChat = localStorage.getItem(AVA_OPEN_CHAT_KEY);
 
-    if (emberOpenChat === 'true') {
+    if (avaOpenChat === 'true') {
       // Clear immediately to prevent re-triggering
-      localStorage.removeItem(EMBER_OPEN_CHAT_KEY);
+      localStorage.removeItem(AVA_OPEN_CHAT_KEY);
 
       // Short delay to let the page render first
       setTimeout(() => {
@@ -319,7 +319,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
       if (location.pathname === '/home') {
         return;
       }
-      // Open Ember chat panel
+      // Open Ava chat panel
       setAddProjectOpen(true);
       setChatContext('default');
       setAboutOpen(false);
@@ -403,7 +403,7 @@ export function DashboardLayout({ children, openAboutPanel = false, hideFooter =
           onClose={handleCloseEvents}
         />
 
-        {/* Ember Chat Panel - unified AI assistant with context-aware quick actions */}
+        {/* Ava Chat Panel - unified AI assistant with context-aware quick actions */}
         {addProjectOpen && (
           <ChatSidebar
             isOpen={addProjectOpen}

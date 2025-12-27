@@ -31,7 +31,7 @@ The Events Calendar feature allows users to view upcoming events, and administra
 ### Accessing the Events Calendar
 
 1. Navigate to any page in the application
-2. Click on **"Events Calendar"** in the left sidebar under the **MEMBERSHIP** section
+2. Click on **"Events Calendar"** in the left sidebar under the **MAVASHIP** section
 3. The events calendar panel will slide in from the right side
 
 ### Viewing Events
@@ -178,7 +178,7 @@ Components:
 
 **Integration:**
 - Integrated into `DashboardLayout.tsx`
-- Menu item in `menuData.ts` under MEMBERSHIP section
+- Menu item in `menuData.ts` under MAVASHIP section
 - Uses `date-fns` for date formatting
 
 ## Database Schema

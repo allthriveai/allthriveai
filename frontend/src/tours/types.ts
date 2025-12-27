@@ -2,10 +2,10 @@
  * Tour System Types
  *
  * Type definitions for the reusable tour/walkthrough system.
- * Tours are guided experiences led by Ember that navigate users through platform features.
+ * Tours are guided experiences led by Ava that navigate users through platform features.
  */
 
-import type { AdventureId } from '@/hooks/useEmberOnboarding';
+import type { AdventureId } from '@/hooks/useAvaOnboarding';
 
 export type TourId = 'platform_walkthrough';
 
@@ -19,7 +19,7 @@ export interface TourStep {
   targetPath?: string;
   /** Title shown in the modal header */
   title: string;
-  /** Ember's dialogue for this step - shown with typewriter effect */
+  /** Ava's dialogue for this step - shown with typewriter effect */
   dialogue: string | string[];
   /** Optional bullet points to highlight key features */
   features?: string[];

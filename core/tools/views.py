@@ -26,7 +26,7 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
     retrieve: Get detailed information about a specific tool
     """
 
-    queryset = Tool.objects.filter(is_active=True)
+    queryset = Tool.objects.filter(is_active=True).select_related('company').prefetch_related('topics')
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = [
@@ -38,7 +38,7 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
         'is_featured',
         'is_verified',
     ]
-    search_fields = ['name', 'tagline', 'description', 'tags']
+    search_fields = ['name', 'tagline', 'description', 'topics__name']
     ordering_fields = ['name', 'popularity_score', 'view_count', 'created_at']
     ordering = ['-is_featured', '-popularity_score']
     lookup_field = 'slug'
@@ -127,32 +127,17 @@ class ToolViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'])
     def similar(self, request, slug=None):
-        """Get similar tools based on category and tags."""
+        """Get similar tools based on category and shared topics."""
         tool = self.get_object()
 
-        # Find tools in same category or with overlapping tags
-        # Optimize query: only fetch needed fields, prefetch related data
+        # Find tools in same category or with overlapping topics
+        tool_topic_ids = list(tool.topics.values_list('id', flat=True))
         similar_tools = (
             Tool.objects.filter(is_active=True)
             .exclude(pk=tool.pk)
-            .filter(Q(category=tool.category) | Q(tags__overlap=tool.tags))
-            .only(
-                'id',
-                'name',
-                'slug',
-                'tagline',
-                'logo_url',
-                'category',
-                'tags',
-                'pricing_model',
-                'has_free_tier',
-                'is_featured',
-                'is_verified',
-                'view_count',
-                'popularity_score',
-                'created_at',
-                'updated_at',
-            )
+            .filter(Q(category=tool.category) | Q(topics__id__in=tool_topic_ids))
+            .select_related('company')
+            .prefetch_related('topics')
             .distinct()[:5]
         )
 

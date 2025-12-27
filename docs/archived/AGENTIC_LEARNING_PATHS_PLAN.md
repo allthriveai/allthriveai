@@ -1,14 +1,14 @@
 # Agentic Learning Paths Implementation Plan
 
 **Last Updated:** 2025-12-18
-**Status:** Planning - Updated for Unified Ember Architecture
+**Status:** Planning - Updated for Unified Ava Architecture
 **Depends On:** [05-UNIFIED-CHAT-ARCHITECTURE.md](./evergreen-architecture/05-UNIFIED-CHAT-ARCHITECTURE.md)
 
 ---
 
 ## Vision
 
-Transform Ember into a **proactive, adaptive learning mentor** that:
+Transform Ava into a **proactive, adaptive learning mentor** that:
 - Celebrates skills as users learn them in real-time
 - Nudges contextually ("I saw you looked at Midjourney...")
 - Teaches conversationally within chat
@@ -17,29 +17,29 @@ Transform Ember into a **proactive, adaptive learning mentor** that:
 
 ## Architecture Overview
 
-> **Updated for Unified Ember Agent** (see `05-UNIFIED-CHAT-ARCHITECTURE.md`)
+> **Updated for Unified Ava Agent** (see `05-UNIFIED-CHAT-ARCHITECTURE.md`)
 >
-> Ember is now a single unified agent with all ~27+ tools. Learning capabilities are
-> added directly to Ember's tool registry - no separate learning agent or orchestrator routing.
+> Ava is now a single unified agent with all ~27+ tools. Learning capabilities are
+> added directly to Ava's tool registry - no separate learning agent or orchestrator routing.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        USER EXPERIENCE                          │
 ├─────────────────────────────────────────────────────────────────┤
-│  EmberHomePage ←→ /learn Page ←→ Any Page (contextual nudges)   │
+│  AvaHomePage ←→ /learn Page ←→ Any Page (contextual nudges)   │
 │       ↓                ↓                    ↓                   │
 │  [IntelligentChatPanel with learning message types]             │
 └─────────────────────────────────────────────────────────────────┘
                               ↓ WebSocket
 ┌─────────────────────────────────────────────────────────────────┐
-│                   UNIFIED EMBER AGENT                           │
+│                   UNIFIED AVA AGENT                           │
 ├─────────────────────────────────────────────────────────────────┤
 │  services/agents/ember/                                         │
 │  ├── agent.py        # LangGraph agent + stream_ember_response  │
 │  ├── prompts.py      # System prompts (includes learning mentor)│
 │  └── tools.py        # ALL tools including enhanced learning    │
 │                                                                 │
-│  Ember Tools (~30+ total):                                      │
+│  Ava Tools (~30+ total):                                      │
 │  ├── Discovery (5)   - search, recommendations, trending        │
 │  ├── Learning (10+)  - lessons, quizzes, progress, celebrations │
 │  ├── Project (10)    - create, import, analyze                  │
@@ -61,9 +61,9 @@ Transform Ember into a **proactive, adaptive learning mentor** that:
 
 ## Current State vs This Plan
 
-### What Already Exists in Ember
+### What Already Exists in Ava
 
-The unified Ember agent (`/services/agents/ember/`) already has **5 basic learning tools**:
+The unified Ava agent (`/services/agents/ember/`) already has **5 basic learning tools**:
 
 | Tool | Purpose | Status |
 |------|---------|--------|
@@ -91,7 +91,7 @@ The unified Ember agent (`/services/agents/ember/`) already has **5 basic learni
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ TIER 1: AI-GENERATED (Instant, infinite coverage)              │
-│ • Ember generates lessons on-the-fly for any topic             │
+│ • Ava generates lessons on-the-fly for any topic             │
 │ • Personalized to user's skill level and learning style        │
 │ • Fallback when no curated/project content exists              │
 ├─────────────────────────────────────────────────────────────────┤
@@ -111,12 +111,12 @@ The unified Ember agent (`/services/agents/ember/`) already has **5 basic learni
 
 ### How Projects Become Learning Content
 
-When Ember teaches a concept, it can reference highly-rated user projects:
+When Ava teaches a concept, it can reference highly-rated user projects:
 
 ```
 User: "Teach me about RAG pipelines"
 
-Ember: "Great choice! RAG (Retrieval-Augmented Generation) is how
+Ava: "Great choice! RAG (Retrieval-Augmented Generation) is how
 you give AI access to your own documents. Let me explain the basics,
 then show you a real example from our community.
 
@@ -211,7 +211,7 @@ class UserConceptMastery(models.Model):
 
 
 class MicroLesson(models.Model):
-    """Template for lessons Ember can deliver (hybrid: pre-authored + AI-enhanced)."""
+    """Template for lessons Ava can deliver (hybrid: pre-authored + AI-enhanced)."""
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
     concept = models.ForeignKey(Concept, on_delete=models.CASCADE)
@@ -437,19 +437,19 @@ POST /api/v1/admin/projects/sync-eligibility/     # Recalculate learning eligibi
 
 ---
 
-## Phase 2: Ember Prompt & Tool Enhancement
+## Phase 2: Ava Prompt & Tool Enhancement
 
-> **Unified Architecture Note:** Learning capabilities are added to the existing Ember agent
+> **Unified Architecture Note:** Learning capabilities are added to the existing Ava agent
 > in `/services/agents/ember/`. No separate learning agent is created.
 
-### Enhanced Ember System Prompt
+### Enhanced Ava System Prompt
 
-The learning mentor behaviors are added to Ember's system prompt in `services/agents/ember/prompts.py`:
+The learning mentor behaviors are added to Ava's system prompt in `services/agents/ember/prompts.py`:
 
 ```python
-# services/agents/ember/prompts.py (append to EMBER_SYSTEM_PROMPT)
+# services/agents/ember/prompts.py (append to AVA_SYSTEM_PROMPT)
 
-EMBER_LEARNING_MENTOR_ADDITIONS = """
+AVA_LEARNING_MENTOR_ADDITIONS = """
 ## Learning Mentor Mode
 
 When users want to learn or you detect learning opportunities:
@@ -474,12 +474,12 @@ When users want to learn or you detect learning opportunities:
 """
 ```
 
-### New Learning Tools (Add to Ember Registry)
+### New Learning Tools (Add to Ava Registry)
 
 These tools are added to `services/agents/ember/tools.py` alongside existing tools:
 
 ```python
-# services/agents/ember/tools.py (add to EMBER_TOOLS list)
+# services/agents/ember/tools.py (add to AVA_TOOLS list)
 
 # === ENHANCED LEARNING TOOLS ===
 # (These extend the existing 5 learning tools)
@@ -496,7 +496,7 @@ def generate_micro_lesson(topic: str, skill_level: str, format: str = 'conversat
 
 @tool
 def start_conversational_quiz(topic: str, question_count: int = 3) -> dict:
-    """Start an interactive quiz with Ember guiding through questions."""
+    """Start an interactive quiz with Ava guiding through questions."""
 
 @tool
 def check_answer_and_explain(session_id: str, answer: str) -> dict:
@@ -547,10 +547,10 @@ TOOLS_NEEDING_STATE.update({
 # core/learning/triggers.py (new file, called from Celery tasks)
 
 class ProactiveTriggers:
-    """When Ember should proactively engage about learning.
+    """When Ava should proactively engage about learning.
 
     Triggers are evaluated by Celery tasks and push messages via WebSocket
-    to the frontend, where Ember can display contextual nudges.
+    to the frontend, where Ava can display contextual nudges.
     """
 
     TRIGGER_TYPES = {
@@ -650,11 +650,11 @@ export function useLearningChat(options?: UseLearningChatOptions) {
 
 ### Learn from Projects in Chat
 
-When Ember teaches a concept, it can reference highly-rated user projects:
+When Ava teaches a concept, it can reference highly-rated user projects:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Ember: "Here's a great example of RAG in action!"              │
+│ Ava: "Here's a great example of RAG in action!"              │
 │                                                                 │
 │ [ProjectLearningCard]                                           │
 │ ┌─────────────────────────────────────────────────────────────┐ │
@@ -706,13 +706,13 @@ Transform the placeholder page into a learning discovery hub:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Learn with Ember                                                │
+│ Learn with Ava                                                │
 │ "Your personalized AI learning companion"                       │
 ├─────────────────────────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ [Compact Ember Chat]                                        │ │
+│ │ [Compact Ava Chat]                                        │ │
 │ │ 🐉 "What would you like to learn today?"                    │ │
-│ │ [Ask Ember to teach you something...]              [Send]   │ │
+│ │ [Ask Ava to teach you something...]              [Send]   │ │
 │ └─────────────────────────────────────────────────────────────┘ │
 │                                                                 │
 │ ┌── Continue Learning ────────────────────────────────────────┐ │
@@ -749,12 +749,12 @@ Transform the placeholder page into a learning discovery hub:
 4. Add API endpoints for profile and events
 5. Extend existing quiz completion to emit learning events
 
-### Sprint 2: Ember Tool Enhancement
+### Sprint 2: Ava Tool Enhancement
 1. Add new learning tools to `services/agents/ember/tools.py` (generate_micro_lesson, conversational_quiz, etc.)
 2. Update `TOOLS_NEEDING_STATE` for tools requiring user context
 3. Implement `MicroLessonService` with 3-tier hierarchy (curated → projects → AI)
 4. Add `ProactiveTriggers` system in `core/learning/triggers.py`
-5. Enhance `EMBER_SYSTEM_PROMPT` with learning mentor personality in `services/agents/ember/prompts.py`
+5. Enhance `AVA_SYSTEM_PROMPT` with learning mentor personality in `services/agents/ember/prompts.py`
 
 ### Sprint 3: Chat UI
 1. Add new message types to `LearningChatMetadata`
@@ -771,7 +771,7 @@ Transform the placeholder page into a learning discovery hub:
 5. Add admin UI for tagging projects with concepts
 
 ### Sprint 5: /learn Page & Polish
-1. Redesign `/learn` page with embedded Ember chat
+1. Redesign `/learn` page with embedded Ava chat
 2. Add "Continue Learning" banner
 3. Integrate learning paths display with progress visualization
 4. Add contextual nudge UI components
@@ -805,7 +805,7 @@ Transform the placeholder page into a learning discovery hub:
 | `frontend/src/components/chat/IntelligentChatPanel.tsx` | **Extend** - Render learning message components |
 | `frontend/src/components/chat/learning/*.tsx` | **New** - LessonCard, QuizCard, CelebrationCard, etc. |
 | `frontend/src/components/learning/projects/*.tsx` | **New** - ProjectLearningCard, CreatorAttribution |
-| `frontend/src/pages/LearnPage.tsx` | **Redesign** - Embedded Ember chat + learning paths
+| `frontend/src/pages/LearnPage.tsx` | **Redesign** - Embedded Ava chat + learning paths
 
 ---
 
@@ -815,7 +815,7 @@ Transform the placeholder page into a learning discovery hub:
 2. **Proactive Acceptance Rate**: % of nudges users engage with (target: >30%)
 3. **Skill Progression**: Users advancing skill levels per week
 4. **Streak Retention**: % of users maintaining learning streaks
-5. **Qualitative**: User feedback on Ember as mentor
+5. **Qualitative**: User feedback on Ava as mentor
 
 ---
 

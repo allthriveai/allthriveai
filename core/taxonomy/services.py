@@ -546,7 +546,7 @@ def auto_tag_from_search(user, search_query: str) -> list[UserTag]:
 
 def auto_tag_from_conversation(user, message: str) -> list[UserTag]:
     """
-    Auto-tag a user based on their conversation with Ember.
+    Auto-tag a user based on their conversation with Ava.
 
     When users discuss specific tools or topics in chat, this indicates
     interest. Create/update UserTags with AUTO_CONVERSATION source.
