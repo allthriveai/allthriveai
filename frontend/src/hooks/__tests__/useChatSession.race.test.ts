@@ -19,12 +19,9 @@ const createMockAgent = (
 ): IChatAgent => ({
   config: {
     agentId: options.agentId || 'test-agent',
-    name: 'Test Agent',
-    description: 'Test agent for race condition testing',
-    temperature: 0.7,
-    maxTokens: 2000,
+    agentName: 'Test Agent',
+    agentDescription: 'Test agent for race condition testing',
     systemPrompt: 'You are a test agent.',
-    thinkingBudget: undefined,
   },
   handleMessage: handleMessageFn,
   getInitialMessage: options.initialMessage ? () => options.initialMessage! : undefined,

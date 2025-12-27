@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { vi, beforeEach, afterEach } from 'vitest';
 
 // Add custom matchers from @testing-library/jest-dom
 // This allows us to use matchers like .toBeInTheDocument(), .toHaveTextContent(), etc.
