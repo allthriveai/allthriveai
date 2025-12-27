@@ -1267,6 +1267,19 @@ aws-validate:
 	fi; \
 	echo ""; \
 	echo "[ ] RDS Connections:"; \
+	RDS_INSTANCE_CLASS=$$(aws rds describe-db-instances --region $$AWS_REGION \
+		--db-instance-identifier $$ENVIRONMENT-allthrive-postgres \
+		--query 'DBInstances[0].DBInstanceClass' --output text 2>/dev/null); \
+	RDS_MAX_CONN=112; \
+	case "$$RDS_INSTANCE_CLASS" in \
+		db.t4g.micro) RDS_MAX_CONN=85 ;; \
+		db.t4g.small) RDS_MAX_CONN=112 ;; \
+		db.t4g.medium) RDS_MAX_CONN=225 ;; \
+		db.t4g.large) RDS_MAX_CONN=450 ;; \
+		db.t4g.xlarge) RDS_MAX_CONN=900 ;; \
+		db.r6g.large) RDS_MAX_CONN=1600 ;; \
+		db.r6g.xlarge) RDS_MAX_CONN=3200 ;; \
+	esac; \
 	RDS_CONNECTIONS=$$(aws cloudwatch get-metric-statistics \
 		--namespace AWS/RDS \
 		--metric-name DatabaseConnections \
@@ -1274,18 +1287,138 @@ aws-validate:
 		--start-time $$(date -u -v-5M "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -d "5 minutes ago" "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) \
 		--end-time $$(date -u "+%Y-%m-%dT%H:%M:%SZ") \
 		--period 300 \
-		--statistics Average \
+		--statistics Maximum \
 		--region $$AWS_REGION \
-		--query 'Datapoints[0].Average' --output text 2>/dev/null); \
+		--query 'Datapoints[0].Maximum' --output text 2>/dev/null); \
 	if [ -n "$$RDS_CONNECTIONS" ] && [ "$$RDS_CONNECTIONS" != "None" ]; then \
 		RDS_CONN_INT=$${RDS_CONNECTIONS%.*}; \
-		if [ "$$RDS_CONN_INT" -gt 80 ]; then \
-			echo "   ⚠️  RDS has $$RDS_CONN_INT active connections (high)"; \
+		RDS_CONN_PCT=$$((RDS_CONN_INT * 100 / RDS_MAX_CONN)); \
+		if [ "$$RDS_CONN_PCT" -ge 90 ]; then \
+			echo "   ❌ RDS at $$RDS_CONN_INT/$$RDS_MAX_CONN connections ($${RDS_CONN_PCT}% - CRITICAL!)"; \
+			echo "      Instance: $$RDS_INSTANCE_CLASS"; \
+			echo "      ⚠️  Connection pool exhaustion likely!"; \
+		elif [ "$$RDS_CONN_PCT" -ge 75 ]; then \
+			echo "   ⚠️  RDS at $$RDS_CONN_INT/$$RDS_MAX_CONN connections ($${RDS_CONN_PCT}% - warning)"; \
+			echo "      Instance: $$RDS_INSTANCE_CLASS"; \
 		else \
-			echo "   ✅ RDS has $$RDS_CONN_INT active connections"; \
+			echo "   ✅ RDS at $$RDS_CONN_INT/$$RDS_MAX_CONN connections ($${RDS_CONN_PCT}%)"; \
 		fi; \
 	else \
 		echo "   ⚠️  Could not fetch RDS connections"; \
+	fi; \
+	echo ""; \
+	echo "[ ] RDS CPU Utilization:"; \
+	RDS_CPU=$$(aws cloudwatch get-metric-statistics \
+		--namespace AWS/RDS \
+		--metric-name CPUUtilization \
+		--dimensions Name=DBInstanceIdentifier,Value=$$ENVIRONMENT-allthrive-postgres \
+		--start-time $$(date -u -v-5M "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -d "5 minutes ago" "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) \
+		--end-time $$(date -u "+%Y-%m-%dT%H:%M:%SZ") \
+		--period 300 \
+		--statistics Average \
+		--region $$AWS_REGION \
+		--query 'Datapoints[0].Average' --output text 2>/dev/null); \
+	if [ -n "$$RDS_CPU" ] && [ "$$RDS_CPU" != "None" ]; then \
+		RDS_CPU_INT=$${RDS_CPU%.*}; \
+		if [ "$$RDS_CPU_INT" -ge 80 ]; then \
+			echo "   ❌ RDS CPU at $${RDS_CPU_INT}% (CRITICAL!)"; \
+		elif [ "$$RDS_CPU_INT" -ge 60 ]; then \
+			echo "   ⚠️  RDS CPU at $${RDS_CPU_INT}%"; \
+		else \
+			echo "   ✅ RDS CPU at $${RDS_CPU_INT}%"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not fetch RDS CPU"; \
+	fi; \
+	echo ""; \
+	echo "[ ] RDS Freeable Memory:"; \
+	RDS_MEMORY=$$(aws cloudwatch get-metric-statistics \
+		--namespace AWS/RDS \
+		--metric-name FreeableMemory \
+		--dimensions Name=DBInstanceIdentifier,Value=$$ENVIRONMENT-allthrive-postgres \
+		--start-time $$(date -u -v-5M "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -d "5 minutes ago" "+%Y-%m-%dT%H:%M:%SZ" 2>/dev/null) \
+		--end-time $$(date -u "+%Y-%m-%dT%H:%M:%SZ") \
+		--period 300 \
+		--statistics Average \
+		--region $$AWS_REGION \
+		--query 'Datapoints[0].Average' --output text 2>/dev/null); \
+	if [ -n "$$RDS_MEMORY" ] && [ "$$RDS_MEMORY" != "None" ]; then \
+		RDS_MEM_MB=$$(echo "$$RDS_MEMORY / 1048576" | bc 2>/dev/null || echo "$$((RDS_MEMORY / 1048576))"); \
+		if [ "$$RDS_MEM_MB" -lt 200 ]; then \
+			echo "   ❌ RDS freeable memory: $${RDS_MEM_MB}MB (CRITICAL - memory pressure!)"; \
+		elif [ "$$RDS_MEM_MB" -lt 500 ]; then \
+			echo "   ⚠️  RDS freeable memory: $${RDS_MEM_MB}MB"; \
+		else \
+			echo "   ✅ RDS freeable memory: $${RDS_MEM_MB}MB"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not fetch RDS freeable memory"; \
+	fi; \
+	echo ""; \
+	echo "[ ] Connection Pool Exhaustion Errors (Last Hour):"; \
+	POOL_ERRORS=$$(aws logs filter-log-events \
+		--log-group-name "/ecs/$$ENVIRONMENT-allthrive-web" \
+		--start-time $$START_TIME \
+		--filter-pattern "QueuePool limit" \
+		--max-items 100 \
+		--region $$AWS_REGION \
+		--query 'length(events)' --output text 2>/dev/null | head -1); \
+	if [ -n "$$POOL_ERRORS" ] && [ "$$POOL_ERRORS" != "None" ] && [ "$$POOL_ERRORS" -eq "$$POOL_ERRORS" ] 2>/dev/null; then \
+		if [ "$$POOL_ERRORS" -gt 0 ]; then \
+			echo "   ❌ Found $$POOL_ERRORS 'QueuePool limit' errors in last hour!"; \
+			echo "      This indicates database connection pool exhaustion."; \
+			echo "      Solutions:"; \
+			echo "        - Reduce POOL_SIZE in Django settings"; \
+			echo "        - Upgrade RDS instance type"; \
+			echo "        - Fix connection leaks in code"; \
+		else \
+			echo "   ✅ No connection pool exhaustion errors"; \
+		fi; \
+	else \
+		echo "   ⚠️  Could not check for pool errors"; \
+	fi; \
+	echo ""; \
+	echo "=== AI Provider Status ==="; \
+	echo ""; \
+	echo "Checking AI provider connectivity..."; \
+	if [ "$$ENVIRONMENT" = "production" ]; then \
+		AI_HEALTH_URL="https://api.allthrive.ai/api/v1/health/ai/"; \
+	else \
+		AI_HEALTH_URL="https://api-staging.allthrive.ai/api/v1/health/ai/"; \
+	fi; \
+	AI_HEALTH=$$(curl -s --max-time 30 "$$AI_HEALTH_URL" 2>/dev/null); \
+	if [ -n "$$AI_HEALTH" ]; then \
+		AI_STATUS=$$(echo "$$AI_HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null); \
+		OPENAI_STATUS=$$(echo "$$AI_HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('providers',{}).get('openai',{}).get('status','unknown'))" 2>/dev/null); \
+		GEMINI_STATUS=$$(echo "$$AI_HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('providers',{}).get('gemini',{}).get('status','unknown'))" 2>/dev/null); \
+		ANTHROPIC_STATUS=$$(echo "$$AI_HEALTH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('providers',{}).get('anthropic',{}).get('status','unknown'))" 2>/dev/null); \
+		echo ""; \
+		echo "[ ] OpenAI (GPT-4, GPT-5, GPT-Image):"; \
+		if [ "$$OPENAI_STATUS" = "ok" ]; then \
+			echo "   ✅ OpenAI connected"; \
+		else \
+			echo "   ❌ OpenAI: $$OPENAI_STATUS"; \
+		fi; \
+		echo ""; \
+		echo "[ ] Google Gemini (Image generation):"; \
+		if [ "$$GEMINI_STATUS" = "ok" ]; then \
+			echo "   ✅ Gemini connected"; \
+		else \
+			echo "   ❌ Gemini: $$GEMINI_STATUS"; \
+		fi; \
+		echo ""; \
+		echo "[ ] Anthropic Claude (optional):"; \
+		if [ "$$ANTHROPIC_STATUS" = "ok" ]; then \
+			echo "   ✅ Anthropic connected"; \
+		elif [ "$$ANTHROPIC_STATUS" = "not_configured" ]; then \
+			echo "   ⚠️  Anthropic not configured (optional)"; \
+		else \
+			echo "   ⚠️  Anthropic: $$ANTHROPIC_STATUS"; \
+		fi; \
+		echo ""; \
+		echo "Overall AI Status: $$AI_STATUS"; \
+	else \
+		echo "   ⚠️  Could not reach AI health endpoint at $$AI_HEALTH_URL"; \
 	fi; \
 	echo ""; \
 	echo "=== Seed Data Status ==="; \

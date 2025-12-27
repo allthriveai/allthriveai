@@ -21,6 +21,7 @@ import {
   loginToProduction,
   waitForChatReady,
   cleanupTestData,
+  purgeCeleryTasks,
   createConsoleErrorCollector,
   PROD_URL,
   API_URL,
@@ -68,6 +69,9 @@ test.describe('Production Smoke Tests', () => {
       avatarIds: createdAvatarIds,
       battleIds: createdBattleIds,
     });
+
+    // Purge any hanging Celery tasks to prevent production issues after test failures
+    await purgeCeleryTasks();
   });
 
   test('Test 1: URL paste triggers project creation flow', async ({ page }) => {
@@ -226,12 +230,23 @@ test.describe('Production Smoke Tests', () => {
         console.log('✓ Avatar generated successfully');
       }
     } else {
-      // Avatar UI didn't appear - check for errors
+      // STRICT: Avatar UI must appear - this is a critical failure
+      // If it doesn't appear, something is wrong with the chat or avatar flow
       const pageContent = await page.locator('body').textContent();
-      const hasError =
-        pageContent?.includes('Error') || pageContent?.includes('error');
-      expect(hasError).toBe(false);
-      console.log('⚠ Avatar creation UI did not appear');
+
+      // Log what we see for debugging
+      console.log('Avatar UI did not appear. Page content:', pageContent?.slice(0, 500));
+
+      // Check for specific errors
+      if (pageContent?.includes('Error') || pageContent?.includes('error')) {
+        throw new Error('Avatar creation failed with error on page');
+      }
+
+      // Fail the test - avatar UI not appearing is a critical issue
+      throw new Error(
+        'Avatar creation UI did not appear after sending "create an avatar" message. ' +
+        'This indicates the AI chat or avatar flow is broken.'
+      );
     }
 
     // STRICT: Check for any critical console errors during the flow
@@ -394,6 +409,40 @@ test.describe('Production Health Check', () => {
     expect(response.ok()).toBe(true);
   });
 
+  test('AI providers are connected', async ({ request }) => {
+    const response = await request.get(`${API_URL}/api/v1/health/ai/`);
+
+    // AI health endpoint should respond
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+
+    // Log the response for debugging
+    console.log('AI Health Response:', JSON.stringify(data, null, 2));
+
+    // At least one of OpenAI or Gemini must be working (we have fallbacks)
+    const openaiOk = data.providers?.openai?.status === 'ok';
+    const geminiOk = data.providers?.gemini?.status === 'ok';
+
+    if (!openaiOk && !geminiOk) {
+      throw new Error(
+        `Both AI providers are down!\n` +
+        `OpenAI: ${JSON.stringify(data.providers?.openai)}\n` +
+        `Gemini: ${JSON.stringify(data.providers?.gemini)}`
+      );
+    }
+
+    // Log which models are available
+    if (data.models?.openai) {
+      console.log('OpenAI models:', JSON.stringify(data.models.openai));
+    }
+    if (data.models?.gemini) {
+      console.log('Gemini models:', JSON.stringify(data.models.gemini));
+    }
+
+    console.log('✓ AI providers connected');
+  });
+
   test('Frontend is reachable', async ({ page }) => {
     const response = await page.goto(PROD_URL);
     expect(response?.ok()).toBe(true);
@@ -408,8 +457,9 @@ test.describe('Production Health Check', () => {
       },
     });
 
-    // 401 means endpoint exists and is configured
+    // 401 means endpoint exists and is configured (invalid key)
+    // 429 means rate limited (still indicates endpoint exists)
     // 500 would mean SMOKE_TEST_API_KEY is not set
-    expect(response.status()).toBe(401);
+    expect([401, 429]).toContain(response.status());
   });
 });

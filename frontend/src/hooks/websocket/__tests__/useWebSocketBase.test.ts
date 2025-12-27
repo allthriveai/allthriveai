@@ -497,4 +497,126 @@ describe('useWebSocketBase', () => {
       });
     });
   });
+
+  describe('stale connection cancellation', () => {
+    it('cancels pending connection when disconnect is called during token fetch', async () => {
+      // Make token fetch slow to simulate in-flight connection
+      let resolveTokenFetch: (value: unknown) => void;
+      mockFetch.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveTokenFetch = resolve;
+          })
+      );
+
+      const onConnected = vi.fn();
+      const { result } = renderHook(() =>
+        useWebSocketBase({
+          ...defaultOptions,
+          onConnected,
+        })
+      );
+
+      // Connection is in progress (fetching token)
+      expect(result.current.isConnecting).toBe(true);
+
+      // Disconnect while token fetch is pending
+      act(() => {
+        result.current.disconnect();
+      });
+
+      // Now resolve the token fetch
+      act(() => {
+        resolveTokenFetch!({
+          ok: true,
+          status: 200,
+          json: async () => ({ connection_token: 'test-token-123' }),
+        });
+      });
+
+      // Wait a bit for any async operations
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Should NOT have created a WebSocket because the connection was cancelled
+      expect(MockWebSocket.instances.length).toBe(0);
+      expect(onConnected).not.toHaveBeenCalled();
+    });
+
+    it('closes stale socket when it opens after disconnect was called', async () => {
+      const onConnected = vi.fn();
+      const { result } = renderHook(() =>
+        useWebSocketBase({
+          ...defaultOptions,
+          onConnected,
+        })
+      );
+
+      await vi.waitFor(() => {
+        expect(MockWebSocket.instances.length).toBeGreaterThan(0);
+      });
+
+      const ws = MockWebSocket.instances[0];
+
+      // Disconnect before the socket opens
+      act(() => {
+        result.current.disconnect();
+      });
+
+      // Now simulate the socket opening (this is a stale connection)
+      act(() => {
+        ws.simulateOpen();
+      });
+
+      // The stale socket should be closed, onConnected should NOT be called
+      expect(onConnected).not.toHaveBeenCalled();
+      expect(result.current.isConnected).toBe(false);
+    });
+
+    it('uses latest reconnect attempt count for retries', async () => {
+      vi.useFakeTimers();
+
+      const onReconnecting = vi.fn();
+      const { result } = renderHook(() =>
+        useWebSocketBase({
+          ...defaultOptions,
+          onReconnecting,
+          autoReconnect: true,
+          maxReconnectAttempts: 5,
+          initialReconnectDelay: 100,
+          requiresAuth: false,
+        })
+      );
+
+      await vi.waitFor(() => {
+        expect(MockWebSocket.instances.length).toBeGreaterThan(0);
+      });
+
+      // Open then close (triggers reconnect)
+      act(() => {
+        MockWebSocket.instances[0]?.simulateOpen();
+      });
+
+      act(() => {
+        MockWebSocket.instances[0]?.simulateClose(1006, 'Abnormal closure');
+      });
+
+      // Reconnect should be scheduled
+      expect(onReconnecting).toHaveBeenCalledWith(1, expect.any(Number));
+
+      // Disconnect to cancel the pending reconnect
+      act(() => {
+        result.current.disconnect();
+      });
+
+      // Advance timers past the reconnect delay
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Should not have created a new connection (reconnect was cancelled)
+      expect(MockWebSocket.instances.length).toBe(1); // Only the original instance
+
+      vi.useRealTimers();
+    });
+  });
 });

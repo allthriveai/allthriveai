@@ -280,6 +280,51 @@ export function createConsoleErrorCollector(page: Page): ConsoleErrorCollector {
 }
 
 /**
+ * Purge Celery tasks to clean up after smoke tests.
+ * This prevents hanging tasks from affecting production after test failures.
+ */
+export async function purgeCeleryTasks(): Promise<{
+  success: boolean;
+  revokedTasks?: number;
+  error?: string;
+}> {
+  if (!SMOKE_TEST_KEY) {
+    console.log('⚠ Skipping Celery cleanup: PROD_SMOKE_TEST_KEY not configured');
+    return { success: true };
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/v1/auth/smoke-test/cleanup/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Smoke-Test-Key': SMOKE_TEST_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      // 429 = rate limited, which is fine - just means we already cleaned up recently
+      if (response.status === 429) {
+        console.log('⚠ Celery cleanup rate limited (already ran recently)');
+        return { success: true };
+      }
+      const text = await response.text();
+      console.error(`✗ Celery cleanup failed: ${response.status} ${text}`);
+      return { success: false, error: `${response.status}: ${text}` };
+    }
+
+    const data = await response.json();
+    console.log(
+      `✓ Celery cleanup: ${data.details?.revokedTasks || 0} tasks revoked`
+    );
+    return { success: true, revokedTasks: data.details?.revokedTasks || 0 };
+  } catch (e) {
+    console.error(`✗ Celery cleanup error: ${e}`);
+    return { success: false, error: String(e) };
+  }
+}
+
+/**
  * Cleanup test data created during smoke tests
  */
 export async function cleanupTestData(
