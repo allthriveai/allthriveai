@@ -1273,7 +1273,7 @@ jobs:
       - name: Run Production E2E Smoke Tests
         if: steps.check-config.outputs.should_run == 'true'
         working-directory: frontend
-        continue-on-error: true
+        # Removed continue-on-error - avatar/AI failures should block deploy
         env:
           PROD_URL: https://allthrive.ai
           API_URL: https://api.allthrive.ai

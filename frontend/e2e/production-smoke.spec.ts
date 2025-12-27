@@ -21,6 +21,7 @@ import {
   loginToProduction,
   waitForChatReady,
   cleanupTestData,
+  purgeCeleryTasks,
   createConsoleErrorCollector,
   PROD_URL,
   API_URL,
@@ -68,6 +69,9 @@ test.describe('Production Smoke Tests', () => {
       avatarIds: createdAvatarIds,
       battleIds: createdBattleIds,
     });
+
+    // Purge any hanging Celery tasks to prevent production issues after test failures
+    await purgeCeleryTasks();
   });
 
   test('Test 1: URL paste triggers project creation flow', async ({ page }) => {
