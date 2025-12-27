@@ -760,3 +760,179 @@ class TestRegenerateExerciseView:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestSectionsOrganizationView:
+    """Tests for the sections organization endpoint."""
+
+    def test_get_sections_organization_requires_auth(self, api_client):
+        """Unauthenticated requests should return 401."""
+        response = api_client.get('/api/v1/me/learning-paths/sections-organization/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_sections_organization_empty(self, api_client, user):
+        """Returns empty sections when user has no organization set."""
+        api_client.force_authenticate(user=user)
+
+        response = api_client.get('/api/v1/me/learning-paths/sections-organization/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sectionsOrganization'] is None
+        assert 'topics' in response.data
+
+    def test_get_sections_organization_with_data(self, api_client, user, learner_profile):
+        """Returns saved sections organization."""
+        api_client.force_authenticate(user=user)
+
+        # Set up sections organization
+        learner_profile.sections_organization = {
+            'version': 1,
+            'sections': [
+                {
+                    'id': 'section-1',
+                    'title': 'My Section',
+                    'isCollapsed': False,
+                    'pathSlugs': ['path-1', 'path-2'],
+                }
+            ],
+        }
+        learner_profile.save()
+
+        response = api_client.get('/api/v1/me/learning-paths/sections-organization/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sectionsOrganization'] is not None
+        assert response.data['sectionsOrganization']['version'] == 1
+        assert len(response.data['sectionsOrganization']['sections']) == 1
+        assert response.data['sectionsOrganization']['sections'][0]['title'] == 'My Section'
+
+    def test_patch_sections_organization_requires_auth(self, api_client):
+        """Unauthenticated requests should return 401."""
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': {'version': 1, 'sections': []}},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_patch_sections_organization_success(self, api_client, user):
+        """Successfully saves sections organization."""
+        api_client.force_authenticate(user=user)
+
+        sections_data = {
+            'version': 1,
+            'sections': [
+                {
+                    'id': 'section-abc',
+                    'title': 'Beginner Paths',
+                    'isCollapsed': False,
+                    'pathSlugs': ['intro-to-ai', 'prompt-basics'],
+                },
+                {
+                    'id': 'section-def',
+                    'title': 'Advanced Topics',
+                    'isCollapsed': True,
+                    'pathSlugs': ['ml-deep-dive'],
+                },
+            ],
+        }
+
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': sections_data},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == 'success'
+
+        # Verify it was saved
+        profile = LearnerProfile.objects.get(user=user)
+        assert profile.sections_organization is not None
+        assert profile.sections_organization['version'] == 1
+        assert len(profile.sections_organization['sections']) == 2
+
+    def test_patch_sections_organization_reset_to_null(self, api_client, user, learner_profile):
+        """Can reset sections organization to null."""
+        api_client.force_authenticate(user=user)
+
+        # First set some data
+        learner_profile.sections_organization = {'version': 1, 'sections': []}
+        learner_profile.save()
+
+        # Then reset to null
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': None},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        learner_profile.refresh_from_db()
+        assert learner_profile.sections_organization is None
+
+    def test_patch_sections_organization_invalid_structure(self, api_client, user):
+        """Rejects invalid sections structure."""
+        api_client.force_authenticate(user=user)
+
+        # Missing required 'version' field
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {'sectionsOrganization': {'sections': []}},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_sections_organization_invalid_section(self, api_client, user):
+        """Rejects sections missing required fields."""
+        api_client.force_authenticate(user=user)
+
+        # Section missing 'title' field
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {
+                'sectionsOrganization': {
+                    'version': 1,
+                    'sections': [
+                        {
+                            'id': 'section-1',
+                            # missing 'title'
+                            'isCollapsed': False,
+                            'pathSlugs': [],
+                        }
+                    ],
+                }
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_sections_organization_creates_profile_if_missing(self, api_client, db):
+        """Creates learner profile if user doesn't have one."""
+        # Create a fresh user with no profile
+        new_user = User.objects.create_user(
+            username='noprofileuser',
+            email='noprofile@example.com',
+            password='testpass123',
+        )
+        # Delete any auto-created profile
+        LearnerProfile.objects.filter(user=new_user).delete()
+
+        api_client.force_authenticate(user=new_user)
+
+        response = api_client.patch(
+            '/api/v1/me/learning-paths/sections-organization/',
+            {
+                'sectionsOrganization': {
+                    'version': 1,
+                    'sections': [],
+                }
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert LearnerProfile.objects.filter(user=new_user).exists()

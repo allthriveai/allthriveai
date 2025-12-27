@@ -12,6 +12,18 @@ router.register(r'me/concept-mastery', views.UserConceptMasteryViewSet, basename
 router.register(r'admin/learning/lessons', views.AdminLessonViewSet, basename='admin-lessons')
 
 urlpatterns = [
+    # Section organization endpoints - MUST come before router to avoid conflict with me/learning-paths/<pk>/
+    path(
+        'me/learning-paths/sections-organization/',
+        views.SectionsOrganizationView.as_view(),
+        name='sections-organization',
+    ),
+    path(
+        'me/learning-paths/reorder-sections/',
+        views.ReorderSectionsView.as_view(),
+        name='reorder-sections',
+    ),
+    # Router endpoints (includes me/learning-paths/<pk>/ which would otherwise match above)
     path('', include(router.urls)),
     path('users/<str:username>/learning-paths/', views.UserLearningPathsView.as_view(), name='user-learning-paths'),
     path(
@@ -28,17 +40,6 @@ urlpatterns = [
     # Structured learning path endpoints
     path('me/structured-path/', views.StructuredPathView.as_view(), name='structured-path'),
     path('me/learning-setup/', views.LearningSetupView.as_view(), name='learning-setup'),
-    # Section organization endpoints - drag-and-drop reordering
-    path(
-        'me/learning-paths/sections-organization/',
-        views.SectionsOrganizationView.as_view(),
-        name='sections-organization',
-    ),
-    path(
-        'me/learning-paths/reorder-sections/',
-        views.ReorderSectionsView.as_view(),
-        name='reorder-sections',
-    ),
     path('learning/projects/', views.ProjectLearningView.as_view(), name='learning-projects'),
     path(
         'learning/projects/<int:project_id>/used/',

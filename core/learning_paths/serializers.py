@@ -821,91 +821,45 @@ class CreateLessonRatingSerializer(serializers.Serializer):
 
 class SectionOrganizationSerializer(serializers.Serializer):
     """
-    Serializer for validating user-customized section organization.
+    Serializer for validating user-customized section organization for saved learning paths.
 
-    Structure:
+    Structure (simplified for path library):
     {
         "version": 1,
         "sections": [
             {
                 "id": "uuid-1",
-                "type": "section",
                 "title": "Getting Started",
-                "description": "...",
-                "estimatedMinutes": 120,
                 "isCollapsed": false,
-                "color": "cyan",
-                "children": [
-                    {"type": "topic", "topicSlug": "rag-fundamentals"},
-                    {"type": "section", "id": "uuid-2", ...}  # nested
-                ]
+                "pathSlugs": ["intro-to-ai", "prompt-basics"]
             }
         ]
     }
     """
 
-    version = serializers.IntegerField(default=1)
+    version = serializers.IntegerField(required=True)
     sections = serializers.ListField(child=serializers.DictField(), default=list)
 
     def validate_sections(self, value):
-        """Validate section structure with nesting limit."""
-        self._validate_sections_recursive(value, depth=0)
+        """Validate section structure."""
+        for section in value:
+            # Validate required fields for sections
+            required_fields = ['id', 'title']
+            for field in required_fields:
+                if field not in section:
+                    raise serializers.ValidationError(f"Section missing required field: '{field}'")
+
+            # Validate isCollapsed is boolean if present
+            if 'isCollapsed' in section:
+                if not isinstance(section['isCollapsed'], bool):
+                    raise serializers.ValidationError('isCollapsed must be a boolean')
+
+            # Validate pathSlugs is a list if present
+            if 'pathSlugs' in section:
+                if not isinstance(section['pathSlugs'], list):
+                    raise serializers.ValidationError('pathSlugs must be a list')
+                for slug in section['pathSlugs']:
+                    if not isinstance(slug, str):
+                        raise serializers.ValidationError('Each pathSlug must be a string')
+
         return value
-
-    def _validate_sections_recursive(self, sections, depth):
-        """
-        Helper for recursive validation.
-
-        DRF validators only take (self, value), so we use a separate helper
-        method for recursive validation with depth tracking.
-        """
-        if depth > 2:
-            raise serializers.ValidationError('Section nesting limited to 2 levels')
-
-        for section in sections:
-            section_type = section.get('type')
-
-            if section_type == 'section':
-                # Validate required fields for sections
-                required_fields = ['id', 'title', 'children']
-                for field in required_fields:
-                    if field not in section:
-                        raise serializers.ValidationError(f"Section missing required field: '{field}'")
-
-                # Validate optional fields
-                if 'estimatedMinutes' in section:
-                    if not isinstance(section['estimatedMinutes'], int | float):
-                        raise serializers.ValidationError('estimatedMinutes must be a number')
-                    if section['estimatedMinutes'] < 0:
-                        raise serializers.ValidationError('estimatedMinutes cannot be negative')
-
-                if 'isCollapsed' in section:
-                    if not isinstance(section['isCollapsed'], bool):
-                        raise serializers.ValidationError('isCollapsed must be a boolean')
-
-                # Recursively validate children that are sections
-                children = section.get('children', [])
-                if not isinstance(children, list):
-                    raise serializers.ValidationError('children must be a list')
-
-                nested_sections = [c for c in children if isinstance(c, dict) and c.get('type') == 'section']
-                if nested_sections:
-                    self._validate_sections_recursive(nested_sections, depth + 1)
-
-                # Validate topic references
-                for child in children:
-                    if not isinstance(child, dict):
-                        raise serializers.ValidationError('Each child must be an object')
-                    if child.get('type') == 'topic':
-                        if 'topicSlug' not in child:
-                            raise serializers.ValidationError("Topic reference missing 'topicSlug'")
-
-            elif section_type == 'topic':
-                # Topic at root level (shouldn't happen per schema, but validate anyway)
-                if 'topicSlug' not in section:
-                    raise serializers.ValidationError("Topic reference missing 'topicSlug'")
-
-            else:
-                raise serializers.ValidationError(
-                    f"Invalid section type: '{section_type}'. Must be 'section' or 'topic'."
-                )
