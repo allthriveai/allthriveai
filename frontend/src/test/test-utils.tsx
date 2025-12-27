@@ -112,7 +112,7 @@ export function createMockWebSocket() {
   const mock = {
     send: vi.fn(),
     close: vi.fn(),
-    readyState: WebSocket.OPEN,
+    readyState: WebSocket.OPEN as number,
 
     // Property setters to capture handlers
     set onmessage(handler: ((event: MessageEvent) => void) | null) {

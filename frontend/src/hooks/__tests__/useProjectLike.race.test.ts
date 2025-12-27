@@ -244,7 +244,7 @@ describe('useProjectLike - Race Condition Tests', () => {
       // This test verifies that setHeartCount uses prev => ... pattern
       // to avoid race conditions with concurrent updates
 
-      let resolveCall: ((value: unknown) => void) | null = null;
+      let resolveCall: ((value: { liked: boolean; heartCount: number }) => void) | null = null;
       vi.mocked(toggleProjectLike).mockImplementation(() =>
         new Promise((r) => { resolveCall = r; })
       );
