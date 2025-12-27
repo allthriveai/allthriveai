@@ -21,9 +21,11 @@ import {
   loginToProduction,
   waitForChatReady,
   cleanupTestData,
+  createConsoleErrorCollector,
   PROD_URL,
   API_URL,
 } from './helpers/production-auth';
+import type { ConsoleErrorCollector } from './helpers/production-auth';
 
 // Skip tests if not configured for production
 const isProductionConfigured = !!process.env.PROD_SMOKE_TEST_KEY;
@@ -32,6 +34,7 @@ const isProductionConfigured = !!process.env.PROD_SMOKE_TEST_KEY;
 let createdProjectIds: number[] = [];
 let createdAvatarIds: number[] = [];
 let createdBattleIds: number[] = [];
+let consoleCollector: ConsoleErrorCollector;
 
 test.describe('Production Smoke Tests', () => {
   test.skip(!isProductionConfigured, 'PROD_SMOKE_TEST_KEY not configured');
@@ -42,11 +45,23 @@ test.describe('Production Smoke Tests', () => {
     createdAvatarIds = [];
     createdBattleIds = [];
 
+    // Set up console error collection
+    consoleCollector = createConsoleErrorCollector(page);
+    consoleCollector.start();
+
     // Login to production
     await loginToProduction(page);
   });
 
   test.afterEach(async ({ page }) => {
+    // Stop console collection
+    consoleCollector.stop();
+
+    // Log any console errors for debugging
+    if (consoleCollector.hasErrors()) {
+      console.log(consoleCollector.getErrorsSummary());
+    }
+
     // Cleanup any test data created
     await cleanupTestData(page, {
       projectIds: createdProjectIds,
@@ -115,6 +130,9 @@ test.describe('Production Smoke Tests', () => {
   }) => {
     test.setTimeout(45000); // 45s total timeout
 
+    // Clear console errors from login phase
+    consoleCollector.clear();
+
     // Navigate to home
     await page.goto(`${PROD_URL}/home`);
     await page.waitForLoadState('domcontentloaded');
@@ -131,17 +149,18 @@ test.describe('Production Smoke Tests', () => {
       .first();
     await sendButton.click();
 
-    // Wait for avatar wizard/modal to appear
-    await page.waitForTimeout(5000);
-
-    // Look for avatar creation UI
+    // Wait for avatar wizard/modal to appear (use waitFor instead of arbitrary timeout)
     const avatarPromptInput = page
       .locator(
         'textarea[placeholder*="Describe"], textarea[placeholder*="avatar"], input[placeholder*="avatar"]'
       )
       .first();
 
-    const hasAvatarUI = await avatarPromptInput.isVisible().catch(() => false);
+    // Wait up to 10s for avatar UI to appear
+    const hasAvatarUI = await avatarPromptInput
+      .waitFor({ state: 'visible', timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
 
     if (hasAvatarUI) {
       // Fill in a simple prompt
@@ -175,7 +194,14 @@ test.describe('Production Smoke Tests', () => {
             break;
           }
 
-          // Check for error
+          // Check for console errors (catches "Not connected" and WebSocket issues)
+          if (consoleCollector.hasCriticalErrors()) {
+            throw new Error(
+              `Critical console error during avatar generation:\n${consoleCollector.getErrorsSummary()}`
+            );
+          }
+
+          // Check for error in UI
           const hasError = await page
             .getByText('error', { exact: false })
             .isVisible()
@@ -194,13 +220,10 @@ test.describe('Production Smoke Tests', () => {
           await page.waitForTimeout(1000);
         }
 
-        // We don't require avatar to complete (external AI service may be slow)
-        // Just verify no critical errors occurred
-        console.log(
-          avatarGenerated
-            ? '✓ Avatar generated successfully'
-            : '⚠ Avatar generation in progress (timed out waiting)'
-        );
+        // STRICT: Avatar generation must succeed within 30 seconds
+        // If external AI is slow, we should know about it
+        expect(avatarGenerated).toBe(true);
+        console.log('✓ Avatar generated successfully');
       }
     } else {
       // Avatar UI didn't appear - check for errors
@@ -210,6 +233,9 @@ test.describe('Production Smoke Tests', () => {
       expect(hasError).toBe(false);
       console.log('⚠ Avatar creation UI did not appear');
     }
+
+    // STRICT: Check for any critical console errors during the flow
+    expect(consoleCollector.hasCriticalErrors()).toBe(false);
 
     // Verify no technical errors on page
     const technicalErrors = ['TypeError', 'Exception', 'Traceback', '500'];

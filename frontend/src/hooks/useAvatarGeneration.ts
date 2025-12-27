@@ -68,6 +68,13 @@ export function useAvatarGeneration({
   const onAchievementUnlockedRef = useRef(onAchievementUnlocked);
   const sessionRef = useRef<AvatarGenerationSession | null>(null);
   const sendRef = useRef<((message: unknown) => boolean) | null>(null);
+  const isConnectedRef = useRef(false);
+
+  // Promise resolver for waiting on WebSocket connection
+  const connectionResolverRef = useRef<{
+    resolve: () => void;
+    reject: (error: string) => void;
+  } | null>(null);
 
   // Keep refs in sync with props
   useEffect(() => {
@@ -160,11 +167,20 @@ export function useAvatarGeneration({
 
   // Handle connection established
   const handleConnected = useCallback(async () => {
+    // Update ref IMMEDIATELY (synchronous) so generateAvatar sees the connection
+    isConnectedRef.current = true;
+
     setState((prev) => ({
       ...prev,
       isConnected: true,
       isConnecting: false,
     }));
+
+    // Resolve any pending connection promise
+    if (connectionResolverRef.current) {
+      connectionResolverRef.current.resolve();
+      connectionResolverRef.current = null;
+    }
 
     // Check if session status changed while we were disconnected
     const currentSession = sessionRef.current;
@@ -194,11 +210,21 @@ export function useAvatarGeneration({
       isConnecting: false,
       error: errorMsg,
     }));
+
+    // Reject any pending connection promise
+    if (connectionResolverRef.current) {
+      connectionResolverRef.current.reject(errorMsg);
+      connectionResolverRef.current = null;
+    }
+
     onErrorRef.current?.(errorMsg);
   }, []);
 
   // Handle disconnect
   const handleDisconnected = useCallback(() => {
+    // Update ref IMMEDIATELY (synchronous)
+    isConnectedRef.current = false;
+
     setState((prev) => ({
       ...prev,
       isConnected: false,
@@ -230,14 +256,44 @@ export function useAvatarGeneration({
     sendRef.current = send;
   }, [send]);
 
-  // Sync WebSocket state with local state
+  // Sync WebSocket state with local state and ref
   useEffect(() => {
+    isConnectedRef.current = isConnected;
     setState((prev) => ({
       ...prev,
       isConnected,
       isConnecting,
     }));
   }, [isConnected, isConnecting]);
+
+  // Helper to wait for WebSocket connection
+  const waitForConnection = useCallback((): Promise<void> => {
+    // If already connected, resolve immediately (use ref for current value)
+    if (isConnectedRef.current) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      // Set up timeout for connection
+      const timeout = setTimeout(() => {
+        if (connectionResolverRef.current) {
+          connectionResolverRef.current = null;
+          reject('Connection timeout. Please try again.');
+        }
+      }, 20000); // 20 second timeout
+
+      connectionResolverRef.current = {
+        resolve: () => {
+          clearTimeout(timeout);
+          resolve();
+        },
+        reject: (error: string) => {
+          clearTimeout(timeout);
+          reject(error);
+        },
+      };
+    });
+  }, []);
 
   // Start a new avatar generation session (or resume existing one)
   const startSession = useCallback(
@@ -260,6 +316,10 @@ export function useAvatarGeneration({
             currentIteration: null,
           }));
           setConversationId(existingSession.conversationId);
+
+          // Wait for WebSocket to actually connect
+          await waitForConnection();
+
           return existingSession;
         }
 
@@ -279,6 +339,9 @@ export function useAvatarGeneration({
         // Set conversation ID to trigger WebSocket connection
         setConversationId(session.conversationId);
 
+        // Wait for WebSocket to actually connect before returning
+        await waitForConnection();
+
         return session;
       } catch (error: unknown) {
         const message =
@@ -292,13 +355,14 @@ export function useAvatarGeneration({
         return null;
       }
     },
-    []
+    [waitForConnection]
   );
 
   // Send a prompt to generate an avatar
   const generateAvatar = useCallback(
     (prompt: string, referenceImageUrl?: string) => {
-      if (!isConnected || !sendRef.current) {
+      // Use ref to get current connection state (avoids stale closure issue)
+      if (!isConnectedRef.current || !sendRef.current) {
         onErrorRef.current?.('Not connected. Please try again.');
         return;
       }
@@ -322,7 +386,7 @@ export function useAvatarGeneration({
         onErrorRef.current?.('Failed to send prompt');
       }
     },
-    [isConnected]
+    [] // No dependencies needed - uses refs for current values
   );
 
   // Accept an iteration and save it as the user's avatar

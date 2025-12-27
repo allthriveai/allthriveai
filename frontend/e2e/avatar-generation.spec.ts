@@ -14,7 +14,8 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { loginViaAPI } from './helpers';
+import { loginViaAPI, createConsoleErrorCollector } from './helpers';
+import type { ConsoleErrorCollector } from './helpers';
 
 // Timeouts
 const WS_CONNECT_TIMEOUT = 15000;
@@ -118,8 +119,16 @@ test.describe('Avatar Generation - Session Creation', () => {
 });
 
 test.describe('Avatar Generation - WebSocket Connection', () => {
+  let consoleCollector: ConsoleErrorCollector;
+
   test.beforeEach(async ({ page }) => {
     await loginViaAPI(page);
+    consoleCollector = createConsoleErrorCollector(page);
+    consoleCollector.start();
+  });
+
+  test.afterEach(async () => {
+    consoleCollector.stop();
   });
 
   test('avatar WebSocket connects successfully', async ({ page }) => {
@@ -156,6 +165,9 @@ test.describe('Avatar Generation - WebSocket Connection', () => {
     page,
   }) => {
     test.setTimeout(60000);
+
+    // Clear console errors from previous actions
+    consoleCollector.clear();
 
     // GIVEN: I am on the home page with chat
     await page.goto('/home');
@@ -195,15 +207,17 @@ test.describe('Avatar Generation - WebSocket Connection', () => {
       .first();
     await sendButton.click();
 
-    // Wait for avatar UI to appear
-    await page.waitForTimeout(3000);
-
-    // Look for avatar prompt input or template selection
+    // Wait for avatar UI to appear (use waitFor instead of arbitrary timeout)
     const avatarPromptInput = page
       .locator('textarea[placeholder*="Describe"], textarea[placeholder*="avatar"]')
       .first();
 
-    if (await avatarPromptInput.isVisible()) {
+    const hasAvatarUI = await avatarPromptInput
+      .waitFor({ state: 'visible', timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasAvatarUI) {
       // Fill in a prompt and generate
       await avatarPromptInput.fill('A friendly robot with blue eyes');
 
@@ -215,10 +229,10 @@ test.describe('Avatar Generation - WebSocket Connection', () => {
         .first();
       if (await generateButton.isVisible()) {
         await generateButton.click();
-      }
 
-      // Wait for task to be queued
-      await page.waitForTimeout(5000);
+        // Wait for task to be queued or avatar to be generated
+        await page.waitForTimeout(5000);
+      }
     }
 
     // THEN: Check that WebSocket events were received
@@ -230,11 +244,18 @@ test.describe('Avatar Generation - WebSocket Connection', () => {
     // If avatar generation was triggered, we might also see 'avatar_task_queued'
     console.log('Received WebSocket events:', receivedEvents);
 
-    // Verify no error events
-    const hasError = receivedEvents.some(
+    // Verify no error events in WebSocket messages
+    const hasWsError = receivedEvents.some(
       (e: string) => e === 'error' || e === 'avatar_error'
     );
-    expect(hasError).toBe(false);
+    expect(hasWsError).toBe(false);
+
+    // CRITICAL: Check for console errors like "Not connected. Please try again."
+    // This catches the race condition bug that was previously missed
+    if (consoleCollector.hasCriticalErrors()) {
+      console.log(consoleCollector.getErrorsSummary());
+    }
+    expect(consoleCollector.hasCriticalErrors()).toBe(false);
   });
 });
 

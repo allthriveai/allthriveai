@@ -1294,6 +1294,7 @@ class AIProvider:
         size: str = '1024x1024',
         quality: str = 'medium',
         timeout: int = 60,
+        reference_image: bytes | None = None,
     ) -> tuple[bytes | None, str | None]:
         """
         Generate an image using OpenAI's gpt-image-1 model.
@@ -1306,18 +1307,20 @@ class AIProvider:
             size: Image size (1024x1024, 1536x1024, 1024x1536)
             quality: Quality level (low, medium, high)
             timeout: Request timeout in seconds
+            reference_image: Optional reference image bytes for style/likeness guidance
 
         Returns:
             Tuple of (image_bytes, mime_type) or (None, None) on error
         """
         import base64
+        import io
 
         import httpx
 
         start_time = time.time()
 
         logger.info(
-            f'OpenAI image generation started: model={model}',
+            f'OpenAI image generation started: model={model}, has_reference={reference_image is not None}',
             extra={
                 'provider': 'openai',
                 'model': model,
@@ -1326,6 +1329,7 @@ class AIProvider:
                 'prompt_length': len(prompt),
                 'size': size,
                 'quality': quality,
+                'has_reference_image': reference_image is not None,
             },
         )
 
@@ -1333,9 +1337,21 @@ class AIProvider:
             # Use OpenAI client for image generation
             client = self._initialize_openai_client()
 
-            # gpt-image-1 and gpt-image-1.5 don't support response_format parameter
-            # They only return URLs. DALL-E 3 supports b64_json.
-            if model.startswith('gpt-image'):
+            # If reference image provided, use images.edit API for gpt-image models
+            if reference_image and model.startswith('gpt-image'):
+                # Create a file-like object from the bytes
+                image_file = io.BytesIO(reference_image)
+                image_file.name = 'reference.png'
+
+                response = client.images.edit(
+                    model=model,
+                    image=image_file,
+                    prompt=prompt,
+                    size=size,
+                    n=1,
+                )
+            elif model.startswith('gpt-image'):
+                # gpt-image-1 and gpt-image-1.5 without reference image
                 response = client.images.generate(
                     model=model,
                     prompt=prompt,

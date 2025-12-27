@@ -10,7 +10,7 @@
  * - PROD_SMOKE_TEST_KEY: API key for smoke test endpoint
  */
 
-import { Page } from '@playwright/test';
+import { Page, ConsoleMessage } from '@playwright/test';
 
 // Production URLs from environment
 export const PROD_URL = process.env.PROD_URL || 'https://allthrive.ai';
@@ -171,6 +171,112 @@ export async function sendChatMessage(
   }
 
   return '';
+}
+
+/**
+ * Console error collector for detecting JavaScript errors during tests.
+ * Use this to catch errors that appear in console but not in UI.
+ */
+export interface ConsoleErrorCollector {
+  errors: string[];
+  warnings: string[];
+  start: () => void;
+  stop: () => void;
+  hasErrors: () => boolean;
+  hasCriticalErrors: () => boolean;
+  getErrorsSummary: () => string;
+  clear: () => void;
+}
+
+/**
+ * Create a console error collector for a page.
+ * Call start() before the test actions and check hasErrors() after.
+ *
+ * @example
+ * const consoleCollector = createConsoleErrorCollector(page);
+ * consoleCollector.start();
+ * // ... perform test actions ...
+ * expect(consoleCollector.hasCriticalErrors()).toBe(false);
+ */
+export function createConsoleErrorCollector(page: Page): ConsoleErrorCollector {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  let handler: ((msg: ConsoleMessage) => void) | null = null;
+
+  // Patterns that indicate critical errors we should fail tests for
+  const criticalErrorPatterns = [
+    /Not connected\. Please try again/i,
+    /WebSocket.*error/i,
+    /Failed to connect/i,
+    /Connection.*failed/i,
+    /TypeError/i,
+    /ReferenceError/i,
+    /Cannot read propert/i,
+    /undefined is not/i,
+    /null is not/i,
+    /Network error/i,
+    /500.*Internal Server Error/i,
+  ];
+
+  // Patterns to ignore (known benign warnings)
+  const ignorePatterns = [
+    /Download the React DevTools/i,
+    /componentWillReceiveProps has been renamed/i,
+    /findDOMNode is deprecated/i,
+    /ResizeObserver loop/i,
+  ];
+
+  const collector: ConsoleErrorCollector = {
+    errors,
+    warnings,
+
+    start() {
+      handler = (msg: ConsoleMessage) => {
+        const text = msg.text();
+
+        // Skip ignored patterns
+        if (ignorePatterns.some((pattern) => pattern.test(text))) {
+          return;
+        }
+
+        if (msg.type() === 'error') {
+          errors.push(text);
+        } else if (msg.type() === 'warning') {
+          warnings.push(text);
+        }
+      };
+      page.on('console', handler);
+    },
+
+    stop() {
+      if (handler) {
+        page.off('console', handler);
+        handler = null;
+      }
+    },
+
+    hasErrors() {
+      return errors.length > 0;
+    },
+
+    hasCriticalErrors() {
+      return errors.some((error) =>
+        criticalErrorPatterns.some((pattern) => pattern.test(error))
+      );
+    },
+
+    getErrorsSummary() {
+      if (errors.length === 0) return 'No console errors';
+      return `Console errors (${errors.length}):\n${errors.map((e) => `  - ${e}`).join('\n')}`;
+    },
+
+    clear() {
+      errors.length = 0;
+      warnings.length = 0;
+    },
+  };
+
+  return collector;
 }
 
 /**

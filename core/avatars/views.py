@@ -186,6 +186,10 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def active(self, request):
         """Get the user's active generation session."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
         session = (
             AvatarGenerationSession.objects.filter(
                 user=request.user, status__in=['generating', 'ready'], deleted_at__isnull=True
@@ -196,6 +200,14 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
 
         if not session:
             return Response({'detail': 'No active session.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Auto-abandon stale 'generating' sessions (older than 10 minutes)
+        if session.status == 'generating':
+            stale_threshold = timezone.now() - timedelta(minutes=10)
+            if session.created_at < stale_threshold:
+                session.status = 'abandoned'
+                session.save(update_fields=['status', 'updated_at'])
+                return Response({'detail': 'No active session.'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(AvatarGenerationSessionSerializer(session).data)
 
@@ -225,11 +237,22 @@ class AvatarGenerationSessionViewSet(viewsets.ReadOnlyModelViewSet):
                 existing.status = 'abandoned'
                 existing.save(update_fields=['status', 'updated_at'])
             else:
-                # Block if still generating
-                return Response(
-                    {'detail': 'You already have an active session.', 'session_id': existing.id},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                # Auto-abandon stale 'generating' sessions (older than 10 minutes)
+                # This handles cases where browser was closed mid-generation
+                from datetime import timedelta
+
+                from django.utils import timezone
+
+                stale_threshold = timezone.now() - timedelta(minutes=10)
+                if existing.created_at < stale_threshold:
+                    existing.status = 'abandoned'
+                    existing.save(update_fields=['status', 'updated_at'])
+                else:
+                    # Block if still actively generating
+                    return Response(
+                        {'detail': 'You already have an active session.', 'session_id': existing.id},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         serializer = AvatarGenerationSessionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

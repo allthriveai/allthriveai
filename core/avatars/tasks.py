@@ -195,17 +195,22 @@ def process_avatar_generation_task(
             except Exception as e:
                 logger.warning(f'Failed to download reference image: {e}', exc_info=True)
 
-        # Generate image using OpenAI
-        # - Production: gpt-image-1.5 (fast, requires org verification)
-        # - Local dev: dall-e-3 (works without verification)
+        # Generate image using OpenAI gpt-image-1.5
+        # Model configured in settings.AI_MODELS['openai']['avatar']
+        # Supports reference images via images.edit() API for "Make Me" mode
         start_time = time.time()
         ai = AIProvider(provider='openai', user_id=user_id)
-        image_model = 'dall-e-3' if settings.DEBUG else 'gpt-image-1.5'
+
+        # Get model from settings (defaults to gpt-image-1.5)
+        image_model = settings.AI_MODELS['openai'].get('avatar', 'gpt-image-1.5')
+
+        # Pass reference image for "Make Me" mode
         image_bytes, mime_type = ai.generate_image_openai(
             prompt=full_prompt,
             model=image_model,
             size='1024x1024',
-            quality='standard' if settings.DEBUG else 'medium',  # DALL-E 3 uses standard/hd
+            quality='medium',  # gpt-image-1.5 uses 'low', 'medium', 'high'
+            reference_image=reference_bytes,
         )
         latency_ms = int((time.time() - start_time) * 1000)
         text_response = None  # OpenAI doesn't return text with images
