@@ -135,8 +135,8 @@ class TestAPIResponsesMatchSchema:
 
     def test_projects_list_has_pagination(self, client):
         """Projects list should have pagination fields."""
-        response = client.get('/api/v1/projects/')
-        # May require auth, so just check status
+        response = client.get('/api/v1/me/projects/')
+        # Requires auth, so expect 401/403 for unauthenticated
         assert response.status_code in (200, 401, 403)
 
         if response.status_code == 200:
