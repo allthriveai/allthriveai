@@ -23,7 +23,7 @@ const exerciseTypeLabels: Record<LessonExercise['exerciseType'], string> = {
   ai_prompt: 'AI Prompt',
   code_review: 'Code Review',
   code: 'Code',
-  drag_sort: 'Drag & Sort',
+  drag_sort: 'Sort',
   connect_nodes: 'Connect Concepts',
   code_walkthrough: 'Code Walkthrough',
   timed_challenge: 'Timed Challenge',

@@ -4,7 +4,6 @@ Utility functions for Prompt Battles.
 Includes sanitization, validation, and helper functions.
 """
 
-import html
 import logging
 import re
 
@@ -54,8 +53,10 @@ def sanitize_prompt(prompt_text: str, max_length: int = 2000) -> str:
     # Remove HTML tags
     text = re.sub(r'<[^>]+>', '', text)
 
-    # Escape HTML entities
-    text = html.escape(text)
+    # Note: We intentionally do NOT call html.escape() here.
+    # The text is stored in the database and rendered by React as plain text,
+    # not as HTML. Using html.escape() would convert characters like ' to &#x27;
+    # which React would display literally instead of as an apostrophe.
 
     # Normalize whitespace (collapse multiple spaces/newlines)
     text = re.sub(r'\s+', ' ', text)

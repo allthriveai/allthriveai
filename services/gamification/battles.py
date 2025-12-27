@@ -407,7 +407,11 @@ class BattleService:
 
         except Exception as e:
             # Fallback to basic evaluation
-            print(f'AI evaluation error: {e}')
+            StructuredLogger.log_error(
+                message='AI evaluation error',
+                error=e,
+                extra={'challenge': challenge[:100], 'battle_type': battle_type},
+            )
             return 50.0, 'Unable to evaluate automatically. Default score applied.'
 
     def get_user_stats(self, user: User) -> dict[str, Any]:

@@ -367,14 +367,32 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
             },
         )
 
-        # Send judging results to room with full submission data
+        # CRITICAL: Prepare JSON-serializable results for WebSocket channel layer.
+        # BattleService.judge_battle() returns results containing 'submission' (Django model objects)
+        # which CANNOT be serialized by Redis channel layer. This caused TypeError:
+        # "can not serialize 'BattleSubmission' object" and battles getting stuck in reveal phase.
+        # We extract only primitive/dict fields that are JSON-serializable.
+        # See: https://github.com/allthriveai/allthriveai/issues/XXX
+        serializable_results = []
+        for r in submission_results:
+            serializable_results.append(
+                {
+                    'submission_id': r.get('submission_id'),
+                    'user_id': r.get('user_id'),
+                    'score': r.get('score'),
+                    'criteria_scores': r.get('criteria_scores'),
+                    'feedback': r.get('feedback', ''),
+                }
+            )
+
+        # Send judging results to room with serializable submission data
         async_to_sync(channel_layer.group_send)(
             group_name,
             {
                 'type': 'battle_event',
                 'event': 'judging_complete',
                 'winner_id': winner_id,
-                'results': submission_results,
+                'results': serializable_results,
             },
         )
 
