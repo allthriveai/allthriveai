@@ -233,6 +233,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ecs:DescribeServices
+                  - ecs:DescribeClusters
                   - ecs:UpdateService
                   - ecs:DescribeTaskDefinition
                   - ecs:RegisterTaskDefinition
@@ -324,7 +325,25 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:DeleteLogGroup
                   - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
                   - logs:TagResource
+                Resource: '*'
+        - PolicyName: EFSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticfilesystem:CreateFileSystem
+                  - elasticfilesystem:DeleteFileSystem
+                  - elasticfilesystem:DescribeFileSystems
+                  - elasticfilesystem:CreateMountTarget
+                  - elasticfilesystem:DeleteMountTarget
+                  - elasticfilesystem:DescribeMountTargets
+                  - elasticfilesystem:CreateAccessPoint
+                  - elasticfilesystem:DeleteAccessPoint
+                  - elasticfilesystem:DescribeAccessPoints
+                  - elasticfilesystem:TagResource
                 Resource: '*'
       Tags:
         - Key: Name
