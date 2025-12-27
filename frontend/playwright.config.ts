@@ -44,6 +44,17 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // Critical E2E tests - run on every PR to catch real-time regressions
+    {
+      name: 'critical',
+      testMatch: '**/critical/**/*.spec.ts',
+      timeout: 120 * 1000,
+      retries: 2,
+      use: {
+        ...devices['Desktop Chrome'],
+        trace: 'on-first-retry',
+      },
+    },
     // Regression tests - run on every PR to catch breaking changes
     // These test critical user flows and common failure points
     {

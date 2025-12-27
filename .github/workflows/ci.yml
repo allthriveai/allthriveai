@@ -394,6 +394,13 @@ jobs:
         env:
           CI: true
 
+      - name: Run Playwright critical tests
+        working-directory: frontend
+        timeout-minutes: 15
+        run: npx playwright test --project=critical
+        env:
+          CI: true
+
       - name: Run Playwright regression tests
         working-directory: frontend
         timeout-minutes: 15
