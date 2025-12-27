@@ -43,34 +43,6 @@ export async function waitForAuth(page: Page, timeoutMs = 10000) {
 }
 
 /**
- * Dismiss the Ava onboarding modal by setting localStorage keys
- * This prevents the modal from blocking E2E test interactions.
- * Must be called after login when we know the user ID.
- */
-export async function dismissOnboardingModal(page: Page, userId?: number | string) {
-  await page.evaluate((uid) => {
-    // If we have a user ID, set the user-specific Ava onboarding key
-    if (uid) {
-      const avaState = {
-        hasSeenModal: true,
-        completedAdventures: ['battle_pip', 'add_project', 'explore'],
-        isDismissed: true,
-        welcomePointsAwarded: true,
-      };
-      localStorage.setItem(`ava_onboarding_${uid}`, JSON.stringify(avaState));
-    }
-
-    // Also set the legacy keys for backwards compatibility
-    localStorage.setItem('allthrive_onboarding_dismissed', 'true');
-    localStorage.setItem('allthrive_onboarding_completed_adventures', JSON.stringify([
-      'welcome',
-      'personalize',
-      'first_project'
-    ]));
-  }, userId);
-}
-
-/**
  * Login via test API endpoint from within page context
  * This ensures cookies are properly set in the browser
  */
@@ -113,14 +85,8 @@ export async function loginViaAPI(page: Page) {
 
   console.log(`✓ Logged in as: ${loginResult.username} (ID: ${loginResult.userId})`);
 
-  // Dismiss onboarding modal with user ID to set correct localStorage key
-  await dismissOnboardingModal(page, loginResult.userId);
-
   // Reload to initialize AuthContext with the new cookies
   await page.reload({ waitUntil: 'domcontentloaded' });
-
-  // Re-dismiss onboarding modal after reload (localStorage persists, but ensure it's set)
-  await dismissOnboardingModal(page, loginResult.userId);
   await page.waitForTimeout(1500);
 }
 
@@ -197,14 +163,8 @@ export async function loginAsAdminViaAPI(page: Page) {
 
   console.log(`✓ Logged in as admin: ${loginResult.username} (ID: ${loginResult.userId})`);
 
-  // Dismiss onboarding modal with user ID to set correct localStorage key
-  await dismissOnboardingModal(page, loginResult.userId);
-
   // Reload to initialize AuthContext with the new cookies
   await page.reload({ waitUntil: 'domcontentloaded' });
-
-  // Re-dismiss onboarding modal after reload (localStorage persists, but ensure it's set)
-  await dismissOnboardingModal(page, loginResult.userId);
   await page.waitForTimeout(1500);
 }
 

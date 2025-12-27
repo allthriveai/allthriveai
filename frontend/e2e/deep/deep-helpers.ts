@@ -6,7 +6,6 @@
  */
 
 import { Page, Browser, BrowserContext, expect } from '@playwright/test';
-import { dismissOnboardingModal } from '../helpers';
 
 // ============================================================================
 // TIMEOUTS - Extended for AI operations
@@ -518,9 +517,7 @@ export async function loginAsSecondUser(page: Page): Promise<void> {
 
   console.log(`✓ Logged in as second user: ${loginResult.username}`);
 
-  await dismissOnboardingModal(page, loginResult.userId);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await dismissOnboardingModal(page, loginResult.userId);
   await page.waitForTimeout(1500);
 }
 

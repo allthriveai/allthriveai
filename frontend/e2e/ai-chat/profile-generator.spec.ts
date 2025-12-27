@@ -10,7 +10,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { loginViaAPI, waitForAuth, dismissOnboardingModal, TEST_USER } from '../helpers';
+import { loginViaAPI, waitForAuth, TEST_USER } from '../helpers';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -142,7 +142,6 @@ test.describe('Profile Generator with Drag & Drop Image Upload', () => {
   test.beforeEach(async ({ page }) => {
     await loginViaAPI(page);
     await waitForAuth(page);
-    await dismissOnboardingModal(page);
   });
 
   test.describe('Welcome Message', () => {
