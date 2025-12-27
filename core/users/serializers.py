@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from core.serializers.mixins import AnnotatedFieldMixin
 from core.taxonomy.models import Taxonomy
 from core.users.models import PersonalizationSettings, User, UserFollow
 
@@ -32,7 +33,7 @@ class UserMinimalSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class UserPublicSerializer(serializers.ModelSerializer):
+class UserPublicSerializer(AnnotatedFieldMixin, serializers.ModelSerializer):
     """Public user profile serializer.
 
     Includes public profile information that can be displayed
@@ -91,21 +92,17 @@ class UserPublicSerializer(serializers.ModelSerializer):
         return f'{obj.first_name} {obj.last_name}'.strip() or obj.username
 
     def get_is_following(self, obj):
-        """Check if the current user is following this user.
-
-        Uses annotated _is_following if available (set by view for N+1 prevention),
-        otherwise falls back to database query.
-        """
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            return False
-        if request.user.id == obj.id:
-            return None  # Can't follow yourself
-        # Use pre-annotated value if available (avoids N+1 in list views)
-        if hasattr(obj, '_is_following'):
-            return obj._is_following
-        # Fallback to query (for single-object serialization)
-        return UserFollow.objects.filter(follower=request.user, following=obj).exists()
+        """Check if the current user is following this user (N+1 safe)."""
+        return self.get_annotated_or_query(
+            obj=obj,
+            annotation_attr='_is_following',
+            fallback_query=lambda: UserFollow.objects.filter(
+                follower=self.context['request'].user, following=obj
+            ).exists(),
+            requires_auth=True,
+            self_check_field='id',
+            self_check_value=None,  # Can't follow yourself
+        )
 
 
 class UserFollowSerializer(serializers.ModelSerializer):
@@ -119,7 +116,7 @@ class UserFollowSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class FollowerSerializer(serializers.ModelSerializer):
+class FollowerSerializer(AnnotatedFieldMixin, serializers.ModelSerializer):
     """Serializer for listing followers."""
 
     user = UserMinimalSerializer(source='follower', read_only=True)
@@ -131,19 +128,15 @@ class FollowerSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_is_following(self, obj):
-        """Check if current user is following this follower back.
-
-        Uses annotated _is_following_back if available (set by view for N+1 prevention),
-        otherwise falls back to database query.
-        """
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            return False
-        # Use pre-annotated value if available (avoids N+1)
-        if hasattr(obj, '_is_following_back'):
-            return obj._is_following_back
-        # Fallback to query (for single-object serialization)
-        return UserFollow.objects.filter(follower=request.user, following=obj.follower).exists()
+        """Check if current user is following this follower back (N+1 safe)."""
+        return self.get_annotated_or_query(
+            obj=obj,
+            annotation_attr='_is_following_back',
+            fallback_query=lambda: UserFollow.objects.filter(
+                follower=self.context['request'].user, following=obj.follower
+            ).exists(),
+            requires_auth=True,
+        )
 
 
 class PersonalizationSettingsSerializer(serializers.ModelSerializer):

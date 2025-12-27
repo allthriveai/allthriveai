@@ -1,18 +1,14 @@
 /**
  * useCircleWebSocket - WebSocket hook for real-time circle activity updates
- * Connects to the circle activity WebSocket and dispatches events
+ *
+ * Connects to the circle activity WebSocket and dispatches events.
+ * Uses useWebSocketBase for connection management.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { buildWebSocketUrl } from '@/utils/websocket';
+import { useWebSocketBase } from '@/hooks/websocket';
 import type { CircleActivityEvent, CircleWebSocketActivityType, KudosType } from '@/types/models';
-
-// Constants
-const MAX_RECONNECT_ATTEMPTS = 5;
-const INITIAL_RECONNECT_DELAY = 1000;
-const MAX_RECONNECT_DELAY = 30000;
-const HEARTBEAT_INTERVAL = 30000;
 
 interface WebSocketMessage {
   event: string;
@@ -32,144 +28,59 @@ interface UseCircleWebSocketOptions {
   enabled?: boolean;
 }
 
-// Get CSRF token from cookies
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const cookies = document.cookie ? document.cookie.split('; ') : [];
-  for (const cookie of cookies) {
-    if (cookie.startsWith(name + '=')) {
-      return decodeURIComponent(cookie.substring(name.length + 1));
-    }
-  }
-  return null;
-}
-
 export function useCircleWebSocket({
   circleId,
   onActivity,
   enabled = true
 }: UseCircleWebSocketOptions) {
   const { isAuthenticated } = useAuth();
-  const [isConnected, setIsConnected] = useState(false);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const intentionalCloseRef = useRef(false);
+  // Keep callback ref to avoid stale closures
+  const onActivityRef = useRef(onActivity);
+  useEffect(() => {
+    onActivityRef.current = onActivity;
+  }, [onActivity]);
 
-  // Clear all timers
-  const clearTimers = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
+  // Handle incoming messages
+  const handleMessage = useCallback((data: unknown) => {
+    const message = data as WebSocketMessage;
+
+    if (message.event === 'circle_activity' && message.data) {
+      const activityEvent: CircleActivityEvent = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: message.data.type,
+        username: message.data.username,
+        targetUsername: message.data.target_username,
+        kudosType: message.data.kudos_type,
+        message: message.data.message,
+        timestamp: new Date().toISOString(),
+      };
+
+      onActivityRef.current?.(activityEvent);
     }
   }, []);
 
-  // Connect to WebSocket
-  const connect = useCallback(() => {
-    if (!isAuthenticated || !circleId || !enabled) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+  // Should we connect?
+  const shouldConnect = isAuthenticated && !!circleId && enabled;
 
-    intentionalCloseRef.current = false;
+  // Use the base WebSocket hook
+  // Note: Circle WebSocket uses CSRF token in query params, not connection token auth
+  const { isConnected, reconnectAttempts, connect, disconnect } = useWebSocketBase({
+    endpoint: `/ws/circle/${circleId}/`,
+    connectionIdPrefix: 'circle',
+    onMessage: handleMessage,
+    autoConnect: shouldConnect,
+    requiresAuth: true, // Uses connection token auth
+  });
 
-    // Build WebSocket URL using shared utility (direct connection to backend)
-    const csrfToken = getCookie('csrftoken');
-    const wsUrl = buildWebSocketUrl(
-      `/ws/circle/${circleId}/`,
-      csrfToken ? { csrf: csrfToken } : undefined
-    );
-
-    try {
-      const ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        setIsConnected(true);
-        setReconnectAttempts(0);
-
-        // Start heartbeat
-        heartbeatIntervalRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping' }));
-          }
-        }, HEARTBEAT_INTERVAL);
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-
-          if (message.event === 'circle_activity' && message.data) {
-            const activityEvent: CircleActivityEvent = {
-              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              type: message.data.type,
-              username: message.data.username,
-              targetUsername: message.data.target_username,
-              kudosType: message.data.kudos_type,
-              message: message.data.message,
-              timestamp: new Date().toISOString(),
-            };
-
-            onActivity?.(activityEvent);
-          }
-        } catch {
-          // Ignore parse errors
-        }
-      };
-
-      ws.onclose = () => {
-        setIsConnected(false);
-        clearTimers();
-
-        // Attempt reconnect if not intentional close
-        if (!intentionalCloseRef.current && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-          const delay = Math.min(
-            INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts),
-            MAX_RECONNECT_DELAY
-          );
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            setReconnectAttempts(prev => prev + 1);
-            connect();
-          }, delay);
-        }
-      };
-
-      ws.onerror = () => {
-        // Error will trigger onclose
-      };
-
-      wsRef.current = ws;
-    } catch {
-      // Connection failed
-    }
-  }, [isAuthenticated, circleId, enabled, reconnectAttempts, onActivity, clearTimers]);
-
-  // Disconnect
-  const disconnect = useCallback(() => {
-    intentionalCloseRef.current = true;
-    clearTimers();
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setIsConnected(false);
-  }, [clearTimers]);
-
-  // Connect on mount and when dependencies change
+  // Reconnect when auth state or circleId changes
   useEffect(() => {
-    connect();
-
-    return () => {
+    if (shouldConnect) {
+      connect();
+    } else {
       disconnect();
-    };
-  }, [connect, disconnect]);
+    }
+  }, [shouldConnect, connect, disconnect]);
 
   return {
     isConnected,

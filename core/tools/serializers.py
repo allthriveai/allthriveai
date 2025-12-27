@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.learning_paths.models import SavedLearningPath
+from core.serializers.mixins import UserFromRequestMixin
 from core.taxonomy.models import Taxonomy
 
 from .models import Company, Tool, ToolBookmark, ToolComparison, ToolReview
@@ -283,7 +284,7 @@ class ToolDetailSerializer(serializers.ModelSerializer):
         return obj.bookmarks.count()
 
 
-class ToolReviewSerializer(serializers.ModelSerializer):
+class ToolReviewSerializer(UserFromRequestMixin, serializers.ModelSerializer):
     """Serializer for tool reviews."""
 
     user_username = serializers.CharField(source='user.username', read_only=True)
@@ -311,10 +312,7 @@ class ToolReviewSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['user_username', 'user_avatar_url', 'user_role', 'is_verified_user', 'helpful_count']
 
-    def create(self, validated_data):
-        # Set user from request context
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
+    # create() is handled by UserFromRequestMixin
 
 
 class ToolComparisonSerializer(serializers.ModelSerializer):
@@ -357,7 +355,7 @@ class ToolComparisonSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class ToolBookmarkSerializer(serializers.ModelSerializer):
+class ToolBookmarkSerializer(UserFromRequestMixin, serializers.ModelSerializer):
     """Serializer for user tool bookmarks."""
 
     tool_details = ToolListSerializer(source='tool', read_only=True)
@@ -367,7 +365,4 @@ class ToolBookmarkSerializer(serializers.ModelSerializer):
         fields = ['id', 'tool', 'tool_details', 'notes', 'created_at']
         read_only_fields = ['tool_details']
 
-    def create(self, validated_data):
-        # Set user from request context
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
+    # create() is handled by UserFromRequestMixin

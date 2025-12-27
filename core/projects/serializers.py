@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from core.serializers.mixins import CamelCaseFieldsMixin
 from core.taxonomy.models import Taxonomy
 from core.taxonomy.serializers import TaxonomySerializer
 from core.tools.serializers import ToolIconSerializer, ToolListSerializer
@@ -11,7 +12,7 @@ from .models import Project
 from .moderation import moderate_tags, sanitize_tag
 
 
-class ProjectSerializer(serializers.ModelSerializer):
+class ProjectSerializer(CamelCaseFieldsMixin, serializers.ModelSerializer):
     """Serializer for user projects with access control.
 
     Exposes the fields needed to render profile grids and project pages. The
@@ -61,6 +62,40 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     # Lesson library fields - from ProjectLearningMetadata
     is_lesson = serializers.BooleanField(required=False, default=False)
+
+    # CamelCase field mapping for frontend compatibility
+    CAMEL_CASE_FIELDS = {
+        'user_avatar_url': 'userAvatarUrl',
+        'is_showcased': 'isShowcased',
+        'is_highlighted': 'isHighlighted',
+        'is_private': 'isPrivate',
+        'is_archived': 'isArchived',
+        'is_promoted': 'isPromoted',
+        'promoted_at': 'promotedAt',
+        'banner_url': 'bannerUrl',
+        'featured_image_url': 'featuredImageUrl',
+        'external_url': 'externalUrl',
+        'tools_details': 'toolsDetails',
+        'categories_details': 'categoriesDetails',
+        'topics_details': 'topicsDetails',
+        'content_type_taxonomy': 'contentTypeTaxonomy',
+        'content_type_details': 'contentTypeDetails',
+        'time_investment': 'timeInvestment',
+        'time_investment_details': 'timeInvestmentDetails',
+        'difficulty_taxonomy': 'difficultyTaxonomy',
+        'difficulty_details': 'difficultyDetails',
+        'pricing_taxonomy': 'pricingTaxonomy',
+        'pricing_details': 'pricingDetails',
+        'ai_tag_metadata': 'aiTagMetadata',
+        'user_tags': 'userTags',
+        'heart_count': 'heartCount',
+        'is_liked_by_user': 'isLikedByUser',
+        'is_lesson': 'isLesson',
+        'published_date': 'publishedDate',
+        'created_at': 'createdAt',
+        'updated_at': 'updatedAt',
+        'hide_categories': 'hideCategories',
+    }
 
     class Meta:
         model = Project
@@ -360,10 +395,11 @@ class ProjectSerializer(serializers.ModelSerializer):
         return obj.promoted_at >= promotion_cutoff
 
     def to_representation(self, instance):
-        """Convert snake_case field names to camelCase for frontend compatibility."""
+        """Add lesson and Reddit-specific data, then apply camelCase conversion."""
         from django.core.exceptions import ObjectDoesNotExist
 
-        data = super().to_representation(instance)
+        # Get base representation (without camelCase conversion yet)
+        data = serializers.ModelSerializer.to_representation(self, instance)
 
         # Read is_lesson from learning_metadata (default False if no metadata)
         try:
@@ -374,7 +410,6 @@ class ProjectSerializer(serializers.ModelSerializer):
         # Add Reddit-specific data to content if this is a Reddit thread
         if instance.type == 'reddit_thread':
             # Use try/except to handle missing OneToOne relation
-            # hasattr returns True for defined fields even if relation doesn't exist
             try:
                 reddit_thread = instance.reddit_thread
             except Exception:
@@ -416,47 +451,8 @@ class ProjectSerializer(serializers.ModelSerializer):
                     'spoiler': metadata.get('spoiler', False),
                 }
 
-        # Map snake_case to camelCase for fields that need it
-        field_mapping = {
-            'user_avatar_url': 'userAvatarUrl',
-            'is_showcased': 'isShowcased',
-            'is_highlighted': 'isHighlighted',
-            'is_private': 'isPrivate',
-            'is_archived': 'isArchived',
-            'is_promoted': 'isPromoted',
-            'promoted_at': 'promotedAt',
-            'banner_url': 'bannerUrl',
-            'featured_image_url': 'featuredImageUrl',
-            'external_url': 'externalUrl',
-            'tools_details': 'toolsDetails',
-            'categories_details': 'categoriesDetails',
-            'topics_details': 'topicsDetails',
-            'content_type_taxonomy': 'contentTypeTaxonomy',
-            'content_type_details': 'contentTypeDetails',
-            'time_investment': 'timeInvestment',
-            'time_investment_details': 'timeInvestmentDetails',
-            'difficulty_taxonomy': 'difficultyTaxonomy',
-            'difficulty_details': 'difficultyDetails',
-            'pricing_taxonomy': 'pricingTaxonomy',
-            'pricing_details': 'pricingDetails',
-            'ai_tag_metadata': 'aiTagMetadata',
-            'user_tags': 'userTags',
-            'heart_count': 'heartCount',
-            'is_liked_by_user': 'isLikedByUser',
-            'is_lesson': 'isLesson',
-            'published_date': 'publishedDate',
-            'created_at': 'createdAt',
-            'updated_at': 'updatedAt',
-            'hide_categories': 'hideCategories',
-        }
-
-        # Create new dict with camelCase keys
-        camel_case_data = {}
-        for key, value in data.items():
-            new_key = field_mapping.get(key, key)
-            camel_case_data[new_key] = value
-
-        return camel_case_data
+        # Apply camelCase conversion from mixin
+        return self._apply_camel_case_conversion(data)
 
     def create(self, validated_data):
         """Create a new project with default banner image if not provided."""
@@ -514,7 +510,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         return instance
 
 
-class ProjectCardSerializer(serializers.ModelSerializer):
+class ProjectCardSerializer(CamelCaseFieldsMixin, serializers.ModelSerializer):
     """Lightweight serializer for explore/feed cards.
 
     Optimized for mobile performance by:
@@ -545,6 +541,31 @@ class ProjectCardSerializer(serializers.ModelSerializer):
     time_investment_details = serializers.SerializerMethodField()
     difficulty_details = serializers.SerializerMethodField()
     pricing_details = serializers.SerializerMethodField()
+
+    # CamelCase field mapping for frontend compatibility
+    CAMEL_CASE_FIELDS = {
+        'user_avatar_url': 'userAvatarUrl',
+        'is_promoted': 'isPromoted',
+        'banner_url': 'bannerUrl',
+        'featured_image_url': 'featuredImageUrl',
+        'external_url': 'externalUrl',
+        'tools_details': 'toolsDetails',
+        'categories_details': 'categoriesDetails',
+        'topics_details': 'topicsDetails',
+        'content_type_taxonomy': 'contentTypeTaxonomy',
+        'content_type_details': 'contentTypeDetails',
+        'time_investment': 'timeInvestment',
+        'time_investment_details': 'timeInvestmentDetails',
+        'difficulty_taxonomy': 'difficultyTaxonomy',
+        'difficulty_details': 'difficultyDetails',
+        'pricing_taxonomy': 'pricingTaxonomy',
+        'pricing_details': 'pricingDetails',
+        'heart_count': 'heartCount',
+        'is_liked_by_user': 'isLikedByUser',
+        'is_learning_eligible': 'isLearningEligible',
+        'published_date': 'publishedDate',
+        'created_at': 'createdAt',
+    }
 
     class Meta:
         model = Project
@@ -791,37 +812,4 @@ class ProjectCardSerializer(serializers.ModelSerializer):
 
         return None
 
-    def to_representation(self, instance):
-        """Convert snake_case to camelCase for frontend compatibility."""
-        data = super().to_representation(instance)
-
-        field_mapping = {
-            'user_avatar_url': 'userAvatarUrl',
-            'is_promoted': 'isPromoted',
-            'banner_url': 'bannerUrl',
-            'featured_image_url': 'featuredImageUrl',
-            'external_url': 'externalUrl',
-            'tools_details': 'toolsDetails',
-            'categories_details': 'categoriesDetails',
-            'topics_details': 'topicsDetails',
-            'content_type_taxonomy': 'contentTypeTaxonomy',
-            'content_type_details': 'contentTypeDetails',
-            'time_investment': 'timeInvestment',
-            'time_investment_details': 'timeInvestmentDetails',
-            'difficulty_taxonomy': 'difficultyTaxonomy',
-            'difficulty_details': 'difficultyDetails',
-            'pricing_taxonomy': 'pricingTaxonomy',
-            'pricing_details': 'pricingDetails',
-            'heart_count': 'heartCount',
-            'is_liked_by_user': 'isLikedByUser',
-            'is_learning_eligible': 'isLearningEligible',
-            'published_date': 'publishedDate',
-            'created_at': 'createdAt',
-        }
-
-        camel_case_data = {}
-        for key, value in data.items():
-            new_key = field_mapping.get(key, key)
-            camel_case_data[new_key] = value
-
-        return camel_case_data
+    # to_representation is handled by CamelCaseFieldsMixin using CAMEL_CASE_FIELDS
