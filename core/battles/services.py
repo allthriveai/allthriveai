@@ -1121,7 +1121,32 @@ Return ONLY the JSON, no other text.
 
 
 class PipBattleAI:
-    """AI opponent behavior for battles against Pip."""
+    """
+    AI opponent behavior for battles against Pip.
+
+    ⚠️  CAUTION: FRAGILE CODE - DO NOT MODIFY WITHOUT CAREFUL TESTING ⚠️
+
+    This class handles Pip (the AI opponent) battle logic. The Pip flow is complex
+    and involves multiple async tasks, WebSocket events, and database state changes.
+    Modifications can easily break the battle flow in subtle ways that are hard to debug.
+
+    Before making changes:
+    1. Run ALL battle tests: `make test-backend` (specifically test_async_battles.py)
+    2. Test manually with a real Pip battle from start to finish
+    3. Check WebSocket events are firing correctly in browser devtools
+    4. Verify image generation and judging complete properly
+
+    Key integration points:
+    - consumers.py: _handle_start_pip_battle() triggers Pip battles
+    - tasks.py: create_pip_submission_task() creates Pip's submission async
+    - BattleService: generate_image_for_submission(), judge_battle()
+
+    Common failure modes:
+    - Race conditions between user submission and Pip submission
+    - Phase transitions happening out of order
+    - WebSocket events not being sent or received
+    - Image generation failing silently
+    """
 
     def __init__(self):
         """Initialize Pip AI."""

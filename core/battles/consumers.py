@@ -940,6 +940,23 @@ class BattleConsumer(AsyncWebsocketConsumer):
         """Get all submissions for this battle."""
         return list(BattleSubmission.objects.filter(battle=battle))
 
+    # =========================================================================
+    # PIP (AI OPPONENT) METHODS
+    #
+    # ⚠️  CAUTION: FRAGILE CODE - DO NOT MODIFY WITHOUT CAREFUL TESTING ⚠️
+    #
+    # The Pip battle flow is complex and involves multiple async tasks,
+    # WebSocket events, and database state changes. Modifications can easily
+    # break the battle flow in subtle ways that are hard to debug.
+    #
+    # Before making changes:
+    # 1. Run ALL battle tests: `make test-backend`
+    # 2. Test manually with a real Pip battle from start to finish
+    # 3. Check WebSocket events are firing correctly in browser devtools
+    #
+    # See also: services.py PipBattleAI, tasks.py create_pip_submission_task
+    # =========================================================================
+
     @database_sync_to_async
     def _is_pip_battle(self, battle: PromptBattle) -> bool:
         """Check if this is a battle against Pip (AI opponent)."""
