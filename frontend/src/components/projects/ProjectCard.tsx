@@ -482,7 +482,8 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
       <>
       <CardWrapper
         {...(cardProps as any)}
-        className={`block relative overflow-hidden shadow-lg hover:shadow-neon group cursor-pointer ${
+        data-testid="project-card"
+        className={`project-card block relative overflow-hidden shadow-lg hover:shadow-neon group cursor-pointer ${
           isSelected ? 'ring-4 ring-primary-500' : ''
         } ${dynamicHeightClass} ${dynamicWidthClass} ${!imageLoaded && (heroElement.type === 'image' || heroElement.type === 'slideshow') ? 'min-h-[400px]' : ''}`}
         style={{ borderRadius: 'var(--radius)' }}
@@ -1177,7 +1178,8 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   return (
     <CardWrapper
       {...(cardProps as any)}
-      className={`block glass-subtle hover:glass-strong overflow-hidden group relative cursor-pointer ${
+      data-testid="project-card"
+      className={`project-card block glass-subtle hover:glass-strong overflow-hidden group relative cursor-pointer ${
         isSelected ? 'ring-4 ring-primary-500' : ''
       }`}
       style={{ borderRadius: 'var(--radius)' }}

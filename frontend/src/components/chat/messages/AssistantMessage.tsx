@@ -537,7 +537,7 @@ export function AssistantMessage({
   if (isNeon) {
     // Neon Glass variant (AvaHomePage)
     return (
-      <div className="flex flex-col justify-start w-full">
+      <div className="flex flex-col justify-start w-full" data-testid="assistant-message">
         <div className="flex items-end">
           <img
             src="/ava-avatar.png"
@@ -576,7 +576,7 @@ export function AssistantMessage({
 
   // Default variant (sidebar)
   return (
-    <div className="flex justify-start w-full">
+    <div className="flex justify-start w-full" data-testid="assistant-message">
       <div className="max-w-[85%]">
         <div className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
           <div className="prose prose-sm dark:prose-invert max-w-none">
