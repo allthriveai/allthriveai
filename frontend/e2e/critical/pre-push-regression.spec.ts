@@ -42,6 +42,22 @@ async function waitForWebSocketConnected(page: Page, timeout = 30000): Promise<v
 }
 
 /**
+ * Skip onboarding by setting localStorage state before the page loads
+ * This prevents the Ava intro modal from blocking the chat flow
+ */
+async function skipOnboardingForUser(page: Page, userId: number | string): Promise<void> {
+  await page.evaluate((id) => {
+    const onboardingState = {
+      hasSeenModal: true,
+      completedAdventures: [],
+      isDismissed: true,
+      welcomePointsAwarded: true,
+    };
+    localStorage.setItem(`ava_onboarding_${id}`, JSON.stringify(onboardingState));
+  }, userId);
+}
+
+/**
  * Wait for Ava response (more reliable than just checking input enabled)
  */
 async function waitForAvaResponse(page: Page, timeout = 90000): Promise<string> {
@@ -92,6 +108,13 @@ test.describe('Pre-Push Critical Regression Tests', () => {
     test.setTimeout(PROJECT_TIMEOUT);
 
     await loginViaAPI(page);
+
+    // Get user ID and skip onboarding before navigating to /home
+    // This prevents the Ava intro modal from blocking the chat flow
+    const meResponse = await page.request.get('/api/v1/auth/me/');
+    const userData = await meResponse.json();
+    await skipOnboardingForUser(page, userData.id);
+
     await page.goto('/home');
     await page.waitForLoadState('domcontentloaded');
 
