@@ -44,12 +44,15 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // Critical E2E tests - run on every PR to catch real-time regressions
+    // Critical pre-push regression tests - must pass before git push
+    // Run manually: npx playwright test --project=critical
+    // Bypass: git push --no-verify
     {
       name: 'critical',
       testMatch: '**/critical/**/*.spec.ts',
-      timeout: 120 * 1000,
-      retries: 2,
+      timeout: 300 * 1000, // 5 minutes per test (AI operations)
+      retries: 1, // One retry for AI flakiness
+      workers: 1, // Sequential execution - IMPORTANT for shared session state
       use: {
         ...devices['Desktop Chrome'],
         trace: 'on-first-retry',
@@ -79,21 +82,6 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         video: 'on',
         trace: 'on',
-      },
-    },
-    // Critical pre-push regression tests - must pass before git push
-    // Run manually: npx playwright test --project=critical
-    // Bypass: git push --no-verify
-    {
-      name: 'critical',
-      testMatch: '**/critical/**/*.spec.ts',
-      timeout: 300 * 1000, // 5 minutes per test (AI operations)
-      retries: 0, // No retries - tests must pass cleanly
-      workers: 1, // Sequential execution
-      use: {
-        ...devices['Desktop Chrome'],
-        video: 'off', // Speed over debugging
-        trace: 'off',
       },
     },
   ],
