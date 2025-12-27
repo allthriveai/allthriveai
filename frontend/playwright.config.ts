@@ -44,6 +44,18 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // Regression tests - run on every PR to catch breaking changes
+    // These test critical user flows and common failure points
+    {
+      name: 'regression',
+      testMatch: '**/regression/**/*.spec.ts',
+      timeout: 90 * 1000, // 90 seconds per test (includes AI quality checks)
+      retries: 2,
+      use: {
+        ...devices['Desktop Chrome'],
+        trace: 'on-first-retry',
+      },
+    },
     // Deep E2E tests - run nightly with extended timeouts for real AI calls
     // Reduced workers to avoid DB connection pool exhaustion
     {

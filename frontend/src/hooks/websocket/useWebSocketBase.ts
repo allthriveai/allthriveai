@@ -65,6 +65,8 @@ export function useWebSocketBase(options: WebSocketBaseOptions): WebSocketBaseRe
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intentionalCloseRef = useRef(false);
   const isConnectingRef = useRef(false);
+  // Track the current connection attempt to cancel stale in-flight connections
+  const connectionAttemptRef = useRef(0);
 
   // Refs for callbacks to avoid stale closures
   const onMessageRef = useRef(onMessage);
@@ -166,11 +168,16 @@ export function useWebSocketBase(options: WebSocketBaseOptions): WebSocketBaseRe
       return;
     }
 
+    // Increment connection attempt counter and capture for this attempt
+    // This allows us to detect if this connection was cancelled
+    connectionAttemptRef.current += 1;
+    const thisAttempt = connectionAttemptRef.current;
+
     isConnectingRef.current = true;
     intentionalCloseRef.current = false;
     setIsConnecting(true);
 
-    log('info', 'connect_start', { reconnectAttempts });
+    log('info', 'connect_start', { reconnectAttempts, attempt: thisAttempt });
 
     // Clean up any existing connection
     if (wsRef.current) {
@@ -213,6 +220,14 @@ export function useWebSocketBase(options: WebSocketBaseOptions): WebSocketBaseRe
         const data = await response.json();
         connectionToken = data.connection_token;
         log('debug', 'connection_token_received');
+
+        // Check if this connection attempt was cancelled during the fetch
+        if (thisAttempt !== connectionAttemptRef.current) {
+          log('debug', 'connect_cancelled', { reason: 'stale_attempt_after_token', thisAttempt, currentAttempt: connectionAttemptRef.current });
+          setIsConnecting(false);
+          isConnectingRef.current = false;
+          return;
+        }
       } catch (error) {
         log('error', 'connection_token_error', { error: String(error) });
         setIsConnecting(false);
@@ -220,6 +235,14 @@ export function useWebSocketBase(options: WebSocketBaseOptions): WebSocketBaseRe
         onErrorRef.current?.('Failed to establish connection. Please try again.');
         return;
       }
+    }
+
+    // Final check before creating WebSocket - ensure this attempt is still valid
+    if (thisAttempt !== connectionAttemptRef.current) {
+      log('debug', 'connect_cancelled', { reason: 'stale_attempt_before_socket', thisAttempt, currentAttempt: connectionAttemptRef.current });
+      setIsConnecting(false);
+      isConnectingRef.current = false;
+      return;
     }
 
     // Build WebSocket URL
@@ -243,6 +266,13 @@ export function useWebSocketBase(options: WebSocketBaseOptions): WebSocketBaseRe
       }, connectionTimeout);
 
       ws.onopen = () => {
+        // Check if this connection attempt was cancelled before it opened
+        if (thisAttempt !== connectionAttemptRef.current) {
+          log('debug', 'connect_cancelled', { reason: 'stale_attempt_on_open', thisAttempt, currentAttempt: connectionAttemptRef.current });
+          ws.close();
+          return;
+        }
+
         log('info', 'connected');
         clearTimeout(connectionTimeoutRef.current!);
         connectionTimeoutRef.current = null;
@@ -313,6 +343,8 @@ export function useWebSocketBase(options: WebSocketBaseOptions): WebSocketBaseRe
   const disconnect = useCallback(() => {
     log('info', 'disconnect_requested');
     intentionalCloseRef.current = true;
+    // Increment connection attempt to cancel any in-flight connections
+    connectionAttemptRef.current += 1;
     clearTimers();
 
     if (wsRef.current) {

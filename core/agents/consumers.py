@@ -27,6 +27,86 @@ from .tasks import _get_user_friendly_error, process_chat_message_task
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# Task Tracking for Cancellation
+# =============================================================================
+
+# TTL for task tracking (10 minutes - matches task expiry)
+TASK_TRACKING_TTL = 600
+
+
+def track_task_for_conversation(conversation_id: str, task_id: str) -> None:
+    """
+    Track a Celery task ID for a conversation so it can be cancelled later.
+
+    Uses a Redis set to allow multiple concurrent tasks per conversation.
+    """
+    from django.core.cache import cache
+
+    cache_key = f'conversation_tasks:{conversation_id}'
+    try:
+        # Get existing task IDs or empty set
+        existing = cache.get(cache_key) or set()
+        existing.add(task_id)
+        cache.set(cache_key, existing, timeout=TASK_TRACKING_TTL)
+        logger.debug(f'Tracked task {task_id} for conversation {conversation_id}')
+    except Exception as e:
+        logger.warning(f'Failed to track task {task_id}: {e}')
+
+
+def revoke_tasks_for_conversation(conversation_id: str) -> int:
+    """
+    Revoke all pending/running Celery tasks for a conversation.
+
+    Returns the number of tasks revoked.
+    """
+    from django.core.cache import cache
+
+    from config.celery import app as celery_app
+
+    cache_key = f'conversation_tasks:{conversation_id}'
+    revoked_count = 0
+
+    try:
+        task_ids = cache.get(cache_key) or set()
+        for task_id in task_ids:
+            try:
+                # Revoke the task (terminate=True kills running tasks)
+                celery_app.control.revoke(task_id, terminate=True, signal='SIGTERM')
+                revoked_count += 1
+                logger.info(f'Revoked task {task_id} for conversation {conversation_id}')
+            except Exception as e:
+                logger.warning(f'Failed to revoke task {task_id}: {e}')
+
+        # Clear the tracking set
+        cache.delete(cache_key)
+        logger.info(f'Revoked {revoked_count} tasks for conversation {conversation_id}')
+
+    except Exception as e:
+        logger.warning(f'Failed to revoke tasks for {conversation_id}: {e}')
+
+    return revoked_count
+
+
+def release_conversation_lock(conversation_id: str) -> bool:
+    """
+    Release the distributed lock for a conversation.
+
+    This allows stuck conversations to be freed up.
+    """
+    from django.core.cache import cache
+
+    lock_key = f'ava:lock:{conversation_id}'
+    try:
+        deleted = cache.delete(lock_key)
+        if deleted:
+            logger.info(f'Released lock for conversation {conversation_id}')
+        return deleted
+    except Exception as e:
+        logger.warning(f'Failed to release lock for {conversation_id}: {e}')
+        return False
+
+
 class ChatConsumer(AsyncWebsocketConsumer):
     """
     WebSocket consumer for chat streaming.
@@ -247,6 +327,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     )
                     logger.info(f'Avatar generation queued: task_id={task.id}, session_id={session_id}')
 
+                    # Track task ID for cancellation on /clear
+                    track_task_for_conversation(self.conversation_id, str(task.id))
+
                     await self.send(
                         text_data=json.dumps(
                             {'event': 'avatar_task_queued', 'task_id': str(task.id), 'timestamp': self._get_timestamp()}
@@ -271,6 +354,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     },
                     expires=600,  # Expire after 10 min if not picked up
                 )
+
+                # Track task ID for cancellation on /clear
+                track_task_for_conversation(self.conversation_id, str(task.id))
 
                 # Send task queued confirmation
                 await self.send(

@@ -274,11 +274,15 @@ def clear_conversation(request):
     }
 
     This clears:
+    - Running/pending Celery tasks (revoked)
+    - Distributed locks (released)
     - PostgreSQL checkpoints (LangGraph state)
     - checkpoint_writes table
     - Redis cache for the conversation
     """
     from django.db import connection
+
+    from .consumers import release_conversation_lock, revoke_tasks_for_conversation
 
     user_id = request.user.id
     conversation_id = request.data.get('conversation_id', f'ava-chat-{user_id}')
@@ -291,6 +295,14 @@ def clear_conversation(request):
         )
 
     try:
+        # 1. Revoke any running/pending Celery tasks for this conversation
+        # This frees up DB connections held by hung tasks
+        revoked_tasks = revoke_tasks_for_conversation(conversation_id)
+
+        # 2. Release any distributed locks (allows new requests to proceed)
+        lock_released = release_conversation_lock(conversation_id)
+
+        # 3. Clear PostgreSQL checkpoints
         deleted_checkpoints = 0
         deleted_writes = 0
 
@@ -303,7 +315,7 @@ def clear_conversation(request):
             cursor.execute('DELETE FROM checkpoint_writes WHERE thread_id = %s', [conversation_id])
             deleted_writes = cursor.rowcount
 
-        # Clear Redis cache
+        # 4. Clear Redis cache
         try:
             from django_redis import get_redis_connection
 
@@ -317,13 +329,18 @@ def clear_conversation(request):
             logger.warning(f'Failed to clear Redis cache: {e}')
 
         logger.info(
-            f'Cleared conversation {conversation_id}: ' f'{deleted_checkpoints} checkpoints, {deleted_writes} writes'
+            f'Cleared conversation {conversation_id}: '
+            f'{revoked_tasks} tasks revoked, '
+            f'lock_released={lock_released}, '
+            f'{deleted_checkpoints} checkpoints, {deleted_writes} writes'
         )
 
         return Response(
             {
                 'success': True,
                 'conversation_id': conversation_id,
+                'revoked_tasks': revoked_tasks,
+                'lock_released': lock_released,
                 'deleted_checkpoints': deleted_checkpoints,
                 'deleted_writes': deleted_writes,
             }

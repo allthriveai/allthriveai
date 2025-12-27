@@ -336,15 +336,17 @@ class CloudWatchLogSource(LogSource):
     """
 
     LOG_GROUPS = [
-        '/ecs/allthriveai-production/web',
-        '/ecs/allthriveai-production/celery',
+        '/ecs/production-allthrive-web',
+        '/ecs/production-allthrive-celery',
+        '/ecs/production-allthrive-celery-beat',
     ]
     POLL_INTERVAL = 5  # seconds - balances latency vs API cost
 
     # Map log group to service name
     LOG_GROUP_TO_SERVICE = {
-        '/ecs/allthriveai-production/web': 'web',
-        '/ecs/allthriveai-production/celery': 'celery',
+        '/ecs/production-allthrive-web': 'web',
+        '/ecs/production-allthrive-celery': 'celery',
+        '/ecs/production-allthrive-celery-beat': 'celery-beat',
     }
 
     def __init__(self):

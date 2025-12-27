@@ -3,35 +3,64 @@ Base test classes with shared setup, teardown, and helper methods.
 
 These classes follow DRY principles by consolidating common test patterns
 used across the AllThrive AI test suite.
+
+IMPORTANT: Use factories instead of User.objects.create() to prevent
+constraint violations from hardcoded usernames.
 """
 
+from django.test import TransactionTestCase
 from rest_framework.test import APIClient, APITestCase
 
+from core.tests.factories import UserFactory
 from core.users.models import User
+
+
+class WebSocketTestCase(TransactionTestCase):
+    """
+    Base class for WebSocket consumer tests with proper isolation.
+
+    TransactionTestCase doesn't auto-rollback like TestCase, so we need
+    explicit cleanup to prevent constraint violations between tests.
+
+    Usage:
+        class MyConsumerTest(WebSocketTestCase):
+            async def test_connection(self):
+                user = UserFactory()
+                # ... test code
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Reset factory sequences at class level to avoid collisions
+        UserFactory.reset_sequence()
+
+    def tearDown(self):
+        super().tearDown()
+        # Clean up any test data created with factory sequences
+        User.objects.filter(username__startswith='testuser_').delete()
 
 
 class BaseAPITestCase(APITestCase):
     """Base test case with common API testing utilities."""
 
     def setUp(self):
-        """Set up test client and create a test user."""
+        """Set up test client and create a test user using factory."""
         super().setUp()
         self.client = APIClient()
-        self.user = self.create_test_user()
+        self.user = UserFactory()
 
-    def create_test_user(self, username='testuser', email='test@example.com', **kwargs):
+    def create_test_user(self, **kwargs):
         """
-        Create a test user with default or custom attributes.
+        Create a test user with custom attributes using factory.
 
         Args:
-            username: Username for the test user
-            email: Email for the test user
-            **kwargs: Additional user attributes
+            **kwargs: User attributes to override
 
         Returns:
             User instance
         """
-        return User.objects.create_user(username=username, email=email, password='testpass123', **kwargs)
+        return UserFactory(**kwargs)
 
     def authenticate_user(self, user=None):
         """
@@ -43,18 +72,17 @@ class BaseAPITestCase(APITestCase):
         user = user or self.user
         self.client.force_authenticate(user=user)
 
-    def create_admin_user(self, username='admin', email='admin@example.com'):
+    def create_admin_user(self, **kwargs):
         """
-        Create an admin user.
+        Create an admin user using factory.
 
         Args:
-            username: Username for the admin user
-            email: Email for the admin user
+            **kwargs: User attributes to override
 
         Returns:
             Admin user instance
         """
-        return User.objects.create_superuser(username=username, email=email, password='adminpass123')
+        return UserFactory(admin=True, **kwargs)
 
     def assertSuccessResponse(self, response, status_code=200):
         """

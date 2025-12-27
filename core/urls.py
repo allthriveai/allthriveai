@@ -167,7 +167,7 @@ from .users.views import (
     track_onboarding_path,
     update_profile_sections,
 )
-from .views import ai_analytics_views, client_logs, csp_report, db_health
+from .views import ai_analytics_views, ai_health, client_logs, csp_report, db_health
 
 # Main router for public/general endpoints
 main_router = DefaultRouter()
@@ -212,6 +212,7 @@ events_router.register(r'events', EventViewSet, basename='event')
 
 urlpatterns = [
     path('db/health/', db_health, name='db-health'),
+    path('health/ai/', ai_health, name='ai-health'),  # AI provider health check
     path('csp-report/', csp_report, name='csp_report'),  # CSP violation reporting
     path('system/client-logs/', client_logs, name='client_logs'),  # Frontend logging
     # AI Analytics endpoints

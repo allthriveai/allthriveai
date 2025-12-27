@@ -4,9 +4,58 @@ on:
   pull_request:
 
 jobs:
-  test:
+  # ===== Fast lint job - no DB required, runs in parallel with everything =====
+  lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Prevent hanging forever
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
+
+      - name: Install Python linting tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff bandit
+
+      - name: Backend linting (ruff)
+        run: ruff check .
+
+      - name: Backend security checks (bandit)
+        run: |
+          # Skip low-severity issues that are documented with noqa comments
+          bandit -c pyproject.toml -r . --skip B105,B106,B311,B324,B404,B405,B603,B607
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --legacy-peer-deps
+
+      - name: Frontend ESLint check
+        working-directory: frontend
+        run: npx eslint . --max-warnings 0
+
+      - name: Frontend TypeScript type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+  # ===== Backend tests - requires Postgres/Redis =====
+  backend-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -31,26 +80,23 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
+
     env:
-      # Configure Django to use the Postgres service
       DATABASE_URL: postgresql://allthrive:allthrive@localhost:5432/allthrive_ai
       SECRET_KEY: ci-secret-key
       DEBUG: "False"
-      SECURE_SSL_REDIRECT: "False"  # Disable SSL redirect in tests (no HTTPS in CI)
+      SECURE_SSL_REDIRECT: "False"
       ALLOWED_HOSTS: "localhost,127.0.0.1"
       CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
       PYTHONUNBUFFERED: "1"
-      # Redis for caching (SEO sitemap caching)
       REDIS_URL: redis://localhost:6379/0
       CACHE_URL: redis://localhost:6379/2
       CELERY_BROKER_URL: redis://localhost:6379/0
       CELERY_RESULT_BACKEND: redis://localhost:6379/0
-      # SEO configuration
       SITE_URL: http://localhost:8000
-      # JWT/Auth cookies - empty string becomes None, avoiding production check
       COOKIE_DOMAIN: ""
-      # CSRF settings
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,12 +109,12 @@ jobs:
           cache-dependency-path: 'requirements.txt'
 
       - name: Install dependencies
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Wait for Postgres (psycopg2)
+      - name: Wait for Postgres
         run: |
           python - <<'PY'
           import os, time, psycopg2
@@ -89,26 +135,41 @@ jobs:
         run: |
           python manage.py check --deploy
           python manage.py migrate --noinput
-          # Ensure no model changes are pending
           python manage.py makemigrations --check --dry-run
-
-      - name: Backend code quality checks
-        run: |
-          echo "Running ruff linting..."
-          ruff check .
-          echo "Running bandit security checks..."
-          # Skip low-severity issues that are documented with noqa comments
-          # These are non-cryptographic uses of random, test passwords, etc.
-          bandit -c pyproject.toml -r . --skip B105,B106,B311,B324,B404,B405,B603,B607
 
       - name: Run Django tests
         timeout-minutes: 10
-        run: |
-          python manage.py test --verbosity=2 --keepdb
+        run: python manage.py test --verbosity=2 --keepdb
 
       - name: Run security tests (pytest)
         run: |
           pytest core/agents/tests/test_security_comprehensive.py -v --cov=core.agents.security --cov-report=term --cov-report=html
+
+      - name: Run API contract tests
+        run: |
+          pytest core/tests/contracts/ -v
+
+      - name: Validate SEO endpoints
+        run: |
+          python manage.py runserver 127.0.0.1:8000 > /tmp/server.log 2>&1 &
+          SRV_PID=$!
+
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /dev/null 2>&1; then
+              echo "Server ready"
+              break
+            fi
+            sleep 1
+          done
+
+          # Validate endpoints
+          curl -s http://127.0.0.1:8000/robots.txt | grep -q "GPTBot" || exit 1
+          curl -s http://127.0.0.1:8000/robots.txt | grep -q "ClaudeBot" || exit 1
+          curl -s http://127.0.0.1:8000/sitemap.xml | grep -q "<?xml" || exit 1
+          curl -s http://127.0.0.1:8000/.well-known/ai-plugin.json | python -m json.tool > /dev/null || exit 1
+          echo "SEO endpoints validated"
+
+          kill $SRV_PID || true
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -119,7 +180,15 @@ jobs:
           name: security-coverage
         continue-on-error: true
 
-      # ===== Frontend Setup and Checks =====
+  # ===== Frontend tests - no backend required =====
+  frontend-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -131,96 +200,19 @@ jobs:
         working-directory: frontend
         run: npm ci --legacy-peer-deps
 
-      - name: Frontend ESLint check
-        working-directory: frontend
-        run: npx eslint . --max-warnings 0
-
-      - name: Frontend TypeScript type check
-        working-directory: frontend
-        run: |
-          echo "Running TypeScript type check..."
-          npx tsc --noEmit
-          echo "✅ TypeScript compilation passed"
-
       - name: Frontend build check
         working-directory: frontend
-        run: |
-          echo "Running production build..."
-          npm run build
-          echo "✅ Frontend build successful"
+        run: npm run build
 
       - name: Frontend unit tests
         working-directory: frontend
         run: npm test -- --run --coverage
 
-      - name: Validate SEO endpoints (robots.txt, sitemap, AI manifest)
-        run: |
-          # Start server in background with logs
-          python manage.py runserver 127.0.0.1:8000 > /tmp/server.log 2>&1 &
-          SRV_PID=$!
-
-          # Wait for server to start
-          for i in {1..30}; do
-            if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /tmp/health_response.txt 2>&1; then
-              echo "✅ Server ready"
-              break
-            fi
-            sleep 1
-          done
-
-          # Test DB health endpoint
-          if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /tmp/health_response.txt 2>&1; then
-            echo "✅ DB Healthcheck OK"
-            cat /tmp/health_response.txt
-          else
-            echo "❌ Healthcheck failed"
-            tail -50 /tmp/server.log
-            cat /tmp/health_response.txt || echo "No response captured"
-            kill $SRV_PID || true
-            exit 1
-          fi
-
-          # Validate robots.txt
-          if ! curl -s http://127.0.0.1:8000/robots.txt | grep -q "GPTBot"; then
-            echo "❌ robots.txt missing GPTBot blocking"
-            kill $SRV_PID || true
-            exit 1
-          fi
-          if ! curl -s http://127.0.0.1:8000/robots.txt | grep -q "ClaudeBot"; then
-            echo "❌ robots.txt missing ClaudeBot blocking"
-            kill $SRV_PID || true
-            exit 1
-          fi
-          echo "✅ robots.txt correctly blocks LLM crawlers"
-
-          # Validate sitemap.xml
-          if ! curl -s http://127.0.0.1:8000/sitemap.xml | grep -q "<?xml"; then
-            echo "❌ sitemap.xml is not valid XML"
-            kill $SRV_PID || true
-            exit 1
-          fi
-          echo "✅ sitemap.xml is valid"
-
-          # Validate AI plugin manifest
-          if ! curl -s http://127.0.0.1:8000/.well-known/ai-plugin.json | python -m json.tool > /dev/null; then
-            echo "❌ ai-plugin.json is not valid JSON"
-            kill $SRV_PID || true
-            exit 1
-          fi
-          if ! curl -s http://127.0.0.1:8000/.well-known/ai-plugin.json | grep -q "PUBLIC"; then
-            echo "❌ ai-plugin.json missing PUBLIC data emphasis"
-            kill $SRV_PID || true
-            exit 1
-          fi
-          echo "✅ ai-plugin.json is valid with proper privacy boundaries"
-
-          # Cleanup
-          kill $SRV_PID || true
-
+  # ===== E2E tests - requires full stack =====
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Prevent hanging forever
-    needs: test  # Run after backend tests pass
+    timeout-minutes: 20
+    needs: [lint, backend-tests, frontend-tests]
 
     services:
       postgres:
@@ -249,8 +241,6 @@ jobs:
     env:
       DATABASE_URL: postgresql://allthrive:allthrive@localhost:5432/allthrive_ai
       SECRET_KEY: ci-secret-key
-      # DEBUG must be True for test-login endpoint used by E2E tests
-      # This is safe because CI uses an ephemeral database with no real data
       DEBUG: "True"
       ALLOWED_HOSTS: "localhost,127.0.0.1"
       CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
@@ -262,7 +252,6 @@ jobs:
       SITE_URL: http://localhost:8000
       COOKIE_DOMAIN: localhost
       CSRF_TRUSTED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
-      # E2E test credentials (from GitHub secrets)
       TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
       TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
       TEST_USER_USERNAME: ${{ secrets.E2E_TEST_USER_USERNAME }}
@@ -272,7 +261,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ===== Backend Setup =====
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -303,8 +291,7 @@ jobs:
           PY
 
       - name: Run Django migrations
-        run: |
-          python manage.py migrate --noinput
+        run: python manage.py migrate --noinput
 
       - name: Create E2E test user and data
         run: |
@@ -320,22 +307,15 @@ jobs:
           username = os.environ.get('TEST_USER_USERNAME', 'e2e-test-user')
           project_slug = os.environ.get('TEST_PROJECT_SLUG', 'e2e-test-project')
 
-          # Create test user if not exists
           user, created = User.objects.get_or_create(
               username=username,
-              defaults={
-                  'email': email,
-                  'is_active': True,
-              }
+              defaults={'email': email, 'is_active': True}
           )
           if created:
               user.set_password(password)
               user.save()
               print(f'Created test user: {username}')
-          else:
-              print(f'Test user already exists: {username}')
 
-          # Create test project if not exists
           project, created = Project.objects.get_or_create(
               user=user,
               slug=project_slug,
@@ -348,74 +328,50 @@ jobs:
           )
           if created:
               print(f'Created test project: {project_slug}')
-          else:
-              print(f'Test project already exists: {project_slug}')
           SHELL
 
       - name: Seed quests for E2E tests
-        run: |
-          python manage.py seed_quests
-          echo "✅ Quests seeded for E2E tests"
+        run: python manage.py seed_quests
 
-      - name: Start Django backend with WebSocket support
+      - name: Start Django backend
         run: |
-          # Use uvicorn for WebSocket support (ASGI server)
-          # This matches production and allows chat E2E tests to work
           uvicorn config.asgi:application --host 127.0.0.1 --port 8000 > /tmp/django.log 2>&1 &
           echo $! > /tmp/django.pid
 
-          # Wait for backend to be ready
           for i in {1..30}; do
             if curl -sSf http://127.0.0.1:8000/api/v1/db/health/ > /dev/null 2>&1; then
-              echo "✅ Django backend ready (uvicorn with WebSocket support)"
+              echo "Django backend ready"
               break
             fi
-            echo "Waiting for Django... ($i/30)"
             sleep 2
           done
 
-      - name: Start Celery worker and verify health
+      - name: Start Celery worker
         run: |
-          # Start Celery worker in background
           celery -A config worker --loglevel=info > /tmp/celery.log 2>&1 &
           echo $! > /tmp/celery.pid
 
-          # Wait for worker to start (check logs for "ready" message)
           for i in {1..30}; do
             if grep -q "ready" /tmp/celery.log 2>/dev/null; then
-              echo "✅ Celery worker started"
+              echo "Celery worker ready"
               break
             fi
-            echo "Waiting for Celery worker... ($i/30)"
             sleep 1
           done
 
-          # Run health check task and verify it executes
           python - <<'PY'
           import sys
           from config.celery import health_check
-
-          print("Running Celery health check task...")
           try:
-              # Send task and wait for result (10 second timeout)
               result = health_check.apply_async()
               response = result.get(timeout=10)
-
-              if response.get('status') == 'healthy':
-                  print("✅ Celery health check passed:", response)
-                  sys.exit(0)
-              else:
-                  print("❌ Unexpected response:", response)
+              if response.get('status') != 'healthy':
                   sys.exit(1)
           except Exception as e:
-              print(f"❌ Celery health check failed: {e}")
-              # Show worker logs for debugging
-              import subprocess
-              subprocess.run(["tail", "-20", "/tmp/celery.log"])
+              print(f"Celery health check failed: {e}")
               sys.exit(1)
           PY
 
-      # ===== Frontend Setup =====
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -431,15 +387,19 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      # ===== Run E2E Tests =====
       - name: Run Playwright smoke tests
         working-directory: frontend
         timeout-minutes: 10
         run: npx playwright test e2e/smoke.spec.ts
         env:
           CI: true
-        # Smoke tests include AI quality checks (45-90s per test)
-        # Full e2e suite should be run locally before merging
+
+      - name: Run Playwright regression tests
+        working-directory: frontend
+        timeout-minutes: 15
+        run: npx playwright test e2e/regression/
+        env:
+          CI: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
@@ -450,21 +410,8 @@ jobs:
           retention-days: 3
           compression-level: 9
 
-      - name: Upload test screenshots
-        uses: actions/upload-artifact@v4
-        if: false  # Temporarily disabled due to storage quota
-        with:
-          name: playwright-screenshots
-          path: frontend/test-results/
-          retention-days: 3
-          compression-level: 9
-
       - name: Cleanup
         if: always()
         run: |
-          if [ -f /tmp/django.pid ]; then
-            kill $(cat /tmp/django.pid) || true
-          fi
-          if [ -f /tmp/celery.pid ]; then
-            kill $(cat /tmp/celery.pid) || true
-          fi
+          [ -f /tmp/django.pid ] && kill $(cat /tmp/django.pid) || true
+          [ -f /tmp/celery.pid ] && kill $(cat /tmp/celery.pid) || true

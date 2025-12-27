@@ -1058,6 +1058,48 @@ jobs:
           echo "✅ API health endpoint is working"
           echo "$RESPONSE" | head -5
 
+      - name: Test AI provider connectivity
+        run: |
+          echo "🔍 Testing AI provider connectivity..."
+          echo ""
+
+          RESPONSE=$(curl -s --max-time 60 "https://api.allthrive.ai/api/v1/health/ai/" 2>&1)
+
+          if [ -z "$RESPONSE" ]; then
+            echo "❌ AI health endpoint not responding"
+            exit 1
+          fi
+
+          # Parse status using Python (available on ubuntu runners)
+          STATUS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "parse_error")
+          OPENAI=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('providers',{}).get('openai',{}).get('status','unknown'))" 2>/dev/null || echo "unknown")
+          GEMINI=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('providers',{}).get('gemini',{}).get('status','unknown'))" 2>/dev/null || echo "unknown")
+
+          echo "AI Provider Status:"
+          echo "  OpenAI:  $OPENAI"
+          echo "  Gemini:  $GEMINI"
+          echo "  Overall: $STATUS"
+          echo ""
+
+          # Fail if both critical providers are down
+          if [ "$OPENAI" != "ok" ] && [ "$GEMINI" != "ok" ]; then
+            echo "❌ Both OpenAI and Gemini are unavailable!"
+            echo "Full response: $RESPONSE"
+            exit 1
+          fi
+
+          # Warn but don't fail if one is down (we have fallbacks)
+          if [ "$OPENAI" != "ok" ]; then
+            echo "⚠️  OpenAI is unavailable (Gemini fallback active)"
+          fi
+          if [ "$GEMINI" != "ok" ]; then
+            echo "⚠️  Gemini is unavailable (OpenAI fallback active)"
+          fi
+
+          if [ "$OPENAI" = "ok" ] && [ "$GEMINI" = "ok" ]; then
+            echo "✅ All AI providers connected"
+          fi
+
       - name: Test frontend is accessible
         run: |
           echo "🔍 Testing frontend accessibility..."
@@ -1083,6 +1125,7 @@ jobs:
           echo "  ✅ Google OAuth:   https://api.allthrive.ai/accounts/google/login/"
           echo "  ✅ LinkedIn OAuth: https://api.allthrive.ai/accounts/oidc/linkedin/login/"
           echo "  ✅ API Health:     https://api.allthrive.ai/api/v1/health/"
+          echo "  ✅ AI Providers:   https://api.allthrive.ai/api/v1/health/ai/"
           echo "  ✅ Frontend:       https://allthrive.ai/"
           echo ""
 
@@ -1186,10 +1229,11 @@ jobs:
 
   # Production E2E Smoke Tests - User journey tests against production
   # These tests run authenticated user flows to catch bugs like S3 URL validation issues
+  # IMPORTANT: These tests BLOCK deployment if they fail (catches avatar/AI issues)
   production-e2e-smoke:
     needs: [deploy-backend, deploy-frontend, migrate, smoke-test-oauth]
     runs-on: ubuntu-latest
-    continue-on-error: true  # Don't block deploy, just report
+    # Removed continue-on-error - failures should block deploy
     steps:
       - name: Check if production smoke tests should run
         id: check-config

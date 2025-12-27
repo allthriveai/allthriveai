@@ -16,7 +16,7 @@ from django.test import TransactionTestCase
 
 from core.community.consumers import CommunityRoomConsumer, DirectMessageConsumer
 from core.community.models import DirectMessageThread, Message, Room, RoomMembership
-from core.users.models import User
+from core.tests.factories import UserFactory
 
 
 class CommunityRoomConnectionTestCase(TransactionTestCase):
@@ -24,21 +24,9 @@ class CommunityRoomConnectionTestCase(TransactionTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.user = User.objects.create_user(
-            username='room_user',
-            email='room_user@test.com',
-            password='testpass123',
-        )
-        self.other_user = User.objects.create_user(
-            username='other_room_user',
-            email='other_room@test.com',
-            password='testpass123',
-        )
-        self.banned_user = User.objects.create_user(
-            username='banned_user',
-            email='banned@test.com',
-            password='testpass123',
-        )
+        self.user = UserFactory()
+        self.other_user = UserFactory()
+        self.banned_user = UserFactory()
 
         # Create a public room
         self.public_room = Room.objects.create(
@@ -160,16 +148,8 @@ class CommunityRoomMessagingTestCase(TransactionTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.user = User.objects.create_user(
-            username='msg_user',
-            email='msg_user@test.com',
-            password='testpass123',
-        )
-        self.muted_user = User.objects.create_user(
-            username='muted_user',
-            email='muted@test.com',
-            password='testpass123',
-        )
+        self.user = UserFactory()
+        self.muted_user = UserFactory()
 
         self.room = Room.objects.create(
             name='Messaging Room',
@@ -314,11 +294,7 @@ class CommunityRoomTypingTestCase(TransactionTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.user = User.objects.create_user(
-            username='typing_user',
-            email='typing_user@test.com',
-            password='testpass123',
-        )
+        self.user = UserFactory()
 
         self.room = Room.objects.create(
             name='Typing Room',
@@ -380,11 +356,7 @@ class CommunityRoomPingTestCase(TransactionTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.user = User.objects.create_user(
-            username='ping_user',
-            email='ping_user@test.com',
-            password='testpass123',
-        )
+        self.user = UserFactory()
 
         self.room = Room.objects.create(
             name='Ping Room',
@@ -437,11 +409,7 @@ class CommunityRoomHistoryTestCase(TransactionTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.user = User.objects.create_user(
-            username='history_user',
-            email='history_user@test.com',
-            password='testpass123',
-        )
+        self.user = UserFactory()
 
         self.room = Room.objects.create(
             name='History Room',
@@ -509,21 +477,9 @@ class DirectMessageConnectionTestCase(TransactionTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.user1 = User.objects.create_user(
-            username='dm_user1',
-            email='dm_user1@test.com',
-            password='testpass123',
-        )
-        self.user2 = User.objects.create_user(
-            username='dm_user2',
-            email='dm_user2@test.com',
-            password='testpass123',
-        )
-        self.non_participant = User.objects.create_user(
-            username='non_participant',
-            email='non_participant@test.com',
-            password='testpass123',
-        )
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
+        self.non_participant = UserFactory()
 
         # Create a DM room
         self.dm_room = Room.objects.create(
@@ -600,16 +556,8 @@ class DirectMessageMessagingTestCase(TransactionTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.user1 = User.objects.create_user(
-            username='dm_msg_user1',
-            email='dm_msg_user1@test.com',
-            password='testpass123',
-        )
-        self.user2 = User.objects.create_user(
-            username='dm_msg_user2',
-            email='dm_msg_user2@test.com',
-            password='testpass123',
-        )
+        self.user1 = UserFactory()
+        self.user2 = UserFactory()
 
         # Create a DM room
         self.dm_room = Room.objects.create(

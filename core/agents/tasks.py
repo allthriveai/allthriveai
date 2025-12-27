@@ -429,6 +429,14 @@ def process_chat_message_task(
         # Fetch recent conversation history for context-aware intent detection
         conversation_history = _get_conversation_history(conversation_id, limit=5)
 
+        # IMPORTANT: Close DB connection before long AI call
+        # This prevents connection pool exhaustion when AI calls take 30-120 seconds
+        # Django will automatically get a new connection when needed after the AI call
+        from django.db import connection as db_connection
+
+        db_connection.close()
+        logger.debug(f'Released DB connection before AI call for {conversation_id}')
+
         # Use the orchestrator for intelligent multi-agent routing
         # The orchestrator's supervisor analyzes the request and creates a plan
         result = _process_with_orchestrator(
