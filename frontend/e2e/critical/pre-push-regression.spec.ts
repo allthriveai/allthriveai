@@ -21,12 +21,11 @@ const AVATAR_TIMEOUT = 60000;         // 60s (target <15s but AI generation vari
 const LEARNING_PATH_TIMEOUT = 300000; // 5 min (AI lesson generation is slow)
 const BATTLE_TIMEOUT = 300000;        // 5 min (image gen + judging)
 const PROJECT_TIMEOUT = 180000;       // 3 min (URL scraping + AI processing)
-const WS_CONNECT_TIMEOUT = 30000;     // 30s for WebSocket connection
 
 /**
  * Wait for WebSocket to be connected (no "Reconnecting..." indicator)
  */
-async function waitForWebSocketConnected(page: Page, timeout = WS_CONNECT_TIMEOUT): Promise<void> {
+async function waitForWebSocketConnected(page: Page, timeout = 30000): Promise<void> {
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
     const content = await getPageContent(page);
