@@ -49,6 +49,7 @@ from .serializers import (
     PublicLearningPathSerializer,
     SavedLearningPathListSerializer,
     SavedLearningPathSerializer,
+    SectionOrganizationSerializer,
     TopicRecommendationSerializer,
     UserConceptMasterySerializer,
     UserLearningPathSerializer,
@@ -416,6 +417,123 @@ class LearnerProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SectionsOrganizationView(APIView):
+    """
+    View for managing learning path section organization.
+
+    Allows users to organize their learning path topics into custom sections
+    with drag-and-drop reordering, inline editing, and flexible nesting.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        GET /api/v1/me/learning-paths/sections-organization/
+
+        Returns the user's section organization along with their topic sections.
+        """
+
+        profile, _ = LearnerProfile.objects.get_or_create(user=request.user)
+
+        # Get topics from the user's generated path
+        topics = []
+        if profile.generated_path and 'topics' in profile.generated_path:
+            topics = profile.generated_path.get('topics', [])
+
+        return Response(
+            {
+                'sectionsOrganization': profile.sections_organization,
+                'topics': topics,
+            }
+        )
+
+    def patch(self, request):
+        """
+        PATCH /api/v1/me/learning-paths/sections-organization/
+
+        Update the user's section organization.
+        """
+        profile, _ = LearnerProfile.objects.get_or_create(user=request.user)
+
+        sections_data = request.data.get('sectionsOrganization')
+
+        # Allow null to reset to default
+        if sections_data is None:
+            profile.sections_organization = None
+            profile.save(update_fields=['sections_organization'])
+            return Response({'status': 'success', 'sectionsOrganization': None})
+
+        # Validate the structure
+        serializer = SectionOrganizationSerializer(data=sections_data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        profile.sections_organization = serializer.validated_data
+        profile.save(update_fields=['sections_organization'])
+
+        return Response(
+            {
+                'status': 'success',
+                'sectionsOrganization': profile.sections_organization,
+            }
+        )
+
+
+class ReorderSectionsView(APIView):
+    """View for quickly reordering sections by ID."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        POST /api/v1/me/learning-paths/reorder-sections/
+
+        Reorder top-level sections by their IDs.
+
+        Request body:
+        {
+            "section_ids": ["uuid-1", "uuid-2", "uuid-3"]
+        }
+        """
+        profile, _ = LearnerProfile.objects.get_or_create(user=request.user)
+
+        if not profile.sections_organization:
+            return Response(
+                {'error': 'No sections to reorder'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_order = request.data.get('section_ids', [])
+        if not isinstance(new_order, list):
+            return Response(
+                {'error': 'section_ids must be a list'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        sections = profile.sections_organization.get('sections', [])
+        section_map = {s.get('id'): s for s in sections if s.get('type') == 'section'}
+
+        # Reorder according to new_order
+        reordered = [section_map[sid] for sid in new_order if sid in section_map]
+
+        # Add any sections not in new_order at the end (safety measure)
+        seen_ids = set(new_order)
+        for section in sections:
+            if section.get('id') not in seen_ids:
+                reordered.append(section)
+
+        profile.sections_organization['sections'] = reordered
+        profile.save(update_fields=['sections_organization'])
+
+        return Response(
+            {
+                'status': 'success',
+                'sectionsOrganization': profile.sections_organization,
+            }
+        )
 
 
 class ConceptViewSet(viewsets.ReadOnlyModelViewSet):

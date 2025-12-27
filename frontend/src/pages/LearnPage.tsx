@@ -264,7 +264,7 @@ function AuthenticatedLearnPage() {
       return <WaitingForSetupView />;
     }
 
-    // Show the path library grid
+    // Show the path library grid with section organization
     return (
       <PathLibraryGrid
         onCreateNew={handleCreateNew}

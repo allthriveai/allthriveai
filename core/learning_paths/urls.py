@@ -28,6 +28,17 @@ urlpatterns = [
     # Structured learning path endpoints
     path('me/structured-path/', views.StructuredPathView.as_view(), name='structured-path'),
     path('me/learning-setup/', views.LearningSetupView.as_view(), name='learning-setup'),
+    # Section organization endpoints - drag-and-drop reordering
+    path(
+        'me/learning-paths/sections-organization/',
+        views.SectionsOrganizationView.as_view(),
+        name='sections-organization',
+    ),
+    path(
+        'me/learning-paths/reorder-sections/',
+        views.ReorderSectionsView.as_view(),
+        name='reorder-sections',
+    ),
     path('learning/projects/', views.ProjectLearningView.as_view(), name='learning-projects'),
     path(
         'learning/projects/<int:project_id>/used/',

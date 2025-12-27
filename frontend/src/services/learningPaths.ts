@@ -15,6 +15,7 @@ import type {
   LearningGoal,
 } from '@/types/models';
 import type { SkillLevel } from './personalization';
+import type { SectionsOrganization, TopicSectionData } from '@/types/learningSections';
 
 /**
  * Get all learning paths for the current user
@@ -1299,6 +1300,52 @@ export async function regenerateSpecificExercise(
   const response = await api.post<RegenerateExerciseResponse>(
     `/me/saved-paths/${slug}/lessons/${lessonOrder}/regenerate-specific-exercise/`,
     data
+  );
+  return response.data;
+}
+
+// =============================================================================
+// SECTIONS ORGANIZATION APIs - Drag-and-drop topic organization
+// =============================================================================
+
+/**
+ * Response from the sections organization endpoint
+ */
+export interface SectionsOrganizationResponse {
+  sectionsOrganization: SectionsOrganization | null;
+  topics: TopicSectionData[];
+}
+
+/**
+ * Get the user's section organization and topic data for the /learn page
+ */
+export async function getSectionsOrganization(): Promise<SectionsOrganizationResponse> {
+  const response = await api.get<SectionsOrganizationResponse>(
+    '/me/learning-paths/sections-organization/'
+  );
+  return response.data;
+}
+
+/**
+ * Update the user's section organization (autosave)
+ */
+export async function updateSectionsOrganization(
+  data: SectionsOrganization
+): Promise<{ status: string }> {
+  const response = await api.patch<{ status: string }>(
+    '/me/learning-paths/sections-organization/',
+    { sectionsOrganization: data }
+  );
+  return response.data;
+}
+
+/**
+ * Reorder top-level sections by section IDs
+ */
+export async function reorderSections(sectionIds: string[]): Promise<{ status: string }> {
+  const response = await api.post<{ status: string }>(
+    '/me/learning-paths/reorder-sections/',
+    { sectionIds }
   );
   return response.data;
 }
