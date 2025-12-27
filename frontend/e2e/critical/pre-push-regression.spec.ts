@@ -363,6 +363,18 @@ test.describe('Pre-Push Critical Regression Tests', () => {
 
     // Step 2: Accept the offer
     await sendHomeChat(page, 'yes, please create a learning path for me');
+    await waitForAvaReady(page, DEEP_AI_TIMEOUT);
+
+    // Step 2b: AI typically asks clarifying questions - answer them
+    const clarifyingResponse = await getPageContent(page);
+    console.log('After accepting offer:', clarifyingResponse.substring(0, 400));
+
+    // Check if AI is asking questions (about experience, goals, etc.)
+    if (/what.*experience|what.*do.*with|how.*familiar|what.*level|beginner|intermediate/i.test(clarifyingResponse)) {
+      console.log('✓ AI is asking clarifying questions - answering...');
+      await sendHomeChat(page, "I'm new to this and just want to understand the concepts");
+      await waitForAvaReady(page, DEEP_AI_TIMEOUT);
+    }
 
     // Step 3: Wait for learning path creation
     let learningPathUrl: string | null = null;
