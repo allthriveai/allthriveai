@@ -8,40 +8,39 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { useLearningPathBySlug, useSavedPath, usePublishSavedPath, useUnpublishSavedPath } from '@/hooks/useLearningPaths';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLearningPathBySlug, useSavedPath, usePublishSavedPath, useUnpublishSavedPath, learningPathKeys } from '@/hooks/useLearningPaths';
 import {
-  faGraduationCap,
-  faArrowLeft,
-  faPlay,
-  faBook,
-  faCode,
-  faGamepad,
-  faQuestion,
-  faClock,
-  faSignal,
-  faWrench,
-  faExternalLinkAlt,
-  faLightbulb,
-  faChevronDown,
-  faChevronRight,
-  faRobot,
-  faUsers,
-  faThumbsUp,
-  faThumbsDown,
-  faTimes,
-  faSearchPlus,
-  faGlobe,
-  faLock,
-  faSpinner,
-  faPlus,
-  faCheck,
-  faCheckCircle,
-  faTrophy,
-  faExpand,
-  faCompress,
-  faSync,
-} from '@fortawesome/free-solid-svg-icons';
+  AcademicCapIcon,
+  ArrowLeftIcon,
+  PlayIcon,
+  BookOpenIcon,
+  CodeBracketIcon,
+  PuzzlePieceIcon,
+  QuestionMarkCircleIcon,
+  ClockIcon,
+  SignalIcon,
+  WrenchIcon,
+  ArrowTopRightOnSquareIcon,
+  LightBulbIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  SparklesIcon,
+  UserGroupIcon,
+  HandThumbUpIcon,
+  HandThumbDownIcon,
+  XMarkIcon,
+  MagnifyingGlassPlusIcon,
+  GlobeAltIcon,
+  LockClosedIcon,
+  ArrowPathIcon,
+  PlusIcon,
+  CheckIcon,
+  CheckCircleIcon,
+  TrophyIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
+} from '@heroicons/react/24/solid';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -58,7 +57,8 @@ import { getTaxonomyPreferences, type SkillLevel } from '@/services/personalizat
 import { InlineAIChat } from '@/components/learning/InlineAIChat';
 import { LessonQuiz } from '@/components/learning/LessonQuiz';
 import { ExerciseCollection } from '@/components/learning/exercises';
-import { getExercises } from '@/services/learningPaths';
+import { getExercises, addExercise as addExerciseApi } from '@/services/learningPaths';
+import type { LessonExercise } from '@/services/learningPaths';
 import type { Tool } from '@/types/models';
 
 /**
@@ -97,7 +97,7 @@ function ImageLightbox({ imageUrl, alt, onClose }: ImageLightboxProps) {
         className="absolute top-4 right-4 z-10 p-3 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
         aria-label="Close image"
       >
-        <FontAwesomeIcon icon={faTimes} className="w-6 h-6" />
+        <XMarkIcon className="w-6 h-6" />
       </button>
 
       {/* Image container */}
@@ -177,28 +177,33 @@ function detectLanguage(code: string): string {
 }
 
 /**
+ * Icon component type for Heroicons
+ */
+type HeroIconComponent = React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>;
+
+/**
  * Get icon for curriculum item type
  */
-function getTypeIcon(type: CurriculumItem['type']) {
+function getTypeIcon(type: CurriculumItem['type']): HeroIconComponent {
   switch (type) {
     case 'video':
-      return faPlay;
+      return PlayIcon;
     case 'article':
-      return faBook;
+      return BookOpenIcon;
     case 'code-repo':
-      return faCode;
+      return CodeBracketIcon;
     case 'game':
-      return faGamepad;
+      return PuzzlePieceIcon;
     case 'quiz':
-      return faQuestion;
+      return QuestionMarkCircleIcon;
     case 'tool':
-      return faWrench;
+      return WrenchIcon;
     case 'ai_lesson':
-      return faLightbulb;
+      return LightBulbIcon;
     case 'related_projects':
-      return faUsers;
+      return UserGroupIcon;
     default:
-      return faBook;
+      return BookOpenIcon;
   }
 }
 
@@ -302,7 +307,7 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-purple-500/20 text-purple-400 border-purple-500/30">
-                  <FontAwesomeIcon icon={faGamepad} className="text-[10px]" />
+                  <PuzzlePieceIcon className="w-2.5 h-2.5" />
                   Game
                 </span>
               </div>
@@ -310,9 +315,8 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
                 {item.title}
               </h3>
             </div>
-            <FontAwesomeIcon
-              icon={faExternalLinkAlt}
-              className="text-slate-400 dark:text-white/30 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-shrink-0"
+            <ArrowTopRightOnSquareIcon
+              className="w-4 h-4 text-slate-400 dark:text-white/30 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-shrink-0"
             />
           </div>
         </div>
@@ -331,7 +335,7 @@ function GameItemCard({ item, index }: { item: CurriculumItem; index: number }) 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-purple-500/20 text-purple-400 border-purple-500/30">
-                <FontAwesomeIcon icon={faGamepad} className="text-[10px]" />
+                <PuzzlePieceIcon className="w-2.5 h-2.5" />
                 Interactive Game
               </span>
             </div>
@@ -432,7 +436,7 @@ function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
-              <FontAwesomeIcon icon={faWrench} className="text-[10px]" />
+              <WrenchIcon className="w-2.5 h-2.5" />
               Tool
             </span>
           </div>
@@ -440,10 +444,11 @@ function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) 
         </div>
 
         {/* Expand/collapse indicator */}
-        <FontAwesomeIcon
-          icon={isExpanded ? faChevronDown : faChevronRight}
-          className="text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1"
-        />
+        {isExpanded ? (
+          <ChevronDownIcon className="w-4 h-4 text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1" />
+        ) : (
+          <ChevronRightIcon className="w-4 h-4 text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1" />
+        )}
       </button>
 
       {/* Expanded content */}
@@ -463,7 +468,7 @@ function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) 
                 className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 View Tool Page
-                <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
+                <ArrowTopRightOnSquareIcon className="w-3 h-3" />
               </Link>
             </div>
           )}
@@ -523,7 +528,7 @@ function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) 
                     className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     Visit Website
-                    <FontAwesomeIcon icon={faExternalLinkAlt} className="text-xs" />
+                    <ArrowTopRightOnSquareIcon className="w-3 h-3" />
                   </a>
                 )}
                 <Link
@@ -531,7 +536,7 @@ function ToolItemCard({ item, index }: { item: CurriculumItem; index: number }) 
                   className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
                 >
                   Full Details
-                  <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                  <ChevronRightIcon className="w-3 h-3" />
                 </Link>
               </div>
             </div>
@@ -609,7 +614,7 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-amber-500/20 text-amber-400 border-amber-500/30">
-              <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
+              <UserGroupIcon className="w-2.5 h-2.5" />
               Community
             </span>
             {projects.length > 0 && (
@@ -627,10 +632,11 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
         </div>
 
         {/* Expand/collapse indicator */}
-        <FontAwesomeIcon
-          icon={isExpanded ? faChevronDown : faChevronRight}
-          className="text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1"
-        />
+        {isExpanded ? (
+          <ChevronDownIcon className="w-4 h-4 text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1" />
+        ) : (
+          <ChevronRightIcon className="w-4 h-4 text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1" />
+        )}
       </button>
 
       {/* Expanded content - Projects grid or empty state */}
@@ -649,7 +655,7 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
                   onClick={handleShareProject}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-sm font-medium rounded-lg transition-colors border border-amber-500/30"
                 >
-                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  <PlusIcon className="w-4 h-4" />
                   Add Yours
                 </button>
                 {isAdmin && pathId && (
@@ -658,7 +664,7 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
                     disabled={isAddingProject}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-sm font-medium rounded-lg transition-colors border border-purple-500/30 disabled:opacity-50"
                   >
-                    <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                    <PlusIcon className="w-4 h-4" />
                     {isAddingProject ? 'Adding...' : 'Admin: Add by ID'}
                   </button>
                 )}
@@ -667,7 +673,7 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
           ) : (
             <div className="text-center py-8">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <FontAwesomeIcon icon={faUsers} className="text-2xl text-amber-400" />
+                <UserGroupIcon className="w-7 h-7 text-amber-400" />
               </div>
               <p className="text-slate-600 dark:text-gray-400 text-sm mb-4">
                 No community projects yet{topicsCovered.length > 0 ? ` for ${topicsCovered.slice(0, 2).join(' or ')}` : ''}.
@@ -677,7 +683,7 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
                   onClick={handleShareProject}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
                 >
-                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  <PlusIcon className="w-4 h-4" />
                   Share Your Project
                 </button>
                 {isAdmin && pathId && (
@@ -686,7 +692,7 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
                     disabled={isAddingProject}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 text-sm font-medium rounded-lg transition-colors border border-purple-500/30 disabled:opacity-50"
                   >
-                    <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                    <PlusIcon className="w-4 h-4" />
                     {isAddingProject ? 'Adding...' : 'Admin: Add by ID'}
                   </button>
                 )}
@@ -704,29 +710,30 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
  */
 interface LessonSectionAccordionProps {
   title: string;
-  icon: typeof faCode;
+  icon: HeroIconComponent;
   iconColor: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
   badge?: string;
 }
 
-function LessonSectionAccordion({ title, icon, iconColor, defaultOpen = false, children, badge }: LessonSectionAccordionProps) {
+function LessonSectionAccordion({ title, icon: Icon, iconColor, defaultOpen = false, children, badge }: LessonSectionAccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-slate-200 dark:border-white/10 rounded overflow-hidden">
+    <div className="border border-slate-200 dark:border-white/10 rounded">
       {/* Accordion Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-slate-100 dark:bg-white/5 px-4 py-3 flex items-center justify-between hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+        className="w-full bg-slate-100 dark:bg-white/5 px-4 py-3 flex items-center justify-between hover:bg-slate-200 dark:hover:bg-white/10 transition-colors rounded-t"
       >
         <div className="flex items-center gap-2">
-          <FontAwesomeIcon
-            icon={isOpen ? faChevronDown : faChevronRight}
-            className="text-slate-400 dark:text-gray-500 text-xs w-3"
-          />
-          <FontAwesomeIcon icon={icon} className={iconColor} />
+          {isOpen ? (
+            <ChevronDownIcon className="w-3 h-3 text-slate-400 dark:text-gray-500" />
+          ) : (
+            <ChevronRightIcon className="w-3 h-3 text-slate-400 dark:text-gray-500" />
+          )}
+          <Icon className={`w-4 h-4 ${iconColor}`} />
           <h4 className="text-slate-900 dark:text-white font-semibold">{title}</h4>
           {badge && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-400">
@@ -750,6 +757,139 @@ function LessonSectionAccordion({ title, icon, iconColor, defaultOpen = false, c
 }
 
 /**
+ * PracticePromptWithExerciseOption - InlineAIChat with "Try a Different Exercise" option
+ * Shows when a lesson only has a practicePrompt and no structured exercises
+ */
+interface PracticePromptWithExerciseOptionProps {
+  practicePrompt: string;
+  skillLevel: SkillLevel;
+  lessonOrder: number;
+  pathSlug: string;
+  onOpenChat?: () => void;
+  onExerciseComplete?: (stats: { hintsUsed: number; attempts: number; timeSpentMs: number }) => void;
+  onExerciseAdded: (exercises: LessonExercise[]) => void;
+  /** Username for cache invalidation on exercise changes */
+  username?: string;
+}
+
+function PracticePromptWithExerciseOption({
+  practicePrompt,
+  skillLevel,
+  lessonOrder,
+  pathSlug,
+  onOpenChat,
+  onExerciseComplete,
+  onExerciseAdded,
+  username,
+}: PracticePromptWithExerciseOptionProps) {
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleAddExercise = async (exerciseType?: LessonExercise['exerciseType']) => {
+    setIsAddingExercise(true);
+    try {
+      const response = await addExerciseApi(pathSlug, lessonOrder, { exerciseType });
+      // When exercise is added, pass it to parent to update content
+      // This will cause ExerciseCollection to render instead
+      onExerciseAdded([response.exercise]);
+
+      // Invalidate cache so page refresh shows updated exercises
+      if (username && pathSlug) {
+        queryClient.invalidateQueries({
+          queryKey: learningPathKeys.bySlug(username, pathSlug),
+        });
+        queryClient.invalidateQueries({
+          queryKey: learningPathKeys.savedPath(pathSlug),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to add exercise:', error);
+    } finally {
+      setIsAddingExercise(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Original InlineAIChat for the practice prompt */}
+      <InlineAIChat
+        exercise={{
+          exerciseType: 'ai_prompt',
+          scenario: practicePrompt,
+          expectedInputs: ['.*'],
+          successMessage: 'Great work!',
+          expectedOutput: '',
+          contentByLevel: {
+            beginner: { instructions: practicePrompt, hints: [] },
+            intermediate: { instructions: practicePrompt, hints: [] },
+            advanced: { instructions: practicePrompt, hints: [] },
+          },
+        }}
+        skillLevel={skillLevel}
+        lessonId={`lesson-${lessonOrder}`}
+        pathSlug={pathSlug}
+        onAskForHelp={onOpenChat}
+        onComplete={onExerciseComplete}
+      />
+
+      {/* Try a Different Exercise section - pills always visible */}
+      <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+          Try a different exercise type
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {/* Let AI Choose */}
+          <button
+            onClick={() => handleAddExercise()}
+            disabled={isAddingExercise}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 text-purple-400 hover:from-purple-500/30 hover:to-cyan-500/30 disabled:opacity-50 disabled:cursor-wait"
+          >
+            {isAddingExercise ? (
+              <ArrowPathIcon className="w-4 h-4 animate-spin" />
+            ) : (
+              <span>✨</span>
+            )}
+            Let AI Choose
+          </button>
+          {/* Drag & Sort */}
+          <button
+            onClick={() => handleAddExercise('drag_sort')}
+            disabled={isAddingExercise}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-wait"
+          >
+            Drag & Sort
+          </button>
+          {/* Connect Concepts */}
+          <button
+            onClick={() => handleAddExercise('connect_nodes')}
+            disabled={isAddingExercise}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-violet-500/10 border border-violet-500/30 text-violet-400 hover:bg-violet-500/20 disabled:opacity-50 disabled:cursor-wait"
+          >
+            Connect Concepts
+          </button>
+          {/* Code Walkthrough */}
+          <button
+            onClick={() => handleAddExercise('code_walkthrough')}
+            disabled={isAddingExercise}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-wait"
+          >
+            Code Walkthrough
+          </button>
+          {/* Timed Challenge */}
+          <button
+            onClick={() => handleAddExercise('timed_challenge')}
+            disabled={isAddingExercise}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-pink-500/10 border border-pink-500/30 text-pink-400 hover:bg-pink-500/20 disabled:opacity-50 disabled:cursor-wait"
+          >
+            Timed Challenge
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * AI Lesson Card component - renders expandable AI-generated lesson content
  */
 interface AILessonCardProps {
@@ -765,9 +905,11 @@ interface AILessonCardProps {
   isCompleted?: boolean;
   showCelebration?: boolean;
   onLessonUpdated?: (lessonOrder: number, newContent: AILessonContent, newTitle?: string) => void;
+  /** Username for cache invalidation on exercise changes */
+  username?: string;
 }
 
-function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete, autoExpand, cardRef: externalCardRef, isCompleted, showCelebration, onLessonUpdated }: AILessonCardProps) {
+function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExerciseComplete, onQuizComplete, autoExpand, cardRef: externalCardRef, isCompleted, showCelebration, onLessonUpdated, username }: AILessonCardProps) {
   const [isExpanded, setIsExpanded] = useState(autoExpand ?? false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -791,6 +933,22 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   const content = localContent;
   const title = localTitle;
 
+  // Sync localContent when item.content changes (e.g., after backend returns persisted exercises)
+  // This ensures exercises persisted in SavedLearningPath are shown after page refresh
+  useEffect(() => {
+    // Check if item.content has exercises that localContent doesn't
+    const itemExercises = getExercises(item.content);
+    const localExercises = getExercises(localContent);
+
+    // If item.content has more exercises or different exercises, sync it
+    // This handles the case where backend has persisted exercises that local state doesn't know about
+    if (itemExercises.length > localExercises.length ||
+        (itemExercises.length > 0 && localExercises.length === 0)) {
+      setLocalContent(item.content);
+      setLocalTitle(item.title);
+    }
+  }, [item.content, item.title]);
+
   // Auto-expand when autoExpand prop changes to true
   useEffect(() => {
     if (autoExpand) {
@@ -806,9 +964,22 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
     }
   };
 
+  // Helper to get localStorage cache key for lesson images
+  const getImageCacheKey = (slug: string, order: number) => `lesson-image-${slug}-${order}`;
+
   // Start loading image when card comes into view (preload before user clicks)
+  // Check localStorage cache first before fetching from API
   useEffect(() => {
     if (!pathSlug || hasStartedLoading || imageUrl || imageError) return;
+
+    // Check localStorage cache first
+    const cacheKey = getImageCacheKey(pathSlug, item.order);
+    const cachedUrl = localStorage.getItem(cacheKey);
+    if (cachedUrl) {
+      setImageUrl(cachedUrl);
+      setHasStartedLoading(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -819,6 +990,8 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
             .then((url) => {
               if (url) {
                 setImageUrl(url);
+                // Cache in localStorage for persistence across page reloads
+                localStorage.setItem(cacheKey, url);
               } else {
                 setImageError(true);
               }
@@ -925,7 +1098,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
   };
 
   return (
-    <div ref={setCardRef} className={`glass-strong rounded overflow-hidden ${isCompleted ? 'ring-2 ring-emerald-500/30' : ''}`}>
+    <div ref={setCardRef} className={`glass-strong rounded ${isCompleted ? 'ring-2 ring-emerald-500/30' : ''}`}>
       {/* Header - always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -937,24 +1110,24 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
             ? 'bg-emerald-500 text-white'
             : 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
         }`}>
-          {isCompleted ? <FontAwesomeIcon icon={faCheck} /> : index + 1}
+          {isCompleted ? <CheckIcon className="w-4 h-4" /> : index + 1}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-              <FontAwesomeIcon icon={faLightbulb} className="text-[10px]" />
+              <LightBulbIcon className="w-2.5 h-2.5" />
               AI Lesson
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-purple-500/20 text-purple-400 border-purple-500/30">
-              <FontAwesomeIcon icon={faRobot} className="text-[10px]" />
+              <SparklesIcon className="w-2.5 h-2.5" />
               Personalized
             </span>
             {/* Completed badge */}
             {isCompleted && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                <FontAwesomeIcon icon={faCheckCircle} className="text-[10px]" />
+                <CheckCircleIcon className="w-2.5 h-2.5" />
                 Completed
               </span>
             )}
@@ -983,10 +1156,11 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
         </div>
 
         {/* Expand/collapse indicator */}
-        <FontAwesomeIcon
-          icon={isExpanded ? faChevronDown : faChevronRight}
-          className="text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1"
-        />
+        {isExpanded ? (
+          <ChevronDownIcon className="w-4 h-4 text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1" />
+        ) : (
+          <ChevronRightIcon className="w-4 h-4 text-slate-400 dark:text-gray-400 flex-shrink-0 mt-1" />
+        )}
       </button>
 
       {/* Expanded content */}
@@ -1013,7 +1187,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                 {/* Hover overlay with zoom icon */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-3">
-                    <FontAwesomeIcon icon={faSearchPlus} className="text-white text-lg" />
+                    <MagnifyingGlassPlusIcon className="w-5 h-5 text-white" />
                   </div>
                 </div>
               </button>
@@ -1068,7 +1242,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
           {content.examples && content.examples.length > 0 && (
             <LessonSectionAccordion
               title="Examples"
-              icon={faCode}
+              icon={BookOpenIcon}
               iconColor="text-green-500 dark:text-green-400"
               badge={`${content.examples.length}`}
             >
@@ -1133,7 +1307,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
           {(getExercises(content).length > 0 || content.practicePrompt) && (
             <LessonSectionAccordion
               title="Exercises"
-              icon={faCode}
+              icon={PuzzlePieceIcon}
               iconColor="text-emerald-500"
               badge={getExercises(content).length > 0 ? `${getExercises(content).length} exercise${getExercises(content).length > 1 ? 's' : ''}` : 'Practice'}
             >
@@ -1144,6 +1318,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                   lessonOrder={item.order}
                   content={content}
                   skillLevel={skillLevel}
+                  username={username}
                   onExerciseComplete={() => {
                     // Call the lesson completion handler with placeholder stats
                     onExerciseComplete?.(item.order, { hintsUsed: 0, attempts: 1, timeSpentMs: 0 });
@@ -1153,26 +1328,19 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                     setLocalContent(prev => prev ? { ...prev, exercises } : prev);
                   }}
                 />
-              ) : content.practicePrompt && (
+              ) : content.practicePrompt && pathSlug && (
                 /* Fallback: convert practicePrompt to inline chat when no exercises */
-                <InlineAIChat
-                  exercise={{
-                    exerciseType: 'ai_prompt',
-                    scenario: content.practicePrompt,
-                    expectedInputs: ['.*'],
-                    successMessage: 'Great work!',
-                    expectedOutput: '',
-                    contentByLevel: {
-                      beginner: { instructions: content.practicePrompt, hints: [] },
-                      intermediate: { instructions: content.practicePrompt, hints: [] },
-                      advanced: { instructions: content.practicePrompt, hints: [] },
-                    },
-                  }}
+                <PracticePromptWithExerciseOption
+                  practicePrompt={content.practicePrompt}
                   skillLevel={skillLevel}
-                  lessonId={`lesson-${item.order}`}
+                  lessonOrder={item.order}
                   pathSlug={pathSlug}
-                  onAskForHelp={handleOpenChat}
-                  onComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+                  username={username}
+                  onOpenChat={handleOpenChat}
+                  onExerciseComplete={onExerciseComplete ? (stats) => onExerciseComplete(item.order, stats) : undefined}
+                  onExerciseAdded={(exercises) => {
+                    setLocalContent(prev => prev ? { ...prev, exercises } : prev);
+                  }}
                 />
               )}
             </LessonSectionAccordion>
@@ -1182,7 +1350,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
           {content.quiz && (
             <LessonSectionAccordion
               title="Quiz"
-              icon={faQuestion}
+              icon={QuestionMarkCircleIcon}
               iconColor="text-amber-500"
               badge={`${content.quiz.questions?.length || 0} questions`}
             >
@@ -1197,7 +1365,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
           {content.mermaidDiagram && (
             <LessonSectionAccordion
               title="Diagram"
-              icon={faSignal}
+              icon={SignalIcon}
               iconColor="text-purple-500 dark:text-purple-400"
               badge="Visual"
             >
@@ -1212,7 +1380,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
           {showCelebration && (
             <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-xl p-6 text-center animate-in fade-in zoom-in duration-300">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-                <FontAwesomeIcon icon={faTrophy} className="text-3xl text-emerald-400" />
+                <TrophyIcon className="w-8 h-8 text-emerald-400" />
               </div>
               <h4 className="text-xl font-bold text-emerald-400 mb-2">Lesson Complete!</h4>
               <p className="text-slate-600 dark:text-gray-300">
@@ -1225,7 +1393,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
           {isCompleted && !showCelebration && (
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <FontAwesomeIcon icon={faCheckCircle} className="text-lg text-emerald-400" />
+                <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
                 <p className="text-emerald-400 font-medium">Lesson Completed</p>
@@ -1248,7 +1416,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                       : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400'
                   } ${isRating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <FontAwesomeIcon icon={faThumbsUp} />
+                  <HandThumbUpIcon className="w-4 h-4" />
                   Helpful
                 </button>
                 <button
@@ -1260,7 +1428,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                       : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400'
                   } ${isRating ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <FontAwesomeIcon icon={faThumbsDown} />
+                  <HandThumbDownIcon className="w-4 h-4" />
                   Not Helpful
                 </button>
                 {/* Separator */}
@@ -1276,7 +1444,7 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                           : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-blue-500/20 hover:text-blue-600 dark:hover:text-blue-400'
                       } ${isRegenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <FontAwesomeIcon icon={isRegenerating ? faSpinner : faSync} className={isRegenerating ? 'animate-spin' : ''} />
+                      <ArrowPathIcon className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} />
                       {isRegenerating ? 'Regenerating...' : 'Regenerate'}
                     </button>
                   </>
@@ -1329,12 +1497,12 @@ function AILessonCard({ item, index, pathSlug, skillLevel, onOpenChat, onExercis
                     >
                       {isRegenerating ? (
                         <>
-                          <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                          <ArrowPathIcon className="animate-spin" />
                           Generating...
                         </>
                       ) : (
                         <>
-                          <FontAwesomeIcon icon={faSync} />
+                          <ArrowPathIcon />
                           Generate New Lesson
                         </>
                       )}
@@ -1379,12 +1547,14 @@ interface CurriculumItemCardProps {
   showCelebration?: boolean;
   autoExpand?: boolean;
   cardRef?: (el: HTMLDivElement | null) => void;
+  /** Username for cache invalidation on exercise changes */
+  username?: string;
 }
 
-function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel, onOpenChat, onProjectAdded, topicsCovered, onExerciseComplete, onQuizComplete, autoExpand, cardRef, isCompleted, showCelebration }: CurriculumItemCardProps) {
+function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel, onOpenChat, onProjectAdded, topicsCovered, onExerciseComplete, onQuizComplete, autoExpand, cardRef, isCompleted, showCelebration, username }: CurriculumItemCardProps) {
   // Use AILessonCard for AI-generated lessons
   if (item.type === 'ai_lesson') {
-    return <AILessonCard item={item} index={index} pathSlug={pathSlug} skillLevel={skillLevel} onOpenChat={onOpenChat} onExerciseComplete={onExerciseComplete} onQuizComplete={onQuizComplete} autoExpand={autoExpand} cardRef={cardRef} isCompleted={isCompleted} showCelebration={showCelebration} />;
+    return <AILessonCard item={item} index={index} pathSlug={pathSlug} skillLevel={skillLevel} onOpenChat={onOpenChat} onExerciseComplete={onExerciseComplete} onQuizComplete={onQuizComplete} autoExpand={autoExpand} cardRef={cardRef} isCompleted={isCompleted} showCelebration={showCelebration} username={username} />;
   }
 
   // Use ToolItemCard for expandable tool info
@@ -1402,7 +1572,7 @@ function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel
     return <RelatedProjectsCard item={item} index={index} topicsCovered={topicsCovered} pathId={pathId} isAdmin={isAdmin} onProjectAdded={onProjectAdded} />;
   }
 
-  const icon = getTypeIcon(item.type);
+  const Icon = getTypeIcon(item.type);
   const label = getTypeLabel(item.type);
   const colorClasses = getTypeColor(item.type);
 
@@ -1430,7 +1600,7 @@ function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${colorClasses}`}>
-              <FontAwesomeIcon icon={icon} className="text-[10px]" />
+              <Icon className="w-2.5 h-2.5" />
               {label}
             </span>
           </div>
@@ -1441,10 +1611,7 @@ function CurriculumItemCard({ item, index, pathSlug, pathId, isAdmin, skillLevel
 
         {/* External link indicator */}
         {linkUrl && (
-          <FontAwesomeIcon
-            icon={faExternalLinkAlt}
-            className="text-slate-400 dark:text-white/30 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-shrink-0"
-          />
+          <ArrowTopRightOnSquareIcon className="w-4 h-4 text-slate-400 dark:text-white/30 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex-shrink-0" />
         )}
       </div>
     </div>
@@ -1473,7 +1640,7 @@ function NotFoundState() {
     <div className="h-full flex items-center justify-center p-6">
       <div className="text-center max-w-md">
         <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center">
-          <FontAwesomeIcon icon={faGraduationCap} className="text-3xl text-red-400" />
+          <AcademicCapIcon className="w-8 h-8 text-red-400" />
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Learning Path Not Found</h2>
         <p className="text-slate-600 dark:text-gray-400 mb-6">
@@ -1483,7 +1650,7 @@ function NotFoundState() {
           to="/learn"
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
         >
-          <FontAwesomeIcon icon={faArrowLeft} />
+          <ArrowLeftIcon />
           Go to Learn
         </Link>
       </div>
@@ -1729,7 +1896,7 @@ export default function LearningPathDetailPage() {
                       className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                       title="Exit Focus Mode"
                     >
-                      <FontAwesomeIcon icon={faCompress} />
+                      <ArrowsPointingInIcon />
                     </button>
                     <h1 className="text-lg font-semibold text-white truncate">{path.title}</h1>
                   </div>
@@ -1792,7 +1959,7 @@ export default function LearningPathDetailPage() {
                         to="/learn"
                         className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-3 text-sm"
                       >
-                        <FontAwesomeIcon icon={faArrowLeft} />
+                        <ArrowLeftIcon className="w-4 h-4" />
                         Back to Learn
                       </Link>
 
@@ -1819,15 +1986,15 @@ export default function LearningPathDetailPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
                         <div className="flex items-center gap-1.5">
-                          <FontAwesomeIcon icon={faClock} className="text-[10px]" />
+                          <ClockIcon className="w-3 h-3" />
                           <span>{path.estimatedHours}h</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <FontAwesomeIcon icon={faSignal} className="text-[10px]" />
+                          <SignalIcon className="w-3 h-3" />
                           <span className="capitalize">{path.difficulty}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <FontAwesomeIcon icon={faGraduationCap} className="text-[10px]" />
+                          <AcademicCapIcon className="w-3 h-3" />
                           <span>{path.curriculum?.length ?? 0} items</span>
                         </div>
                         {/* Published indicator - for non-owners viewing */}
@@ -1835,7 +2002,7 @@ export default function LearningPathDetailPage() {
                           <>
                             <span className="text-gray-400">•</span>
                             <span className="inline-flex items-center gap-1 text-emerald-400">
-                              <FontAwesomeIcon icon={faGlobe} className="text-[10px]" />
+                              <GlobeAltIcon className="w-3 h-3" />
                               Shared on Explore
                             </span>
                           </>
@@ -1872,11 +2039,11 @@ export default function LearningPathDetailPage() {
                           title={savedPath.isPublished ? 'Remove from Explore' : 'Share with others through Explore'}
                         >
                           {isPublishing ? (
-                            <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                            <ArrowPathIcon className="w-4 h-4 animate-spin" />
                           ) : savedPath.isPublished ? (
-                            <FontAwesomeIcon icon={faGlobe} />
+                            <GlobeAltIcon className="w-4 h-4" />
                           ) : (
-                            <FontAwesomeIcon icon={faLock} />
+                            <LockClosedIcon className="w-4 h-4" />
                           )}
                           <span className="hidden sm:inline">
                             {savedPath.isPublished ? 'Shared on Explore' : 'Share on Explore'}
@@ -1904,7 +2071,7 @@ export default function LearningPathDetailPage() {
                           className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
                           title="Enter Focus Mode"
                         >
-                          <FontAwesomeIcon icon={faExpand} className="text-xs" />
+                          <ArrowsPointingOutIcon className="w-3 h-3" />
                           <span>Focus Mode</span>
                         </button>
                       )}
@@ -1941,6 +2108,7 @@ export default function LearningPathDetailPage() {
                             }}
                             isCompleted={lessonProgress?.isCompleted || showCelebration}
                             showCelebration={showCelebration}
+                            username={username}
                           />
                         );
                       })}
@@ -1984,7 +2152,7 @@ export default function LearningPathDetailPage() {
                           className="p-2 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
                           title="Close"
                         >
-                          <FontAwesomeIcon icon={faTimes} />
+                          <XMarkIcon />
                         </button>
                       </div>
                       <div className="flex-1 min-h-0">

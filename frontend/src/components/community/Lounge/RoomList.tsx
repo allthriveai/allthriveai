@@ -25,7 +25,7 @@ function getIcon(iconName: string): IconDefinition {
   return iconMap[iconName] || faComments;
 }
 
-export function RoomList({ rooms, selectedRoomId, onRoomSelect }: RoomListProps) {
+export function RoomList({ rooms, selectedRoomSlug, onRoomSelect }: RoomListProps) {
   if (rooms.length === 0) {
     return (
       <div className="p-4 text-center text-slate-400">
@@ -35,13 +35,13 @@ export function RoomList({ rooms, selectedRoomId, onRoomSelect }: RoomListProps)
   }
 
   return (
-    <div className="overflow-y-auto">
+    <div className="overflow-y-auto py-2">
       {rooms.map((room) => (
         <RoomListItem
           key={room.id}
           room={room}
-          isSelected={room.id === selectedRoomId}
-          onSelect={() => onRoomSelect(room.id)}
+          isSelected={room.slug === selectedRoomSlug}
+          onSelect={() => onRoomSelect(room.slug)}
         />
       ))}
     </div>
@@ -62,7 +62,7 @@ function RoomListItem({ room, isSelected, onSelect }: RoomListItemProps) {
   return (
     <button
       onClick={onSelect}
-      className={`w-full p-3 text-left transition-all ${
+      className={`w-full px-6 py-4 text-left transition-all ${
         isSelected
           ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border-l-2 border-cyan-400'
           : 'hover:bg-white/5'

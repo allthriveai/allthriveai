@@ -8,6 +8,7 @@ export { ExerciseRenderer } from './ExerciseRenderer';
 // Multiple exercises per lesson
 export { ExerciseCollection } from './ExerciseCollection';
 export { useExerciseCollection } from './ExerciseCollection/useExerciseCollection';
+export { AddExerciseButton } from './ExerciseCollection/AddExerciseButton';
 
 // Types
 export * from './types';

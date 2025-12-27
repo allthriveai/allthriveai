@@ -188,20 +188,53 @@ function ImageCardGrid({
 }
 
 /**
+ * Check if URL is an S3/storage URL that should NOT be used as a navigation link.
+ * These are image/media URLs that the AI incorrectly uses as link targets.
+ */
+function isStorageUrl(href: string): boolean {
+  if (!href) return false;
+  // Match S3 URLs (various formats), MinIO, and CloudFront media URLs
+  return /s3[.\w-]*\.amazonaws\.com|minio|cloudfront.*media/i.test(href);
+}
+
+/**
  * Normalize AllThrive URLs to relative paths.
- * Converts absolute URLs like https://allthrive.ai/path to relative URLs like /path
- * for proper internal navigation.
+ * Fixes common AI hallucinations:
+ * 1. https://allthrive.ai/path → /path (strip domain)
+ * 2. https://username/path → /username/path (AI adds https:// to relative paths)
+ * 3. https://allthriveai.com/path → /path (alternate domain)
+ * 4. S3/storage URLs → undefined (remove invalid navigation links)
  */
 function normalizeAllThriveUrl(href: string | undefined): string | undefined {
   if (!href) return href;
 
-  // Match allthrive.ai or www.allthrive.ai (with or without https://)
-  const allThrivePattern = /^(https?:\/\/)?(www\.)?allthrive\.ai/i;
+  // Remove S3/storage URLs used as navigation links (AI hallucination)
+  // These should be images, not link targets
+  if (isStorageUrl(href)) {
+    return undefined; // Remove the link
+  }
+
+  // Match allthrive.ai, allthriveai.com, or www. variants (with or without https://)
+  const allThrivePattern = /^(https?:\/\/)?(www\.)?(allthrive\.ai|allthriveai\.com)/i;
   if (allThrivePattern.test(href)) {
     // Extract the path portion after the domain
     const url = href.replace(allThrivePattern, '');
     // Ensure it starts with /
     return url.startsWith('/') ? url : `/${url}`;
+  }
+
+  // Fix AI hallucination: https://username/path → /username/path
+  // This catches cases where AI adds https:// to relative paths
+  // Pattern: https:// followed by a path that doesn't look like a domain
+  // (no dots, so NOT github.com, youtube.com, etc.)
+  const malformedRelativePattern = /^https?:\/\/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_/-]+)$/;
+  const match = href.match(malformedRelativePattern);
+  if (match) {
+    const pathPart = match[1];
+    // Make sure it's not a real domain (no dots)
+    if (!pathPart.includes('.')) {
+      return `/${pathPart}`;
+    }
   }
 
   return href;
@@ -455,6 +488,12 @@ export function AssistantMessage({
     ),
     a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
       const normalizedHref = normalizeAllThriveUrl(href);
+
+      // If URL was stripped (e.g., S3 URL), render as plain text
+      if (normalizedHref === undefined) {
+        return <span className="font-medium">{children}</span>;
+      }
+
       const isInternal = normalizedHref?.startsWith('/');
       if (isInternal && normalizedHref) {
         return (

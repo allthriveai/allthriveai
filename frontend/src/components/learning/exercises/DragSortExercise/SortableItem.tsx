@@ -4,7 +4,6 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGripVertical, faCheck, faExclamation } from '@fortawesome/free-solid-svg-icons';
 import { cn } from '@/lib/utils';
@@ -41,32 +40,31 @@ export function SortableItem({
     disabled,
   });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.5 : 1,
+    touchAction: 'none',
   };
 
   return (
-    <motion.div
+    <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
       className={cn(
-        'rounded-lg border transition-all select-none',
+        'rounded-lg border',
         compact ? 'px-3 py-1.5' : 'p-3',
         isDragging
-          ? 'bg-cyan-100 dark:bg-cyan-500/20 border-cyan-400 dark:border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.3)] z-50'
+          ? 'z-50 shadow-lg bg-cyan-100 dark:bg-cyan-500/30 border-cyan-400 dark:border-cyan-400/50'
           : isCorrect
             ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30'
             : showCorrectIndicator
               ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30'
-              : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20',
-        disabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
+              : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600',
+        disabled ? 'cursor-default opacity-60' : 'cursor-grab active:cursor-grabbing',
       )}
-      whileHover={!disabled ? { scale: 1.01 } : undefined}
-      whileTap={!disabled ? { scale: 0.99 } : undefined}
-      animate={isDragging ? { scale: 1.05, y: -4 } : { scale: 1, y: 0 }}
     >
       <div className="flex items-center gap-3">
         {/* Drag handle */}
@@ -74,18 +72,18 @@ export function SortableItem({
           <FontAwesomeIcon
             icon={faGripVertical}
             className={cn(
-              'text-gray-400 dark:text-slate-500',
-              !disabled && 'hover:text-gray-500 dark:hover:text-slate-400'
+              'text-slate-400 dark:text-slate-500',
+              !disabled && 'hover:text-slate-500 dark:hover:text-slate-400'
             )}
           />
         )}
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <span className="text-gray-800 dark:text-slate-200">{content}</span>
+          <span className="text-slate-700 dark:text-slate-200">{content}</span>
           {code && (
             <pre className={cn(
-              'text-xs bg-gray-100 dark:bg-black/30 p-2 rounded overflow-x-auto',
+              'text-xs bg-slate-100 dark:bg-slate-900/50 p-2 rounded overflow-x-auto',
               compact ? 'mt-1' : 'mt-2'
             )}>
               <code className="text-cyan-600 dark:text-cyan-300">{code}</code>
@@ -95,25 +93,17 @@ export function SortableItem({
 
         {/* Status indicator */}
         {isCorrect && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center"
-          >
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
             <FontAwesomeIcon icon={faCheck} className="text-emerald-400 text-xs" />
-          </motion.div>
+          </div>
         )}
         {showCorrectIndicator && !isCorrect && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center"
-          >
+          <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
             <FontAwesomeIcon icon={faExclamation} className="text-amber-400 text-xs" />
-          </motion.div>
+          </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 

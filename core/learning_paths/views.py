@@ -258,7 +258,8 @@ class UserLearningPathBySlugView(APIView):
         GET /api/v1/users/{username}/learning-paths/{slug}/
 
         Returns a user's generated learning path by slug.
-        Checks both LearnerProfile.generated_path and SavedLearningPath.
+        Prioritizes SavedLearningPath (which contains user modifications like added exercises)
+        over LearnerProfile.generated_path (which is the initial generated data).
         Requires authentication.
         """
         try:
@@ -266,25 +267,8 @@ class UserLearningPathBySlugView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # First, check LearnerProfile.generated_path (active path)
-        profile = LearnerProfile.objects.filter(
-            user=user,
-            generated_path__slug=slug,
-        ).first()
-
-        if profile and profile.generated_path:
-            # Merge the cover_image from SavedLearningPath (generated async)
-            response_data = dict(profile.generated_path)
-            saved_path = SavedLearningPath.objects.filter(
-                user=user,
-                slug=slug,
-                is_archived=False,
-            ).first()
-            if saved_path and saved_path.cover_image:
-                response_data['cover_image'] = saved_path.cover_image
-            return Response(response_data)
-
-        # Fall back to SavedLearningPath (saved paths library)
+        # First, check SavedLearningPath - this has the most up-to-date data
+        # including any exercises added, regenerated lessons, etc.
         saved_path = SavedLearningPath.objects.filter(
             user=user,
             slug=slug,
@@ -317,6 +301,16 @@ class UserLearningPathBySlugView(APIView):
             # Ensure curriculum is present
             if 'curriculum' not in response_data:
                 response_data['curriculum'] = []
+            return Response(response_data)
+
+        # Fall back to LearnerProfile.generated_path (active path not yet saved)
+        profile = LearnerProfile.objects.filter(
+            user=user,
+            generated_path__slug=slug,
+        ).first()
+
+        if profile and profile.generated_path:
+            response_data = dict(profile.generated_path)
             return Response(response_data)
 
         return Response(

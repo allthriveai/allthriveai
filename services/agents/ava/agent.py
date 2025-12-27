@@ -60,6 +60,64 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# URL Sanitization for AI Responses
+# =============================================================================
+
+
+# Patterns for malformed URLs that AI sometimes generates
+# These fix common issues like adding https:// to relative paths
+MALFORMED_URL_PATTERNS = [
+    # Fix https://username/path → /username/path (AI adds https:// to relative paths)
+    # Matches: https://username/path where username is NOT a valid domain
+    (r'\]\(https?://([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+(?:/[^)\s]*)?)\)', r'](/\1/\2)'),
+    # Fix https://allthriveai.com/path → /path (strip domain for internal links)
+    (r'\]\(https?://(?:www\.)?allthriveai\.com(/[^)\s]*)\)', r'](\1)'),
+    # Fix https://allthrive.ai/path → /path (alternate domain)
+    (r'\]\(https?://(?:www\.)?allthrive\.ai(/[^)\s]*)\)', r'](\1)'),
+]
+
+# Compiled regex patterns for efficiency
+_COMPILED_URL_PATTERNS = [(re.compile(pattern), replacement) for pattern, replacement in MALFORMED_URL_PATTERNS]
+
+# Pattern to detect and REMOVE S3/storage URLs that should never be navigation links
+# Converts [text](s3-url) to just **text** (bold, no link)
+S3_URL_PATTERN = re.compile(r'\[([^\]]+)\]\(https?://[^)]*(?:s3[.\w-]*\.amazonaws\.com|minio)[^)]*\)')
+
+
+def sanitize_markdown_urls(content: str) -> str:
+    """
+    Sanitize malformed URLs in AI-generated markdown content.
+
+    Fixes common AI hallucinations:
+    1. https://username/path → /username/path (AI adds https:// to relative paths)
+    2. https://allthriveai.com/path → /path (strip domain for internal links)
+    3. [text](s3-url) → **text** (remove S3 URLs as navigation links)
+
+    Args:
+        content: Markdown content from AI response
+
+    Returns:
+        Content with sanitized URLs
+    """
+    if not content:
+        return content
+
+    result = content
+
+    # First, remove S3/storage URLs used as navigation links
+    # Convert [text](s3-url) to just **text** (bold, no link)
+    if S3_URL_PATTERN.search(result):
+        logger.warning('AI response contains S3 URLs as navigation links - removing them')
+        result = S3_URL_PATTERN.sub(r'**\1**', result)
+
+    # Apply other URL fixes
+    for pattern, replacement in _COMPILED_URL_PATTERNS:
+        result = pattern.sub(replacement, result)
+
+    return result
+
+
+# =============================================================================
 # Image URL to Base64 Conversion
 # =============================================================================
 

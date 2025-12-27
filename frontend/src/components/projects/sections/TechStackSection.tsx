@@ -197,31 +197,29 @@ function TechBadge({ tech, isEditing, onUpdate, onDelete }: TechBadgeProps) {
     );
   }
 
-  // Non-clickable badge when no URL is provided (no hover effects)
+  // Non-clickable badge when no URL is provided - styled as simple tag, not button
   return (
-    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800/50 rounded-lg">
       {iconUrl ? (
         <img
           src={iconUrl}
           alt={tech.name}
-          className="w-5 h-5 object-contain"
+          className="w-4 h-4 object-contain"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
       ) : (
-        <div className="w-5 h-5 rounded bg-gradient-to-br from-primary-500/20 to-secondary-500/20 flex items-center justify-center">
-          <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
-            {tech.name.charAt(0).toUpperCase()}
-          </span>
-        </div>
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {tech.name.charAt(0).toUpperCase()}
+        </span>
       )}
-      <span className="font-medium text-gray-900 dark:text-white">
+      <span className="text-sm text-gray-700 dark:text-gray-300">
         {tech.name}
       </span>
       {tech.version && (
-        <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-          {tech.version}
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          v{tech.version}
         </span>
       )}
     </div>

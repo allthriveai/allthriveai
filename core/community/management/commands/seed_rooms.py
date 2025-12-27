@@ -12,6 +12,7 @@ from django.db import transaction
 from core.community.models import Room
 
 # Default forum rooms for The Lounge
+# Note: Starting with just General room. More rooms can be added as the community grows.
 DEFAULT_ROOMS = [
     {
         'slug': 'general',
@@ -21,63 +22,64 @@ DEFAULT_ROOMS = [
         'position': 0,
         'is_default': True,
     },
-    {
-        'slug': 'announcements',
-        'name': 'Announcements',
-        'description': 'Official updates, new features, and community news from the AllThrive team.',
-        'icon': 'bullhorn',
-        'position': 1,
-        'is_default': False,
-        'min_trust_to_post': 5,  # Only trusted users can post
-    },
-    {
-        'slug': 'showcase',
-        'name': 'Showcase',
-        'description': 'Share your AI projects, get feedback, and celebrate wins with the community.',
-        'icon': 'star',
-        'position': 2,
-        'is_default': False,
-    },
-    {
-        'slug': 'help',
-        'name': 'Help & Support',
-        'description': 'Need help with AI tools or the platform? Ask questions and get answers from the community.',
-        'icon': 'circle-question',
-        'position': 3,
-        'is_default': False,
-    },
-    {
-        'slug': 'learning',
-        'name': 'Learning Together',
-        'description': 'Share resources, discuss tutorials, and learn AI skills together.',
-        'icon': 'graduation-cap',
-        'position': 4,
-        'is_default': False,
-    },
-    {
-        'slug': 'tools-and-tech',
-        'name': 'Tools & Tech',
-        'description': 'Discuss AI tools, compare features, and share tips and tricks.',
-        'icon': 'wrench',
-        'position': 5,
-        'is_default': False,
-    },
-    {
-        'slug': 'off-topic',
-        'name': 'Off Topic',
-        'description': 'Chat about anything not AI-related. Hobbies, life, random thoughts - all welcome!',
-        'icon': 'coffee',
-        'position': 6,
-        'is_default': False,
-    },
-    {
-        'slug': 'feedback',
-        'name': 'Feedback & Ideas',
-        'description': 'Share your ideas for improving AllThrive. Feature requests, bug reports, and suggestions.',
-        'icon': 'lightbulb',
-        'position': 7,
-        'is_default': False,
-    },
+    # Future rooms (uncomment as community grows):
+    # {
+    #     'slug': 'announcements',
+    #     'name': 'Announcements',
+    #     'description': 'Official updates, new features, and community news from the AllThrive team.',
+    #     'icon': 'bullhorn',
+    #     'position': 1,
+    #     'is_default': False,
+    #     'min_trust_to_post': 5,
+    # },
+    # {
+    #     'slug': 'showcase',
+    #     'name': 'Showcase',
+    #     'description': 'Share your AI projects, get feedback, and celebrate wins with the community.',
+    #     'icon': 'star',
+    #     'position': 2,
+    #     'is_default': False,
+    # },
+    # {
+    #     'slug': 'help',
+    #     'name': 'Help & Support',
+    #     'description': 'Need help with AI tools or the platform? Ask questions and get answers from the community.',
+    #     'icon': 'circle-question',
+    #     'position': 3,
+    #     'is_default': False,
+    # },
+    # {
+    #     'slug': 'learning',
+    #     'name': 'Learning Together',
+    #     'description': 'Share resources, discuss tutorials, and learn AI skills together.',
+    #     'icon': 'graduation-cap',
+    #     'position': 4,
+    #     'is_default': False,
+    # },
+    # {
+    #     'slug': 'tools-and-tech',
+    #     'name': 'Tools & Tech',
+    #     'description': 'Discuss AI tools, compare features, and share tips and tricks.',
+    #     'icon': 'wrench',
+    #     'position': 5,
+    #     'is_default': False,
+    # },
+    # {
+    #     'slug': 'off-topic',
+    #     'name': 'Off Topic',
+    #     'description': 'Chat about anything not AI-related. Hobbies, life, random thoughts - all welcome!',
+    #     'icon': 'coffee',
+    #     'position': 6,
+    #     'is_default': False,
+    # },
+    # {
+    #     'slug': 'feedback',
+    #     'name': 'Feedback & Ideas',
+    #     'description': 'Share your ideas for improving AllThrive. Feature requests, bug reports, and suggestions.',
+    #     'icon': 'lightbulb',
+    #     'position': 7,
+    #     'is_default': False,
+    # },
 ]
 
 

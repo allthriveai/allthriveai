@@ -95,18 +95,25 @@ export function ExerciseAccordion({
     <div className={cn(
       'rounded-lg border transition-all',
       isExpanded
-        ? 'border-cyan-500/30 dark:border-cyan-400/30 bg-gray-50 dark:bg-white/5'
-        : 'border-gray-200 dark:border-white/10 bg-white dark:bg-white/3',
+        ? 'border-cyan-500/30 dark:border-cyan-400/30 bg-slate-50 dark:bg-slate-800/50'
+        : 'border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30',
       isCompleted && 'border-emerald-300 dark:border-emerald-500/30'
     )}>
-      {/* Accordion Header */}
-      <button
+      {/* Accordion Header - using div instead of button to allow nested buttons */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
-        disabled={isLoading}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
         className={cn(
           'w-full flex items-center justify-between p-3 text-left transition-colors',
-          'hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg',
-          isLoading && 'opacity-60 cursor-wait'
+          'hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg',
+          isLoading ? 'opacity-60 cursor-wait' : 'cursor-pointer'
         )}
       >
         <div className="flex items-center gap-3">
@@ -119,7 +126,7 @@ export function ExerciseAccordion({
           </span>
 
           {/* Exercise title/index */}
-          <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
             Exercise {index + 1}
           </span>
 
@@ -147,14 +154,14 @@ export function ExerciseAccordion({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Action buttons (only show when expanded) */}
-          {isExpanded && !showConfirmRemove && (
+          {/* Action buttons - always visible for better discoverability */}
+          {!showConfirmRemove && (
             <div className="flex items-center gap-1">
               {/* Regenerate button */}
               <button
                 onClick={handleRegenerate}
                 disabled={isLoading}
-                className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
                 title="Regenerate exercise"
               >
                 <FontAwesomeIcon icon={faRotateRight} className="text-sm" />
@@ -164,7 +171,7 @@ export function ExerciseAccordion({
               <button
                 onClick={handleRemoveClick}
                 disabled={isLoading}
-                className="p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                 title="Remove exercise"
               >
                 <FontAwesomeIcon icon={faTrash} className="text-sm" />
@@ -175,16 +182,16 @@ export function ExerciseAccordion({
           {/* Confirm remove dialog */}
           {showConfirmRemove && (
             <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-              <span className="text-xs text-gray-500 dark:text-slate-400">Remove?</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Remove?</span>
               <button
                 onClick={handleConfirmRemove}
-                className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded"
+                className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded"
               >
                 Yes
               </button>
               <button
                 onClick={handleCancelRemove}
-                className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded"
+                className="px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
               >
                 No
               </button>
@@ -198,11 +205,11 @@ export function ExerciseAccordion({
           >
             <FontAwesomeIcon
               icon={faChevronDown}
-              className="text-gray-400 dark:text-slate-500 text-sm"
+              className="text-slate-400 dark:text-slate-500 text-sm"
             />
           </motion.div>
         </div>
-      </button>
+      </div>
 
       {/* Accordion Content */}
       <AnimatePresence initial={false}>
@@ -216,6 +223,30 @@ export function ExerciseAccordion({
           >
             <div className="px-3 pb-3">
               {children}
+
+              {/* Try a Different Exercise button - prominent at bottom */}
+              <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/50">
+                <button
+                  onClick={handleRegenerate}
+                  disabled={isLoading}
+                  className={cn(
+                    'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg',
+                    'text-sm font-medium transition-all',
+                    'bg-gradient-to-r from-cyan-500/10 to-blue-500/10',
+                    'border border-cyan-500/30 dark:border-cyan-400/30',
+                    'text-cyan-600 dark:text-cyan-400',
+                    'hover:from-cyan-500/20 hover:to-blue-500/20',
+                    'hover:border-cyan-500/50 dark:hover:border-cyan-400/50',
+                    isLoading && 'opacity-50 cursor-wait'
+                  )}
+                >
+                  <FontAwesomeIcon
+                    icon={isLoading ? faSpinner : faRotateRight}
+                    className={cn('text-sm', isLoading && 'animate-spin')}
+                  />
+                  {isLoading ? 'Generating...' : 'Try a Different Exercise'}
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

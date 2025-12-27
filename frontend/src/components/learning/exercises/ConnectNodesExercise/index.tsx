@@ -159,18 +159,18 @@ export function ConnectNodesExercise({
       )}
 
       {/* Instructions */}
-      <AnimatedContainer variant="default" className="p-4">
+      <div className="p-4 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg">
         <div className="flex items-start gap-3">
           <FontAwesomeIcon icon={faProjectDiagram} className="text-purple-500 dark:text-purple-400 mt-1" />
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-1">Instructions</h4>
-            <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+            <h4 className="font-medium text-gray-900 dark:text-slate-200 mb-1">Instructions</h4>
+            <p className="text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
               Click a node to select it, then click another node to create a connection.
             </p>
           </div>
         </div>
-      </AnimatedContainer>
+      </div>
 
       {/* Puzzle area */}
       <div className="relative w-full h-[400px] rounded-lg bg-gray-100 dark:bg-slate-900/50 border border-gray-200 dark:border-white/10 overflow-hidden">
@@ -226,7 +226,7 @@ export function ConnectNodesExercise({
           })}
         </svg>
 
-        {/* Nodes */}
+        {/* Nodes - click to select, not draggable */}
         {nodes.map(node => {
           const isSelected = selectedNode === node.id;
           const hasConnection = userConnections.some(
@@ -234,29 +234,27 @@ export function ConnectNodesExercise({
           );
 
           return (
-            <motion.button
+            <button
               key={node.id}
               onClick={() => handleNodeClick(node.id)}
               disabled={isCompleted}
               className={cn(
-                'absolute px-4 py-2 rounded-lg font-medium text-sm transition-all',
+                'absolute px-4 py-2 rounded-lg font-medium text-sm transition-colors',
                 'transform -translate-x-1/2 -translate-y-1/2',
                 isSelected
-                  ? 'bg-cyan-100 dark:bg-cyan-500/30 border-2 border-cyan-500 dark:border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]'
+                  ? 'bg-cyan-100 dark:bg-cyan-500/30 border-2 border-cyan-500 dark:border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)] ring-2 ring-cyan-400/50'
                   : hasConnection
-                    ? 'bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-400 dark:border-emerald-500/30'
-                    : 'bg-white dark:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-gray-400 dark:hover:border-white/40',
-                isCompleted && 'cursor-default'
+                    ? 'bg-emerald-50 dark:bg-emerald-500/20 border-2 border-emerald-400 dark:border-emerald-500/50'
+                    : 'bg-white dark:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-cyan-400 dark:hover:border-cyan-400/60 hover:bg-cyan-50 dark:hover:bg-cyan-500/10',
+                isCompleted ? 'cursor-default' : 'cursor-pointer'
               )}
               style={{
                 left: `${node.position.x}%`,
                 top: `${node.position.y}%`,
               }}
-              whileHover={!isCompleted ? { scale: 1.05 } : undefined}
-              whileTap={!isCompleted ? { scale: 0.95 } : undefined}
             >
               <span className="text-gray-800 dark:text-slate-200">{node.label}</span>
-            </motion.button>
+            </button>
           );
         })}
       </div>

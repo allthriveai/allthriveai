@@ -38,6 +38,45 @@ import { useExerciseState } from '../primitives/useExerciseState';
 import type { BaseExerciseProps, DragSortExerciseData, DragSortItem } from '../types';
 import { cn } from '@/lib/utils';
 
+/**
+ * Fisher-Yates shuffle algorithm to randomize array order
+ * Ensures items don't start in the correct order
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/**
+ * Shuffle items ensuring they're not in the correct order
+ * If shuffle results in correct order, shuffle again
+ */
+function shuffleUntilDifferent<T extends { id: string }>(
+  items: T[],
+  correctOrder?: string[]
+): T[] {
+  if (!correctOrder || items.length <= 1) return [...items];
+
+  let shuffled = shuffleArray(items);
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  // Keep shuffling until order is different from correct order (or max attempts)
+  while (
+    attempts < maxAttempts &&
+    shuffled.every((item, index) => item.id === correctOrder[index])
+  ) {
+    shuffled = shuffleArray(items);
+    attempts++;
+  }
+
+  return shuffled;
+}
+
 interface DragSortExerciseProps extends BaseExerciseProps {
   exercise: BaseExerciseProps['exercise'] & {
     dragSortData: DragSortExerciseData;
@@ -79,8 +118,12 @@ export function DragSortExercise({
     onComplete,
   });
 
-  // Items state - for sequence variant
-  const [items, setItems] = useState<DragSortItem[]>(() => [...initialItems]);
+  // Items state - for sequence variant, shuffled to ensure not in correct order
+  const [items, setItems] = useState<DragSortItem[]>(() =>
+    variant === 'sequence'
+      ? shuffleUntilDifferent(initialItems, correctOrder)
+      : [...initialItems]
+  );
 
   // For match variant - track which items are matched
   const [matches, setMatches] = useState<Record<string, string>>({});
@@ -93,11 +136,7 @@ export function DragSortExercise({
 
   // DnD sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
+    useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -177,19 +216,17 @@ export function DragSortExercise({
 
   // Handle drag end for sequence variant
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveId(null);
     const { active, over } = event;
+    setActiveId(null);
 
     if (!over) return;
 
-    if (variant === 'sequence') {
-      if (active.id !== over.id) {
-        setItems((items) => {
-          const oldIndex = items.findIndex(item => item.id === active.id);
-          const newIndex = items.findIndex(item => item.id === over.id);
-          return arrayMove(items, oldIndex, newIndex);
-        });
-      }
+    if (variant === 'sequence' && active.id !== over.id) {
+      setItems((currentItems) => {
+        const oldIndex = currentItems.findIndex(item => item.id === active.id);
+        const newIndex = currentItems.findIndex(item => item.id === over.id);
+        return arrayMove(currentItems, oldIndex, newIndex);
+      });
     }
     // Match and categorize variants would handle their own drag logic in dropzones
   };
@@ -197,7 +234,12 @@ export function DragSortExercise({
   // Handle reset
   const handleReset = () => {
     reset();
-    setItems([...initialItems]);
+    // Re-shuffle items for sequence variant
+    setItems(
+      variant === 'sequence'
+        ? shuffleUntilDifferent(initialItems, correctOrder)
+        : [...initialItems]
+    );
     setMatches({});
     setPlacements({});
     setFeedback(null);
