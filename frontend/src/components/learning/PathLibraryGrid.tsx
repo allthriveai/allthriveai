@@ -713,6 +713,28 @@ export function PathLibraryGrid({ onCreateNew }: PathLibraryGridProps) {
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={allPathSlugs} strategy={rectSortingStrategy}>
+            {/* Empty state - prompt to create first section */}
+            {sections.length === 0 && (
+              <div className="mb-8 p-6 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="text-center">
+                  <FontAwesomeIcon icon={faFolderPlus} className="text-4xl text-slate-400 dark:text-slate-500 mb-3" />
+                  <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Organize Your Learning Paths
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">
+                    Create sections to group your paths by topic, priority, or however you like.
+                  </p>
+                  <button
+                    onClick={addSection}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors"
+                  >
+                    <FontAwesomeIcon icon={faFolderPlus} />
+                    Create Your First Section
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Sections */}
             {sections.length > 0 && (
               <div className="space-y-6 mb-8">
