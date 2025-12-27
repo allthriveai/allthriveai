@@ -21,6 +21,7 @@ from .auth.impersonation import (
     start_impersonation,
     stop_impersonation,
 )
+from .auth.smoke_test_views import smoke_test_login
 from .auth.views import (
     UserProfileView,
     convert_guest_account,
@@ -349,6 +350,8 @@ urlpatterns = [
     path('auth/urls/', oauth_urls, name='oauth_urls'),
     path('auth/callback/', oauth_callback, name='oauth_callback'),  # Fallback redirect
     path('auth/ws-connection-token/', generate_ws_connection_token, name='ws_connection_token'),
+    # Production smoke test endpoint (API key authenticated)
+    path('auth/smoke-test/', smoke_test_login, name='smoke_test_login'),
     # Auth chat endpoints
     path('auth/chat/stream/', auth_chat_stream, name='auth_chat_stream'),
     path('auth/chat/state/', auth_chat_state, name='auth_chat_state'),

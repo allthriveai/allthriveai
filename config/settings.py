@@ -387,6 +387,9 @@ OPENAI_BASE_URL = config('OPENAI_BASE_URL', default='')  # For AI gateway (OpenR
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
 
+# Production Smoke Test API Key (for E2E tests via GitHub Actions)
+SMOKE_TEST_API_KEY = config('SMOKE_TEST_API_KEY', default='')
+
 # Azure OpenAI Configuration
 AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY', default='')
 AZURE_OPENAI_ENDPOINT = config(

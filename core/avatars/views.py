@@ -34,9 +34,8 @@ ALLOWED_IMAGE_DOMAINS = {
     '127.0.0.1',
     'storage.googleapis.com',
     's3.amazonaws.com',
+    's3.us-east-1.amazonaws.com',  # AWS S3 (us-east-1)
     'minio',  # Docker internal
-    'allthrive-media.s3.us-west-2.amazonaws.com',  # Production S3
-    'allthrive-staging-media.s3.us-west-2.amazonaws.com',  # Staging S3
 }
 
 

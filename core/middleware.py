@@ -65,7 +65,10 @@ class HealthCheckMiddleware:
 
         # Check if request is from AWS infrastructure (IP as Host header)
         # If so, temporarily add the IP to allowed hosts to bypass validation
-        host = request.get_host()
+        # NOTE: We use META directly instead of get_host() because get_host()
+        # triggers ALLOWED_HOSTS validation and would raise DisallowedHost
+        # before we can add the IP dynamically.
+        host = request.headers.get('host', '')
         if _is_aws_infrastructure_ip(host):
             # Dynamically add AWS IP to allowed hosts for this request
             # This is safe because these IPs can't be spoofed through CloudFront/ALB
