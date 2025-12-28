@@ -1079,10 +1079,14 @@ Resources:
         ScaleOutCooldown: 60
 
   # Auto Scaling for Celery Service
+  # IMPORTANT: MaxCapacity must stay low to prevent RDS connection pool exhaustion
+  # Each Celery container runs 4 workers, each holding DB connections
+  # 4 containers × 4 workers × ~3 connections = ~48 connections from Celery alone
+  # RDS db.t3.micro has ~85 max connections, shared with web/daphne
   CeleryAutoScalingTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
     Properties:
-      MaxCapacity: 20
+      MaxCapacity: 4
       MinCapacity: !Ref CeleryDesiredCount
       ResourceId: !Sub service/${ECSCluster}/${CeleryService.Name}
       RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
