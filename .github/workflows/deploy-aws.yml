@@ -227,11 +227,12 @@ jobs:
               --template-body file://infrastructure/cloudformation/10-ecs.yaml \
               --parameters $PARAM_OVERRIDES \
               --capabilities CAPABILITY_NAMED_IAM \
-              --region ${{ env.AWS_REGION }} || {
+              --region ${{ env.AWS_REGION }} 2>&1 || {
                 EXIT_CODE=$?
                 if aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text | grep -q "UPDATE_IN_PROGRESS\|CREATE_IN_PROGRESS"; then
                   echo "Stack update already in progress"
-                elif [ $EXIT_CODE -eq 255 ]; then
+                # Exit code 254 or 255 = "No updates to be performed" (not an error)
+                elif [ $EXIT_CODE -eq 254 ] || [ $EXIT_CODE -eq 255 ]; then
                   echo "✅ No updates needed for ECS stack"
                 else
                   exit $EXIT_CODE
@@ -278,9 +279,10 @@ jobs:
               --template-body file://infrastructure/cloudformation/11-cloudfront.yaml \
               --parameters $PARAM_OVERRIDES \
               --capabilities CAPABILITY_NAMED_IAM \
-              --region ${{ env.AWS_REGION }} || {
+              --region ${{ env.AWS_REGION }} 2>&1 || {
                 EXIT_CODE=$?
-                if [ $EXIT_CODE -eq 255 ]; then
+                # Exit code 254 or 255 = "No updates to be performed" (not an error)
+                if [ $EXIT_CODE -eq 254 ] || [ $EXIT_CODE -eq 255 ]; then
                   echo "✅ No updates needed for CloudFront stack"
                 else
                   exit $EXIT_CODE
@@ -327,9 +329,10 @@ jobs:
               --template-body file://infrastructure/cloudformation/09-alb.yaml \
               --parameters $PARAM_OVERRIDES \
               --capabilities CAPABILITY_NAMED_IAM \
-              --region ${{ env.AWS_REGION }} || {
+              --region ${{ env.AWS_REGION }} 2>&1 || {
                 EXIT_CODE=$?
-                if [ $EXIT_CODE -eq 255 ]; then
+                # Exit code 254 or 255 = "No updates to be performed" (not an error)
+                if [ $EXIT_CODE -eq 254 ] || [ $EXIT_CODE -eq 255 ]; then
                   echo "✅ No updates needed for ALB stack"
                 else
                   exit $EXIT_CODE
