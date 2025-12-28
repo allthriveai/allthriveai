@@ -256,6 +256,17 @@ jobs:
       TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
       TEST_USER_USERNAME: ${{ secrets.E2E_TEST_USER_USERNAME }}
       TEST_PROJECT_SLUG: ${{ secrets.E2E_TEST_PROJECT_SLUG }}
+      # AI Configuration - Use Azure OpenAI for CI/CD (same as nightly)
+      DEFAULT_AI_PROVIDER: "azure"
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+      # Anthropic for Claude-specific features
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # OpenAI for DALL-E image generation (Azure doesn't have this)
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Google/Gemini for avatar and image generation
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
     steps:
       - name: Checkout
@@ -391,6 +402,13 @@ jobs:
         working-directory: frontend
         timeout-minutes: 10
         run: npx playwright test e2e/smoke.spec.ts
+        env:
+          CI: true
+
+      - name: Run Playwright critical tests
+        working-directory: frontend
+        timeout-minutes: 15
+        run: npx playwright test --project=critical
         env:
           CI: true
 

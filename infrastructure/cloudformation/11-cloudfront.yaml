@@ -94,8 +94,8 @@ Resources:
               OriginProtocolPolicy: https-only
               OriginSSLProtocols:
                 - TLSv1.2
-              OriginReadTimeout: 300  # 5 minutes - allows for long AI responses
-              OriginKeepaliveTimeout: 300  # 5 minutes - keeps WebSocket connections alive
+              OriginReadTimeout: 60  # Max allowed by CloudFront (60 seconds)
+              OriginKeepaliveTimeout: 60  # Match read timeout
 
           # Media S3 Origin
           - Id: S3MediaOrigin

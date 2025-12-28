@@ -166,6 +166,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         self._invalidate_user_cache(request.user)
 
         # Track quest progress and get completed quests
+        from core.thrive_circle.models import PointActivity
         from core.thrive_circle.quest_tracker import track_quest_action
         from core.thrive_circle.signals import _mark_as_tracked
         from core.thrive_circle.utils import format_completed_quests
@@ -179,12 +180,26 @@ class ProjectViewSet(viewsets.ModelViewSet):
             {'project_id': project.id, 'project_type': project.type},
         )
 
+        # Get points earned from project creation (awarded by signal)
+        recent_activity = (
+            PointActivity.objects.filter(
+                user=request.user,
+                activity_type='project_create',
+            )
+            .order_by('-created_at')
+            .first()
+        )
+
         # Build response
         headers = self.get_success_headers(serializer.data)
         response_data = self.get_serializer(project).data
 
         if completed_ids:
             response_data['completed_quests'] = format_completed_quests(request.user, completed_ids)
+
+        # Include points earned for toast notification
+        if recent_activity:
+            response_data['points_earned'] = recent_activity.amount
 
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 

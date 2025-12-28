@@ -227,17 +227,8 @@ jobs:
           print("=" * 60)
           PY
 
-      - name: Start frontend server
-        working-directory: frontend
-        run: |
-          npm run dev &
-          sleep 15
-          curl -f http://localhost:3000/ || echo "Frontend startup in progress..."
-        env:
-          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
-          VITE_WS_URL: ws://127.0.0.1:8000
-
       # ===== STANDARD E2E TESTS (root + ai-chat) =====
+      # Note: Playwright's webServer config handles starting the frontend server
       # These tests were previously only run locally via `make test-nightly`
       - name: Run Standard E2E Tests
         if: github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'standard' || github.event.inputs.test_suite == ''
@@ -249,6 +240,8 @@ jobs:
         env:
           TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
+          VITE_WS_URL: ws://127.0.0.1:8000
 
       # ===== DEEP E2E TESTS (real AI calls, longer timeouts) =====
       - name: Run Deep E2E Tests - All
@@ -259,6 +252,8 @@ jobs:
         env:
           TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
+          VITE_WS_URL: ws://127.0.0.1:8000
 
       - name: Run Deep E2E Tests - Chat Only
         if: github.event.inputs.test_suite == 'deep-chat'
@@ -268,6 +263,8 @@ jobs:
         env:
           TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
+          VITE_WS_URL: ws://127.0.0.1:8000
 
       - name: Run Deep E2E Tests - Battles Only
         if: github.event.inputs.test_suite == 'deep-battles'
@@ -277,6 +274,8 @@ jobs:
         env:
           TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
+          VITE_WS_URL: ws://127.0.0.1:8000
 
       - name: Run Deep E2E Tests - Learning Only
         if: github.event.inputs.test_suite == 'deep-learning'
@@ -286,6 +285,8 @@ jobs:
         env:
           TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
+          VITE_WS_URL: ws://127.0.0.1:8000
 
       - name: Run Deep E2E Tests - Community Only
         if: github.event.inputs.test_suite == 'deep-community'
@@ -295,6 +296,8 @@ jobs:
         env:
           TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          VITE_API_PROXY_TARGET: http://127.0.0.1:8000
+          VITE_WS_URL: ws://127.0.0.1:8000
 
       - name: Upload test results
         if: always()

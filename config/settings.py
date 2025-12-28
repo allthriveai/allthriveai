@@ -418,8 +418,9 @@ GEMINI_IMAGE_MODEL = config('GEMINI_IMAGE_MODEL', default='gemini-3-pro-image-pr
 GEMINI_AVATAR_MODEL = config('GEMINI_AVATAR_MODEL', default='gemini-2.5-flash-image')
 
 # OpenAI image generation model for avatars
-# gpt-image-1.5: Best quality, supports reference images via images.edit() API for "Make Me" mode
-OPENAI_AVATAR_MODEL = config('OPENAI_AVATAR_MODEL', default='gpt-image-1.5')
+# gpt-image-1: Fast, good quality, supports reference images via images.edit() API for "Make Me" mode
+# gpt-image-1.5: Best quality but slow (~45s), use for premium tier only
+OPENAI_AVATAR_MODEL = config('OPENAI_AVATAR_MODEL', default='gpt-image-1')
 
 # Weaviate Vector Database Configuration
 WEAVIATE_HOST = config('WEAVIATE_HOST', default='localhost')
@@ -497,7 +498,7 @@ AI_MODELS = {
         'reasoning': config('OPENAI_MODEL_REASONING', default='gpt-5-mini-2025-08-07'),
         'tagging': config('OPENAI_MODEL_TAGGING', default='gpt-3.5-turbo'),
         'tagging_premium': config('OPENAI_MODEL_TAGGING_PREMIUM', default='gpt-4o-mini'),
-        'avatar': OPENAI_AVATAR_MODEL,  # gpt-image-1.5 with reference image support
+        'avatar': OPENAI_AVATAR_MODEL,  # gpt-image-1 - faster, supports reference images
     },
     'azure': {
         'default': AZURE_OPENAI_DEPLOYMENT_NAME,

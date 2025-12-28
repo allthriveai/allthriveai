@@ -17,6 +17,7 @@ import { faLightbulb, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { ToolSelector } from '@/components/projects/ToolSelector';
 import { useTheme } from '@/hooks/useTheme';
 import { createProject, updateProject } from '@/services/projects';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 import type { Project, ProjectPayload, Tool } from '@/types/models';
 
 interface PromptFormSidebarProps {
@@ -34,6 +35,7 @@ export function PromptFormSidebar({
 }: PromptFormSidebarProps) {
   const { theme } = useTheme();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const pointsNotification = usePointsNotificationOptional();
 
   // Form state
   const [title, setTitle] = useState('');
@@ -180,7 +182,18 @@ export function PromptFormSidebar({
       if (isEditMode && editPrompt) {
         savedPrompt = await updateProject(editPrompt.id, payload);
       } else {
-        savedPrompt = await createProject(payload);
+        const result = await createProject(payload);
+        savedPrompt = result.project;
+
+        // Show points notification for new prompts (25 pts)
+        if (pointsNotification && result.pointsEarned >= 10) {
+          pointsNotification.showPointsNotification({
+            points: result.pointsEarned,
+            title: 'Prompt Created!',
+            message: 'Sharing knowledge helps everyone grow',
+            activityType: 'project_create',
+          });
+        }
       }
 
       onSave?.(savedPrompt);

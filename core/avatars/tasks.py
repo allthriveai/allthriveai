@@ -92,7 +92,7 @@ def build_avatar_prompt(
     return f'{AVATAR_BASE_PROMPT}\n\nCharacter description: {user_prompt}'
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+@shared_task(bind=True, max_retries=1, default_retry_delay=5, time_limit=120, soft_time_limit=90)
 def process_avatar_generation_task(
     self,
     session_id: int,
@@ -179,37 +179,78 @@ def process_avatar_generation_task(
         reference_bytes = None
         if reference_image_url:
             try:
-                # Convert localhost URLs to Docker internal network when running in container
-                # localhost:9000 -> minio:9000 for MinIO access within Docker
-                download_url = reference_image_url
-                if 'localhost:9000' in download_url:
-                    download_url = download_url.replace('localhost:9000', 'minio:9000')
-                    logger.info(f'Converted reference URL for Docker: {download_url}')
+                # Try to fetch directly from StorageService first (S3/MinIO) if it's our own file
+                # This bypasses public internet/DNS/NAT issues on AWS and localhost issues in Docker
+                storage = StorageService()
+                is_internal_storage = False
 
-                resp = requests.get(download_url, timeout=10)
-                if resp.status_code == 200:
-                    reference_bytes = resp.content
-                    logger.info(f'Downloaded reference image: {len(reference_bytes)} bytes')
-                else:
-                    logger.warning(f'Failed to download reference image: HTTP {resp.status_code}')
+                # Check if URL belongs to our bucket
+                # URL format usually contains bucket name or is relative
+                if settings.MINIO_BUCKET_NAME in reference_image_url:
+                    try:
+                        # Extract object path from URL
+                        # Format: http://.../bucket-name/path/to/obj or https://s3.../bucket-name/path...
+                        if f'/{settings.MINIO_BUCKET_NAME}/' in reference_image_url:
+                            object_name = reference_image_url.split(f'/{settings.MINIO_BUCKET_NAME}/', 1)[1]
+                            # Remove query params if any (e.g. presigned url)
+                            if '?' in object_name:
+                                object_name = object_name.split('?')[0]
+
+                            logger.info(f'Fetching reference image from storage directly: {object_name}')
+                            response = storage.client.get_object(settings.MINIO_BUCKET_NAME, object_name)
+                            reference_bytes = response.read()
+                            response.close()
+                            response.release_conn()
+                            is_internal_storage = True
+                    except Exception as e:
+                        logger.warning(f'Failed to fetch from storage directly, falling back to HTTP: {e}')
+
+                # Fallback to HTTP download (external URL or storage fetch failed)
+                if not is_internal_storage and not reference_bytes:
+                    download_url = reference_image_url
+
+                    # Keep localhost rewrite as a last-resort fallback for Docker dev
+                    import os
+
+                    is_in_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER')
+                    if is_in_docker:
+                        if 'localhost:9000' in download_url:
+                            download_url = download_url.replace('localhost:9000', 'minio:9000')
+                        elif 'localhost:8000' in download_url:
+                            download_url = download_url.replace('localhost:8000', 'web:8000')
+
+                    logger.info(f'Downloading reference image via HTTP: {download_url}')
+                    resp = requests.get(download_url, timeout=10)
+                    if resp.status_code == 200:
+                        reference_bytes = resp.content
+                        logger.info(f'Downloaded reference image: {len(reference_bytes)} bytes')
+                    else:
+                        logger.warning(f'Failed to download reference image: HTTP {resp.status_code}')
+
+            except requests.exceptions.ConnectionError as e:
+                logger.warning(f'Connection error downloading reference image: {e}')
+                # Re-raise to trigger retry (task is configured with retries)
+                raise
             except Exception as e:
                 logger.warning(f'Failed to download reference image: {e}', exc_info=True)
 
-        # Generate image using OpenAI gpt-image-1.5
+        # Generate image using OpenAI image API
         # Model configured in settings.AI_MODELS['openai']['avatar']
-        # Supports reference images via images.edit() API for "Make Me" mode
+        # gpt-image-1: ~15-20s, good quality, supports reference images
+        # gpt-image-1.5: ~45s, best quality but slow
         start_time = time.time()
         ai = AIProvider(provider='openai', user_id=user_id)
 
-        # Get model from settings (defaults to gpt-image-1.5)
-        image_model = settings.AI_MODELS['openai'].get('avatar', 'gpt-image-1.5')
+        # Get model from settings (defaults to gpt-image-1 for speed)
+        image_model = settings.AI_MODELS['openai'].get('avatar', 'gpt-image-1')
+        logger.info(f'Avatar generation using model: {image_model}')
 
         # Pass reference image for "Make Me" mode
         image_bytes, mime_type = ai.generate_image_openai(
             prompt=full_prompt,
             model=image_model,
             size='1024x1024',
-            quality='medium',  # gpt-image-1.5 uses 'low', 'medium', 'high'
+            quality='medium',  # OpenAI image quality: 'low', 'medium', 'high'
             reference_image=reference_bytes,
         )
         latency_ms = int((time.time() - start_time) * 1000)

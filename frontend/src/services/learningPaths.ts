@@ -1033,6 +1033,16 @@ export interface CompletionResponse {
     totalCount: number;
     percentage: number;
   };
+  // Points earned for this completion
+  pointsEarned?: number;
+  // True if this completion triggered lesson completion
+  lessonCompleted?: boolean;
+  // Points earned for lesson completion (10 pts)
+  lessonPoints?: number;
+  // True if this completion triggered path completion
+  pathCompleted?: boolean;
+  // Points earned for path completion (50 pts)
+  pathCompletionPoints?: number;
 }
 
 /**
