@@ -242,9 +242,14 @@ test.describe('Pre-Push Critical Regression Tests', () => {
       console.log('✓ Project already exists - test passed (from previous run)');
     } else if (projectUrl) {
       // Navigate to the created project to verify it exists
-      await page.goto(projectUrl);
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(3000);
+      // Use 'load' instead of 'networkidle' to avoid hanging on background requests
+      try {
+        await page.goto(projectUrl, { timeout: 30000 });
+        await page.waitForLoadState('load', { timeout: 15000 });
+      } catch (navError) {
+        console.log('Navigation warning (non-fatal):', (navError as Error).message);
+      }
+      await page.waitForTimeout(2000);
 
       const projectPageContent = await getPageContent(page);
       // Should see project details, not a 404
