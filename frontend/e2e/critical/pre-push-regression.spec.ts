@@ -126,25 +126,47 @@ test.describe('Pre-Push Critical Regression Tests', () => {
     const testUrl = 'https://github.com/anthropics/anthropic-cookbook';
     await sendHomeChat(page, testUrl);
 
-    // Step 2: Wait for AI response
-    const afterUrl = await waitForAvaResponse(page, 60000);
+    // Step 2: Wait for AI to actually respond (not just timeout)
+    // The AI should ask about ownership, or start processing the URL
+    let afterUrl = '';
+    const waitStart = Date.now();
+    const maxWait = 60000;
+
+    while (Date.now() - waitStart < maxWait) {
+      afterUrl = await waitForAvaResponse(page, 10000);
+
+      // Check if AI actually asked about the URL (not just echoing user message)
+      // The AI response should contain ownership-related words like "your project", "import", "clip"
+      const hasAiResponse = /is this your|your project|import it|clip it|save it|create a project|found something|let me help/i.test(afterUrl);
+
+      if (hasAiResponse) {
+        console.log('AI asked about URL');
+        break;
+      }
+
+      console.log(`Waiting for AI response... (${Math.round((Date.now() - waitStart) / 1000)}s)`);
+      await page.waitForTimeout(3000);
+    }
+
     assertNoTechnicalErrors(afterUrl, 'after URL paste');
     console.log('AI response after URL:', afterUrl.substring(0, 500));
 
-    // ASSERT: Should ask about the URL (flexible matching for AI variability)
-    const recognizesUrl = /your|project|save|found|import|repository|cookbook|anthropic|github/i.test(afterUrl);
-    if (!recognizesUrl) {
-      console.log('WARNING: AI did not clearly recognize URL. Full response:', afterUrl);
+    // ASSERT: AI should have responded about the URL (not just echoed it back)
+    const aiActuallyResponded = /is this your|your project|import|clip|save|create|found|let me|I can help|would you like/i.test(afterUrl);
+    if (!aiActuallyResponded) {
+      console.log('WARNING: AI may not have responded yet. Full content:', afterUrl);
     }
-    expect(recognizesUrl).toBe(true);
+    expect(aiActuallyResponded).toBe(true);
 
-    // Step 3: Explicitly request project creation with clear instruction
-    await sendHomeChat(page, "Create a project from that GitHub URL. It's my project.");
+    // Step 3: Answer the ownership question directly - AI typically asks "Is this your project?"
+    // Use a simple, direct answer that the AI can interpret clearly
+    await sendHomeChat(page, "Yes, it's my project. Please create it.");
 
     // Step 4: Wait for project creation with better diagnostics
     let projectUrl: string | null = null;
     let alreadyExists = false;
     let lastContent = '';
+    let retryAttempted = false;
     const maxWaitTime = 90000;
     const startTime = Date.now();
 
@@ -193,6 +215,13 @@ test.describe('Pre-Push Critical Regression Tests', () => {
             break;
           }
         }
+      }
+
+      // Retry with more explicit command if no progress after 30s
+      if (elapsed >= 30 && !retryAttempted) {
+        console.log('No project created after 30s - sending retry with explicit command');
+        retryAttempted = true;
+        await sendHomeChat(page, 'Create a new project from https://github.com/anthropics/anthropic-cookbook - I am the owner.');
       }
     }
 
