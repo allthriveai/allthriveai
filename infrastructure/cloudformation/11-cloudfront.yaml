@@ -694,6 +694,24 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2
         EvaluateTargetHealth: false
 
+  # WebSocket subdomain points DIRECTLY to ALB (bypasses CloudFront)
+  # This provides lower latency for real-time features like avatar generation,
+  # chat, and battles. CloudFront adds latency and has WebSocket quirks
+  # (idle timeouts, connection drops). Direct ALB access is more reliable.
+  WebSocketDomainRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNSRecords
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub ws.${DomainName}
+      Type: A
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue: !Sub ${EnvironmentName}-ALBDNSName
+        HostedZoneId:
+          Fn::ImportValue: !Sub ${EnvironmentName}-ALBHostedZoneId
+        EvaluateTargetHealth: false
+
 Outputs:
   CloudFrontDistributionId:
     Description: CloudFront Distribution ID
