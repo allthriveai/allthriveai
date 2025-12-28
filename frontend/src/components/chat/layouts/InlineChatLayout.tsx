@@ -15,6 +15,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { createProjectFromImageSession } from '@/services/projects';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 import { checkGitHubConnection } from '@/services/github';
 import { checkGitLabConnection } from '@/services/gitlab';
 import { checkFigmaConnection } from '@/services/figma';
@@ -68,6 +69,7 @@ export function InlineChatLayout({
 }: InlineChatLayoutProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const pointsNotification = usePointsNotificationOptional();
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const triggerFileSelectRef = useRef<(() => void) | null>(null);
@@ -208,6 +210,17 @@ export function InlineChatLayout({
         // Handle creating a project from a generated image
         const handleCreateProjectFromImage = async (sessionId: number) => {
           const result = await createProjectFromImageSession(sessionId);
+
+          // Show points notification for project creation (25 pts)
+          if (pointsNotification && result.pointsEarned && result.pointsEarned >= 10) {
+            pointsNotification.showPointsNotification({
+              points: result.pointsEarned,
+              title: 'Project Created!',
+              message: 'Your creation is now live',
+              activityType: 'project_create',
+            });
+          }
+
           return {
             projectUrl: result.project.url,
             projectTitle: result.project.title,

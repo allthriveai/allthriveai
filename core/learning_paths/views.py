@@ -3,7 +3,7 @@
 import logging
 import uuid
 
-from django.db import IntegrityError
+from django.db import IntegrityError, models
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -2463,12 +2463,58 @@ class CompleteLessonExerciseView(APIView):
             lesson_order=lesson_order,
         )
 
+        # Track if exercise was already completed
+        was_exercise_completed = progress.exercise_completed
+        was_lesson_completed = progress.is_completed
+
         # Mark exercise as complete
-        was_already_completed = progress.is_completed
         progress.mark_exercise_complete()
 
         # Get updated overall progress
         overall = LessonProgress.get_path_progress(request.user.id, path.id)
+
+        # Award points for exercise completion (if not already completed)
+        points_earned = 0
+        path_completion_points = 0
+        if not was_exercise_completed:
+            points_earned = request.user.add_points(
+                amount=15,
+                activity_type='exercise_complete',
+                description=f"Completed exercise: {lesson.get('title', 'Untitled')}",
+            )
+
+        # Award bonus points if lesson just completed (both exercise + quiz done)
+        lesson_completion_points = 0
+        if not was_lesson_completed and progress.is_completed:
+            lesson_completion_points = request.user.add_points(
+                amount=10,
+                activity_type='lesson_complete',
+                description=f"Completed lesson: {lesson.get('title', 'Untitled')}",
+            )
+
+        # Award bonus points if path just reached 100% completion
+        if overall.get('percentage', 0) == 100:
+            # Check if this is the first time reaching 100%
+            existing_path_completion = LessonProgress.objects.filter(
+                user=request.user,
+                saved_path=path,
+            ).aggregate(total_completed=models.Count('id', filter=models.Q(is_completed=True)))
+            total_lessons = overall.get('total_count', 0)
+            if existing_path_completion['total_completed'] == total_lessons:
+                # Check if path was already marked complete (avoid duplicate awards)
+                from core.thrive_circle.models import PointActivity
+
+                already_awarded = PointActivity.objects.filter(
+                    user=request.user,
+                    activity_type='learning_path_complete',
+                    description__contains=str(path.id),
+                ).exists()
+                if not already_awarded:
+                    path_completion_points = request.user.add_points(
+                        amount=50,
+                        activity_type='learning_path_complete',
+                        description=f'Completed learning path: {path.title} (ID: {path.id})',
+                    )
 
         return Response(
             {
@@ -2478,8 +2524,11 @@ class CompleteLessonExerciseView(APIView):
                 'exerciseCompleted': progress.exercise_completed,
                 'quizCompleted': progress.quiz_completed,
                 'completedAt': progress.completed_at.isoformat() if progress.completed_at else None,
-                'justCompleted': not was_already_completed and progress.is_completed,
+                'justCompleted': not was_lesson_completed and progress.is_completed,
                 'overallProgress': overall,
+                'pointsEarned': points_earned + lesson_completion_points,
+                'pathCompleted': overall.get('percentage', 0) == 100,
+                'pathCompletionPoints': path_completion_points,
             }
         )
 
@@ -3043,6 +3092,9 @@ class CompleteLessonQuizView(APIView):
             lesson_order=lesson_order,
         )
 
+        # Track if lesson was already completed
+        was_lesson_completed = progress.is_completed
+
         # Get optional score
         score = request.data.get('score')
         if score is not None:
@@ -3053,11 +3105,37 @@ class CompleteLessonQuizView(APIView):
                 score = None
 
         # Mark quiz as complete
-        was_already_completed = progress.is_completed
         progress.mark_quiz_complete(score=score)
 
         # Get updated overall progress
         overall = LessonProgress.get_path_progress(request.user.id, path.id)
+
+        # Award bonus points if lesson just completed (both exercise + quiz done)
+        lesson_completion_points = 0
+        path_completion_points = 0
+        if not was_lesson_completed and progress.is_completed:
+            lesson_completion_points = request.user.add_points(
+                amount=10,
+                activity_type='lesson_complete',
+                description=f"Completed lesson: {lesson.get('title', 'Untitled')}",
+            )
+
+        # Award bonus points if path just reached 100% completion
+        if overall.get('percentage', 0) == 100:
+            # Check if path was already marked complete (avoid duplicate awards)
+            from core.thrive_circle.models import PointActivity
+
+            already_awarded = PointActivity.objects.filter(
+                user=request.user,
+                activity_type='learning_path_complete',
+                description__contains=str(path.id),
+            ).exists()
+            if not already_awarded:
+                path_completion_points = request.user.add_points(
+                    amount=50,
+                    activity_type='learning_path_complete',
+                    description=f'Completed learning path: {path.title} (ID: {path.id})',
+                )
 
         return Response(
             {
@@ -3068,7 +3146,10 @@ class CompleteLessonQuizView(APIView):
                 'quizCompleted': progress.quiz_completed,
                 'quizScore': progress.quiz_score,
                 'completedAt': progress.completed_at.isoformat() if progress.completed_at else None,
-                'justCompleted': not was_already_completed and progress.is_completed,
+                'justCompleted': not was_lesson_completed and progress.is_completed,
                 'overallProgress': overall,
+                'pointsEarned': lesson_completion_points,
+                'pathCompleted': overall.get('percentage', 0) == 100,
+                'pathCompletionPoints': path_completion_points,
             }
         )

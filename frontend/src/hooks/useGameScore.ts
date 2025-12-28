@@ -6,6 +6,7 @@
 
 import { useState, useCallback } from 'react';
 import { submitGameScore, type GameType, type PointsAwarded, type GameScoreMetadata } from '@/services/games';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 
 interface UseGameScoreOptions {
   game: GameType;
@@ -25,6 +26,12 @@ interface UseGameScoreResult {
   error: string | null;
 }
 
+// Map game types to friendly display names
+const gameDisplayNames: Record<GameType, string> = {
+  context_snake: 'Context Snake',
+  ethics_defender: 'Ethics Defender',
+};
+
 export function useGameScore({
   game,
   isAuthenticated,
@@ -33,6 +40,7 @@ export function useGameScore({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastPointsAwarded, setLastPointsAwarded] = useState<PointsAwarded | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pointsNotification = usePointsNotificationOptional();
 
   const submitScore = useCallback(
     async (score: number, metadata?: GameScoreMetadata): Promise<PointsAwarded | null> => {
@@ -58,6 +66,16 @@ export function useGameScore({
         const points = result.pointsAwarded;
         setLastPointsAwarded(points);
 
+        // Show points notification toast (for 10+ points)
+        if (pointsNotification && points.total >= 10) {
+          pointsNotification.showPointsNotification({
+            points: points.total,
+            title: 'Great Game!',
+            message: `Score: ${score} in ${gameDisplayNames[game] || game}`,
+            activityType: 'game_score',
+          });
+        }
+
         // Trigger celebration callback
         if (onPointsAwarded && points.total > 0) {
           onPointsAwarded(points);
@@ -73,7 +91,7 @@ export function useGameScore({
         setIsSubmitting(false);
       }
     },
-    [game, isAuthenticated, isSubmitting, onPointsAwarded]
+    [game, isAuthenticated, isSubmitting, onPointsAwarded, pointsNotification]
   );
 
   return {

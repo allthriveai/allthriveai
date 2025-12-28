@@ -1201,6 +1201,14 @@ class BattleConsumer(AsyncWebsocketConsumer):
             # For ACTIVE phase and other phases, both can submit
             is_my_turn = True
 
+        # Calculate points earned for completed battles
+        points_earned = 0
+        if battle.status == BattleStatus.COMPLETED:
+            if battle.winner_id == self.user.id:
+                points_earned = 50  # Winner points
+            elif self.user.id in [battle.challenger_id, battle.opponent_id]:
+                points_earned = 10  # Participation points
+
         return {
             'id': battle.id,
             'phase': battle.phase,
@@ -1222,6 +1230,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             'match_source': battle.match_source,
             'invite_url': invite_url,
             'is_my_turn': is_my_turn,
+            'points_earned': points_earned,
         }
 
     async def _send_error(self, message: str):

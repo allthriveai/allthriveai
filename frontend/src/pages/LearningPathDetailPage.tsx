@@ -51,6 +51,7 @@ import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/ga
 import { LearningChatPanel, type LessonContext } from '@/components/learning/LearningChatPanel';
 import { MobileSageBottomSheet } from '@/components/learning';
 import { useAuth } from '@/hooks/useAuth';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 import { getLessonImage, rateLesson, getLessonProgress, completeExercise, completeQuiz, regenerateLesson, type CurriculumItem, type RelatedProject, type PathProgress, type AILessonContent } from '@/services/learningPaths';
 import { getToolBySlug } from '@/services/tools';
 import { getTaxonomyPreferences, type SkillLevel } from '@/services/personalization';
@@ -1694,6 +1695,7 @@ export default function LearningPathDetailPage() {
   const { username, slug, lessonSlug } = useParams<{ username: string; slug: string; lessonSlug?: string }>();
   const { data: path, isLoading, error, refetch } = useLearningPathBySlug(username || '', slug || '');
   const { user } = useAuth();
+  const pointsNotification = usePointsNotificationOptional();
 
   // Track which lesson to auto-expand (from URL param)
   const [targetLessonIndex, setTargetLessonIndex] = useState<number | null>(null);
@@ -1809,6 +1811,36 @@ export default function LearningPathDetailPage() {
         setJustCompletedLesson(lessonOrder);
       }
 
+      // Show points notifications for exercise completion (15 pts, threshold 10+)
+      if (result.pointsEarned && result.pointsEarned >= 10 && pointsNotification) {
+        pointsNotification.showPointsNotification({
+          points: result.pointsEarned,
+          title: 'Exercise Complete!',
+          message: "You're building real skills!",
+          activityType: 'exercise_complete',
+        });
+      }
+
+      // Show notification for lesson completion (10 pts) if triggered
+      if (result.lessonCompleted && result.lessonPoints && result.lessonPoints >= 10 && pointsNotification) {
+        pointsNotification.showPointsNotification({
+          points: result.lessonPoints,
+          title: 'Lesson Complete!',
+          message: 'Great progress on your learning journey!',
+          activityType: 'lesson_complete',
+        });
+      }
+
+      // Show notification for path completion (50 pts) if triggered
+      if (result.pathCompleted && result.pathCompletionPoints && result.pathCompletionPoints >= 10 && pointsNotification) {
+        pointsNotification.showPointsNotification({
+          points: result.pathCompletionPoints,
+          title: 'Learning Path Complete!',
+          message: `You've mastered "${path?.title || 'this path'}"!`,
+          activityType: 'learning_path_complete',
+        });
+      }
+
       // Update progress data
       setProgressData(prev => {
         if (!prev) return null;
@@ -1843,6 +1875,26 @@ export default function LearningPathDetailPage() {
       // If this just completed the lesson, trigger celebration (auto-dismissed by useEffect)
       if (result.justCompleted) {
         setJustCompletedLesson(lessonOrder);
+      }
+
+      // Show notification for lesson completion (10 pts) if triggered by quiz completion
+      if (result.lessonCompleted && result.lessonPoints && result.lessonPoints >= 10 && pointsNotification) {
+        pointsNotification.showPointsNotification({
+          points: result.lessonPoints,
+          title: 'Lesson Complete!',
+          message: 'Great progress on your learning journey!',
+          activityType: 'lesson_complete',
+        });
+      }
+
+      // Show notification for path completion (50 pts) if triggered
+      if (result.pathCompleted && result.pathCompletionPoints && result.pathCompletionPoints >= 10 && pointsNotification) {
+        pointsNotification.showPointsNotification({
+          points: result.pathCompletionPoints,
+          title: 'Learning Path Complete!',
+          message: `You've mastered "${path?.title || 'this path'}"!`,
+          activityType: 'learning_path_complete',
+        });
       }
 
       // Update progress data
