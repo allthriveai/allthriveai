@@ -238,8 +238,8 @@ export interface MessageProps {
 
 export interface RoomListProps {
   rooms: RoomListItem[];
-  selectedRoomId?: string;
-  onRoomSelect: (roomId: string) => void;
+  selectedRoomSlug?: string;
+  onRoomSelect: (slug: string) => void;
 }
 
 // DM Suggestion types

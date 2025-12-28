@@ -44,6 +44,20 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // Critical pre-push regression tests - must pass before git push
+    // Run manually: npx playwright test --project=critical
+    // Bypass: git push --no-verify
+    {
+      name: 'critical',
+      testMatch: '**/critical/**/*.spec.ts',
+      timeout: 300 * 1000, // 5 minutes per test (AI operations)
+      retries: 1, // One retry for AI flakiness
+      workers: 1, // Sequential execution - IMPORTANT for shared session state
+      use: {
+        ...devices['Desktop Chrome'],
+        trace: 'on-first-retry',
+      },
+    },
     // Regression tests - run on every PR to catch breaking changes
     // These test critical user flows and common failure points
     {

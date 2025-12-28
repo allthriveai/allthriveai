@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Pre-push hook script for AllThrive AI
-# Fails pushes if new API paths are introduced without an explicit version prefix (/api/v1).
+#
+# Runs two checks before allowing a push:
+# 1. API versioning check - ensures all new API paths use /api/v1
+# 2. Critical E2E regression tests - 4 tests that must pass
 #
 # Usage:
 #   - Place this file at repo root as `pre-push`
@@ -8,11 +11,18 @@
 #       mkdir -p .git/hooks
 #       ln -sf "$(pwd)/pre-push" .git/hooks/pre-push
 #       chmod +x pre-push
-#   - From then on, pushes will be blocked if new "/api/" paths are added
-#     that do not include "/api/v1".
+#   - From then on, pushes will be blocked if checks fail
+#
+# Bypass: git push --no-verify
 
 set -euo pipefail
 
+# Get repo root using git (works regardless of how script is invoked)
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# ============================================================
+# CHECK 1: API Versioning
+# ============================================================
 printf '\n[pre-push] Running API versioning check (enforcing /api/v1)...\n'
 
 # Determine the range of commits being pushed compared to the remote tracking branch.
@@ -51,4 +61,36 @@ if [ -n "${violations}" ]; then
 fi
 
 printf '[pre-push] API versioning check passed.\n\n'
+
+# ============================================================
+# CHECK 2: Critical E2E Regression Tests
+# ============================================================
+printf '[pre-push] Running critical E2E regression tests...\n'
+printf 'This runs 4 critical tests to verify core functionality.\n'
+printf 'Estimated time: 4-5 minutes\n'
+printf 'Bypass with: git push --no-verify\n\n'
+
+# Check if backend is running
+if ! curl -s http://localhost:8000/api/v1/health/ > /dev/null 2>&1; then
+  printf '\n[pre-push] SKIPPING E2E tests: Backend not running at localhost:8000\n'
+  printf 'Run "make up" first to enable E2E tests, or use --no-verify to skip.\n\n'
+  exit 0
+fi
+
+# Check if frontend is running or will be started by Playwright
+if ! curl -s http://localhost:3000 > /dev/null 2>&1; then
+  printf '[pre-push] Frontend not detected at localhost:3000 - Playwright will start it.\n\n'
+fi
+
+# Run the critical tests
+cd "${REPO_ROOT}/frontend"
+if npx playwright test --project=critical; then
+  printf '\n[pre-push] All critical E2E tests passed!\n\n'
+else
+  printf '\n[pre-push] ERROR: Critical E2E tests failed!\n'
+  printf 'Fix the failing tests or use "git push --no-verify" to bypass.\n\n'
+  exit 1
+fi
+
+printf '[pre-push] All checks passed. Push allowed.\n\n'
 exit 0

@@ -596,7 +596,8 @@ EXERCISE_TYPE_GUIDANCE = {
         '- variant: "sequence" - Order steps in correct sequence (e.g., git workflow steps)\n'
         '- variant: "match" - Match items to their pairs (e.g., terms to definitions)\n'
         '- variant: "categorize" - Sort items into categories (e.g., classify by type)\n'
-        'Best for: processes, workflows, categorizing concepts, term matching'
+        'Best for: processes, workflows, categorizing concepts, term matching\n'
+        'Users click up/down arrow buttons to reorder items.'
     ),
     'connect_nodes': (
         'For connect_nodes exercises, create visual relationship puzzles:\n'
@@ -634,13 +635,14 @@ Generate an exercise of type: {exercise_type}
 
 Return ONLY valid JSON. The structure depends on the exercise type:
 
-=== FOR drag_sort EXERCISES ===
+=== FOR drag_sort EXERCISES (Sort Exercise) ===
+Users click up/down arrow buttons to reorder items.
 {{
     "exercise_type": "drag_sort",
     "scenario": "Real-world context (1-2 sentences)",
     "success_message": "Congratulations message when completed",
     "content_by_level": {{
-        "beginner": {{ "instructions": "Step-by-step with guidance", "hints": ["hint1", "hint2"] }},
+        "beginner": {{ "instructions": "Step-by-step guidance", "hints": ["hint1", "hint2"] }},
         "intermediate": {{ "instructions": "Concise instructions", "hints": ["hint1"] }},
         "advanced": {{ "instructions": "Brief task", "hints": [] }}
     }},

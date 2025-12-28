@@ -28,6 +28,9 @@ class PointActivity(models.Model):
         ('referral', 'Referral Bonus'),
         ('prompt_battle', 'Battle Participation'),
         ('prompt_battle_win', 'Battle Won'),
+        ('lesson_complete', 'Lesson Completed'),
+        ('exercise_complete', 'Exercise Completed'),
+        ('learning_path_complete', 'Learning Path Completed'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

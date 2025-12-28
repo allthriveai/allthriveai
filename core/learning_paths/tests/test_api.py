@@ -294,8 +294,12 @@ class TestUserLearningPathBySlugView:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_active_path_takes_precedence_over_saved(self, api_client, user, other_user):
-        """When slug exists in both places, active path takes precedence."""
+    def test_saved_path_takes_precedence_over_active(self, api_client, user, other_user):
+        """When slug exists in both places, SavedLearningPath takes precedence.
+
+        This is important because user modifications (exercises, regenerations)
+        are saved to SavedLearningPath.path_data, not LearnerProfile.generated_path.
+        """
         # Both have the same slug
         LearnerProfile.objects.create(
             user=user,
@@ -319,9 +323,141 @@ class TestUserLearningPathBySlugView:
         response = api_client.get(f'/api/v1/users/{user.username}/learning-paths/same-slug/')
 
         assert response.status_code == status.HTTP_200_OK
-        # Should return the active version, not the saved one
-        assert response.data['title'] == 'Active Version'
-        assert response.data['curriculum'][0]['title'] == 'From Active'
+        # Should return the saved version since that's where modifications are stored
+        assert response.data['title'] == 'Saved Version'
+        assert response.data['curriculum'][0]['title'] == 'From Saved'
+
+    def test_exercises_in_saved_path_are_returned(self, api_client, user, other_user):
+        """Exercises added to SavedLearningPath.path_data are returned correctly.
+
+        This tests the exercise persistence feature - when users add exercises,
+        they are saved to SavedLearningPath and should be returned on page load.
+        """
+        # Create saved path with exercises in curriculum
+        SavedLearningPath.objects.create(
+            user=user,
+            slug='path-with-exercises',
+            title='Path With Exercises',
+            path_data={
+                'curriculum': [
+                    {
+                        'type': 'ai_lesson',
+                        'title': 'Lesson with Exercise',
+                        'order': 1,
+                        'content': {
+                            'summary': 'A lesson summary',
+                            'explanation': 'Lesson explanation',
+                            'exercises': [
+                                {
+                                    'id': 'exercise-1',
+                                    'exerciseType': 'drag_sort',
+                                    'scenario': 'Sort these items',
+                                },
+                                {
+                                    'id': 'exercise-2',
+                                    'exerciseType': 'connect_nodes',
+                                    'scenario': 'Connect the concepts',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        )
+        api_client.force_authenticate(user=other_user)
+
+        response = api_client.get(f'/api/v1/users/{user.username}/learning-paths/path-with-exercises/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data['curriculum']) == 1
+        lesson = response.data['curriculum'][0]
+        assert lesson['content']['exercises'] is not None
+        assert len(lesson['content']['exercises']) == 2
+        assert lesson['content']['exercises'][0]['id'] == 'exercise-1'
+        assert lesson['content']['exercises'][1]['id'] == 'exercise-2'
+
+    def test_saved_path_exercises_override_generated_path_content(self, api_client, user, other_user):
+        """When path exists in both places, SavedLearningPath exercises are used.
+
+        This verifies that even if LearnerProfile.generated_path has the original
+        content, the SavedLearningPath (with user's added exercises) takes precedence.
+        """
+        # LearnerProfile has the original generated content without exercises
+        LearnerProfile.objects.create(
+            user=user,
+            learning_goal='build_projects',
+            generated_path={
+                'slug': 'exercise-test-path',
+                'title': 'Original Title',
+                'curriculum': [
+                    {
+                        'type': 'ai_lesson',
+                        'order': 1,
+                        'content': {
+                            'summary': 'Original summary',
+                            'exercises': [],  # No exercises originally
+                        },
+                    },
+                ],
+            },
+        )
+        # SavedLearningPath has user's modifications including added exercises
+        SavedLearningPath.objects.create(
+            user=user,
+            slug='exercise-test-path',
+            title='Original Title',
+            path_data={
+                'curriculum': [
+                    {
+                        'type': 'ai_lesson',
+                        'order': 1,
+                        'content': {
+                            'summary': 'Original summary',
+                            'exercises': [
+                                {
+                                    'id': 'user-added-exercise',
+                                    'exerciseType': 'timed_challenge',
+                                    'scenario': 'User added this exercise',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        )
+        api_client.force_authenticate(user=other_user)
+
+        response = api_client.get(f'/api/v1/users/{user.username}/learning-paths/exercise-test-path/')
+
+        assert response.status_code == status.HTTP_200_OK
+        lesson = response.data['curriculum'][0]
+        # Should have the user-added exercise from SavedLearningPath
+        assert len(lesson['content']['exercises']) == 1
+        assert lesson['content']['exercises'][0]['id'] == 'user-added-exercise'
+        assert lesson['content']['exercises'][0]['exerciseType'] == 'timed_challenge'
+
+    def test_fallback_to_learner_profile_when_no_saved_path(self, api_client, user, other_user):
+        """Falls back to LearnerProfile.generated_path when no SavedLearningPath exists.
+
+        This maintains backwards compatibility for paths that haven't been saved yet.
+        """
+        # Only LearnerProfile exists (new path not yet saved)
+        LearnerProfile.objects.create(
+            user=user,
+            learning_goal='build_projects',
+            generated_path={
+                'slug': 'new-unsaved-path',
+                'title': 'New Unsaved Path',
+                'curriculum': [{'type': 'article', 'title': 'Intro', 'order': 1}],
+            },
+        )
+        api_client.force_authenticate(user=other_user)
+
+        response = api_client.get(f'/api/v1/users/{user.username}/learning-paths/new-unsaved-path/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['slug'] == 'new-unsaved-path'
+        assert response.data['title'] == 'New Unsaved Path'
 
 
 @pytest.mark.django_db

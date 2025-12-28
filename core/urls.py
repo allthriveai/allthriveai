@@ -505,6 +505,8 @@ urlpatterns = [
     path('engagement/', include('core.engagement.urls')),
     # Admin task tracker
     path('admin/tasks/', include('core.tasks.urls')),
+    # Admin topics management
+    path('admin/topics/', include('core.topics.urls')),
     # UAT scenarios tracker
     path('admin/uat-scenarios/', include('core.uat_scenarios.urls')),
     # Educational games

@@ -154,15 +154,15 @@ export function CodeWalkthroughExercise({
       )}
 
       {/* Instructions */}
-      <AnimatedContainer variant="default" className="p-4">
+      <div className="p-4 bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-600/50 rounded-lg">
         <div className="flex items-start gap-3">
           <FontAwesomeIcon icon={faCode} className="text-cyan-600 dark:text-cyan-400 mt-1" />
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-1">Code Walkthrough</h4>
-            <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
+            <h4 className="font-medium text-gray-900 dark:text-white mb-1">Code Walkthrough</h4>
+            <p className="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap">{content.instructions}</p>
           </div>
         </div>
-      </AnimatedContainer>
+      </div>
 
       {/* Progress bar */}
       <div className="flex items-center gap-3">
@@ -207,7 +207,7 @@ export function CodeWalkthroughExercise({
 
         {/* Explanation panel */}
         <div className="space-y-4">
-          <AnimatedContainer variant="interactive" className="p-4">
+          <div className="p-4 bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-600/50 rounded-lg">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStepIndex}
@@ -216,15 +216,15 @@ export function CodeWalkthroughExercise({
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-2">
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">
                   Step {currentStep.stepNumber}: What's happening?
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-sm text-gray-700 dark:text-slate-200 leading-relaxed">
                   {currentStep.explanation}
                 </p>
 
                 {/* Line reference */}
-                <div className="mt-3 text-xs text-gray-400 dark:text-slate-500">
+                <div className="mt-3 text-xs text-gray-500 dark:text-slate-400">
                   Lines: {currentStep.highlightLines.join(', ')}
                 </div>
 
@@ -233,17 +233,17 @@ export function CodeWalkthroughExercise({
                   <div className={cn(
                     'mt-3 p-3 rounded-lg text-sm',
                     currentStep.annotation.type === 'important'
-                      ? 'bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-200'
+                      ? 'bg-amber-50 dark:bg-amber-500/20 border border-amber-400 dark:border-amber-400/50 text-amber-800 dark:text-amber-200'
                       : currentStep.annotation.type === 'warning'
-                        ? 'bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-200'
-                        : 'bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-200'
+                        ? 'bg-red-50 dark:bg-red-500/20 border border-red-400 dark:border-red-400/50 text-red-800 dark:text-red-200'
+                        : 'bg-cyan-50 dark:bg-cyan-500/20 border border-cyan-400 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200'
                   )}>
                     {currentStep.annotation.text}
                   </div>
                 )}
               </motion.div>
             </AnimatePresence>
-          </AnimatedContainer>
+          </div>
 
           {/* Question (if present) */}
           {currentStep.question && (
@@ -359,8 +359,8 @@ function QuestionPanel({
   const isCorrect = selectedAnswer === question.correctIndex;
 
   return (
-    <AnimatedContainer variant="default" className="p-4">
-      <h5 className="font-medium text-gray-800 dark:text-slate-200 mb-3">{question.prompt}</h5>
+    <div className="p-4 bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-600/50 rounded-lg">
+      <h5 className="font-medium text-gray-900 dark:text-white mb-3">{question.prompt}</h5>
       <div className="space-y-2">
         {question.options.map((option, index) => {
           const isSelected = selectedAnswer === index;
@@ -372,23 +372,23 @@ function QuestionPanel({
               onClick={() => onAnswer(index)}
               disabled={disabled || selectedAnswer !== undefined}
               className={cn(
-                'w-full p-3 rounded-lg text-left text-sm transition-all',
+                'w-full p-3 rounded-lg text-left text-sm transition-all border',
                 selectedAnswer === undefined
-                  ? 'bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-cyan-400 dark:hover:border-cyan-500/30 hover:bg-cyan-50 dark:hover:bg-cyan-500/5'
+                  ? 'bg-gray-50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-500/50 hover:border-cyan-400 dark:hover:border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10'
                   : isSelected
                     ? isCorrect
-                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30'
-                      : 'bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/30'
+                      ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-400 dark:border-emerald-400/50'
+                      : 'bg-red-50 dark:bg-red-500/20 border-red-400 dark:border-red-400/50'
                     : showFeedback && isCorrectOption
-                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30'
-                      : 'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 opacity-60',
+                      ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-400 dark:border-emerald-400/50'
+                      : 'bg-gray-50 dark:bg-slate-700/30 border-gray-200 dark:border-slate-600/30 opacity-60',
                 (disabled || selectedAnswer !== undefined) && 'cursor-default'
               )}
             >
               <span className={cn(
-                'text-gray-600 dark:text-slate-300',
-                isSelected && (isCorrect ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'),
-                showFeedback && isCorrectOption && !isSelected && 'text-emerald-600 dark:text-emerald-300'
+                'text-gray-700 dark:text-slate-100',
+                isSelected && (isCorrect ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'),
+                showFeedback && isCorrectOption && !isSelected && 'text-emerald-700 dark:text-emerald-300'
               )}>
                 {option}
               </span>
@@ -402,12 +402,12 @@ function QuestionPanel({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3 p-3 rounded-lg bg-gray-100 dark:bg-slate-800/50 text-sm text-gray-600 dark:text-slate-300"
+          className="mt-3 p-3 rounded-lg bg-gray-100 dark:bg-slate-700/50 text-sm text-gray-700 dark:text-slate-200"
         >
           {question.explanation}
         </motion.div>
       )}
-    </AnimatedContainer>
+    </div>
   );
 }
 

@@ -6,7 +6,7 @@
  * Falls back to REST API for completed battles when WebSocket fails.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api } from '@/services/api';
@@ -14,6 +14,7 @@ import { logError } from '@/utils/errorHandler';
 
 import { useBattleWebSocket, type BattleState } from '@/hooks/useBattleWebSocket';
 import { useAuth } from '@/hooks/useAuth';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 import {
   BATTLE_PHASES,
 } from '@/types/battlePhases';
@@ -42,6 +43,7 @@ export function BattlePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
+  const pointsNotification = usePointsNotificationOptional();
   const [restBattleState, setRestBattleState] = useState<BattleState | null>(null);
   const [restLoading, setRestLoading] = useState(false);
   const [restError, setRestError] = useState<string | null>(null);
@@ -157,6 +159,39 @@ export function BattlePage() {
     onPhaseChange: handlePhaseChange,
     onMatchComplete: handleMatchComplete,
   });
+
+  // Track previous phase to detect transition to complete
+  const prevPhaseRef = useRef<string | null>(null);
+
+  // Show points notification when battle completes
+  useEffect(() => {
+    const battleState = wsBattleState || restBattleState;
+    if (!battleState) return;
+
+    const currentPhase = battleState.phase;
+    const prevPhase = prevPhaseRef.current;
+
+    // Detect transition to complete phase (not already on complete)
+    if (
+      currentPhase === 'complete' &&
+      prevPhase !== 'complete' &&
+      prevPhase !== null &&
+      battleState.pointsEarned &&
+      battleState.pointsEarned >= 10 &&
+      pointsNotification &&
+      user  // Only show for authenticated users
+    ) {
+      const isWinner = battleState.winnerId === user.id;
+      pointsNotification.showPointsNotification({
+        points: battleState.pointsEarned,
+        title: isWinner ? 'Victory!' : 'Battle Complete!',
+        message: isWinner ? 'You won the prompt battle!' : 'Great effort in the arena!',
+        activityType: isWinner ? 'battle_winner' : 'battle_participation',
+      });
+    }
+
+    prevPhaseRef.current = currentPhase;
+  }, [wsBattleState, restBattleState, pointsNotification, user]);
 
   // Fallback to REST API when WebSocket fails (for completed battles)
   // Now uses public endpoint first, then falls back to authenticated endpoint

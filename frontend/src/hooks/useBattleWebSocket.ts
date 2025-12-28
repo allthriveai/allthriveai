@@ -129,6 +129,8 @@ export interface BattleState {
   };
   /** Whether it's the current user's turn (for async battles) */
   isMyTurn?: boolean;
+  /** Points earned by the current user (50 for winner, 10 for participation) */
+  pointsEarned?: number;
 }
 
 interface WebSocketMessage {
@@ -242,6 +244,7 @@ export function useBattleWebSocket({
         matchSource: (serverState.match_source as string) ?? 'unknown',
         inviteUrl: serverState.invite_url as string | undefined,
         isMyTurn: serverState.is_my_turn as boolean | undefined,
+        pointsEarned: serverState.points_earned as number | undefined,
       };
     } catch (error) {
       console.error('[Battle WS] Failed to parse server state:', error);

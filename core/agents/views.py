@@ -536,6 +536,18 @@ class CreateProjectFromImageView(APIView):
             )
             completed_ids.extend(project_ids)
 
+            # Get points earned from project creation (awarded by signal)
+            from core.thrive_circle.models import PointActivity
+
+            recent_activity = (
+                PointActivity.objects.filter(
+                    user=request.user,
+                    activity_type='project_create',
+                )
+                .order_by('-created_at')
+                .first()
+            )
+
             response_data = {
                 'success': True,
                 'project': {
@@ -545,6 +557,10 @@ class CreateProjectFromImageView(APIView):
                     'url': f'/{project.user.username}/{project.slug}',
                 },
             }
+
+            # Include points earned for toast notification
+            if recent_activity:
+                response_data['points_earned'] = recent_activity.amount
 
             if completed_ids:
                 response_data['completed_quests'] = format_completed_quests(request.user, completed_ids)

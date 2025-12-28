@@ -13,6 +13,7 @@ import {
   MapIcon,
   CpuChipIcon,
   FolderIcon,
+  TagIcon,
   BoltIcon,
   FireIcon,
   RocketLaunchIcon,
@@ -69,7 +70,8 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
       // Content management items have different base paths, map them to parent
       if (path.startsWith('/admin/prompt-challenge-prompts') ||
           path.startsWith('/admin/ava-flows') ||
-          path.startsWith('/admin/lessons')) {
+          path.startsWith('/admin/lessons') ||
+          path.startsWith('/admin/topics')) {
         return '/admin/content';
       }
       // System section (includes UAT scenarios)
@@ -113,6 +115,7 @@ export function AdminLayout({ children, pendingInvitationsCount = 0 }: AdminLayo
     { label: 'Prompt Library', path: '/admin/prompt-challenge-prompts', icon: SparklesIcon },
     { label: 'Lesson Library', path: '/admin/lessons', icon: AcademicCapIcon },
     { label: 'Ava Flows', path: '/admin/ava-flows', icon: MapIcon },
+    { label: 'Topics', path: '/admin/topics', icon: TagIcon },
   ];
 
   const phoenixUrl = import.meta.env.VITE_PHOENIX_URL;

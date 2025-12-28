@@ -1121,7 +1121,32 @@ Return ONLY the JSON, no other text.
 
 
 class PipBattleAI:
-    """AI opponent behavior for battles against Pip."""
+    """
+    AI opponent behavior for battles against Pip.
+
+    ⚠️  CAUTION: FRAGILE CODE - DO NOT MODIFY WITHOUT CAREFUL TESTING ⚠️
+
+    This class handles Pip (the AI opponent) battle logic. The Pip flow is complex
+    and involves multiple async tasks, WebSocket events, and database state changes.
+    Modifications can easily break the battle flow in subtle ways that are hard to debug.
+
+    Before making changes:
+    1. Run ALL battle tests: `make test-backend` (specifically test_async_battles.py)
+    2. Test manually with a real Pip battle from start to finish
+    3. Check WebSocket events are firing correctly in browser devtools
+    4. Verify image generation and judging complete properly
+
+    Key integration points:
+    - consumers.py: _handle_start_pip_battle() triggers Pip battles
+    - tasks.py: create_pip_submission_task() creates Pip's submission async
+    - BattleService: generate_image_for_submission(), judge_battle()
+
+    Common failure modes:
+    - Race conditions between user submission and Pip submission
+    - Phase transitions happening out of order
+    - WebSocket events not being sent or received
+    - Image generation failing silently
+    """
 
     def __init__(self):
         """Initialize Pip AI."""
@@ -1189,24 +1214,27 @@ class PipBattleAI:
 
         ai = AIProvider(provider='anthropic')
 
-        prompt = f"""You are Pip, a creative AI competing in an image generation battle.
+        prompt = f"""You are Pip, a creative AI artist competing in an image generation battle.
 
 Challenge: {battle.challenge_text}
 
-Your assigned artistic approach for this battle:
-- Style: {chosen_style}
-- Color palette: {chosen_palette}
+Your assigned artistic style: {chosen_style}
+Your color palette: {chosen_palette}
 
-Write a creative prompt (50-150 words) for an AI image generator. Be specific and vivid.
+Write a creative prompt (50-150 words) for an AI image generator.
+
+CRITICAL: Don't just describe the challenge with visual styling. Add YOUR creative spin:
+- Reimagine the scenario (e.g., "T-Rex on phone" → "T-Rex at a tiny repair shop, squinting through glasses")
+- Add unexpected context, emotion, or story
+- Include surprising details that make it YOUR interpretation
 
 Requirements:
-1. Embrace the assigned style and colors fully
-2. Include specific visual details (composition, lighting, mood)
-3. Describe the main subject clearly
-4. Add one unexpected or creative twist
-5. Keep it concise - every word should paint the picture
+1. Add a creative twist to the CONCEPT, not just the visuals
+2. Be specific: describe the scene, action, expression, environment
+3. Apply your assigned style and color palette
+4. Make it memorable and unexpected
 
-Write your prompt now (no preamble, just the prompt):"""
+Write your prompt now (just the prompt, no preamble):"""
 
         try:
             response = ai.complete(
@@ -1217,20 +1245,17 @@ Write your prompt now (no preamble, just the prompt):"""
             return response.strip()
         except Exception as e:
             logger.error(f'Failed to generate Pip submission: {e}', exc_info=True)
-            # Varied fallback responses
+            # Creative fallbacks with actual conceptual twists
+            challenge = battle.challenge_text
             fallbacks = [
-                f'{battle.challenge_text} rendered in {chosen_style}. '
-                f'Using a {chosen_palette} color scheme. '
-                'Dramatic composition with strong focal point and atmospheric depth.',
-                f'A striking interpretation of {battle.challenge_text}. '
-                f'{chosen_style.capitalize()} approach with {chosen_palette}. '
-                'Dynamic angles and expressive details create visual impact.',
-                f'{chosen_style.capitalize()} vision of {battle.challenge_text}. '
-                f'Color palette: {chosen_palette}. '
-                'Balanced composition with intentional negative space and bold subject placement.',
-                f'Creative take on {battle.challenge_text} using {chosen_style}. '
-                f'Featuring {chosen_palette} for emotional resonance. '
-                'Layered details reward closer inspection.',
+                f'{challenge}, but from an unexpected angle - perhaps a reflection in a puddle '
+                f'or viewed through a window. {chosen_style.capitalize()} with {chosen_palette}.',
+                f'A behind-the-scenes moment of {challenge} - the preparation or aftermath '
+                f'that no one usually sees. Rendered in {chosen_style} with {chosen_palette}.',
+                f'{challenge} reimagined as if it happened in a completely different era or world. '
+                f'{chosen_style.capitalize()} style, {chosen_palette} color scheme.',
+                f'The emotional aftermath of {challenge} - showing the feelings rather than the action. '
+                f'{chosen_style.capitalize()} with {chosen_palette} for mood.',
             ]
             return secrets.choice(fallbacks)
 

@@ -207,6 +207,9 @@ describe('VendorDashboardPage', () => {
 
   describe('Error State', () => {
     it('should show error message when API fails', async () => {
+      // Suppress expected console.error for this test
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       mockUseAuth.mockReturnValue({
         user: { username: 'vendor', role: 'vendor' },
       });
@@ -218,6 +221,8 @@ describe('VendorDashboardPage', () => {
       await waitFor(() => {
         expect(screen.getByText('Unable to Load Dashboard')).toBeInTheDocument();
       });
+
+      consoleSpy.mockRestore();
     });
   });
 

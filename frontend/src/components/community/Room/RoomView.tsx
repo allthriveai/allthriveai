@@ -75,7 +75,7 @@ export function RoomView({ roomId }: RoomViewProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Room Header */}
-      <header className="flex-shrink-0 p-4 border-b border-white/10 glass-subtle">
+      <header className="flex-shrink-0 p-6 border-b border-white/10 glass-subtle">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20">

@@ -16,7 +16,7 @@ import { RoomView } from '@/components/community/Room/RoomView';
 import type { RoomListItem } from '@/types/community';
 
 export function LoungePage() {
-  const { roomId } = useParams<{ roomId?: string }>();
+  const { roomSlug } = useParams<{ roomSlug?: string }>();
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<RoomListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,9 +31,9 @@ export function LoungePage() {
         setRooms(roomList);
 
         // If no room selected, navigate to default or first room
-        if (!roomId && roomList.length > 0) {
+        if (!roomSlug && roomList.length > 0) {
           const defaultRoom = roomList.find((r) => r.isDefault) || roomList[0];
-          navigate(`/lounge/${defaultRoom.id}`, { replace: true });
+          navigate(`/lounge/${defaultRoom.slug}`, { replace: true });
         }
       } catch (_err) {
         setError('Failed to load rooms');
@@ -43,10 +43,14 @@ export function LoungePage() {
     }
 
     loadRooms();
-  }, [roomId, navigate]);
+  }, [roomSlug, navigate]);
 
-  const handleRoomSelect = (id: string) => {
-    navigate(`/lounge/${id}`);
+  // Look up room ID from slug for WebSocket connection
+  const selectedRoom = rooms.find((r) => r.slug === roomSlug);
+  const selectedRoomId = selectedRoom?.id;
+
+  const handleRoomSelect = (slug: string) => {
+    navigate(`/lounge/${slug}`);
   };
 
   if (loading) {
@@ -89,10 +93,10 @@ export function LoungePage() {
   return (
     <DashboardLayout>
       {() => (
-        <div className="h-[calc(100vh-8rem)] flex overflow-hidden -mt-4">
+        <div className="h-[calc(100vh-8rem)] flex overflow-hidden mt-2">
           {/* Sidebar - Room List */}
           <aside className="w-72 flex-shrink-0 border-r border-white/10 glass-panel rounded-none">
-            <div className="p-4 border-b border-white/10">
+            <div className="p-6 border-b border-white/10">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <FontAwesomeIcon icon={faCouch} className="text-cyan-400" />
                 The Lounge
@@ -101,15 +105,15 @@ export function LoungePage() {
             </div>
             <RoomList
               rooms={rooms}
-              selectedRoomId={roomId}
+              selectedRoomSlug={roomSlug}
               onRoomSelect={handleRoomSelect}
             />
           </aside>
 
           {/* Main Content - Room View */}
           <main className="flex-1 flex flex-col">
-            {roomId ? (
-              <RoomView roomId={roomId} />
+            {selectedRoomId ? (
+              <RoomView roomId={selectedRoomId} />
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center text-slate-400">

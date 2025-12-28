@@ -121,8 +121,8 @@ export default function QuizPage() {
       const response = await completeQuiz(attemptId);
       setQuizState('results');
 
-      // Show points notification if points were earned
-      if (response.pointsEarned && response.pointsEarned > 0 && pointsNotification) {
+      // Show points notification if points were earned (10+ points threshold)
+      if (response.pointsEarned && response.pointsEarned >= 10 && pointsNotification) {
         pointsNotification.showPointsNotification({
           points: response.pointsEarned,
           title: 'Quiz Complete!',

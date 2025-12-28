@@ -102,6 +102,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
     can_submit = serializers.SerializerMethodField()
     can_edit_challenge = serializers.SerializerMethodField()
     invite_url = serializers.SerializerMethodField()
+    points_earned = serializers.SerializerMethodField()
 
     class Meta:
         model = PromptBattle
@@ -132,6 +133,7 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             'can_submit',
             'can_edit_challenge',
             'invite_url',
+            'points_earned',
         ]
         read_only_fields = [
             'id',
@@ -239,6 +241,36 @@ class PromptBattleSerializer(serializers.ModelSerializer):
             return invitation.invite_url if invitation else None
         except BattleInvitation.DoesNotExist:
             return None
+
+    def get_points_earned(self, obj):
+        """Get points earned by current user in this battle.
+
+        Returns:
+            - 50 points for the winner
+            - 10 points for participation (non-winner participant)
+            - 0 if battle not completed or user not a participant
+        """
+        from .models import BattleStatus
+
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+
+        # Only return points for completed battles
+        if obj.status != BattleStatus.COMPLETED:
+            return 0
+
+        user_id = request.user.id
+
+        # Winner gets 50 points
+        if obj.winner_id == user_id:
+            return 50
+
+        # Participant gets 10 points
+        if obj.challenger_id == user_id or obj.opponent_id == user_id:
+            return 10
+
+        return 0
 
     def validate(self, data):
         """Validate battle creation."""

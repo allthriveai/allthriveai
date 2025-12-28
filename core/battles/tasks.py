@@ -367,14 +367,32 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
             },
         )
 
-        # Send judging results to room with full submission data
+        # CRITICAL: Prepare JSON-serializable results for WebSocket channel layer.
+        # BattleService.judge_battle() returns results containing 'submission' (Django model objects)
+        # which CANNOT be serialized by Redis channel layer. This caused TypeError:
+        # "can not serialize 'BattleSubmission' object" and battles getting stuck in reveal phase.
+        # We extract only primitive/dict fields that are JSON-serializable.
+        # See: https://github.com/allthriveai/allthriveai/issues/XXX
+        serializable_results = []
+        for r in submission_results:
+            serializable_results.append(
+                {
+                    'submission_id': r.get('submission_id'),
+                    'user_id': r.get('user_id'),
+                    'score': r.get('score'),
+                    'criteria_scores': r.get('criteria_scores'),
+                    'feedback': r.get('feedback', ''),
+                }
+            )
+
+        # Send judging results to room with serializable submission data
         async_to_sync(channel_layer.group_send)(
             group_name,
             {
                 'type': 'battle_event',
                 'event': 'judging_complete',
                 'winner_id': winner_id,
-                'results': submission_results,
+                'results': serializable_results,
             },
         )
 
@@ -520,6 +538,25 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
         return {'status': 'error', 'reason': str(e)}
 
 
+# =============================================================================
+# PIP (AI OPPONENT) TASKS
+#
+# ⚠️  CAUTION: FRAGILE CODE - DO NOT MODIFY WITHOUT CAREFUL TESTING ⚠️
+#
+# The Pip battle flow is complex and involves multiple async tasks, WebSocket
+# events, and database state changes. Modifications can easily break the battle
+# flow in subtle ways that are hard to debug.
+#
+# Before making changes:
+# 1. Run ALL battle tests: `make test-backend` (specifically test_async_battles.py)
+# 2. Test manually with a real Pip battle from start to finish
+# 3. Check WebSocket events are firing correctly in browser devtools
+# 4. Verify image generation and judging complete properly
+#
+# See also: services.py PipBattleAI class, consumers.py _handle_start_pip_battle()
+# =============================================================================
+
+
 @shared_task(
     bind=True,
     max_retries=2,
@@ -530,6 +567,8 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
 def create_pip_submission_task(self, battle_id: int) -> dict[str, Any]:
     """
     Create Pip's submission for an AI opponent battle.
+
+    ⚠️  See warning above - this is part of the fragile Pip battle flow.
 
     Called immediately when battle transitions to ACTIVE phase,
     allowing Pip to generate their submission in parallel while

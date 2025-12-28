@@ -88,8 +88,9 @@ export function AsyncBattleCard({ battle }: AsyncBattleCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      data-testid="battle-card"
       className={clsx(
-        'rounded-xl border p-4',
+        'battle-card rounded-xl border p-4',
         battle.isMyTurn
           ? 'border-pink-500/50 bg-gradient-to-br from-pink-950/30 to-purple-950/30'
           : 'border-slate-700/50 bg-slate-900/50'

@@ -3,6 +3,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import type { LessonExercise, AILessonContent } from '@/services/learningPaths';
 import {
@@ -11,6 +12,7 @@ import {
   removeExercise as removeExerciseApi,
   regenerateSpecificExercise as regenerateExerciseApi,
 } from '@/services/learningPaths';
+import { learningPathKeys } from '@/hooks/useLearningPaths';
 
 export interface ExerciseCollectionState {
   exercises: LessonExercise[];
@@ -26,6 +28,8 @@ export interface UseExerciseCollectionProps {
   initialContent: AILessonContent | undefined;
   onExerciseComplete?: (exerciseId: string) => void;
   onContentUpdate?: (exercises: LessonExercise[]) => void;
+  /** Username for cache invalidation - required to invalidate the right query */
+  username?: string;
 }
 
 export interface UseExerciseCollectionReturn {
@@ -50,7 +54,10 @@ export function useExerciseCollection({
   initialContent,
   onExerciseComplete,
   onContentUpdate,
+  username,
 }: UseExerciseCollectionProps): UseExerciseCollectionReturn {
+  const queryClient = useQueryClient();
+
   // Initialize state from content
   const [exercises, setExercises] = useState<LessonExercise[]>(() =>
     getExercises(initialContent)
@@ -62,6 +69,20 @@ export function useExerciseCollection({
     exercises.length === 1 ? exercises[0]?.id || null : null
   );
   const [completedExerciseIds, setCompletedExerciseIds] = useState<Set<string>>(new Set());
+
+  // Helper to invalidate the learning path cache so refreshes get updated data
+  const invalidatePathCache = useCallback(() => {
+    if (username && pathSlug) {
+      // Invalidate the specific learning path query
+      queryClient.invalidateQueries({
+        queryKey: learningPathKeys.bySlug(username, pathSlug),
+      });
+      // Also invalidate the saved path query (for owner view)
+      queryClient.invalidateQueries({
+        queryKey: learningPathKeys.savedPath(pathSlug),
+      });
+    }
+  }, [queryClient, username, pathSlug]);
 
   // Sync exercises when initialContent changes (e.g., after lesson regeneration)
   useEffect(() => {
@@ -98,6 +119,9 @@ export function useExerciseCollection({
       // Expand the new exercise
       setExpandedExerciseId(newExercise.id);
 
+      // Invalidate cache so page refresh shows updated exercises
+      invalidatePathCache();
+
       toast.success('Exercise added!');
     } catch (error) {
       console.error('Failed to add exercise:', error);
@@ -105,7 +129,7 @@ export function useExerciseCollection({
     } finally {
       setIsLoading(false);
     }
-  }, [canAddMore, pathSlug, lessonOrder, onContentUpdate]);
+  }, [canAddMore, pathSlug, lessonOrder, onContentUpdate, invalidatePathCache]);
 
   // Remove an exercise
   const removeExercise = useCallback(async (exerciseId: string) => {
@@ -124,6 +148,9 @@ export function useExerciseCollection({
         setExpandedExerciseId(null);
       }
 
+      // Invalidate cache so page refresh shows updated exercises
+      invalidatePathCache();
+
       toast.success('Exercise removed');
     } catch (error) {
       console.error('Failed to remove exercise:', error);
@@ -131,7 +158,7 @@ export function useExerciseCollection({
     } finally {
       setLoadingExerciseId(null);
     }
-  }, [pathSlug, lessonOrder, expandedExerciseId, onContentUpdate]);
+  }, [pathSlug, lessonOrder, expandedExerciseId, onContentUpdate, invalidatePathCache]);
 
   // Regenerate a specific exercise
   const regenerateExercise = useCallback(async (
@@ -154,6 +181,9 @@ export function useExerciseCollection({
         return updated;
       });
 
+      // Invalidate cache so page refresh shows updated exercises
+      invalidatePathCache();
+
       toast.success('Exercise regenerated!');
     } catch (error) {
       console.error('Failed to regenerate exercise:', error);
@@ -161,7 +191,7 @@ export function useExerciseCollection({
     } finally {
       setLoadingExerciseId(null);
     }
-  }, [pathSlug, lessonOrder, onContentUpdate]);
+  }, [pathSlug, lessonOrder, onContentUpdate, invalidatePathCache]);
 
   // Mark an exercise as completed
   const markCompleted = useCallback((exerciseId: string) => {

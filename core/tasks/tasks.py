@@ -2,6 +2,7 @@
 Celery tasks for admin task reminders.
 """
 
+import logging
 from datetime import timedelta
 
 from celery import shared_task
@@ -9,6 +10,8 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -82,7 +85,7 @@ def send_task_due_reminders():
             reminder_count += 1
 
         except Exception as e:
-            print(f'Failed to send reminder for task {task.id}: {e}')
+            logger.error(f'Failed to send reminder for task {task.id}: {e}')
 
     # Bulk update the reminder timestamps
     if task_ids_to_update:
@@ -145,6 +148,6 @@ def send_overdue_task_notifications():
             notification_count += 1
 
         except Exception as e:
-            print(f'Failed to send overdue notification for task {task.id}: {e}')
+            logger.error(f'Failed to send overdue notification for task {task.id}: {e}')
 
     return f'Sent {notification_count} overdue task notifications'

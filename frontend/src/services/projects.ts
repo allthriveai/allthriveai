@@ -33,6 +33,16 @@ interface ProjectApiResponse {
   publishedDate?: string;
   createdAt: string;
   updatedAt: string;
+  // Points earned for project creation (only present on create response)
+  pointsEarned?: number;
+}
+
+/**
+ * Result of creating a project, includes points earned
+ */
+export interface CreateProjectResult {
+  project: Project;
+  pointsEarned: number;
 }
 
 /**
@@ -113,11 +123,15 @@ export async function getProjectBySlug(username: string, slug: string): Promise<
 
 /**
  * Create a new project
+ * Returns the created project and points earned (25 for project creation)
  */
-export async function createProject(payload: ProjectPayload): Promise<Project> {
+export async function createProject(payload: ProjectPayload): Promise<CreateProjectResult> {
   const backendPayload = transformPayload(payload);
   const response = await api.post<ProjectApiResponse>('/me/projects/', backendPayload);
-  return transformProject(response.data);
+  return {
+    project: transformProject(response.data),
+    pointsEarned: response.data.pointsEarned || 0,
+  };
 }
 
 /**
@@ -323,6 +337,8 @@ export interface CreateProjectFromImageResult {
     title: string;
     url: string;
   };
+  // Points earned for project creation (25 pts)
+  pointsEarned?: number;
 }
 
 /**

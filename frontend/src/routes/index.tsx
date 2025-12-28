@@ -101,6 +101,7 @@ const AdminPromptChallengePromptsPage = lazy(() => import('@/pages/admin/PromptC
 const AdminImpersonatePage = lazy(() => import('@/pages/admin/ImpersonatePage'));
 const AdminCircleManagementPage = lazy(() => import('@/pages/admin/CircleManagementPage'));
 const AdminTasksPage = lazy(() => import('@/pages/admin/TasksPage'));
+const AdminTopicsPage = lazy(() => import('@/pages/admin/TopicsManagementPage'));
 const AdminUATScenariosPage = lazy(() => import('@/pages/admin/UATScenariosPage'));
 const AdminAvaFlowsPage = lazy(() => import('@/pages/admin/AvaFlowsPage'));
 const AdminLessonsPage = lazy(() => import('@/pages/admin/LessonsPage'));
@@ -343,7 +344,7 @@ export function AppRoutes() {
         }
       />
       <Route
-        path="/lounge/:roomId"
+        path="/lounge/:roomSlug"
         element={
           <ProtectedRoute>
             <LoungePage />
@@ -527,6 +528,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminTasksPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/topics"
+        element={
+          <ProtectedRoute>
+            <AdminTopicsPage />
           </ProtectedRoute>
         }
       />

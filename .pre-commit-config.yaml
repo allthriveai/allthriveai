@@ -186,3 +186,16 @@ repos:
         language: python
         files: settings.*\.py$
         pass_filenames: true
+
+  # Pre-push hooks - run before git push
+  - repo: local
+    hooks:
+      # API versioning and critical E2E regression tests
+      - id: pre-push-checks
+        name: Pre-Push Checks (API versioning + E2E tests)
+        entry: scripts/pre-push
+        language: script
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+        verbose: true

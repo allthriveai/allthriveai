@@ -1,30 +1,23 @@
 /**
- * DragSortExercise - Drag and drop / sorting exercise component
- * Supports three variants: sequence, match, and categorize
+ * SortExercise - Interactive sorting exercise with click-based reordering
+ *
+ * Users reorder items using up/down arrow buttons to put them in the correct order.
+ *
+ * Variants:
+ * - sequence: Put steps in the correct order (e.g., git workflow)
+ * - match: Match items to their pairs (e.g., terms to definitions)
+ * - categorize: Sort items into categories (e.g., classify by type)
+ *
+ * Note: The data type is still called "dragSortData" for API compatibility,
+ * but the UI uses click-based sorting, not drag-and-drop.
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faGripVertical,
+  faArrowsUpDown,
   faCheck,
   faRotateRight,
   faLightbulb,
@@ -38,18 +31,67 @@ import { useExerciseState } from '../primitives/useExerciseState';
 import type { BaseExerciseProps, DragSortExerciseData, DragSortItem } from '../types';
 import { cn } from '@/lib/utils';
 
-interface DragSortExerciseProps extends BaseExerciseProps {
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
+/** Fisher-Yates shuffle - randomizes array order with O(n) complexity */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/** Shuffle items, retrying if they end up in the correct order */
+function shuffleUntilDifferent<T extends { id: string }>(
+  items: T[],
+  correctOrder?: string[]
+): T[] {
+  if (!correctOrder || items.length <= 1) return [...items];
+
+  let shuffled = shuffleArray(items);
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  // Keep shuffling until order differs from correct answer
+  while (
+    attempts < maxAttempts &&
+    shuffled.every((item, index) => item.id === correctOrder[index])
+  ) {
+    shuffled = shuffleArray(items);
+    attempts++;
+  }
+
+  return shuffled;
+}
+
+/** Move an item from one position to another in an array */
+function arrayMove<T>(array: T[], fromIndex: number, toIndex: number): T[] {
+  const newArray = [...array];
+  const [removed] = newArray.splice(fromIndex, 1);
+  newArray.splice(toIndex, 0, removed);
+  return newArray;
+}
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
+
+interface SortExerciseProps extends BaseExerciseProps {
   exercise: BaseExerciseProps['exercise'] & {
     dragSortData: DragSortExerciseData;
   };
 }
 
-export function DragSortExercise({
+export function SortExercise({
   exercise,
   skillLevel,
   onComplete,
   onAskForHelp,
-}: DragSortExerciseProps) {
+}: SortExerciseProps) {
   const { dragSortData } = exercise;
   const { variant, items: initialItems, correctOrder, correctMatches, categories, correctCategories } = dragSortData;
 
@@ -79,8 +121,12 @@ export function DragSortExercise({
     onComplete,
   });
 
-  // Items state - for sequence variant
-  const [items, setItems] = useState<DragSortItem[]>(() => [...initialItems]);
+  // Items state - shuffled to ensure not in correct order
+  const [items, setItems] = useState<DragSortItem[]>(() =>
+    variant === 'sequence'
+      ? shuffleUntilDifferent(initialItems, correctOrder)
+      : [...initialItems]
+  );
 
   // For match variant - track which items are matched
   const [matches, setMatches] = useState<Record<string, string>>({});
@@ -88,25 +134,17 @@ export function DragSortExercise({
   // For categorize variant - track item placements
   const [placements, setPlacements] = useState<Record<string, string>>({});
 
-  // Active dragging item
-  const [activeId, setActiveId] = useState<string | null>(null);
+  // Move item up
+  const moveUp = useCallback((index: number) => {
+    if (index <= 0) return;
+    setItems(current => arrayMove(current, index, index - 1));
+  }, []);
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // Get the active item for drag overlay
-  const activeItem = useMemo(() => {
-    return items.find(item => item.id === activeId);
-  }, [activeId, items]);
+  // Move item down
+  const moveDown = useCallback((index: number) => {
+    if (index >= items.length - 1) return;
+    setItems(current => arrayMove(current, index, index + 1));
+  }, [items.length]);
 
   // Validate current state based on variant
   const validateAnswer = useCallback(() => {
@@ -170,34 +208,14 @@ export function DragSortExercise({
     incrementAttempts, markCompleted, showWrongFeedback, config.showCorrectOnError
   ]);
 
-  // Handle drag start
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  // Handle drag end for sequence variant
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = event;
-
-    if (!over) return;
-
-    if (variant === 'sequence') {
-      if (active.id !== over.id) {
-        setItems((items) => {
-          const oldIndex = items.findIndex(item => item.id === active.id);
-          const newIndex = items.findIndex(item => item.id === over.id);
-          return arrayMove(items, oldIndex, newIndex);
-        });
-      }
-    }
-    // Match and categorize variants would handle their own drag logic in dropzones
-  };
-
   // Handle reset
   const handleReset = () => {
     reset();
-    setItems([...initialItems]);
+    setItems(
+      variant === 'sequence'
+        ? shuffleUntilDifferent(initialItems, correctOrder)
+        : [...initialItems]
+    );
     setMatches({});
     setPlacements({});
     setFeedback(null);
@@ -227,58 +245,44 @@ export function DragSortExercise({
       {/* Instructions */}
       <AnimatedContainer variant="default" className="p-4">
         <div className="flex items-start gap-3">
-          <FontAwesomeIcon icon={faGripVertical} className="text-cyan-600 dark:text-cyan-400 mt-1" />
+          <FontAwesomeIcon icon={faArrowsUpDown} className="text-cyan-600 dark:text-cyan-400 mt-1" />
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-slate-200 mb-1">Instructions</h4>
-            <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
+            <h4 className="font-medium text-slate-800 dark:text-slate-200 mb-1">Instructions</h4>
+            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{content.instructions}</p>
           </div>
         </div>
       </AnimatedContainer>
 
       {/* Exercise content based on variant */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        {variant === 'sequence' && (
-          <SequenceExercise
-            items={items}
-            correctOrder={correctOrder || []}
-            isCompleted={isCompleted}
-            showCorrectOnError={config.showCorrectOnError && !!feedback && !feedback.isCorrect}
-          />
-        )}
+      {variant === 'sequence' && (
+        <SequenceExercise
+          items={items}
+          correctOrder={correctOrder || []}
+          isCompleted={isCompleted}
+          showCorrectOnError={config.showCorrectOnError && !!feedback && !feedback.isCorrect}
+          onMoveUp={moveUp}
+          onMoveDown={moveDown}
+        />
+      )}
 
-        {variant === 'match' && (
-          <MatchExercise
-            items={initialItems}
-            matches={matches}
-            onMatch={(sourceId, targetId) => setMatches(prev => ({ ...prev, [sourceId]: targetId }))}
-            isCompleted={isCompleted}
-          />
-        )}
+      {variant === 'match' && (
+        <MatchExercise
+          items={initialItems}
+          matches={matches}
+          onMatch={(sourceId, targetId) => setMatches(prev => ({ ...prev, [sourceId]: targetId }))}
+          isCompleted={isCompleted}
+        />
+      )}
 
-        {variant === 'categorize' && categories && (
-          <CategorizeExercise
-            items={initialItems}
-            categories={categories}
-            placements={placements}
-            onPlace={(itemId, categoryId) => setPlacements(prev => ({ ...prev, [itemId]: categoryId }))}
-            isCompleted={isCompleted}
-          />
-        )}
-
-        {/* Drag overlay */}
-        <DragOverlay>
-          {activeItem && (
-            <div className="p-3 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-400 dark:border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-              <span className="text-gray-800 dark:text-slate-200">{activeItem.content}</span>
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+      {variant === 'categorize' && categories && (
+        <CategorizeExercise
+          items={initialItems}
+          categories={categories}
+          placements={placements}
+          onPlace={(itemId, categoryId) => setPlacements(prev => ({ ...prev, [itemId]: categoryId }))}
+          isCompleted={isCompleted}
+        />
+      )}
 
       {/* Hints */}
       {revealedHints.length > 0 && (
@@ -327,7 +331,7 @@ export function DragSortExercise({
                     {feedback.isCorrect ? exercise.successMessage || 'Great job!' : feedback.message}
                   </p>
                   {feedback.explanation && (
-                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{feedback.explanation}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{feedback.explanation}</p>
                   )}
                 </div>
               </div>
@@ -360,7 +364,7 @@ export function DragSortExercise({
 
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             >
               <FontAwesomeIcon icon={faRotateRight} />
               Reset
@@ -379,7 +383,7 @@ export function DragSortExercise({
         ) : (
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <FontAwesomeIcon icon={faRotateRight} />
             Try Again
@@ -400,44 +404,49 @@ export function DragSortExercise({
   );
 }
 
-// ============================================================================
-// SEQUENCE VARIANT
-// ============================================================================
+// =============================================================================
+// SEQUENCE VARIANT - Reorder items into correct sequence
+// =============================================================================
 
 interface SequenceExerciseProps {
   items: DragSortItem[];
   correctOrder: string[];
   isCompleted: boolean;
   showCorrectOnError: boolean;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
 }
 
-function SequenceExercise({ items, correctOrder, isCompleted, showCorrectOnError }: SequenceExerciseProps) {
+/** Renders sortable items with up/down buttons for reordering */
+function SequenceExercise({ items, correctOrder, isCompleted, showCorrectOnError, onMoveUp, onMoveDown }: SequenceExerciseProps) {
   return (
-    <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-      <div className="space-y-2">
-        {items.map((item, index) => {
-          const isCorrectPosition = correctOrder[index] === item.id;
-          return (
-            <SortableItem
-              key={item.id}
-              id={item.id}
-              content={item.content}
-              code={item.code}
-              codeLanguage={item.codeLanguage}
-              disabled={isCompleted}
-              showCorrectIndicator={showCorrectOnError && !isCorrectPosition}
-              isCorrect={isCompleted && isCorrectPosition}
-            />
-          );
-        })}
-      </div>
-    </SortableContext>
+    <div className="space-y-2">
+      {items.map((item, index) => {
+        const isCorrectPosition = correctOrder[index] === item.id;
+        return (
+          <SortableItem
+            key={item.id}
+            id={item.id}
+            content={item.content}
+            code={item.code}
+            codeLanguage={item.codeLanguage}
+            disabled={isCompleted}
+            showCorrectIndicator={showCorrectOnError && !isCorrectPosition}
+            isCorrect={isCompleted && isCorrectPosition}
+            index={index}
+            totalItems={items.length}
+            onMoveUp={() => onMoveUp(index)}
+            onMoveDown={() => onMoveDown(index)}
+          />
+        );
+      })}
+    </div>
   );
 }
 
-// ============================================================================
-// MATCH VARIANT
-// ============================================================================
+// =============================================================================
+// MATCH VARIANT - Connect items to their pairs
+// =============================================================================
 
 interface MatchExerciseProps {
   items: DragSortItem[];
@@ -446,6 +455,7 @@ interface MatchExerciseProps {
   isCompleted: boolean;
 }
 
+/** Renders two columns - left items match to right targets */
 function MatchExercise({ items, matches, isCompleted }: MatchExerciseProps) {
   // Split items into left (sources) and right (targets)
   const leftItems = items.filter(item => !item.category || item.category === 'left');
@@ -453,7 +463,7 @@ function MatchExercise({ items, matches, isCompleted }: MatchExerciseProps) {
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      {/* Left column - draggable items */}
+      {/* Left column */}
       <div className="space-y-2">
         {leftItems.map(item => (
           <div
@@ -462,12 +472,12 @@ function MatchExercise({ items, matches, isCompleted }: MatchExerciseProps) {
               'p-3 rounded-lg border transition-all',
               matches[item.id]
                 ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-300 dark:border-cyan-500/30'
-                : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50'
             )}
           >
-            <span className="text-gray-800 dark:text-slate-200">{item.content}</span>
+            <span className="text-slate-800 dark:text-slate-200">{item.content}</span>
             {item.code && (
-              <pre className="mt-2 text-xs bg-gray-100 dark:bg-black/30 p-2 rounded overflow-x-auto">
+              <pre className="mt-2 text-xs bg-slate-100 dark:bg-slate-900/50 p-2 rounded overflow-x-auto">
                 <code className="text-cyan-600 dark:text-cyan-300">{item.code}</code>
               </pre>
             )}
@@ -491,9 +501,9 @@ function MatchExercise({ items, matches, isCompleted }: MatchExerciseProps) {
   );
 }
 
-// ============================================================================
-// CATEGORIZE VARIANT
-// ============================================================================
+// =============================================================================
+// CATEGORIZE VARIANT - Sort items into categories
+// =============================================================================
 
 interface CategorizeExerciseProps {
   items: DragSortItem[];
@@ -503,6 +513,7 @@ interface CategorizeExerciseProps {
   isCompleted: boolean;
 }
 
+/** Renders items to place and category drop zones */
 function CategorizeExercise({
   items,
   categories,
@@ -521,8 +532,8 @@ function CategorizeExercise({
     <div className="space-y-4">
       {/* Unplaced items */}
       {unplacedItems.length > 0 && (
-        <div className="p-4 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10">
-          <p className="text-sm text-gray-500 dark:text-slate-400 mb-3">Drag items to the correct category:</p>
+        <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Items to categorize:</p>
           <div className="flex flex-wrap gap-2">
             {unplacedItems.map(item => (
               <SortableItem
@@ -533,6 +544,8 @@ function CategorizeExercise({
                 codeLanguage={item.codeLanguage}
                 disabled={isCompleted}
                 compact
+                index={0}
+                totalItems={1}
               />
             ))}
           </div>
@@ -553,7 +566,7 @@ function CategorizeExercise({
               {getItemsInCategory(category.id).map(item => (
                 <div
                   key={item.id}
-                  className="px-3 py-1.5 rounded bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-300 dark:border-cyan-500/30 text-sm text-gray-800 dark:text-slate-200"
+                  className="px-3 py-1.5 rounded bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-300 dark:border-cyan-500/30 text-sm text-slate-800 dark:text-slate-200"
                 >
                   {item.content}
                 </div>
@@ -566,4 +579,4 @@ function CategorizeExercise({
   );
 }
 
-export default DragSortExercise;
+export default SortExercise;

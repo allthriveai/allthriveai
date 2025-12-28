@@ -9,7 +9,7 @@ import type { LessonExercise } from '@/services/learningPaths';
 import type { ExerciseStats } from './types';
 
 // Lazy load exercise components for code splitting
-const DragSortExercise = lazy(() => import('./DragSortExercise'));
+const SortExercise = lazy(() => import('./SortExercise'));
 const ConnectNodesExercise = lazy(() => import('./ConnectNodesExercise'));
 const CodeWalkthroughExercise = lazy(() => import('./CodeWalkthroughExercise'));
 const TimedChallengeExercise = lazy(() => import('./TimedChallengeExercise'));
@@ -104,12 +104,12 @@ export function ExerciseRenderer({
     // =========================================================================
     case 'drag_sort':
       if (!exercise.dragSortData) {
-        console.error('DragSortExercise missing dragSortData');
+        console.error('SortExercise missing dragSortData');
         return <ExerciseMissingData type="drag_sort" />;
       }
       return (
         <Suspense fallback={<ExerciseLoadingFallback />}>
-          <DragSortExercise
+          <SortExercise
             // @ts-expect-error - exercise has dragSortData checked above
             exercise={exercise}
             {...commonProps}

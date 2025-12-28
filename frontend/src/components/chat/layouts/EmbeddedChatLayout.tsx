@@ -30,6 +30,7 @@ import { checkGitLabConnection } from '@/services/gitlab';
 import { checkFigmaConnection } from '@/services/figma';
 import { api } from '@/services/api';
 import { createProjectFromImageSession } from '@/services/projects';
+import { usePointsNotificationOptional } from '@/context/PointsNotificationContext';
 import { getSectionFromFeeling, getSectionColor } from '@/utils/sectionColors';
 import { useProjectPreviewTraySafe } from '@/context/ProjectPreviewTrayContext';
 import type { LearningContentItem } from '@/hooks/useIntelligentChat';
@@ -227,6 +228,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
   const navigate = useNavigate();
   const { user } = useAuth();
   const projectPreviewTray = useProjectPreviewTraySafe();
+  const pointsNotification = usePointsNotificationOptional();
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [excitedFeatures, setExcitedFeatures] = useState<string[]>([]);
   // Random seed that changes on each mount to rotate feeling pills
@@ -735,6 +737,17 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
         // Handle creating a project from a generated image
         const handleCreateProjectFromImage = async (sessionId: number) => {
           const result = await createProjectFromImageSession(sessionId);
+
+          // Show points notification for project creation (25 pts)
+          if (pointsNotification && result.pointsEarned && result.pointsEarned >= 10) {
+            pointsNotification.showPointsNotification({
+              points: result.pointsEarned,
+              title: 'Project Created!',
+              message: 'Your creation is now live',
+              activityType: 'project_create',
+            });
+          }
+
           return {
             projectUrl: result.project.url,
             projectTitle: result.project.title,

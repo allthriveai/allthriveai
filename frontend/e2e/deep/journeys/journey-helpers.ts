@@ -11,7 +11,6 @@ import {
   logoutViaAPI,
   TEST_USER,
   ADMIN_USER,
-  dismissOnboardingModal,
 } from '../../helpers';
 import {
   sendHomeChat,
@@ -37,7 +36,6 @@ export {
   TEST_USER,
   ADMIN_USER,
   TEST_USER_2,
-  dismissOnboardingModal,
   sendHomeChat,
   waitForAvaReady,
   getPageContent,
