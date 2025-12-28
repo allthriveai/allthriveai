@@ -560,7 +560,7 @@ class CreateProjectFromImageView(APIView):
 
             # Include points earned for toast notification
             if recent_activity:
-                response_data['points_earned'] = recent_activity.points
+                response_data['points_earned'] = recent_activity.amount
 
             if completed_ids:
                 response_data['completed_quests'] = format_completed_quests(request.user, completed_ids)

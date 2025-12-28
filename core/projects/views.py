@@ -199,7 +199,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         # Include points earned for toast notification
         if recent_activity:
-            response_data['points_earned'] = recent_activity.points
+            response_data['points_earned'] = recent_activity.amount
 
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
