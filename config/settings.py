@@ -321,6 +321,12 @@ CORS_ALLOWED_ORIGINS = config(
 )
 CORS_ALLOW_CREDENTIALS = True
 CORS_PREFLIGHT_MAX_AGE = 86400  # Cache preflight requests for 24 hours
+# Allow custom headers for smoke tests
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-smoke-test-key',
+]
 
 # REST Framework settings
 REST_FRAMEWORK = {
