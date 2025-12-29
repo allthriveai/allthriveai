@@ -94,6 +94,7 @@ The `seed-all` command runs these seeders in order:
 - `seed_core_team` - Ember, Pip, Sage, Haven
 - `seed_curation_agents` - Reddit, YouTube, RSS agents
 - `seed_games` - Game metadata for Weaviate search
+- `seed_game_projects` - Game promo cards for explore feed (Context Snake, Ethics Defender, Prompt Battle)
 - `create_test_users` - Test users for impersonation (local only)
 
 #### Creating YouTube Feed Agents
