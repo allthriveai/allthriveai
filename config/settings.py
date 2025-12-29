@@ -174,8 +174,8 @@ if DATABASE_URL:
 
     db_config = dj_database_url.parse(
         DATABASE_URL,
-        conn_max_age=600,
-        conn_health_checks=True,  # Enable connection health checks
+        conn_max_age=0,  # ASGI-safe: close connection after each request
+        conn_health_checks=True,
     )
 
     # Fallback to localhost if 'db' hostname is not resolvable (local development)
@@ -187,51 +187,36 @@ if DATABASE_URL:
 
     DATABASES = {'default': db_config}
 
-    # IMPORTANT: Use Django 5.1+ native psycopg connection pooling for ASGI
+    # ASGI Connection Pooling Strategy
     #
-    # Why NOT dj-db-conn-pool (SQLAlchemy-based):
-    # - ASGI creates new thread identifiers per request
-    # - SQLAlchemy QueuePool is thread-affine, causing connection leaks
-    # - Django ticket #33497: "persistent connections do not work with ASGI"
-    # - Results in QueuePool exhaustion errors under concurrent load
+    # Django's built-in pooling (CONN_MAX_AGE > 0) and third-party pools like
+    # dj-db-conn-pool do NOT work correctly with ASGI (Daphne/uvicorn).
+    # See Django ticket #33497: connections leak because ASGI creates new
+    # thread identifiers per request.
     #
-    # Django 5.1+ native pooling with psycopg3 is ASGI-compatible:
-    # - psycopg-pool is async-aware and designed for connection reuse
-    # - No thread affinity issues with Daphne/uvicorn
-    # - Requires CONN_MAX_AGE=0 (pool handles persistence)
+    # Current approach: CONN_MAX_AGE=0 (connection-per-request)
+    # - Safe and stable with ASGI
+    # - Slight overhead from connection setup (~5-20ms per request)
+    # - Works fine for moderate traffic
     #
-    # Pool sizing: Each ECS task gets up to max_size connections
-    # Current: 2 web + 6 celery + 1 beat = 9 tasks
-    # RDS db.t4g.medium: ~225 connections
-    # Safe config: 9 tasks × 20 max = 180 connections (leaves headroom)
-    if not DEBUG:
-        # Use psycopg3 engine for native pooling support
-        DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
-        # CONN_MAX_AGE must be 0 for pooling to work (pool handles persistence)
-        DATABASES['default']['CONN_MAX_AGE'] = 0
+    # For high-traffic scaling, consider AWS RDS Proxy:
+    # - Managed connection pooling at infrastructure level
+    # - Fully ASGI-compatible (pooling happens outside Django)
+    # - ~$20-30/month, zero maintenance
+    # - Just change DB_HOST to point to RDS Proxy endpoint
+    #
+    # Add connection timeouts for PostgreSQL
+    if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
         DATABASES['default']['OPTIONS'] = {
-            # Enable native psycopg connection pooling (Django 5.1+)
-            'pool': {
-                'min_size': 2,  # Minimum connections to keep open
-                'max_size': 20,  # Maximum connections per process
-                'timeout': 30,  # Wait up to 30s for a connection
-            },
             'connect_timeout': 10,
             'options': '-c statement_timeout=30000',  # 30 second query timeout
         }
-    else:
-        # Development: simple config without pooling
-        if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
-            DATABASES['default']['OPTIONS'] = {
-                'connect_timeout': 10,
-                'options': '-c statement_timeout=30000',
-            }
 elif DB_HOST:
     # Use individual DB_* environment variables (for ECS/AWS Secrets Manager)
     # This path is used by ECS tasks connecting to RDS via Secrets Manager
     #
-    # IMPORTANT: Use Django 5.1+ native psycopg pooling for ASGI compatibility
-    # See above comment block for why dj-db-conn-pool doesn't work with Daphne/ASGI
+    # ASGI-safe: CONN_MAX_AGE=0 closes connections after each request
+    # For connection pooling, use AWS RDS Proxy (infrastructure-level pooling)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -240,17 +225,9 @@ elif DB_HOST:
             'NAME': config('DB_NAME', default='allthrive_ai'),
             'USER': config('DB_USER', default='allthrive'),
             'PASSWORD': config('DB_PASSWORD', default=''),
-            # CONN_MAX_AGE must be 0 for psycopg pooling (pool handles persistence)
-            'CONN_MAX_AGE': 0,
+            'CONN_MAX_AGE': 0,  # ASGI-safe: close connection after each request
             'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
-                # Enable native psycopg connection pooling (Django 5.1+)
-                # This is ASGI-compatible and replaces dj-db-conn-pool
-                'pool': {
-                    'min_size': 2,  # Minimum connections to keep open
-                    'max_size': 20,  # Maximum connections per process
-                    'timeout': 30,  # Wait up to 30s for a connection
-                },
                 'connect_timeout': 10,
                 'options': '-c statement_timeout=30000',  # 30 second query timeout
             },
