@@ -443,12 +443,13 @@ Resources:
                 - '${SecretArn}:CACHE_URL::'
                 - SecretArn: !ImportValue
                     Fn::Sub: ${EnvironmentName}-RedisAuthSecretArn
-            # Smoke test API key for production E2E tests
-            - Name: SMOKE_TEST_API_KEY
-              ValueFrom: !Sub
-                - '${SecretArn}:SMOKE_TEST_API_KEY::'
-                - SecretArn: !ImportValue
-                    Fn::Sub: ${EnvironmentName}-SmokeTestApiKeyArn
+            # Smoke test API key - temporarily removed pending secrets stack deployment
+            # TODO: Re-enable when secrets stack export is available
+            # - Name: SMOKE_TEST_API_KEY
+            #   ValueFrom: !Sub
+            #     - '${SecretArn}:SMOKE_TEST_API_KEY::'
+            #     - SecretArn: !ImportValue
+            #         Fn::Sub: ${EnvironmentName}-SmokeTestApiKeyArn
           LogConfiguration:
             LogDriver: awslogs
             Options:
