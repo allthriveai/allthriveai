@@ -377,7 +377,6 @@ seed-all:
 	docker-compose exec web python manage.py seed_core_team
 	docker-compose exec web python manage.py seed_curation_agents
 	docker-compose exec web python manage.py seed_games
-	docker-compose exec web python manage.py seed_game_projects
 	docker-compose exec web python manage.py create_test_users --count=10
 	@echo "✓ All data seeded successfully!"
 
@@ -1516,7 +1515,6 @@ aws-seed-all:
 	@make aws-run-command CMD="seed_core_team"
 	@make aws-run-command CMD="seed_curation_agents"
 	@make aws-run-command CMD="seed_games"
-	@make aws-run-command CMD="seed_game_projects"
 	@echo "✓ All data seeded on AWS!"
 	@echo ""
 	@echo "💡 To AI tag and index to Weaviate, run:"
