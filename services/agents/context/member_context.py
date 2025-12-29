@@ -308,27 +308,54 @@ class MemberContextService:
         Returns:
             MemberContext dict or None if user not authenticated.
         """
+        import asyncio
+
         if not user_id:
             return None
 
+        logger.info(f'[CONTEXT] Getting member context for user {user_id}...')
+
         # Check cache first
         cache_key = cls.get_cache_key(user_id)
-        cached = cache.get(cache_key)
-        if cached is not None:
-            logger.debug('Member context cache hit')
-            return cached
+        try:
+            cached = cache.get(cache_key)
+            if cached is not None:
+                logger.info('[CONTEXT] Cache hit')
+                return cached
+        except Exception as e:
+            logger.warning(f'[CONTEXT] Cache get failed: {e}')
+            # Continue without cache
+
+        logger.info('[CONTEXT] Cache miss, computing context...')
 
         # Use a lock key to prevent cache stampede
         # Only one request will compute the value, others will wait and retry
         lock_key = f'{cache_key}:lock'
 
         # Try to acquire lock (only one request wins)
-        if cache.add(lock_key, '1', timeout=30):  # 30s lock timeout
-            logger.debug('Member context cache miss - computing')
+        try:
+            lock_acquired = cache.add(lock_key, '1', timeout=30)  # 30s lock timeout
+        except Exception as e:
+            logger.warning(f'[CONTEXT] Cache lock failed: {e}')
+            lock_acquired = True  # Proceed anyway
+
+        if lock_acquired:
+            logger.info('[CONTEXT] Lock acquired, aggregating context...')
             try:
-                context = await cls._aggregate_context_async(user_id)
-                cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+                # Add timeout to prevent indefinite hangs
+                context = await asyncio.wait_for(
+                    cls._aggregate_context_async(user_id),
+                    timeout=10.0,  # 10 second timeout
+                )
+                logger.info('[CONTEXT] Context aggregated successfully')
+                try:
+                    cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+                except Exception as e:
+                    logger.warning(f'[CONTEXT] Cache set failed: {e}')
                 return context
+            except TimeoutError:
+                logger.error(f'[CONTEXT] Timeout aggregating context for user {user_id}')
+                return cls._get_default_context()
             except Exception as e:
                 logger.error(
                     'Failed to aggregate member context',
@@ -337,24 +364,36 @@ class MemberContextService:
                 )
                 return cls._get_default_context()
             finally:
-                cache.delete(lock_key)
+                try:
+                    cache.delete(lock_key)
+                except Exception as e:
+                    logger.debug(f'[CONTEXT] Cache lock delete failed: {e}')
         else:
             # Another request is computing - wait briefly and retry cache
-            import asyncio
+            logger.info('[CONTEXT] Lock held by another request, waiting...')
 
             for _ in range(5):  # Retry up to 5 times
                 await asyncio.sleep(0.1)
-                cached = cache.get(cache_key)
-                if cached is not None:
-                    logger.debug('Member context cache hit after wait')
-                    return cached
+                try:
+                    cached = cache.get(cache_key)
+                    if cached is not None:
+                        logger.info('[CONTEXT] Cache hit after wait')
+                        return cached
+                except Exception as e:
+                    logger.debug(f'[CONTEXT] Cache get during wait failed: {e}')
 
             # Still no cache - compute anyway (lock may have expired)
-            logger.debug('Member context cache miss after wait - computing')
+            logger.info('[CONTEXT] Computing after wait...')
             try:
-                context = await cls._aggregate_context_async(user_id)
-                cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+                context = await asyncio.wait_for(cls._aggregate_context_async(user_id), timeout=10.0)
+                try:
+                    cache.set(cache_key, context, timeout=MEMBER_CONTEXT_CACHE_TTL)
+                except Exception as e:
+                    logger.debug(f'[CONTEXT] Cache set after wait failed: {e}')
                 return context
+            except TimeoutError:
+                logger.error(f'[CONTEXT] Timeout aggregating context for user {user_id}')
+                return cls._get_default_context()
             except Exception as e:
                 logger.error(
                     'Failed to aggregate member context',
@@ -511,9 +550,12 @@ class MemberContextService:
         """
         from asgiref.sync import sync_to_async
 
+        logger.info(f'[CONTEXT] Starting sync_to_async aggregation for user {user_id}...')
         # thread_sensitive=False allows this to run in a thread pool
         # rather than blocking the main thread
-        return await sync_to_async(cls._aggregate_context, thread_sensitive=False)(user_id)
+        result = await sync_to_async(cls._aggregate_context, thread_sensitive=False)(user_id)
+        logger.info(f'[CONTEXT] sync_to_async aggregation complete for user {user_id}')
+        return result
 
     @classmethod
     def _get_learning_context(cls, user_id: int) -> dict:

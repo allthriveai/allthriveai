@@ -1029,9 +1029,13 @@ async def _get_async_agent():
     """
     from services.agents.auth.checkpointer import get_async_checkpointer
 
+    logger.info('[AGENT] Getting async checkpointer...')
     async with get_async_checkpointer() as checkpointer:
+        logger.info('[AGENT] Checkpointer obtained, compiling workflow...')
         agent = _get_workflow().compile(checkpointer=checkpointer)
+        logger.info('[AGENT] Workflow compiled, yielding agent...')
         yield agent
+        logger.info('[AGENT] Agent context exiting...')
 
 
 def create_ava_agent(model_name: str = 'gpt-4o-mini') -> StateGraph:
@@ -1305,7 +1309,9 @@ async def stream_ava_response(
             async with thread_lock:
                 # Get async agent with checkpointer for conversation memory
                 # Context manager ensures connection pool is cleaned up
+                logger.info('[STREAM] Entering _get_async_agent context...')
                 async with _get_async_agent() as agent:
+                    logger.info('[STREAM] Agent obtained, creating config...')
                     # Use session_id as thread_id for persistent conversation state
                     config = {
                         'configurable': {
@@ -1315,9 +1321,11 @@ async def stream_ava_response(
                     }
 
                     # Load member context for personalization
+                    logger.info('[STREAM] Loading member context...')
                     from services.agents.context import MemberContextService
 
                     member_context = await MemberContextService.get_context_async(user_id)
+                    logger.info(f'[STREAM] Member context loaded: {bool(member_context)}')
 
                     # Detect struggle in current message and set proactive offer
                     if user_id and member_context:
