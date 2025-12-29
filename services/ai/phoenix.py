@@ -40,6 +40,18 @@ def _get_local_traces_endpoint() -> str:
     return f'http://127.0.0.1:{PHOENIX_PORT}/v1/traces'
 
 
+def _is_aws_environment() -> bool:
+    """Detect if running in AWS ECS/Fargate environment."""
+    # Check multiple AWS indicators since ENVIRONMENT may not be set
+    aws_indicators = [
+        os.getenv('ECS_CONTAINER_METADATA_URI'),  # ECS Fargate
+        os.getenv('ECS_CONTAINER_METADATA_URI_V4'),  # ECS Fargate v4
+        os.getenv('AWS_EXECUTION_ENV'),  # Lambda/ECS
+        os.getenv('AWS_REGION'),  # General AWS
+    ]
+    return any(aws_indicators)
+
+
 def initialize_phoenix():
     """
     Initialize Phoenix tracing based on environment.
@@ -69,11 +81,16 @@ def initialize_phoenix():
 
         environment = os.getenv('ENVIRONMENT', 'development')
         phoenix_api_key = getattr(settings, 'PHOENIX_API_KEY', '')
-        is_production = environment == 'production'
+        # Detect production: explicit ENVIRONMENT=production OR running in AWS
+        is_production = environment == 'production' or _is_aws_environment()
+
+        if is_production:
+            logger.info('Detected production/AWS environment')
 
         # CRITICAL: In production, only enable Phoenix if API key is set
         # Without an API key, the OTLP exporter can hang indefinitely causing
-        # Celery workers to become unresponsive
+        # Celery workers to become unresponsive. Also, launching local Phoenix UI
+        # in ECS containers causes hangs and resource issues.
         if is_production and not phoenix_api_key:
             logger.warning(
                 'Phoenix disabled in production: PHOENIX_API_KEY not set. '
