@@ -224,7 +224,13 @@ export function GitHubFlow({
           <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
             <FontAwesomeIcon icon={faGithub} className="w-6 h-6 text-red-400" />
           </div>
-          <p className="text-sm text-red-400">{state.error}</p>
+          <p className="text-sm text-red-400 mb-4">{state.error}</p>
+          <a
+            href="/account/settings/integrations"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Go to Integration Settings
+          </a>
         </div>
       </div>
     );
