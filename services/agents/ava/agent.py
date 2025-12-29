@@ -969,18 +969,23 @@ def _build_ava_workflow(model_name: str | None = None) -> StateGraph:
     Returns:
         StateGraph (not compiled) - compile with checkpointer at runtime
     """
+    logger.info('[BUILD] Creating StateGraph...')
     # Create the graph
     graph = StateGraph(AvaState)
 
+    logger.info('[BUILD] Adding agent node...')
     # Add nodes - model_name passed through, resolved in create_agent_node
     graph.add_node('agent', create_agent_node(model_name))
+    logger.info('[BUILD] Adding tools node...')
     # Use custom tools_node that injects state (user_id, username, session_id)
     # into tools at runtime. This is critical for tools to access user context.
     graph.add_node('tools', tools_node)
 
+    logger.info('[BUILD] Setting entry point...')
     # Set entry point
     graph.set_entry_point('agent')
 
+    logger.info('[BUILD] Adding conditional edges...')
     # Add conditional edges
     graph.add_conditional_edges(
         'agent',
@@ -991,9 +996,11 @@ def _build_ava_workflow(model_name: str | None = None) -> StateGraph:
         },
     )
 
+    logger.info('[BUILD] Adding tools->agent edge...')
     # Tools always return to agent
     graph.add_edge('tools', 'agent')
 
+    logger.info('[BUILD] Workflow build complete')
     return graph
 
 
@@ -1006,7 +1013,11 @@ def _get_workflow():
     """Get the workflow, building it lazily on first use."""
     global _workflow
     if _workflow is None:
+        logger.info('[WORKFLOW] Building workflow (first request)...')
         _workflow = _build_ava_workflow()
+        logger.info('[WORKFLOW] Workflow built successfully')
+    else:
+        logger.info('[WORKFLOW] Using cached workflow')
     return _workflow
 
 
@@ -1031,9 +1042,11 @@ async def _get_async_agent():
 
     logger.info('[AGENT] Getting async checkpointer...')
     async with get_async_checkpointer() as checkpointer:
-        logger.info('[AGENT] Checkpointer obtained, compiling workflow...')
-        agent = _get_workflow().compile(checkpointer=checkpointer)
-        logger.info('[AGENT] Workflow compiled, yielding agent...')
+        logger.info('[AGENT] Checkpointer obtained, getting workflow...')
+        workflow = _get_workflow()
+        logger.info('[AGENT] Workflow obtained, calling compile()...')
+        agent = workflow.compile(checkpointer=checkpointer)
+        logger.info('[AGENT] compile() completed, yielding agent...')
         yield agent
         logger.info('[AGENT] Agent context exiting...')
 
