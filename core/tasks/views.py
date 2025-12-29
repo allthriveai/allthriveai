@@ -35,12 +35,39 @@ User = get_user_model()
 class TaskOptionViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing task options (status, type, priority).
-    Admin-only access for CRUD operations.
+    Read access for all admins. Write access requires superuser.
     """
 
     queryset = TaskOption.objects.all()
     serializer_class = TaskOptionSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def create(self, request, *args, **kwargs):
+        """Only superusers can create new task options."""
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can create task options. Use Django admin instead.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Only superusers can update task options."""
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can update task options. Use Django admin instead.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Only superusers can delete task options."""
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can delete task options. Use Django admin instead.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         """Filter by option_type if provided."""
@@ -55,7 +82,12 @@ class TaskOptionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def reorder(self, request):
-        """Reorder options within a type."""
+        """Reorder options within a type. Superuser only."""
+        if not request.user.is_superuser:
+            return Response(
+                {'error': 'Only superusers can reorder task options.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         option_type = request.data.get('option_type')
         order_list = request.data.get('order', [])
 
