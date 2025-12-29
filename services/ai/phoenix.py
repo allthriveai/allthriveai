@@ -69,8 +69,20 @@ def initialize_phoenix():
 
         environment = os.getenv('ENVIRONMENT', 'development')
         phoenix_api_key = getattr(settings, 'PHOENIX_API_KEY', '')
+        is_production = environment == 'production'
 
-        if environment == 'production' or phoenix_api_key:
+        # CRITICAL: In production, only enable Phoenix if API key is set
+        # Without an API key, the OTLP exporter can hang indefinitely causing
+        # Celery workers to become unresponsive
+        if is_production and not phoenix_api_key:
+            logger.warning(
+                'Phoenix disabled in production: PHOENIX_API_KEY not set. '
+                'Set PHOENIX_API_KEY to enable Arize Cloud tracing.'
+            )
+            _phoenix_initialized = True
+            return
+
+        if phoenix_api_key:
             # Production: Send to Arize Cloud via HTTP
             logger.info('Initializing Phoenix for production (Arize Cloud)')
 
