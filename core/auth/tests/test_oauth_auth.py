@@ -106,7 +106,7 @@ class LogoutTestCase(TestCase):
         # Check response
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content)
-        self.assertEqual(data['message'], 'Successfully logged out')
+        self.assertEqual(data['message'], 'Logged out from all devices')
 
         # Verify cookies are cleared (deleted cookies have empty value and max_age=0)
         cookies = response.cookies

@@ -80,10 +80,18 @@ class HealthCheckMiddleware:
 
 
 class CookieJWTAuthenticationMiddleware:
+    """Middleware to read JWT from HTTP-only cookie and inject into Authorization header.
+
+    Also validates session version for global logout support and
+    refreshes the 24h session activity window.
+    """
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        from services.auth.tokens import refresh_session_activity, validate_session_version
+
         try:
             cookie_name = settings.SIMPLE_JWT.get('AUTH_COOKIE', 'access_token')
             token = request.COOKIES.get(cookie_name)
@@ -91,7 +99,25 @@ class CookieJWTAuthenticationMiddleware:
             if token and 'authorization' not in request.headers:
                 try:
                     # Validate token; raises TokenError if invalid/expired
-                    AccessToken(token)
+                    access_token = AccessToken(token)
+                    user_id = access_token.get('user_id')
+                    token_version = access_token.get('session_version')
+
+                    # Validate session version (global logout check)
+                    # Skip validation for legacy tokens (no session_version claim)
+                    if token_version is not None:
+                        if not validate_session_version(user_id, token_version):
+                            # Session invalidated - don't inject token -> 401
+                            logger.debug(
+                                f'Session version mismatch for user {user_id}',
+                                extra={'path': request.path},
+                            )
+                            return self.get_response(request)
+
+                    # Refresh session activity TTL (with debounce)
+                    if user_id:
+                        refresh_session_activity(user_id)
+
                     request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
                 except TokenError as e:
                     # Expected - token invalid/expired, don't log as error

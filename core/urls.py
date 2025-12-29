@@ -38,6 +38,7 @@ from .auth.views import (
     user_activity_insights,
     username_profile_view,
 )
+from .auth.views_refresh import refresh_token_view
 from .auth.views_token import generate_ws_connection_token
 from .avatars.views import AvatarGenerationSessionViewSet, UserAvatarViewSet
 from .battles.views import (
@@ -347,6 +348,7 @@ urlpatterns = [
     path('auth/signup/', signup, name='signup'),
     path('auth/me/', current_user, name='current_user'),
     path('auth/logout/', logout_view, name='logout'),
+    path('auth/refresh/', refresh_token_view, name='refresh_token'),
     path('auth/urls/', oauth_urls, name='oauth_urls'),
     path('auth/callback/', oauth_callback, name='oauth_callback'),  # Fallback redirect
     path('auth/ws-connection-token/', generate_ws_connection_token, name='ws_connection_token'),

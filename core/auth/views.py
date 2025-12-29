@@ -139,12 +139,20 @@ def login_view(request):
 def logout_view(request):
     """Logout user and clear cookies.
 
+    Also increments session version to invalidate ALL tokens across all devices
+    (global logout).
+
     Note: CSRF protection is enabled for POST requests.
     Frontend should include CSRF token in request headers.
     """
-    from services.auth import clear_auth_cookies
+    from services.auth.tokens import clear_auth_cookies, increment_session_version
 
-    response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
+    if request.user.is_authenticated:
+        # Increment version - invalidates ALL tokens immediately
+        increment_session_version(request.user.id)
+        logger.info(f'Global logout for user: {request.user.username}')
+
+    response = Response({'message': 'Logged out from all devices'}, status=status.HTTP_200_OK)
     return clear_auth_cookies(response)
 
 
