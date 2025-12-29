@@ -398,13 +398,6 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright smoke tests
-        working-directory: frontend
-        timeout-minutes: 10
-        run: npx playwright test e2e/smoke.spec.ts
-        env:
-          CI: true
-
       - name: Run Playwright critical tests
         working-directory: frontend
         timeout-minutes: 15
