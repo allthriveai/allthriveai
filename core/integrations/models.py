@@ -3,9 +3,6 @@
 from django.conf import settings
 from django.db import models
 
-# Import Reddit models so Django discovers them
-from core.integrations.reddit_models import RedditCommunityAgent, RedditThread  # noqa: F401
-
 
 class GitHubAppInstallation(models.Model):
     """Track GitHub App installations for users.

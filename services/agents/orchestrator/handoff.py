@@ -129,7 +129,7 @@ AGENT_CAPABILITIES = {
     AgentType.PROJECT: AgentCapability(
         agent_type=AgentType.PROJECT,
         name='Project Agent',
-        description='Helps create and import projects. Imports from GitHub, YouTube, Reddit, '
+        description='Helps create and import projects. Imports from GitHub, YouTube, '
         'or any URL. Scrapes webpages to create portfolio projects.',
         can_handoff_to=[AgentType.IMAGE_GENERATION, AgentType.DISCOVERY],
         keywords=[
@@ -144,7 +144,6 @@ AGENT_CAPABILITIES = {
             'link',
             'http',
             'https',
-            'reddit',
             'website',
             'webpage',
             'scrape',
