@@ -217,7 +217,7 @@ Add these variables to your GitHub repository:
 |----------|-------------|
 | `ENVIRONMENT` | Environment name (`production` or `staging`) |
 | `API_URL` | Backend API URL (e.g., `https://api.allthrive.ai`) |
-| `WS_URL` | WebSocket URL (e.g., `wss://ws.allthrive.ai`) - direct to ALB |
+| `WS_URL` | WebSocket URL (e.g., `wss://allthrive.ai/ws/`) - routed through CloudFront |
 
 ### OIDC Provider Setup
 
@@ -291,14 +291,21 @@ Pre-configured alarms for:
    - Check DATABASE_URL secret format
 
 3. **WebSocket connection failures**
-   - Ensure `ws.allthrive.ai` is in Django ALLOWED_HOSTS (set in `10-ecs.yaml`)
-   - Verify DNS record `ws.allthrive.ai` points to ALB (not CloudFront)
-   - Check that SSL certificate covers `ws.allthrive.ai`
+   - WebSockets route through CloudFront `/ws/*` path to ALB
+   - Ensure `allthrive.ai` is in Django ALLOWED_HOSTS (set in `10-ecs.yaml`)
+   - Check CloudFront behavior for `/ws/*` forwards to ALB with WebSocket support
    - Ensure ALB idle timeout is sufficient (120s)
 
 4. **Static assets not loading**
    - Verify S3 bucket policy allows CloudFront
    - Check CloudFront OAC configuration
+
+5. **Database connection pool exhaustion**
+   - **Do not** use SQLAlchemy-based pooling (like `dj-db-conn-pool`) with ASGI
+   - ASGI creates new thread identifiers per request, causing connection leaks
+   - Use `CONN_MAX_AGE=0` for ASGI (Daphne) servers
+   - For high-traffic, use RDS Proxy (~$20-30/month) instead
+   - See [Django ticket #33497](https://code.djangoproject.com/ticket/33497)
 
 ### Useful Commands
 

@@ -1,6 +1,6 @@
 # AWS Infrastructure
 
-**Source of Truth** | **Last Updated**: 2025-12-26
+**Source of Truth** | **Last Updated**: 2025-12-29
 
 Quick reference for all AWS services powering AllThrive. For detailed deployment instructions, see `infrastructure/cloudformation/README.md`.
 
@@ -76,7 +76,7 @@ Quick reference for all AWS services powering AllThrive. For detailed deployment
 |----------|-----|---------|
 | **Production Site** | [allthrive.ai](https://allthrive.ai) | User-facing frontend |
 | **API** | [api.allthrive.ai](https://api.allthrive.ai) | REST API (through CloudFront) |
-| **WebSocket** | wss://ws.allthrive.ai | Real-time connections (direct to ALB, bypasses CloudFront) |
+| **WebSocket** | wss://allthrive.ai/ws/ | Real-time connections (through CloudFront `/ws/*` path) |
 | **Health Check** | [api.allthrive.ai/api/health/](https://api.allthrive.ai/api/health/) | Quick API status check |
 
 ---
@@ -200,10 +200,10 @@ Validates: RDS, Redis, S3, Secrets, ECS services, env vars, SSL certs, CloudWatc
 - Check `DATABASE_URL` secret format
 
 ### WebSocket Connection Failures
-- Ensure `ws.allthrive.ai` is in Django's ALLOWED_HOSTS (set in `10-ecs.yaml`)
-- Verify DNS record `ws.allthrive.ai` points to ALB (not CloudFront)
-- ALB idle timeout must be ≥120s
-- Check that SSL certificate covers `ws.allthrive.ai`
+- WebSockets route through CloudFront at `/ws/*` path to ALB
+- Ensure `allthrive.ai` and `api.allthrive.ai` are in Django's ALLOWED_HOSTS
+- ALB idle timeout must be ≥120s for long-lived connections
+- Check CloudFront behavior for `/ws/*` forwards to ALB origin with WebSocket support
 
 ### Weaviate Not Responding
 - Check ECS task is running
@@ -246,6 +246,56 @@ aws ecs execute-command \
   --interactive \
   --command "python manage.py migrate"
 ```
+
+---
+
+## Current Production Configuration
+
+| Component | Setting | Notes |
+|-----------|---------|-------|
+| **Database** | `CONN_MAX_AGE=0` | No persistent connections - required for ASGI (Daphne) compatibility |
+| **Connection Pooling** | Disabled | SQLAlchemy pooling incompatible with ASGI. For high-traffic, use RDS Proxy instead. |
+| **Celery** | MaxCapacity: 4 containers | 16 workers max (4 per container) - stays under db.t3.micro connection limit |
+| **Phoenix Tracing** | Disabled | Only enabled if `PHOENIX_API_KEY` is set |
+| **WebSockets** | CloudFront `/ws/*` | Routed through CloudFront, not direct to ALB |
+
+### ASGI + Database Pooling Warning
+
+**Do not** add SQLAlchemy-based connection pooling (like `dj-db-conn-pool`) with ASGI servers. ASGI creates new thread identifiers per request, but SQLAlchemy's QueuePool is thread-affine, causing connection leaks and pool exhaustion. See [Django ticket #33497](https://code.djangoproject.com/ticket/33497).
+
+**Safe alternatives for high-traffic:**
+- AWS RDS Proxy (~$20-30/month) - infrastructure-level pooling
+- PgBouncer sidecar container
+
+---
+
+## December 2025 Infrastructure Fixes
+
+### 1. Database Connection Pool Exhaustion
+- **Problem**: RDS hitting connection limits, Ava chat hanging
+- **Fix**: Removed `dj-db-conn-pool`, set `CONN_MAX_AGE=0`
+- **Commits**: `c908256f`, `2b8ede5b`, `a2304ff7`
+
+### 2. Celery Connection Exhaustion
+- **Problem**: Celery tasks holding DB connections during long OpenAI API calls
+- **Fix**: Added `close_old_connections()` after DB queries before external API calls
+- **Commits**: `a62a6add`, `99e50e68`
+
+### 3. Phoenix Tracing Hang
+- **Problem**: AI responses never arriving on AWS (worked locally)
+- **Root cause**: Phoenix OTLP exporter hanging without API key
+- **Fix**: Disable Phoenix instrumentation if `PHOENIX_API_KEY` not set
+- **Commits**: `bf82a2a8`, `167e98d1`
+
+### 4. WebSocket Issues
+- **Problem**: "Reconnecting" errors in production
+- **Fix**: Route WebSockets through CloudFront `/ws/*` path instead of separate subdomain
+- **Commits**: `3570b0c7`, `0a337af7`, `0bdf6222`
+
+### 5. CloudFormation Secrets Incident
+- **Problem**: Stack rollback overwrote production API keys with placeholders
+- **Fix**: Removed `SecretString` from templates, added `Retain` policies
+- **Commit**: `3c37e909`
 
 ---
 
