@@ -191,20 +191,20 @@ if DATABASE_URL:
     # This provides SQLAlchemy-style connection pooling for better performance
     #
     # Pool sizing: Each ECS task gets POOL_SIZE + MAX_OVERFLOW connections
-    # Current setup: ~21 ECS tasks (3 web + 17 celery + 1 beat)
+    # Current setup: 2 web tasks + 6 celery tasks = 8 tasks
     # RDS db.t4g.medium supports ~225 connections
     #
-    # Conservative sizing: 21 tasks × 10 connections = 210 max (fits in 225)
+    # Sizing: Web (2 × 25) + Celery (6 × 15) = 140 connections max (fits in 225)
     # Note: We release connections before long AI calls (see core/agents/tasks.py)
     # so actual usage should be much lower than theoretical max.
     if not DEBUG:
         DATABASES['default']['ENGINE'] = 'dj_db_conn_pool.backends.postgresql'
         DATABASES['default']['POOL_OPTIONS'] = {
-            'POOL_SIZE': 5,  # Base pool size per worker (was 25)
-            'MAX_OVERFLOW': 5,  # Extra connections allowed beyond POOL_SIZE (was 25)
+            'POOL_SIZE': 15,  # Base pool size per worker (increased from 5)
+            'MAX_OVERFLOW': 10,  # Extra connections allowed beyond POOL_SIZE (increased from 5)
             'RECYCLE': 300,  # Recycle connections after 5 minutes
             'PRE_PING': True,  # Verify connections before use
-            'POOL_TIMEOUT': 30,  # Wait max 30 seconds for a connection (was 10)
+            'POOL_TIMEOUT': 30,  # Wait max 30 seconds for a connection
         }
 
     # Add connection timeouts for PostgreSQL only (not SQLite)
