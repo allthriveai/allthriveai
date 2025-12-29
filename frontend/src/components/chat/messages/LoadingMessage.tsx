@@ -30,7 +30,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   get_recommendations: 'Finding personalized recommendations',
   launch_inline_game: 'Launching game',
   regenerate_architecture_diagram: 'Regenerating architecture',
-  create_learning_path: 'Creating your learning path (this takes about a minute)',
+  create_learning_path: 'Creating a personalized learning path just for you, this takes about a minute',
 };
 
 // Rotating status messages when no specific tool is active
