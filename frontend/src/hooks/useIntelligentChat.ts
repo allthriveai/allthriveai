@@ -344,6 +344,8 @@ export function useIntelligentChat({
       explanation?: string;
     };
   } | null>(null); // Learning content to attach to current message on complete
+  // Queue messages typed while the socket is not yet connected; drained on connect
+  const pendingSendQueueRef = useRef<Array<{ content: string; imageUrl?: string }>>([]);
 
   // Callback refs to avoid stale closures
   const onErrorRef = useRef(onError);
@@ -890,6 +892,26 @@ export function useIntelligentChat({
     onErrorRef.current?.(errorMsg);
   }, []);
 
+  // Handle connected - drain any queued outbound messages
+  const handleConnected = useCallback(() => {
+    const sendFn = sendRef.current;
+    if (!sendFn) return;
+    const q = pendingSendQueueRef.current;
+    // Drain the queue in FIFO order
+    while (q.length) {
+      const item = q.shift()!;
+      const payload = item.imageUrl
+        ? { message: item.content, image_url: item.imageUrl }
+        : { message: item.content };
+      const sent = sendFn(payload);
+      if (!sent) {
+        // If send fails (e.g., socket closed mid-drain), put back and stop
+        q.unshift(item);
+        break;
+      }
+    }
+  }, []);
+
   // Handle disconnect - clear partial messages
   const handleDisconnected = useCallback(() => {
     setIsLoading(false);
@@ -905,6 +927,7 @@ export function useIntelligentChat({
     endpoint: `/ws/chat/${conversationId}/`,
     connectionIdPrefix: `chat-${conversationId}`,
     onMessage: handleMessage,
+    onConnected: handleConnected,
     onError: handleError,
     onDisconnected: handleDisconnected,
     autoConnect: shouldConnect,
@@ -961,8 +984,8 @@ export function useIntelligentChat({
 
     // Check WebSocket connection AFTER adding user message
     if (!isConnected || !sendRef.current) {
-      // Don't show alarming error - just try to reconnect silently
-      // The connection status indicator shows "Offline" which is enough feedback
+      // Queue the message and connect; it will be flushed on connect()
+      pendingSendQueueRef.current.push({ content });
       connect();
       return;
     }
@@ -1020,6 +1043,8 @@ export function useIntelligentChat({
 
     // Check WebSocket connection AFTER adding user message
     if (!isConnected || !sendRef.current) {
+      // Queue the message with image and connect; it will be flushed on connect()
+      pendingSendQueueRef.current.push({ content, imageUrl });
       connect();
       return;
     }

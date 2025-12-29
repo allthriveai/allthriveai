@@ -340,23 +340,45 @@ def disconnect_provider(request, provider):
 
 def _do_disconnect_provider(request, provider):
     """Core logic for disconnecting a provider."""
+    from allauth.socialaccount.models import SocialAccount, SocialToken
+
     logger.info(f'Disconnect {provider} requested by user {request.user.username} (id={request.user.id})')
 
+    disconnected = False
+    provider_display = provider.capitalize()
+
+    # Try to disconnect from django-allauth SocialAccount first
+    try:
+        social_account = SocialAccount.objects.get(user=request.user, provider=provider)
+        # Delete associated tokens
+        SocialToken.objects.filter(account=social_account).delete()
+        # Delete the social account
+        social_account.delete()
+        logger.info(f'Disconnected {provider} SocialAccount for user {request.user.username}')
+        disconnected = True
+    except SocialAccount.DoesNotExist:
+        pass
+
+    # Also try to disconnect from SocialConnection
     try:
         connection = SocialConnection.objects.get(user=request.user, provider=provider, is_active=True)
+        provider_display = connection.get_provider_display()
 
         # Soft delete - mark as inactive instead of deleting
         connection.is_active = False
         connection.save()
 
         logger.info(
-            f'Successfully disconnected {provider} for user {request.user.username}: '
+            f'Disconnected {provider} SocialConnection for user {request.user.username}: '
             f'provider_username={connection.provider_username}'
         )
-
-        return Response({'success': True, 'message': f'{connection.get_provider_display()} disconnected successfully'})
-
+        disconnected = True
     except SocialConnection.DoesNotExist:
+        pass
+
+    if disconnected:
+        return Response({'success': True, 'message': f'{provider_display} disconnected successfully'})
+    else:
         logger.warning(f'Disconnect failed for {provider}: connection not found for user {request.user.username}')
         return Response({'success': False, 'error': 'Connection not found'}, status=status.HTTP_404_NOT_FOUND)
 
