@@ -12,6 +12,7 @@ import logging
 from datetime import timedelta
 
 from celery import shared_task
+from django.db import close_old_connections
 from django.db.models import Count, Q
 from django.utils import timezone
 
@@ -89,6 +90,11 @@ def sync_project_to_weaviate(self, project_id: int):
         # Generate embedding
         embedding_service = get_embedding_service()
         embedding_text = embedding_service.generate_project_embedding_text(project)
+
+        # Release DB connection before long-running OpenAI API call
+        # This prevents connection pool exhaustion when many tasks are running
+        close_old_connections()
+
         embedding_vector = embedding_service.generate_embedding(embedding_text)
 
         if not embedding_vector:
@@ -270,6 +276,9 @@ def sync_user_profile_to_weaviate(self, user_id: int):
         if not embedding_text:
             logger.info(f'No profile data for user {user_id}, skipping')
             return {'status': 'skipped', 'reason': 'no_data'}
+
+        # Release DB connection before long-running OpenAI API call
+        close_old_connections()
 
         embedding_vector = embedding_service.generate_embedding(embedding_text)
 
@@ -756,6 +765,9 @@ def sync_quiz_to_weaviate(self, quiz_id: str):
             f'Topics: {", ".join(topics)}. Tools: {", ".join(tool_names)}. '
             f'Categories: {", ".join(category_names)}.'
         )
+
+        # Release DB connection before long-running OpenAI API call
+        close_old_connections()
 
         embedding_vector = embedding_service.generate_embedding(embedding_text)
 

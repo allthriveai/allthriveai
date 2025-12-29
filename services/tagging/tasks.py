@@ -11,6 +11,7 @@ import logging
 from typing import Literal
 
 from celery import shared_task
+from django.db import close_old_connections
 from django.db.models import Q
 from django.utils import timezone
 
@@ -84,6 +85,9 @@ def tag_content_task(
             logger.debug(f'{content_type} {content_id} already tagged, skipping')
             tracker.mark_skipped('already_tagged')
             return {'status': 'skipped', 'reason': 'already_tagged'}
+
+        # Release DB connection before AI API call (tagging makes OpenAI/Gemini calls)
+        close_old_connections()
 
         # Tag content
         result = service.tag_content(content, tier=tier)
