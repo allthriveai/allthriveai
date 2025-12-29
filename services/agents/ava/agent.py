@@ -760,11 +760,17 @@ def create_agent_node(model_name: str | None = None):
     Uses the AI gateway configuration from settings.AI_MODELS.
     Returns an async function for non-blocking LLM calls.
     """
+    logger.info('[CREATE_NODE] Starting create_agent_node...')
     # Get model from AI gateway config if not specified
+    logger.info('[CREATE_NODE] Getting default model...')
     resolved_model = model_name or get_default_model()
+    logger.info(f'[CREATE_NODE] Model resolved: {resolved_model}')
 
+    logger.info('[CREATE_NODE] Creating ChatOpenAI instance...')
     llm = ChatOpenAI(model=resolved_model, temperature=0.7)
+    logger.info('[CREATE_NODE] ChatOpenAI created, binding tools...')
     llm_with_tools = llm.bind_tools(AVA_TOOLS)
+    logger.info(f'[CREATE_NODE] Tools bound ({len(AVA_TOOLS)} tools)')
 
     # Patterns that indicate learning/conceptual questions requiring find_content
     LEARNING_QUESTION_PATTERNS = [
