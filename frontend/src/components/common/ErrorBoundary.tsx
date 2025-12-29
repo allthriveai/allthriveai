@@ -84,14 +84,16 @@ export class ErrorBoundary extends Component<Props, State> {
         return (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-700 text-sm mb-2">
-              Something went wrong loading this section.
+              Oops! Something went wrong loading this section. We're still working on bugs while in beta mode.
             </p>
-            <button
-              onClick={this.handleReset}
-              className="text-sm text-red-600 hover:text-red-800 underline"
-            >
-              Try again
-            </button>
+            <div className="flex gap-2">
+              <button onClick={this.handleReset} className="text-sm text-red-600 hover:text-red-800 underline">
+                Try again
+              </button>
+              <a href="/feedback" className="text-sm text-red-600 hover:text-red-800 underline">
+                Report issue
+              </a>
+            </div>
           </div>
         );
       }
@@ -100,23 +102,20 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
           <div className="max-w-md p-8 bg-white rounded-lg shadow-lg">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">
-              Something went wrong
-            </h1>
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Oops! Something went wrong</h1>
             <p className="text-gray-700 mb-4">
-              {this.state.error?.message || 'An unexpected error occurred'}
+              We're still working on bugs while in beta mode. Please try again, or file this as an issue to help us
+              improve!
             </p>
             {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
               <details className="mb-4 text-xs text-gray-500">
-                <summary className="cursor-pointer hover:text-gray-700">
-                  Error details (dev only)
-                </summary>
+                <summary className="cursor-pointer hover:text-gray-700">Error details (dev only)</summary>
                 <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto max-h-40">
                   {this.state.errorInfo.componentStack}
                 </pre>
               </details>
             )}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 onClick={this.handleReset}
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition"
@@ -129,12 +128,9 @@ export class ErrorBoundary extends Component<Props, State> {
               >
                 Go Home
               </button>
-              <button
-                onClick={this.handleReload}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-              >
-                Reload Page
-              </button>
+              <a href="/feedback" className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 transition">
+                Report Issue
+              </a>
             </div>
           </div>
         </div>

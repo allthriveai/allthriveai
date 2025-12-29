@@ -122,7 +122,7 @@ export function parseApiError(error: unknown): ApiErrorResponse {
 
   // Handle unknown error types
   return {
-    message: 'An unexpected error occurred',
+    message: "Oops! Something went wrong. We're still working on bugs while in beta mode. Please file this as an issue at /feedback",
     code: 'UNKNOWN_ERROR',
   };
 }

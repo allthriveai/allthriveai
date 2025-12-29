@@ -82,7 +82,7 @@ describe('ChatErrorBoundary', () => {
       );
 
       expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument();
-      expect(screen.getByText(/ava encountered an unexpected error/i)).toBeInTheDocument();
+      expect(screen.getByText(/still working on bugs while in beta mode/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
     });
 
@@ -93,9 +93,9 @@ describe('ChatErrorBoundary', () => {
         </ChatErrorBoundary>
       );
 
-      expect(screen.getByText('Failed to render message')).toBeInTheDocument();
+      expect(screen.getByText('Oops! Failed to render message')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
-      // Card elements should not be present
+      // Card mode title should not be present
       expect(screen.queryByText('Oops! Something went wrong')).not.toBeInTheDocument();
     });
 
@@ -183,7 +183,7 @@ describe('ChatErrorBoundary', () => {
         </ChatErrorBoundary>
       );
 
-      expect(screen.getByText('Failed to render message')).toBeInTheDocument();
+      expect(screen.getByText('Oops! Failed to render message')).toBeInTheDocument();
 
       // Update child to not throw
       rerender(
@@ -328,7 +328,7 @@ describe('ChatErrorBoundary', () => {
 
       // Inner boundary should catch the error
       expect(screen.getByText('Outer content')).toBeInTheDocument();
-      expect(screen.getByText('Failed to render message')).toBeInTheDocument();
+      expect(screen.getByText('Oops! Failed to render message')).toBeInTheDocument();
       // Outer boundary error should not be shown
       expect(screen.queryByText('Oops! Something went wrong')).not.toBeInTheDocument();
     });
