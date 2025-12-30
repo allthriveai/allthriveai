@@ -3,6 +3,7 @@ import time
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -888,7 +889,8 @@ def public_user_projects(request, username):
     # v2: playground now includes all projects, not just non-showcase ones
     # v3: playground is now public by default for non-authenticated users
     # v4: exclude clipped projects from playground (they appear in Clipped tab)
-    cache_key = f'projects:v4:{username.lower()}:{"own" if is_own_profile else "public"}'
+    # v5: include clipped projects + liked projects in playground, add prefetch_related
+    cache_key = f'projects:v5:{username.lower()}:{"own" if is_own_profile else "public"}'
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -929,6 +931,7 @@ def public_user_projects(request, username):
                     'difficulty_taxonomy',
                     'pricing_taxonomy',
                 )
+                .prefetch_related('tools', 'categories')
                 .filter(user=user, is_showcased=True, is_archived=False)
                 .annotate(
                     sort_date=Coalesce('youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at')
@@ -944,12 +947,14 @@ def public_user_projects(request, username):
                     'difficulty_taxonomy',
                     'pricing_taxonomy',
                 )
+                .prefetch_related('tools', 'categories')
                 .filter(user=user, is_showcased=True, is_archived=False)
                 .order_by('-created_at')
             )
 
         # If the requesting user is authenticated and viewing their own profile,
         # include all projects (both showcase and non-showcase) in playground
+        # Also include projects the user has liked (clipped from other users)
         if is_own_profile:
             if is_curation:
                 from django.db.models.functions import Coalesce
@@ -962,8 +967,9 @@ def public_user_projects(request, username):
                         'difficulty_taxonomy',
                         'pricing_taxonomy',
                     )
-                    .filter(user=user, is_archived=False)
-                    .exclude(type=Project.ProjectType.CLIPPED)
+                    .prefetch_related('tools', 'categories')
+                    .filter(Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False))
+                    .distinct()
                     .annotate(
                         sort_date=Coalesce(
                             'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
@@ -980,8 +986,9 @@ def public_user_projects(request, username):
                         'difficulty_taxonomy',
                         'pricing_taxonomy',
                     )
-                    .filter(user=user, is_archived=False)
-                    .exclude(type=Project.ProjectType.CLIPPED)
+                    .prefetch_related('tools', 'categories')
+                    .filter(Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False))
+                    .distinct()
                     .order_by('-created_at')
                 )
 
@@ -998,6 +1005,7 @@ def public_user_projects(request, username):
 
             if playground_is_public:
                 # Return playground projects for public profiles
+                # Also include projects the user has liked (clipped from other users)
                 if is_curation:
                     from django.db.models.functions import Coalesce
 
@@ -1009,8 +1017,11 @@ def public_user_projects(request, username):
                             'difficulty_taxonomy',
                             'pricing_taxonomy',
                         )
-                        .filter(user=user, is_archived=False)
-                        .exclude(type=Project.ProjectType.CLIPPED)
+                        .prefetch_related('tools', 'categories')
+                        .filter(
+                            Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False)
+                        )
+                        .distinct()
                         .annotate(
                             sort_date=Coalesce(
                                 'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
@@ -1027,8 +1038,11 @@ def public_user_projects(request, username):
                             'difficulty_taxonomy',
                             'pricing_taxonomy',
                         )
-                        .filter(user=user, is_archived=False)
-                        .exclude(type=Project.ProjectType.CLIPPED)
+                        .prefetch_related('tools', 'categories')
+                        .filter(
+                            Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False)
+                        )
+                        .distinct()
                         .order_by('-created_at')
                     )
                 response_data = {
