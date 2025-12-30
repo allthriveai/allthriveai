@@ -197,7 +197,7 @@ export function useIntegrationFlow({
         setGithubState({
           step: 'idle',
           message: '',
-          error: errorMessage || 'Failed to load repositories.',
+          error: errorMessage || 'Failed to load repositories. Try reconnecting GitHub in Settings.',
         });
       }
     } catch (error) {
@@ -206,7 +206,7 @@ export function useIntegrationFlow({
       setGithubState({
         step: 'idle',
         message: '',
-        error: 'Something went wrong. Please try again.',
+        error: 'Oops! Something went wrong. Try reconnecting GitHub in Settings.',
       });
     }
   }, [onHasInteracted]);
@@ -271,7 +271,7 @@ export function useIntegrationFlow({
         setGitlabState({
           step: 'idle',
           message: '',
-          error: getErrorMessage(projectError) || 'Failed to load projects.',
+          error: getErrorMessage(projectError) || 'Failed to load projects. Try reconnecting GitLab in Settings.',
         });
       }
     } catch (error) {
@@ -280,7 +280,7 @@ export function useIntegrationFlow({
       setGitlabState({
         step: 'idle',
         message: '',
-        error: 'Something went wrong. Please try again.',
+        error: 'Oops! Something went wrong. Try reconnecting GitLab in Settings.',
       });
     }
   }, [onHasInteracted]);
@@ -333,7 +333,7 @@ export function useIntegrationFlow({
       // Add error message to chat
       if (onAddLocalMessage) {
         onAddLocalMessage(
-          "I had trouble checking your Figma connection. Please try again in a moment.",
+          "Oops! I had trouble checking your Figma connection. Try reconnecting Figma in your [Integration Settings](/account/settings/integrations).",
           { type: 'text' }
         );
       }

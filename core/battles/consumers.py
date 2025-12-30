@@ -244,7 +244,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 {
                     'type': 'battle_event',
                     'event': 'opponent_status',
-                    'user_id': self.user.id,
+                    'userId': self.user.id,
                     'status': 'disconnected',
                 },
             )
@@ -315,7 +315,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
                     {
                         'type': 'battle_event',
                         'event': 'opponent_status',
-                        'user_id': self.user.id,
+                        'userId': self.user.id,
                         'status': 'typing' if is_typing else 'idle',
                     },
                 )
@@ -387,7 +387,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
         This is called when another consumer or service broadcasts to the group.
         """
         # Don't send opponent's own status back to them
-        if event.get('event') == 'opponent_status' and event.get('user_id') == self.user.id:
+        if event.get('event') == 'opponent_status' and event.get('userId') == self.user.id:
             return
 
         # Forward event to client (remove internal fields)
@@ -560,7 +560,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'battle_event',
                 'event': 'opponent_status',
-                'user_id': self.user.id,
+                'userId': self.user.id,
                 'status': 'submitted',
             },
         )
@@ -570,7 +570,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             text_data=json.dumps(
                 {
                     'event': 'submission_confirmed',
-                    'submission_id': submission.id,
+                    'submissionId': submission.id,
                     'timestamp': self._get_timestamp(),
                 }
             )
@@ -1120,10 +1120,10 @@ class BattleConsumer(AsyncWebsocketConsumer):
             sub = BattleSubmission.objects.get(battle=battle, user=self.user)
             my_submission = {
                 'id': sub.id,
-                'prompt_text': sub.prompt_text,
-                'image_url': sub.generated_output_url,
+                'promptText': sub.prompt_text,
+                'imageUrl': sub.generated_output_url,
                 'score': sub.score,
-                'criteria_scores': sub.criteria_scores,
+                'criteriaScores': sub.criteria_scores,
                 'feedback': sub.evaluation_feedback,
             }
         except BattleSubmission.DoesNotExist:
@@ -1137,10 +1137,10 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 opp_sub = BattleSubmission.objects.get(battle=battle, user=opponent)
                 opponent_submission = {
                     'id': opp_sub.id,
-                    'prompt_text': opp_sub.prompt_text,
-                    'image_url': opp_sub.generated_output_url,
+                    'promptText': opp_sub.prompt_text,
+                    'imageUrl': opp_sub.generated_output_url,
                     'score': opp_sub.score,
-                    'criteria_scores': opp_sub.criteria_scores,
+                    'criteriaScores': opp_sub.criteria_scores,
                     'feedback': opp_sub.evaluation_feedback,
                 }
             except BattleSubmission.DoesNotExist:
@@ -1175,9 +1175,9 @@ class BattleConsumer(AsyncWebsocketConsumer):
             opponent_data = {
                 'id': opponent.id,
                 'username': display_name,
-                'avatar_url': getattr(opponent, 'avatar_url', None),
+                'avatarUrl': getattr(opponent, 'avatar_url', None),
                 'connected': opponent_connected,
-                'friend_name': friend_name if is_challenger else None,  # Only show friend_name to challenger
+                'friendName': friend_name if is_challenger else None,  # Only show friendName to challenger
             }
         else:
             # Placeholder for pending invitation - opponent hasn't accepted yet
@@ -1186,9 +1186,9 @@ class BattleConsumer(AsyncWebsocketConsumer):
             opponent_data = {
                 'id': 0,
                 'username': placeholder_name,
-                'avatar_url': None,
+                'avatarUrl': None,
                 'connected': False,
-                'friend_name': friend_name,
+                'friendName': friend_name,
             }
 
         # Determine if it's the current user's turn (for async battles)
@@ -1213,24 +1213,24 @@ class BattleConsumer(AsyncWebsocketConsumer):
             'id': battle.id,
             'phase': battle.phase,
             'status': battle.status,
-            'challenge_text': battle.challenge_text,
+            'challengeText': battle.challenge_text,
             'category': {
                 'id': battle.prompt.category.id,
                 'name': battle.prompt.category.name,
             }
             if battle.prompt and battle.prompt.category
             else None,
-            'duration_minutes': battle.duration_minutes,
-            'time_remaining': time_remaining,
-            'my_connected': my_connected,
+            'durationMinutes': battle.duration_minutes,
+            'timeRemaining': time_remaining,
+            'myConnected': my_connected,
             'opponent': opponent_data,
-            'my_submission': my_submission,
-            'opponent_submission': opponent_submission,
-            'winner_id': battle.winner_id,
-            'match_source': battle.match_source,
-            'invite_url': invite_url,
-            'is_my_turn': is_my_turn,
-            'points_earned': points_earned,
+            'mySubmission': my_submission,
+            'opponentSubmission': opponent_submission,
+            'winnerId': battle.winner_id,
+            'matchSource': battle.match_source,
+            'inviteUrl': invite_url,
+            'isMyTurn': is_my_turn,
+            'pointsEarned': points_earned,
         }
 
     async def _send_error(self, message: str):

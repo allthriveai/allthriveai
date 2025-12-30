@@ -85,13 +85,13 @@ export class ChatErrorBoundary extends Component<ChatErrorBoundaryProps, ChatErr
             <div className="px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
               <span className="flex items-center gap-2">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="w-4 h-4" />
-                Failed to render message
-                <button
-                  onClick={this.handleRetry}
-                  className="ml-2 text-xs underline hover:no-underline"
-                >
+                Oops! Failed to render message
+                <button onClick={this.handleRetry} className="ml-2 text-xs underline hover:no-underline">
                   Retry
                 </button>
+                <a href="/feedback" className="text-xs underline hover:no-underline">
+                  Report
+                </a>
               </span>
             </div>
           </div>
@@ -114,7 +114,7 @@ export class ChatErrorBoundary extends Component<ChatErrorBoundaryProps, ChatErr
               Oops! Something went wrong
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Ava encountered an unexpected error. Try again or start fresh.
+              We're still working on bugs while in beta mode. Try again, or file this as an issue to help us improve!
             </p>
 
             {/* Error details in dev mode */}
@@ -130,12 +130,20 @@ export class ChatErrorBoundary extends Component<ChatErrorBoundaryProps, ChatErr
               </details>
             )}
 
-            <button
-              onClick={this.handleRetry}
-              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              Try Again
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={this.handleRetry}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Try Again
+              </button>
+              <a
+                href="/feedback"
+                className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Report Issue
+              </a>
+            </div>
           </div>
         </div>
       );

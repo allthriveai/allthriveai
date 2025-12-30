@@ -24,6 +24,9 @@ import { getQuizzes } from '@/services/quiz';
 import { getExploreLearningPaths, getExploreLessons, type PublicLearningPath, type PublicLesson } from '@/services/learningPaths';
 import { LearningPathCard } from '@/components/explore/LearningPathCard';
 import { LessonCard } from '@/components/explore/LessonCard';
+import { GamePromoCard } from '@/components/explore/GamePromoCard';
+import { GamePreviewTray } from '@/components/explore/GamePreviewTray';
+import { getEnabledGames, type GameConfig } from '@/components/chat/games/gameRegistry';
 import { useAuth } from '@/hooks/useAuth';
 import { trackProjectClick, getClickSourceFromTab } from '@/services/tracking';
 import { useFreshnessToken } from '@/hooks/useFreshnessToken';
@@ -60,6 +63,13 @@ export function ExplorePage() {
   // Quiz overlay state
   const [quizOverlayOpen, setQuizOverlayOpen] = useState(false);
   const [selectedQuizSlug, setSelectedQuizSlug] = useState<string>('');
+
+  // Game tray state
+  const [gameTrayOpen, setGameTrayOpen] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<GameConfig | null>(null);
+
+  // Get enabled games for the feed (static list, no API call needed)
+  const displayGames = useMemo(() => getEnabledGames(), []);
 
   // Intersection observer ref for infinite scroll
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -345,17 +355,20 @@ export function ExplorePage() {
     | { type: 'quiz'; data: Quiz; stableKey: string }
     | { type: 'project'; data: Project; stableKey: string }
     | { type: 'learning-path'; data: PublicLearningPath; stableKey: string }
-    | { type: 'lesson'; data: PublicLesson; stableKey: string };
+    | { type: 'lesson'; data: PublicLesson; stableKey: string }
+    | { type: 'game'; data: GameConfig; stableKey: string };
 
   const mixedItems = useMemo(() => {
     const QUIZ_INTERVAL = 8; // Insert a quiz every N projects
     const LEARNING_PATH_INTERVAL = 12; // Insert a learning path every N projects
     const LESSON_INTERVAL = 6; // Insert a lesson every N projects
+    const GAME_INTERVAL = 15; // Insert a game every N projects
     const result: MixedItem[] = [];
 
     let quizIndex = 0;
     let learningPathIndex = 0;
     let lessonIndex = 0;
+    let gameIndex = 0;
 
     // Iterate through projects in their original order from backend
     displayProjects.forEach((project, projectIndex) => {
@@ -390,6 +403,17 @@ export function ExplorePage() {
           stableKey: `lesson-${lesson.id}`
         });
         lessonIndex++;
+      }
+
+      // Insert a game at specific intervals (if available)
+      if (projectIndex > 0 && projectIndex % GAME_INTERVAL === 0 && gameIndex < displayGames.length) {
+        const game = displayGames[gameIndex];
+        result.push({
+          type: 'game' as const,
+          data: game,
+          stableKey: `game-${game.id}`
+        });
+        gameIndex++;
       }
 
       // Add the project in its original order
@@ -433,8 +457,19 @@ export function ExplorePage() {
       lessonIndex++;
     }
 
+    // Add any remaining games at the end
+    while (gameIndex < displayGames.length) {
+      const game = displayGames[gameIndex];
+      result.push({
+        type: 'game' as const,
+        data: game,
+        stableKey: `game-${game.id}`
+      });
+      gameIndex++;
+    }
+
     return result;
-  }, [displayQuizzes, displayProjects, displayLearningPaths, displayLessons]);
+  }, [displayQuizzes, displayProjects, displayLearningPaths, displayLessons, displayGames]);
 
   // Handle tab change
   const handleTabChange = (tab: ExploreTab) => {
@@ -467,6 +502,16 @@ export function ExplorePage() {
   const handleCloseQuiz = () => {
     setQuizOverlayOpen(false);
     setSelectedQuizSlug('');
+  };
+
+  const handleOpenGame = (game: GameConfig) => {
+    setSelectedGame(game);
+    setGameTrayOpen(true);
+  };
+
+  const handleCloseGame = () => {
+    setGameTrayOpen(false);
+    setSelectedGame(null);
   };
 
   // Create a lookup map for project positions based on their index in mixedItems
@@ -743,6 +788,11 @@ export function ExplorePage() {
                             <LearningPathCard learningPath={item.data} />
                           ) : item.type === 'lesson' ? (
                             <LessonCard lesson={item.data} />
+                          ) : item.type === 'game' ? (
+                            <GamePromoCard
+                              game={item.data}
+                              onClick={() => handleOpenGame(item.data)}
+                            />
                           ) : (
                             <ProjectCard
                               project={item.data}
@@ -809,6 +859,13 @@ export function ExplorePage() {
         quizSlug={selectedQuizSlug}
       />
     )}
+
+    {/* Game Preview Tray */}
+    <GamePreviewTray
+      game={selectedGame}
+      isOpen={gameTrayOpen}
+      onClose={handleCloseGame}
+    />
     </>
   );
 }

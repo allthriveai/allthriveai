@@ -32,12 +32,16 @@ def get_user_from_connection_token(connection_token: str):
     Connection tokens are short-lived (60s), single-use tokens
     generated specifically for WebSocket connections.
 
+    Also refreshes the session activity window for the 24h sliding timeout.
+
     Args:
         connection_token: WebSocket connection token
 
     Returns:
         User object if valid, AnonymousUser if invalid
     """
+    from services.auth.tokens import refresh_session_activity
+
     try:
         # Validate and consume connection token (single-use)
         token_service = get_ws_token_service()
@@ -46,6 +50,9 @@ def get_user_from_connection_token(connection_token: str):
         if not user_id:
             logger.warning(f'Invalid or expired connection token: {connection_token[:8]}...')
             return AnonymousUser()
+
+        # Refresh session activity for connection token auth too
+        refresh_session_activity(user_id)
 
         # Retrieve user from database
         user = User.objects.get(id=user_id)
@@ -69,16 +76,31 @@ def get_user_from_token(token_string: str):
     """
     Validate JWT token and return associated user.
 
+    Now includes session version validation for global logout support
+    and refreshes the session activity window.
+
     Args:
         token_string: JWT access token
 
     Returns:
         User object if valid, AnonymousUser if invalid
     """
+    from services.auth.tokens import refresh_session_activity, validate_session_version
+
     try:
         # Validate and decode token
         access_token = AccessToken(token_string)
         user_id = access_token.get('user_id')
+        token_version = access_token.get('session_version')
+
+        # Validate session version (global logout check)
+        if token_version is not None:
+            if not validate_session_version(user_id, token_version):
+                logger.warning(f'Session invalidated for WebSocket user: {user_id}')
+                return AnonymousUser()
+
+        # Refresh session activity
+        refresh_session_activity(user_id)
 
         # Retrieve user from database
         user = User.objects.get(id=user_id)

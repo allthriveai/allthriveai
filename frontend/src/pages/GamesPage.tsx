@@ -253,6 +253,16 @@ export default function GamesPage() {
     updateScrollButtons();
   }, [inProgressQuests]);
 
+  // Scroll to #side-quests when navigating with hash (e.g., from points popup)
+  useEffect(() => {
+    if (location.hash === '#side-quests' && sideQuestsRef.current) {
+      // Small delay to ensure DOM is ready after navigation
+      setTimeout(() => {
+        sideQuestsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [location.hash]);
+
   // Update URL hash when scrolling to side-quests section
   useEffect(() => {
     if (!sideQuestsRef.current) return;

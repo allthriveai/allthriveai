@@ -49,7 +49,6 @@ app.autodiscover_tasks(
 # Explicitly register task modules that don't follow the standard tasks.py naming
 # (Celery autodiscover only looks for tasks.py files)
 app.conf.imports = [
-    'core.integrations.reddit_tasks',
     'core.integrations.rss_tasks',  # Expert curation articles with AI-generated hero images
     'core.integrations.youtube_feed_tasks',
 ]
@@ -104,13 +103,6 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/15'),  # Every 15 minutes (SCALABLE)
         'options': {
             'expires': 900,  # Task expires after 15min if not picked up
-        },
-    },
-    'sync-reddit-agents': {
-        'task': 'core.integrations.reddit_tasks.sync_all_reddit_agents_task',
-        'schedule': crontab(hour='*/4', minute=0),  # Every 4 hours at minute 0
-        'options': {
-            'expires': 3600,  # Task expires after 1 hour if not picked up
         },
     },
     # Expert curation articles - daily sync with AI-generated hero images

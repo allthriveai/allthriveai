@@ -138,15 +138,21 @@ interface WebSocketMessage {
   state?: Record<string, unknown>;
   error?: string;
   timestamp?: string;
+  // Support both snake_case (legacy) and camelCase field names
   user_id?: number;
+  userId?: number;
   status?: string;
   phase?: BattlePhase;
   duration?: number;
   value?: number;
   submission_id?: number;
+  submissionId?: number;
   battle_id?: number;
+  battleId?: number;
   image_url?: string;
+  imageUrl?: string;
   winner_id?: number | null;
+  winnerId?: number | null;
   results?: any; // Judging results with scores and feedback
 }
 
@@ -187,12 +193,13 @@ export function useBattleWebSocket({
   }, [onError, onPhaseChange, onMatchComplete]);
 
   // Parse server state to client format with defensive null checks
+  // Supports both snake_case (legacy) and camelCase (standard) field names
   const parseServerState = useCallback((serverState: Record<string, unknown>): BattleState | null => {
     try {
       const opponent = serverState.opponent as Record<string, unknown> | null;
-      const mySubmission = serverState.my_submission as Record<string, unknown> | null;
-      const opponentSubmission = serverState.opponent_submission as Record<string, unknown> | null;
-      const challengeType = serverState.challenge_type as Record<string, unknown> | null;
+      const mySubmission = (serverState.mySubmission || serverState.my_submission) as Record<string, unknown> | null;
+      const opponentSubmission = (serverState.opponentSubmission || serverState.opponent_submission) as Record<string, unknown> | null;
+      const challengeType = (serverState.challengeType || serverState.challenge_type) as Record<string, unknown> | null;
 
       if (!opponent) {
         console.error('[Battle WS] Missing opponent in state');
@@ -203,48 +210,48 @@ export function useBattleWebSocket({
         id: (serverState.id as number) ?? 0,
         phase: (serverState.phase as BattlePhase) ?? 'waiting',
         status: (serverState.status as string) ?? 'pending',
-        challengeText: (serverState.challenge_text as string) ?? '',
+        challengeText: ((serverState.challengeText || serverState.challenge_text) as string) ?? '',
         challengeType: challengeType
           ? {
               key: (challengeType.key as string) ?? '',
               name: (challengeType.name as string) ?? '',
             }
           : null,
-        durationMinutes: (serverState.duration_minutes as number) ?? 3,
-        timeRemaining: serverState.time_remaining as number | null,
-        myConnected: (serverState.my_connected as boolean) ?? false,
+        durationMinutes: ((serverState.durationMinutes ?? serverState.duration_minutes) as number) ?? 3,
+        timeRemaining: (serverState.timeRemaining ?? serverState.time_remaining) as number | null,
+        myConnected: ((serverState.myConnected ?? serverState.my_connected) as boolean) ?? false,
         opponent: {
           id: (opponent.id as number) ?? 0,
           username: (opponent.username as string) ?? 'Unknown',
-          avatarUrl: opponent.avatar_url as string | undefined,
+          avatarUrl: (opponent.avatarUrl || opponent.avatar_url) as string | undefined,
           connected: (opponent.connected as boolean) ?? false,
-          friendName: opponent.friend_name as string | undefined,
+          friendName: (opponent.friendName || opponent.friend_name) as string | undefined,
         },
         mySubmission: mySubmission
           ? {
               id: (mySubmission.id as number) ?? 0,
-              promptText: (mySubmission.prompt_text as string) ?? '',
-              imageUrl: mySubmission.image_url as string | undefined,
+              promptText: ((mySubmission.promptText || mySubmission.prompt_text) as string) ?? '',
+              imageUrl: (mySubmission.imageUrl || mySubmission.image_url) as string | undefined,
               score: mySubmission.score as number | undefined,
-              criteriaScores: mySubmission.criteria_scores as Record<string, number> | undefined,
+              criteriaScores: (mySubmission.criteriaScores || mySubmission.criteria_scores) as Record<string, number> | undefined,
               feedback: mySubmission.feedback as string | undefined,
             }
           : null,
         opponentSubmission: opponentSubmission
           ? {
               id: (opponentSubmission.id as number) ?? 0,
-              promptText: (opponentSubmission.prompt_text as string) ?? '',
-              imageUrl: opponentSubmission.image_url as string | undefined,
+              promptText: ((opponentSubmission.promptText || opponentSubmission.prompt_text) as string) ?? '',
+              imageUrl: (opponentSubmission.imageUrl || opponentSubmission.image_url) as string | undefined,
               score: opponentSubmission.score as number | undefined,
-              criteriaScores: opponentSubmission.criteria_scores as Record<string, number> | undefined,
+              criteriaScores: (opponentSubmission.criteriaScores || opponentSubmission.criteria_scores) as Record<string, number> | undefined,
               feedback: opponentSubmission.feedback as string | undefined,
             }
           : null,
-        winnerId: serverState.winner_id as number | null,
-        matchSource: (serverState.match_source as string) ?? 'unknown',
-        inviteUrl: serverState.invite_url as string | undefined,
-        isMyTurn: serverState.is_my_turn as boolean | undefined,
-        pointsEarned: serverState.points_earned as number | undefined,
+        winnerId: (serverState.winnerId ?? serverState.winner_id) as number | null,
+        matchSource: ((serverState.matchSource || serverState.match_source) as string) ?? 'unknown',
+        inviteUrl: (serverState.inviteUrl || serverState.invite_url) as string | undefined,
+        isMyTurn: (serverState.isMyTurn ?? serverState.is_my_turn) as boolean | undefined,
+        pointsEarned: (serverState.pointsEarned ?? serverState.points_earned) as number | undefined,
       };
     } catch (error) {
       console.error('[Battle WS] Failed to parse server state:', error);
@@ -298,7 +305,7 @@ export function useBattleWebSocket({
               battleId,
               traceId,
               newStatus: data.status,
-              userId: data.user_id,
+              userId: data.userId ?? data.user_id,
             });
             setOpponentStatus(data.status as OpponentStatus);
           }
@@ -356,7 +363,7 @@ export function useBattleWebSocket({
           logBattle('info', 'submission_confirmed', {
             battleId,
             traceId,
-            submissionId: data.submission_id,
+            submissionId: data.submissionId ?? data.submission_id,
           });
           // Update battleState to reflect submission
           setBattleState((prev) => {
@@ -364,7 +371,7 @@ export function useBattleWebSocket({
             return {
               ...prev,
               mySubmission: {
-                id: data.submission_id as number,
+                id: (data.submissionId ?? data.submission_id) as number,
                 promptText: '', // Will be populated on next state refresh
               },
             };
@@ -375,8 +382,8 @@ export function useBattleWebSocket({
           logBattle('info', 'image_generating', {
             battleId,
             traceId,
-            submissionId: data.submission_id,
-            userId: data.user_id,
+            submissionId: data.submissionId ?? data.submission_id,
+            userId: data.userId ?? data.user_id,
           });
           break;
 
@@ -384,20 +391,21 @@ export function useBattleWebSocket({
           logBattle('info', 'image_generated', {
             battleId,
             traceId,
-            submissionId: data.submission_id,
-            userId: data.user_id,
-            hasImageUrl: !!data.image_url,
+            submissionId: data.submissionId ?? data.submission_id,
+            userId: data.userId ?? data.user_id,
+            hasImageUrl: !!(data.imageUrl || data.image_url),
           });
           // Update my submission with the image if it's mine
           setBattleState((prev) => {
             if (!prev || !prev.mySubmission) return prev;
             // Check if this is our submission
-            if (data.submission_id === prev.mySubmission.id) {
+            const submissionId = data.submissionId ?? data.submission_id;
+            if (submissionId === prev.mySubmission.id) {
               return {
                 ...prev,
                 mySubmission: {
                   ...prev.mySubmission,
-                  imageUrl: data.image_url as string,
+                  imageUrl: (data.imageUrl || data.image_url) as string,
                 },
               };
             }
@@ -409,7 +417,7 @@ export function useBattleWebSocket({
           logBattle('info', 'judging_complete', {
             battleId,
             traceId,
-            winnerId: data.winner_id,
+            winnerId: data.winnerId ?? data.winner_id,
             resultsCount: Array.isArray(data.results) ? data.results.length : 0,
           });
           setBattleState((prev) => {
@@ -418,33 +426,38 @@ export function useBattleWebSocket({
             // Update with winner and any results data
             const newState = {
               ...prev,
-              winnerId: data.winner_id as number | null,
+              winnerId: (data.winnerId ?? data.winner_id) as number | null,
             };
 
             // If results include submission data, update submissions
+            // Support both snake_case (legacy) and camelCase field names
             const results = data.results as Array<{
               submission_id?: number;
+              submissionId?: number;
               user_id?: number;
+              userId?: number;
               score?: number;
               criteria_scores?: Record<string, number>;
+              criteriaScores?: Record<string, number>;
               feedback?: string;
             }>;
 
             if (results && Array.isArray(results)) {
               for (const result of results) {
+                const submissionId = result.submissionId ?? result.submission_id;
                 logBattle('debug', 'judging_result', {
                   battleId,
                   traceId,
-                  submissionId: result.submission_id,
-                  userId: result.user_id,
+                  submissionId,
+                  userId: result.userId ?? result.user_id,
                   score: result.score,
                 });
                 // Update my submission if this is mine
-                if (prev.mySubmission && result.submission_id === prev.mySubmission.id) {
+                if (prev.mySubmission && submissionId === prev.mySubmission.id) {
                   newState.mySubmission = {
                     ...prev.mySubmission,
                     score: result.score,
-                    criteriaScores: result.criteria_scores,
+                    criteriaScores: result.criteriaScores || result.criteria_scores,
                     feedback: result.feedback,
                   };
                 }
@@ -467,9 +480,9 @@ export function useBattleWebSocket({
           logBattle('info', 'battle_complete', {
             battleId,
             traceId,
-            winnerId: data.winner_id,
+            winnerId: data.winnerId ?? data.winner_id,
           });
-          onMatchCompleteRef.current?.(data.winner_id as number | null);
+          onMatchCompleteRef.current?.((data.winnerId ?? data.winner_id) as number | null);
           break;
 
         case 'error':

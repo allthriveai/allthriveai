@@ -41,7 +41,8 @@ export function getYouTubeErrorMessage(error: ErrorResponse): UserFriendlyError 
   if (errorMessage.toLowerCase().includes('circuit breaker')) {
     return {
       title: 'YouTube is Temporarily Unavailable',
-      message: 'We\'re experiencing connection issues with YouTube. Please try again in a few minutes. This is not an issue with your account.',
+      message:
+        "We're experiencing connection issues with YouTube. Please try again in a few minutes. This is not an issue with your account.",
       variant: 'warning',
     };
   }
@@ -50,7 +51,8 @@ export function getYouTubeErrorMessage(error: ErrorResponse): UserFriendlyError 
   if (errorType === 'quota_exceeded' || errorMessage.toLowerCase().includes('quota')) {
     return {
       title: 'Daily Import Limit Reached',
-      message: 'You\'ve reached the maximum number of videos you can import today. Your quota will reset at midnight. Already imported videos are safe!',
+      message:
+        "You've reached the maximum number of videos you can import today. Your quota will reset at midnight. Already imported videos are safe!",
       variant: 'warning',
     };
   }
@@ -89,7 +91,7 @@ export function getYouTubeErrorMessage(error: ErrorResponse): UserFriendlyError 
   if (statusCode === 429) {
     return {
       title: 'Too Many Requests',
-      message: 'You\'re making requests too quickly. Please wait a moment before trying again.',
+      message: "You're making requests too quickly. Please wait a moment before trying again.",
       variant: 'warning',
     };
   }
@@ -98,7 +100,7 @@ export function getYouTubeErrorMessage(error: ErrorResponse): UserFriendlyError 
   if (errorMessage.toLowerCase().includes('network') || errorMessage.toLowerCase().includes('timeout')) {
     return {
       title: 'Connection Problem',
-      message: 'We couldn\'t connect to YouTube. Please check your internet connection and try again.',
+      message: "We couldn't connect to YouTube. Please check your internet connection and try again.",
       variant: 'error',
     };
   }
@@ -115,10 +117,14 @@ export function getYouTubeErrorMessage(error: ErrorResponse): UserFriendlyError 
   }
 
   // No channel found
-  if (errorMessage.toLowerCase().includes('no youtube channel') || errorMessage.toLowerCase().includes('no channel found')) {
+  if (
+    errorMessage.toLowerCase().includes('no youtube channel') ||
+    errorMessage.toLowerCase().includes('no channel found')
+  ) {
     return {
       title: 'YouTube Channel Not Found',
-      message: 'We couldn\'t find a YouTube channel associated with your Google account. Make sure you have a YouTube channel and try reconnecting.',
+      message:
+        "We couldn't find a YouTube channel associated with your Google account. Make sure you have a YouTube channel and try reconnecting.",
       actionText: 'Create YouTube Channel',
       actionHref: 'https://www.youtube.com/create_channel',
       variant: 'info',
@@ -128,18 +134,22 @@ export function getYouTubeErrorMessage(error: ErrorResponse): UserFriendlyError 
   // Server errors (5xx)
   if (statusCode && statusCode >= 500) {
     return {
-      title: 'Server Error',
-      message: 'Our servers encountered an error. Our team has been notified. Please try again in a few minutes.',
+      title: 'Oops! Server Error',
+      message:
+        "We're still working on bugs while in beta mode. Please try again in a few minutes, or file this as an issue to help us improve!",
+      actionText: 'Report Issue',
+      actionHref: '/feedback',
       variant: 'error',
     };
   }
 
   // Generic fallback with helpful context
   return {
-    title: 'Something Went Wrong',
-    message: 'We encountered an unexpected error while working with YouTube. Please try again, or contact support if the problem persists.',
-    actionText: 'Contact Support',
-    actionHref: 'mailto:support@allthrive.ai',
+    title: 'Oops! Something Went Wrong',
+    message:
+      "We're still working on bugs while in beta mode. Please try again, or file this as an issue to help us improve!",
+    actionText: 'Report Issue',
+    actionHref: '/feedback',
     variant: 'error',
   };
 }
@@ -167,7 +177,7 @@ export function getGitHubErrorMessage(error: ErrorResponse): UserFriendlyError {
   if (statusCode === 429 || errorMessage.toLowerCase().includes('rate limit')) {
     return {
       title: 'GitHub Rate Limit Reached',
-      message: 'You\'ve made too many requests to GitHub. Please wait about an hour before trying again.',
+      message: "You've made too many requests to GitHub. Please wait about an hour before trying again.",
       variant: 'warning',
     };
   }
@@ -182,8 +192,11 @@ export function getGitHubErrorMessage(error: ErrorResponse): UserFriendlyError {
   }
 
   return {
-    title: 'GitHub Connection Error',
-    message: 'We encountered an error connecting to GitHub. Please try again.',
+    title: 'Oops! GitHub Connection Error',
+    message:
+      "We're still working on bugs while in beta mode. Please try again, or file this as an issue to help us improve!",
+    actionText: 'Report Issue',
+    actionHref: '/feedback',
     variant: 'error',
   };
 }
@@ -211,7 +224,7 @@ export function getLinkedInErrorMessage(error: ErrorResponse): UserFriendlyError
   if (statusCode === 429 || errorMessage.toLowerCase().includes('rate limit')) {
     return {
       title: 'LinkedIn Rate Limit Reached',
-      message: 'You\'ve made too many requests to LinkedIn. Please wait a few minutes before trying again.',
+      message: "You've made too many requests to LinkedIn. Please wait a few minutes before trying again.",
       variant: 'warning',
     };
   }
@@ -220,14 +233,17 @@ export function getLinkedInErrorMessage(error: ErrorResponse): UserFriendlyError
   if (statusCode === 404) {
     return {
       title: 'Profile Not Found',
-      message: 'We couldn\'t access your LinkedIn profile. Please check your connection and try again.',
+      message: "We couldn't access your LinkedIn profile. Please check your connection and try again.",
       variant: 'error',
     };
   }
 
   return {
-    title: 'LinkedIn Connection Error',
-    message: 'We encountered an error connecting to LinkedIn. Please try again.',
+    title: 'Oops! LinkedIn Connection Error',
+    message:
+      "We're still working on bugs while in beta mode. Please try again, or file this as an issue to help us improve!",
+    actionText: 'Report Issue',
+    actionHref: '/feedback',
     variant: 'error',
   };
 }
@@ -235,7 +251,10 @@ export function getLinkedInErrorMessage(error: ErrorResponse): UserFriendlyError
 /**
  * Generic error translator - automatically detects integration type
  */
-export function getUserFriendlyError(error: ErrorResponse, integration?: 'youtube' | 'github' | 'linkedin'): UserFriendlyError {
+export function getUserFriendlyError(
+  error: ErrorResponse,
+  integration?: 'youtube' | 'github' | 'linkedin'
+): UserFriendlyError {
   // Auto-detect integration from error context
   const errorData = error?.response?.data || error;
   const errorMessage = errorData?.message || error?.message || '';

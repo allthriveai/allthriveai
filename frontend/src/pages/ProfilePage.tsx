@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useThriveCircle } from '@/hooks/useThriveCircle';
 import { useQuestTracking } from '@/hooks/useQuestTracking';
-import type { User, Project } from '@/types/models';
+import type { User, Project, Taxonomy } from '@/types/models';
 import { getUserByUsername } from '@/services/auth';
 import { getUserProjects, bulkDeleteProjects, getClippedProjects } from '@/services/projects';
 import { followService } from '@/services/followService';
@@ -26,6 +27,8 @@ import { ProfileTabMenu, type ProfileTabId, ALL_TABS } from '@/components/profil
 import { getUserBattles } from '@/services/battles';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { MasonryGrid } from '@/components/common/MasonryGrid';
+import { FilterDropdown, SelectedFilters, type ContentTypeKey } from '@/components/explore/FilterDropdown';
+import { getFilterOptions } from '@/services/explore';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTemplatePicker } from '@/components/profile/ProfileTemplatePicker';
@@ -296,6 +299,53 @@ export default function ProfilePage() {
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const [showFocalPointEditor, setShowFocalPointEditor] = useState(false);
   const [pendingAvatarUrl, setPendingAvatarUrl] = useState<string | null>(null);
+
+  // Playground filter state
+  const [selectedContentType, setSelectedContentType] = useState<ContentTypeKey>('all');
+  const [selectedCategorySlugs, setSelectedCategorySlugs] = useState<string[]>([]);
+  const [selectedToolSlugs, setSelectedToolSlugs] = useState<string[]>([]);
+
+  // Fetch filter options (tools) for playground filters
+  const { data: filterOptions } = useQuery({
+    queryKey: ['filterOptions'],
+    queryFn: getFilterOptions,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch taxonomy categories for playground filters
+  const { data: filterCategories } = useQuery({
+    queryKey: ['taxonomyCategories'],
+    queryFn: async () => {
+      const response = await api.get('/taxonomies/?taxonomy_type=category');
+      return response.data.results as Taxonomy[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Filter playground projects based on selected filters
+  const filteredPlayground = useMemo(() => {
+    return projects.playground.filter(project => {
+      // Content type filter
+      if (selectedContentType !== 'all' && project.type !== selectedContentType) {
+        return false;
+      }
+      // Category filter - use categoriesDetails (not categories which is just IDs)
+      if (selectedCategorySlugs.length > 0) {
+        const projectCatSlugs = project.categoriesDetails?.map(c => c.slug) || [];
+        if (!selectedCategorySlugs.some(slug => projectCatSlugs.includes(slug))) {
+          return false;
+        }
+      }
+      // Tool filter - use toolsDetails (not tools which is just IDs)
+      if (selectedToolSlugs.length > 0) {
+        const projectToolSlugs = project.toolsDetails?.map(t => t.slug) || [];
+        if (!selectedToolSlugs.some(slug => projectToolSlugs.includes(slug))) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [projects.playground, selectedContentType, selectedCategorySlugs, selectedToolSlugs]);
 
   // Check for public preview mode (owner viewing as visitor)
   const isPreviewMode = searchParams.get('preview') === 'public';
@@ -1373,7 +1423,7 @@ export default function ProfilePage() {
             {/* Tab Navigation - Always visible */}
             <div className="border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
               <div className="w-full px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center py-2">
+                <div className="flex items-center py-2 gap-2">
                   <ProfileTabMenu
                     activeTab={activeTab as ProfileTabId}
                     onTabChange={(tabId) => handleTabChange(tabId as typeof activeTab)}
@@ -1392,9 +1442,26 @@ export default function ProfilePage() {
                     </button>
                   )}
 
+                  {/* Filters - shown on playground tab */}
+                  {activeTab === 'playground' && !selectionMode && (
+                    <div className="ml-auto">
+                      <FilterDropdown
+                        categories={filterCategories || []}
+                        tools={filterOptions?.tools || []}
+                        selectedCategorySlugs={selectedCategorySlugs}
+                        selectedToolSlugs={selectedToolSlugs}
+                        selectedContentType={selectedContentType}
+                        onCategoriesChange={setSelectedCategorySlugs}
+                        onToolsChange={setSelectedToolSlugs}
+                        onContentTypeChange={setSelectedContentType}
+                        showContentTypes={true}
+                      />
+                    </div>
+                  )}
+
                   {/* Actions Menu */}
                   {isOwnProfile && !selectionMode && (
-                    <div className="relative ml-auto flex-shrink-0" ref={moreMenuRef}>
+                    <div className={`relative ${activeTab !== 'playground' ? 'ml-auto' : ''} flex-shrink-0`} ref={moreMenuRef}>
                       <button
                         onClick={() => setShowMoreMenu(!showMoreMenu)}
                         className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full transition-all duration-200
@@ -1572,9 +1639,30 @@ export default function ProfilePage() {
             {/* Playground Tab - Full width with padding */}
             {activeTab === 'playground' && (
               <div role="tabpanel" id="tabpanel-playground" aria-labelledby="tab-playground" className="px-4 sm:px-6 lg:px-8 pt-4 pb-20">
-                {projects.playground.length > 0 ? (
+                {/* Selected Filters Pills */}
+                {(selectedContentType !== 'all' || selectedCategorySlugs.length > 0 || selectedToolSlugs.length > 0) && (
+                  <div className="mb-4">
+                    <SelectedFilters
+                      categories={filterCategories || []}
+                      tools={filterOptions?.tools || []}
+                      selectedCategorySlugs={selectedCategorySlugs}
+                      selectedToolSlugs={selectedToolSlugs}
+                      selectedContentType={selectedContentType}
+                      onRemoveCategory={(slug) => setSelectedCategorySlugs(prev => prev.filter(s => s !== slug))}
+                      onRemoveTool={(slug) => setSelectedToolSlugs(prev => prev.filter(s => s !== slug))}
+                      onRemoveContentType={() => setSelectedContentType('all')}
+                      onClearAll={() => {
+                        setSelectedContentType('all');
+                        setSelectedCategorySlugs([]);
+                        setSelectedToolSlugs([]);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {filteredPlayground.length > 0 ? (
                   <MasonryGrid>
-                    {projects.playground.map((project) => (
+                    {filteredPlayground.map((project) => (
                       <div key={project.id} className="break-inside-avoid mb-6">
                         <ProjectCard
                           project={project}
@@ -1597,48 +1685,62 @@ export default function ProfilePage() {
                     <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                       <FontAwesomeIcon icon={faFlask} className="w-8 h-8 text-gray-400" />
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                      No projects yet
-                    </h3>
-                    {isOwnProfile ? (
-                      <div className="max-w-3xl mx-auto">
-                        <p className="text-gray-500 dark:text-gray-400 mb-8">
-                          Start building your portfolio by adding projects
+                    {/* Show different message if filters are active vs no projects at all */}
+                    {(selectedContentType !== 'all' || selectedCategorySlugs.length > 0 || selectedToolSlugs.length > 0) ? (
+                      <>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                          No matching projects
+                        </h3>
+                        <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                          Try adjusting your filters to see more projects.
                         </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-                          <button
-                            onClick={handleGenerateProfile}
-                            className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
-                          >
-                            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-                              <FontAwesomeIcon icon={faWandMagicSparkles} className="w-6 h-6 text-purple-500" />
-                            </div>
-                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Generate Profile</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Tell us about yourself and let AI create your profile
-                            </p>
-                          </button>
-                          <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('openAddProject'))}
-                            className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
-                          >
-                            <div
-                              className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
-                              style={{ background: 'linear-gradient(135deg, #22d3ee, #4ade80)', boxShadow: '0 2px 8px rgba(34, 211, 238, 0.25)' }}
-                            >
-                              <FontAwesomeIcon icon={faPlus} className="w-6 h-6 text-slate-900" />
-                            </div>
-                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Add Projects with AI</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Share a link or describe your project
-                            </p>
-                          </button>
-                        </div>
-                      </div>
+                      </>
                     ) : (
-                      <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                        {displayUser?.firstName || username} hasn't added any projects yet.
-                      </p>
+                      <>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                          No projects yet
+                        </h3>
+                        {isOwnProfile ? (
+                          <div className="max-w-3xl mx-auto">
+                            <p className="text-gray-500 dark:text-gray-400 mb-8">
+                              Start building your portfolio by adding projects
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                              <button
+                                onClick={handleGenerateProfile}
+                                className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
+                              >
+                                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                  <FontAwesomeIcon icon={faWandMagicSparkles} className="w-6 h-6 text-purple-500" />
+                                </div>
+                                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Generate Profile</h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  Tell us about yourself and let AI create your profile
+                                </p>
+                              </button>
+                              <button
+                                onClick={() => window.dispatchEvent(new CustomEvent('openAddProject'))}
+                                className="p-6 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors w-full"
+                              >
+                                <div
+                                  className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+                                  style={{ background: 'linear-gradient(135deg, #22d3ee, #4ade80)', boxShadow: '0 2px 8px rgba(34, 211, 238, 0.25)' }}
+                                >
+                                  <FontAwesomeIcon icon={faPlus} className="w-6 h-6 text-slate-900" />
+                                </div>
+                                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Add Projects with AI</h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  Share a link or describe your project
+                                </p>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                            {displayUser?.firstName || username} hasn't added any projects yet.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

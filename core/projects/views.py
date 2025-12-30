@@ -3,6 +3,7 @@ import time
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -127,7 +128,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 'difficulty_taxonomy',
                 'pricing_taxonomy',
             )
-            .prefetch_related('tools', 'likes', 'reddit_thread')
+            .prefetch_related('tools', 'likes')
             .order_by('-created_at')
         )
 
@@ -354,11 +355,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('You do not have permission to delete this project.')
 
         user = instance.user
-
-        # If this is a Reddit thread project, record the deletion
-        if instance.type == Project.ProjectType.REDDIT_THREAD and hasattr(instance, 'reddit_thread'):
-            self._record_reddit_thread_deletion(instance, self.request.user)
-
         project_id = instance.id
         project_title = instance.title
         instance.delete()
@@ -381,36 +377,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Invalidate cache after delete
         self._invalidate_user_cache(user)
 
-    def _record_reddit_thread_deletion(self, project, deleted_by):
-        """Record a Reddit thread deletion to prevent resync recreation."""
-        try:
-            from core.integrations.reddit_models import DeletedRedditThread
-
-            thread = project.reddit_thread
-
-            # Create a deletion record
-            DeletedRedditThread.objects.create(
-                reddit_post_id=thread.reddit_post_id,
-                agent=thread.agent,
-                subreddit=thread.subreddit,
-                deleted_by=deleted_by,
-                deletion_type=DeletedRedditThread.DeletionType.ADMIN_DELETED,
-                deletion_reason=f'Inappropriate content - deleted by admin {deleted_by.username}',
-            )
-
-            logger.info(
-                f'Recorded deletion of Reddit thread {thread.reddit_post_id} '
-                f'(r/{thread.subreddit}) by {deleted_by.username}'
-            )
-        except Exception as e:
-            logger.error(f'Failed to record Reddit thread deletion: {e}', exc_info=True)
-
     def _invalidate_user_cache(self, user):
         """Invalidate cached project lists for a user."""
         username_lower = user.username.lower()
-        # Must match the cache key version in public_user_projects (v4)
-        cache.delete(f'projects:v4:{username_lower}:own')
-        cache.delete(f'projects:v4:{username_lower}:public')
+        # Must match the cache key version in public_user_projects (v5)
+        cache.delete(f'projects:v5:{username_lower}:own')
+        cache.delete(f'projects:v5:{username_lower}:public')
         logger.debug(f'Invalidated project cache for user {user.username}')
 
     @action(detail=True, methods=['patch'], url_path='update-tags')
@@ -769,17 +741,12 @@ CRITICAL REQUIREMENTS:
 
         # Admin can delete any projects, regular users only their own
         if request.user.role == UserRole.ADMIN:
-            queryset = Project.objects.filter(id__in=project_ids).select_related('reddit_thread')
+            queryset = Project.objects.filter(id__in=project_ids)
         else:
-            queryset = Project.objects.filter(id__in=project_ids, user=request.user).select_related('reddit_thread')
+            queryset = Project.objects.filter(id__in=project_ids, user=request.user)
 
         # Get affected users for cache invalidation
         affected_users = set(queryset.values_list('user', flat=True))
-
-        # Record Reddit thread deletions before actual deletion
-        for project in queryset:
-            if project.type == Project.ProjectType.REDDIT_THREAD and hasattr(project, 'reddit_thread'):
-                self._record_reddit_thread_deletion(project, request.user)
 
         # Count projects before delete (delete() returns total including cascade-deleted related objects)
         project_count = queryset.count()
@@ -843,7 +810,7 @@ def get_project_by_slug(request, username, slug):
                 'difficulty_taxonomy',
                 'pricing_taxonomy',
             )
-            .prefetch_related('tools', 'likes', 'reddit_thread')
+            .prefetch_related('tools', 'likes')
             .get(user=user, slug=slug)
         )
     except Project.DoesNotExist:
@@ -888,7 +855,8 @@ def public_user_projects(request, username):
     # v2: playground now includes all projects, not just non-showcase ones
     # v3: playground is now public by default for non-authenticated users
     # v4: exclude clipped projects from playground (they appear in Clipped tab)
-    cache_key = f'projects:v4:{username.lower()}:{"own" if is_own_profile else "public"}'
+    # v5: include clipped projects + liked projects in playground, add prefetch_related
+    cache_key = f'projects:v5:{username.lower()}:{"own" if is_own_profile else "public"}'
 
     cached_data = cache.get(cache_key)
     if cached_data:
@@ -917,7 +885,6 @@ def public_user_projects(request, username):
         if is_curation:
             # For curation agents, order by original publish date from the source
             # YouTube videos: youtube_feed_video__published_at
-            # Reddit threads: reddit_thread__created_utc
             # Fall back to created_at for other content types
             from django.db.models.functions import Coalesce
 
@@ -929,10 +896,9 @@ def public_user_projects(request, username):
                     'difficulty_taxonomy',
                     'pricing_taxonomy',
                 )
+                .prefetch_related('tools', 'categories')
                 .filter(user=user, is_showcased=True, is_archived=False)
-                .annotate(
-                    sort_date=Coalesce('youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at')
-                )
+                .annotate(sort_date=Coalesce('youtube_feed_video__published_at', 'created_at'))
                 .order_by('-sort_date')
             )
         else:
@@ -944,12 +910,14 @@ def public_user_projects(request, username):
                     'difficulty_taxonomy',
                     'pricing_taxonomy',
                 )
+                .prefetch_related('tools', 'categories')
                 .filter(user=user, is_showcased=True, is_archived=False)
                 .order_by('-created_at')
             )
 
         # If the requesting user is authenticated and viewing their own profile,
         # include all projects (both showcase and non-showcase) in playground
+        # Also include projects the user has liked (clipped from other users)
         if is_own_profile:
             if is_curation:
                 from django.db.models.functions import Coalesce
@@ -962,13 +930,10 @@ def public_user_projects(request, username):
                         'difficulty_taxonomy',
                         'pricing_taxonomy',
                     )
-                    .filter(user=user, is_archived=False)
-                    .exclude(type=Project.ProjectType.CLIPPED)
-                    .annotate(
-                        sort_date=Coalesce(
-                            'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
-                        )
-                    )
+                    .prefetch_related('tools', 'categories')
+                    .filter(Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False))
+                    .distinct()
+                    .annotate(sort_date=Coalesce('youtube_feed_video__published_at', 'created_at'))
                     .order_by('-sort_date')
                 )
             else:
@@ -980,8 +945,9 @@ def public_user_projects(request, username):
                         'difficulty_taxonomy',
                         'pricing_taxonomy',
                     )
-                    .filter(user=user, is_archived=False)
-                    .exclude(type=Project.ProjectType.CLIPPED)
+                    .prefetch_related('tools', 'categories')
+                    .filter(Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False))
+                    .distinct()
                     .order_by('-created_at')
                 )
 
@@ -998,6 +964,7 @@ def public_user_projects(request, username):
 
             if playground_is_public:
                 # Return playground projects for public profiles
+                # Also include projects the user has liked (clipped from other users)
                 if is_curation:
                     from django.db.models.functions import Coalesce
 
@@ -1009,13 +976,12 @@ def public_user_projects(request, username):
                             'difficulty_taxonomy',
                             'pricing_taxonomy',
                         )
-                        .filter(user=user, is_archived=False)
-                        .exclude(type=Project.ProjectType.CLIPPED)
-                        .annotate(
-                            sort_date=Coalesce(
-                                'youtube_feed_video__published_at', 'reddit_thread__created_utc', 'created_at'
-                            )
+                        .prefetch_related('tools', 'categories')
+                        .filter(
+                            Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False)
                         )
+                        .distinct()
+                        .annotate(sort_date=Coalesce('youtube_feed_video__published_at', 'created_at'))
                         .order_by('-sort_date')
                     )
                 else:
@@ -1027,8 +993,11 @@ def public_user_projects(request, username):
                             'difficulty_taxonomy',
                             'pricing_taxonomy',
                         )
-                        .filter(user=user, is_archived=False)
-                        .exclude(type=Project.ProjectType.CLIPPED)
+                        .prefetch_related('tools', 'categories')
+                        .filter(
+                            Q(user=user, is_archived=False) | Q(likes__user=user, is_archived=False, is_private=False)
+                        )
+                        .distinct()
                         .order_by('-created_at')
                     )
                 response_data = {

@@ -282,7 +282,8 @@ class BattleConsumerAsyncTurnTestCase(TransactionTestCase):
 
         state = response['state']
         self.assertEqual(state['phase'], 'challenger_turn')
-        self.assertIn('time_remaining', state)
+        # WebSocket responses use camelCase for frontend compatibility
+        self.assertIn('timeRemaining', state)
 
         await communicator.disconnect()
 

@@ -148,8 +148,8 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
         {
             'type': 'battle_event',
             'event': 'image_generating',
-            'user_id': submission.user_id,
-            'submission_id': submission_id,
+            'userId': submission.user_id,
+            'submissionId': submission_id,
         },
     )
 
@@ -182,9 +182,9 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
                 {
                     'type': 'battle_event',
                     'event': 'image_generated',
-                    'user_id': submission.user_id,
-                    'submission_id': submission_id,
-                    'image_url': image_url,
+                    'userId': submission.user_id,
+                    'submissionId': submission_id,
+                    'imageUrl': image_url,
                 },
             )
 
@@ -214,8 +214,8 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
                 {
                     'type': 'battle_event',
                     'event': 'image_generation_failed',
-                    'user_id': submission.user_id,
-                    'submission_id': submission_id,
+                    'userId': submission.user_id,
+                    'submissionId': submission_id,
                 },
             )
 
@@ -238,8 +238,8 @@ def generate_submission_image_task(self, submission_id: int) -> dict[str, Any]:
             {
                 'type': 'battle_event',
                 'event': 'image_generation_failed',
-                'user_id': submission.user_id,
-                'submission_id': submission_id,
+                'userId': submission.user_id,
+                'submissionId': submission_id,
                 'error': str(e),
             },
         )
@@ -372,15 +372,16 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
         # which CANNOT be serialized by Redis channel layer. This caused TypeError:
         # "can not serialize 'BattleSubmission' object" and battles getting stuck in reveal phase.
         # We extract only primitive/dict fields that are JSON-serializable.
+        # Note: Use camelCase for WebSocket messages (frontend expects camelCase).
         # See: https://github.com/allthriveai/allthriveai/issues/XXX
         serializable_results = []
         for r in submission_results:
             serializable_results.append(
                 {
-                    'submission_id': r.get('submission_id'),
-                    'user_id': r.get('user_id'),
+                    'submissionId': r.get('submission_id'),
+                    'userId': r.get('user_id'),
                     'score': r.get('score'),
-                    'criteria_scores': r.get('criteria_scores'),
+                    'criteriaScores': r.get('criteria_scores'),
                     'feedback': r.get('feedback', ''),
                 }
             )
@@ -391,7 +392,7 @@ def judge_battle_task(self, battle_id: int) -> dict[str, Any]:
             {
                 'type': 'battle_event',
                 'event': 'judging_complete',
-                'winner_id': winner_id,
+                'winnerId': winner_id,
                 'results': serializable_results,
             },
         )
@@ -511,7 +512,7 @@ def complete_battle_task(self, battle_id: int) -> dict[str, Any]:
             {
                 'type': 'battle_event',
                 'event': 'battle_complete',
-                'winner_id': battle.winner_id,
+                'winnerId': battle.winner_id,
             },
         )
 
@@ -837,7 +838,7 @@ def handle_battle_timeout_task(battle_id: int) -> dict[str, Any]:
             {
                 'type': 'battle_event',
                 'event': 'battle_forfeit',
-                'winner_id': winner.id,
+                'winnerId': winner.id,
                 'reason': 'opponent_timeout',
             },
         )
@@ -1164,7 +1165,7 @@ def cleanup_stale_battles() -> dict[str, Any]:
                 {
                     'type': 'battle_event',
                     'event': 'battle_complete',
-                    'winner_id': None,
+                    'winnerId': None,
                     'message': 'Battle completed due to judging timeout. Result is a tie.',
                 },
             )
@@ -1448,7 +1449,7 @@ def check_async_battle_deadlines() -> dict[str, Any]:
             _send_async_battle_notification(
                 battle,
                 'battle_forfeit',
-                {'winner_id': winner.id, 'reason': 'turn_timeout'},
+                {'winnerId': winner.id, 'reason': 'turn_timeout'},
             )
 
             logger.info(f'Async battle {battle.id} forfeit: winner={winner.id} (turn timeout)')
@@ -1545,9 +1546,9 @@ def send_async_battle_reminders() -> dict[str, Any]:
                 battle,
                 'deadline_warning',
                 {
-                    'user_id': user_to_remind.id,
+                    'userId': user_to_remind.id,
                     'deadline': battle.async_deadline.isoformat() if battle.async_deadline else None,
-                    'hours_remaining': window_name,
+                    'hoursRemaining': window_name,
                 },
                 target_user=user_to_remind,
             )
@@ -1662,8 +1663,8 @@ def start_async_turn_task(self, battle_id: int, user_id: int) -> dict[str, Any]:
         battle,
         'turn_started',
         {
-            'user_id': user_id,
-            'expires_at': expires_at,
+            'userId': user_id,
+            'expiresAt': expires_at,
         },
     )
 
@@ -1749,7 +1750,7 @@ def handle_async_turn_timeout_task(battle_id: int) -> dict[str, Any]:
         _send_async_battle_notification(
             battle,
             'battle_forfeit',
-            {'winner_id': opponent.id, 'reason': 'turn_timeout', 'timed_out_user_id': timed_out_user.id},
+            {'winnerId': opponent.id, 'reason': 'turn_timeout', 'timedOutUserId': timed_out_user.id},
         )
 
         logger.info(f'Battle {battle_id} forfeit to {opponent.id}: user {timed_out_user.id} turn timeout')

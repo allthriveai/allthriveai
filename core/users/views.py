@@ -65,7 +65,6 @@ def explore_users(request):
     )
 
     # Base queryset - active users, exclude system accounts
-    # Also exclude Reddit agents that have no synced posts yet
     queryset = (
         User.objects.filter(
             is_active=True,
@@ -75,11 +74,6 @@ def explore_users(request):
             username__in=[
                 'system',
                 'pip',
-                # Reddit agents hidden until sync is working
-                'claudeai-reddit-agent',
-                'midjourney-reddit-agent',
-                'claude-code-reddit-agent',
-                'nano-banana-reddit-agent',
             ]
         )
         .exclude(

@@ -1,5 +1,5 @@
 """
-Management command to seed all curation agents (Reddit, YouTube, RSS).
+Management command to seed all curation agents (YouTube, RSS).
 
 This creates all the standard curation bots for AllThrive AI.
 
@@ -10,7 +10,6 @@ Or with initial sync:
     python manage.py seed_curation_agents --sync
 
 To seed only specific types:
-    python manage.py seed_curation_agents --reddit-only
     python manage.py seed_curation_agents --youtube-only
     python manage.py seed_curation_agents --rss-only
 """
@@ -19,37 +18,11 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
 
-from core.integrations.reddit_models import RedditCommunityAgent
 from core.integrations.rss_models import RSSFeedAgent
 from core.integrations.youtube_feed_models import YouTubeFeedAgent
 from core.users.models import User, UserRole
-from services.integrations.reddit.sync import RedditSyncService
 from services.integrations.rss.sync import RSSFeedSyncService
 from services.integrations.youtube_feed import YouTubeFeedSyncService
-
-# =============================================================================
-# REDDIT AGENTS CONFIGURATION
-# =============================================================================
-REDDIT_AGENTS = [
-    {
-        'subreddit': 'midjourney',
-        'username': 'midjourney-reddit-agent',
-        'display_name': 'Midjourney',
-        'bio': 'Automated curation agent for r/midjourney - AI art generation community',
-    },
-    {
-        'subreddit': 'ClaudeCode',
-        'username': 'claude-code-reddit-agent',
-        'display_name': 'Claude Code',
-        'bio': 'Automated curation agent for r/ClaudeCode - Claude AI coding assistant community',
-    },
-    {
-        'subreddit': 'GeminiNanoBanana',
-        'username': 'nano-banana-reddit-agent',
-        'display_name': 'Gemini Nano Banana',
-        'bio': 'Automated curation agent for r/GeminiNanoBanana',
-    },
-]
 
 # =============================================================================
 # YOUTUBE AGENTS CONFIGURATION
@@ -258,18 +231,13 @@ RSS_AGENTS = [
 
 
 class Command(BaseCommand):
-    help = 'Seed all curation agents (Reddit, YouTube, RSS)'
+    help = 'Seed all curation agents (YouTube, RSS)'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--sync',
             action='store_true',
             help='Run initial sync after creating agents',
-        )
-        parser.add_argument(
-            '--reddit-only',
-            action='store_true',
-            help='Only seed Reddit agents',
         )
         parser.add_argument(
             '--youtube-only',
@@ -290,16 +258,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         run_sync = options['sync']
-        reddit_only = options['reddit_only']
         youtube_only = options['youtube_only']
         rss_only = options['rss_only']
         max_items = options['max_items']
 
         # Determine which agents to seed
-        only_flags = [reddit_only, youtube_only, rss_only]
+        only_flags = [youtube_only, rss_only]
         seed_all = not any(only_flags)
 
-        seed_reddit = seed_all or reddit_only
         seed_youtube = seed_all or youtube_only
         seed_rss = seed_all or rss_only
 
@@ -309,18 +275,6 @@ class Command(BaseCommand):
 
         created_agents = []
         failed_agents = []
-
-        # Seed Reddit agents
-        if seed_reddit:
-            self.stdout.write(self.style.HTTP_INFO('\n📍 Reddit Agents\n'))
-            for config in REDDIT_AGENTS:
-                try:
-                    agent = self._create_reddit_agent(config, run_sync)
-                    if agent:
-                        created_agents.append(f"Reddit: r/{config['subreddit']}")
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f"  ❌ Failed: r/{config['subreddit']} - {e}"))
-                    failed_agents.append(f"Reddit: r/{config['subreddit']}")
 
         # Seed YouTube agents
         if seed_youtube:
@@ -364,70 +318,8 @@ class Command(BaseCommand):
         if not run_sync:
             self.stdout.write(self.style.WARNING('\n💡 To sync content, run with --sync flag'))
             self.stdout.write('   Or manually sync with:')
-            self.stdout.write('     python manage.py sync_reddit_agents')
             self.stdout.write('     python manage.py sync_youtube_feed_agents')
             self.stdout.write('     python manage.py sync_rss_feed_agents\n')
-
-    def _create_reddit_agent(self, config: dict, run_sync: bool):
-        """Create a Reddit community agent."""
-        subreddit = config['subreddit']
-        agent_username = config['username']
-        display_name = config['display_name']
-        bio = config['bio']
-
-        self.stdout.write(f'  Creating r/{subreddit}...')
-
-        with transaction.atomic():
-            # Check/create agent user
-            agent_user, user_created = User.objects.get_or_create(
-                username=agent_username,
-                defaults={
-                    'email': f'{agent_username}@allthrive.ai',
-                    'first_name': display_name,
-                    'last_name': 'Reddit Agent',
-                    'role': UserRole.AGENT,
-                    'tier': 'curation',
-                    'bio': bio,
-                    'avatar_url': '/Reddit-logo.svg',
-                    'is_active': True,
-                },
-            )
-
-            if user_created:
-                agent_user.set_unusable_password()
-                agent_user.save()
-
-            # Check/create agent config
-            agent_config, config_created = RedditCommunityAgent.objects.get_or_create(
-                subreddit=subreddit,
-                defaults={
-                    'agent_user': agent_user,
-                    'name': f'{display_name} Reddit Agent',
-                    'status': RedditCommunityAgent.Status.ACTIVE,
-                    'settings': {
-                        'feed_type': 'top',
-                        'time_period': 'week',
-                        'min_score': 10,
-                        'min_comments': 5,
-                        'sync_interval_minutes': 15,
-                    },
-                },
-            )
-
-        status = 'created' if config_created else 'exists'
-        self.stdout.write(self.style.SUCCESS(f'  ✅ r/{subreddit} ({status})'))
-        self.stdout.write(f'     Profile: /{agent_username}')
-
-        # Sync if requested
-        if run_sync and config_created:
-            self.stdout.write('     Syncing...')
-            try:
-                results = RedditSyncService.sync_agent(agent_config)
-                self.stdout.write(f'     Synced: {results["created"]} created, {results["updated"]} updated')
-            except Exception as e:
-                self.stdout.write(self.style.WARNING(f'     Sync failed: {e}'))
-
-        return agent_config
 
     def _create_youtube_agent(self, config: dict, run_sync: bool, max_items: int):
         """Create a YouTube feed agent."""
