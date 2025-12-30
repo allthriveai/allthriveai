@@ -688,7 +688,11 @@ def import_github_project(
     )
 
     # Apply AI-suggested categories, topics, tools, and technologies from sections
-    apply_ai_metadata(project, analysis, content=content)
+    # Wrapped in try-except so metadata failures don't fail the whole operation
+    try:
+        apply_ai_metadata(project, analysis, content=content)
+    except Exception as metadata_error:
+        logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
     logger.info(
         f'Successfully imported {owner}/{repo} as project {project.id} with {len(content.get("sections", []))} sections'
@@ -906,6 +910,22 @@ def scrape_webpage_for_project(
     if 'github.com' in url.lower():
         logger.info(f'Scraping GitHub URL as clipping (no OAuth needed): {url}')
 
+    # Check if user already has this URL clipped (before doing expensive scraping)
+    existing_project = Project.objects.filter(user=user, external_url=url).first()
+    if existing_project:
+        project_url = f'/{user.username}/{existing_project.slug}'
+        markdown_link = f'[{existing_project.title}]({project_url})'
+        return {
+            'success': True,
+            'project_id': existing_project.id,
+            'slug': existing_project.slug,
+            'title': existing_project.title,
+            'url': project_url,
+            'markdown_link': markdown_link,
+            'already_exists': True,
+            'message': f'You already have this saved! Here it is: {markdown_link}',
+        }
+
     logger.info(f'Scraping webpage for project: {url} (user: {user.username})')
 
     try:
@@ -983,7 +1003,11 @@ def scrape_webpage_for_project(
         )
 
         # Apply AI-suggested categories, topics, and tools
-        apply_ai_metadata(project, analysis, content=content)
+        # Wrapped in try-except so metadata failures don't fail the whole operation
+        try:
+            apply_ai_metadata(project, analysis, content=content)
+        except Exception as metadata_error:
+            logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
         logger.info(
             f'Successfully imported {url} as project {project.id} with {len(content.get("sections", []))} sections'
@@ -1145,7 +1169,11 @@ def import_video_project(
     )
 
     # Apply AI-suggested categories, topics, and tools
-    apply_ai_metadata(project, analysis, content=content)
+    # Wrapped in try-except so metadata failures don't fail the whole operation
+    try:
+        apply_ai_metadata(project, analysis, content=content)
+    except Exception as metadata_error:
+        logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
     logger.info(f'Successfully created video project {project.id} with {len(content.get("sections", []))} sections')
 
@@ -1515,7 +1543,11 @@ def _create_video_project_internal(
         tools_order=[],
     )
 
-    apply_ai_metadata(project, analysis, content=content)
+    # Wrapped in try-except so metadata failures don't fail the whole operation
+    try:
+        apply_ai_metadata(project, analysis, content=content)
+    except Exception as metadata_error:
+        logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
     action_word = 'created' if is_owned else 'clipped'
     return {
@@ -1616,7 +1648,11 @@ def _create_image_project_internal(
         }
 
     # Apply AI-suggested categories, topics, and tools
-    apply_ai_metadata(project, analysis, content=content)
+    # Wrapped in try-except so metadata failures don't fail the whole operation
+    try:
+        apply_ai_metadata(project, analysis, content=content)
+    except Exception as metadata_error:
+        logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
     action_word = 'created' if is_owned else 'clipped'
     project_url = f'/{user.username}/{project.slug}'
@@ -1886,7 +1922,11 @@ def _full_github_import(
         )
 
         logger.info(f'[GitHub Full Import] Applying AI metadata to project {project.id}')
-        apply_ai_metadata(project, analysis, content=content)
+        # Wrapped in try-except so metadata failures don't fail the whole operation
+        try:
+            apply_ai_metadata(project, analysis, content=content)
+        except Exception as metadata_error:
+            logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
         logger.info(f'[GitHub Full Import] Successfully imported {owner}/{repo} as project {project.id}')
 
@@ -2054,7 +2094,11 @@ def _full_gitlab_import(
 
         # Apply AI metadata (tags, tools, etc.)
         logger.info(f'[GitLab Full Import] Applying AI metadata to project {project.id}')
-        apply_ai_metadata(project, analysis, content=content)
+        # Wrapped in try-except so metadata failures don't fail the whole operation
+        try:
+            apply_ai_metadata(project, analysis, content=content)
+        except Exception as metadata_error:
+            logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
         # Also tag technologies from tech_stack
         if tech_stack:
@@ -2421,7 +2465,11 @@ def _handle_generic_import(
         )
 
         logger.info(f'[Generic Import] Applying AI metadata to project {project.id}')
-        apply_ai_metadata(project, analysis, content=content)
+        # Wrapped in try-except so metadata failures don't fail the whole operation
+        try:
+            apply_ai_metadata(project, analysis, content=content)
+        except Exception as metadata_error:
+            logger.warning(f'Failed to apply AI metadata to project {project.id}, continuing: {metadata_error}')
 
         logger.info(f'[Generic Import] Successfully imported {url} as project {project.id}')
 
