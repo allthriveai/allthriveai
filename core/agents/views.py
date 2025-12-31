@@ -473,7 +473,7 @@ class CreateProjectFromImageView(APIView):
                 description=cleaned_description,  # Use the cleaned prompt as description
                 featured_image_url=session.final_image_url,
                 banner_url=session.final_image_url,
-                type='prompt',
+                type=Project.ProjectType.IMAGE_COLLECTION,
                 content=project_content,
                 is_showcased=True,
                 hide_categories=True,  # Categories are for filtering only, not public display
