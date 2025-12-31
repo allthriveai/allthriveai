@@ -5,7 +5,7 @@
  * Uses orange Ava theme with larger fonts.
  */
 
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -16,6 +16,10 @@ import {
   faArrowRight,
 } from '@fortawesome/free-solid-svg-icons';
 import type { LearningGoal } from '@/types/models';
+import { ChatErrorBoundary } from '../ChatErrorBoundary';
+
+// Lazy load game component to avoid blocking initial render
+const ChatGameCard = lazy(() => import('../games/ChatGameCard').then(m => ({ default: m.ChatGameCard })));
 
 interface LearningGoalOption {
   id: LearningGoal;
@@ -185,17 +189,27 @@ export function LearningGoalSelectionMessage({
             </button>
           </motion.div>
 
-          {/* Loading indicator */}
+          {/* Loading indicator with mini game */}
           {isPending && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center"
+              className="space-y-4"
             >
-              <div className="inline-flex items-center gap-2 text-orange-400">
-                <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                <span>Creating your personalized path...</span>
+              {/* Loading text */}
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 text-orange-400">
+                  <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  <span>Building your personalized learning path — this can take a few minutes. Play a quick game while you wait!</span>
+                </div>
               </div>
+
+              {/* Mini game while waiting */}
+              <ChatErrorBoundary inline resetKey="learning-setup-game">
+                <Suspense fallback={<div className="h-32 animate-pulse bg-orange-800/20 rounded-xl" />}>
+                  <ChatGameCard gameType="snake" config={{ difficulty: 'easy' }} />
+                </Suspense>
+              </ChatErrorBoundary>
             </motion.div>
           )}
         </div>
