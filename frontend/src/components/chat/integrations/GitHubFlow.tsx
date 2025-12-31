@@ -205,6 +205,16 @@ export function GitHubFlow({
             ))
           )}
         </div>
+
+        {/* Add more repositories link */}
+        <div className="pt-3 border-t border-slate-700/50 text-center">
+          <button
+            onClick={onInstallApp}
+            className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+          >
+            + Add more repositories
+          </button>
+        </div>
       </div>
     );
   }
