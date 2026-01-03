@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from core.notifications.models import EmailLog, EmailPreferences
+from core.notifications.models import EmailLog, EmailPreferences, SMSPreferences
 
 
 @admin.register(EmailLog)
@@ -70,3 +70,75 @@ class EmailPreferencesAdmin(admin.ModelAdmin):
     search_fields = ['user__email', 'user__username']
     readonly_fields = ['unsubscribe_token', 'created_at', 'updated_at']
     raw_id_fields = ['user']
+
+
+@admin.register(SMSPreferences)
+class SMSPreferencesAdmin(admin.ModelAdmin):
+    """Admin interface for SMS preferences."""
+
+    list_display = [
+        'user',
+        'sms_battle_invitations',
+        'sms_battle_results',
+        'sms_battle_reminders',
+        'sms_streak_alerts',
+        'consent_given_at',
+        'consent_method',
+        'updated_at',
+    ]
+    list_filter = [
+        'sms_battle_invitations',
+        'sms_battle_results',
+        'sms_battle_reminders',
+        'sms_streak_alerts',
+        'consent_method',
+    ]
+    search_fields = ['user__email', 'user__username']
+    readonly_fields = [
+        'consent_given_at',
+        'consent_method',
+        'consent_ip_address',
+        'consent_revoked_at',
+        'created_at',
+        'updated_at',
+    ]
+    raw_id_fields = ['user']
+
+    fieldsets = [
+        (
+            'User',
+            {
+                'fields': ['user'],
+            },
+        ),
+        (
+            'SMS Preferences',
+            {
+                'fields': [
+                    'sms_battle_invitations',
+                    'sms_battle_results',
+                    'sms_battle_reminders',
+                    'sms_streak_alerts',
+                ],
+            },
+        ),
+        (
+            'Consent Tracking (TCPA)',
+            {
+                'fields': [
+                    'consent_given_at',
+                    'consent_method',
+                    'consent_ip_address',
+                    'consent_revoked_at',
+                ],
+                'classes': ['collapse'],
+            },
+        ),
+        (
+            'Timestamps',
+            {
+                'fields': ['created_at', 'updated_at'],
+                'classes': ['collapse'],
+            },
+        ),
+    ]

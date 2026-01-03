@@ -38,12 +38,12 @@ def send_sms_task(self, sms_log_id: int) -> dict:
 
     if result.success:
         sms_log.status = SMSLog.Status.SENT
-        sms_log.provider_sid = result.sid
+        sms_log.provider_message_id = result.message_id
         sms_log.sent_at = timezone.now()
-        sms_log.save(update_fields=['status', 'provider_sid', 'sent_at'])
+        sms_log.save(update_fields=['status', 'provider_message_id', 'sent_at'])
 
-        logger.info(f'SMS {sms_log_id} sent successfully: sid={result.sid}')
-        return {'status': 'sent', 'sid': result.sid}
+        logger.info(f'SMS {sms_log_id} sent successfully: message_id={result.message_id}')
+        return {'status': 'sent', 'message_id': result.message_id}
     else:
         sms_log.status = SMSLog.Status.FAILED
         sms_log.error_code = result.error_code
@@ -52,8 +52,8 @@ def send_sms_task(self, sms_log_id: int) -> dict:
 
         logger.error(f'SMS {sms_log_id} failed: {result.error_code} - {result.error_message}')
 
-        # Retry on transient errors
-        if result.error_code in ['NETWORK_ERROR', 'TIMEOUT', 'RATE_LIMITED']:
+        # Retry on transient errors (AWS SNS error codes)
+        if result.error_code in ['Throttling', 'ServiceUnavailable', 'InternalError', 'BOTO_ERROR']:
             raise self.retry(exc=Exception(result.error_message))
 
         return {
@@ -61,46 +61,3 @@ def send_sms_task(self, sms_log_id: int) -> dict:
             'error_code': result.error_code,
             'error_message': result.error_message,
         }
-
-
-@shared_task
-def update_sms_status_task(sms_log_id: int) -> dict:
-    """
-    Update SMS delivery status from provider.
-
-    Args:
-        sms_log_id: ID of the SMSLog record to check
-
-    Returns:
-        dict with current status
-    """
-    try:
-        sms_log = SMSLog.objects.get(id=sms_log_id)
-    except SMSLog.DoesNotExist:
-        return {'status': 'error', 'error': 'SMSLog not found'}
-
-    if not sms_log.provider_sid:
-        return {'status': 'error', 'error': 'No provider SID'}
-
-    provider = get_sms_provider()
-    status = provider.get_message_status(sms_log.provider_sid)
-
-    # Map provider status to our status
-    status_map = {
-        'queued': SMSLog.Status.PENDING,
-        'sending': SMSLog.Status.PENDING,
-        'sent': SMSLog.Status.SENT,
-        'delivered': SMSLog.Status.DELIVERED,
-        'failed': SMSLog.Status.FAILED,
-        'undelivered': SMSLog.Status.UNDELIVERED,
-    }
-
-    new_status = status_map.get(status, sms_log.status)
-
-    if new_status != sms_log.status:
-        sms_log.status = new_status
-        if new_status == SMSLog.Status.DELIVERED:
-            sms_log.delivered_at = timezone.now()
-        sms_log.save(update_fields=['status', 'delivered_at'])
-
-    return {'status': new_status}
