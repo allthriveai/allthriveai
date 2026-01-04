@@ -1516,6 +1516,11 @@ def _create_video_project_internal(
             tool_names.insert(0, tool_hint)
             analysis['tool_names'] = tool_names
 
+    # Force Images & Video category for video projects
+    # This ensures video uploads always get the correct category regardless of AI analysis
+    analysis['category_ids'] = [CATEGORY_IMAGES_VIDEO]
+    logger.info(f'Video project: forcing category to Images & Video (ID={CATEGORY_IMAGES_VIDEO})')
+
     # Build content
     content = {
         'templateVersion': 2,
@@ -1558,6 +1563,135 @@ def _create_video_project_internal(
         'url': f'/{user.username}/{project.slug}',
         'message': f"Video project '{project.title}' {action_word} successfully!",
     }
+
+
+# =============================================================================
+# Category Detection for Media Projects
+# =============================================================================
+
+# Category IDs from the taxonomy (run `make django-shell` and query Taxonomy to verify)
+CATEGORY_IMAGES_VIDEO = 74  # Images & Video - for images and videos
+
+# Tools that create images (should use Images & Video category)
+IMAGE_GENERATION_TOOLS = {
+    'midjourney',
+    'dall-e',
+    'dalle',
+    'dall·e',
+    'stable diffusion',
+    'sd',
+    'sdxl',
+    'leonardo',
+    'leonardo.ai',
+    'adobe firefly',
+    'firefly',
+    'ideogram',
+    'flux',
+    'playground',
+    'playground ai',
+    'nightcafe',
+    'dreamstudio',
+    'craiyon',
+    'bing image creator',
+    'copilot',
+    'gemini',
+    'imagen',
+    'photoshop',
+    'illustrator',
+    'procreate',
+    'canva',
+    'figma',
+    'krea',
+    'magnific',
+}
+
+# Tools that create videos (should also use Images & Video category)
+VIDEO_GENERATION_TOOLS = {
+    'runway',
+    'runway ml',
+    'gen-2',
+    'gen2',
+    'gen-3',
+    'gen3',
+    'pika',
+    'pika labs',
+    'sora',
+    'kling',
+    'luma',
+    'luma ai',
+    'dream machine',
+    'haiper',
+    'minimax',
+    'hailuo',
+    'synthesia',
+    'heygen',
+    'd-id',
+    'did',
+    'premiere',
+    'after effects',
+    'davinci resolve',
+    'capcut',
+    'invideo',
+}
+
+# File extensions for images
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.svg', '.heic', '.heif'}
+
+# File extensions for videos
+VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.webm', '.mkv', '.m4v', '.wmv', '.flv'}
+
+
+def _get_category_for_media(filename: str, tool_hint: str | None) -> int:
+    """
+    Determine the correct category ID based on file type and tool used.
+
+    For media uploads (images/videos), we always return "Images & Video" (ID=74).
+    This function validates that the file/tool is indeed media-related.
+
+    Priority:
+    1. File extension (most reliable signal)
+    2. Tool hint (if recognized as image/video tool)
+    3. Default to Images & Video for unknown media uploads
+
+    Args:
+        filename: The uploaded file's name
+        tool_hint: The tool the user said they used (e.g., "midjourney")
+
+    Returns:
+        Category ID (74 for Images & Video)
+    """
+    import os
+
+    # Check file extension first (most reliable)
+    ext = os.path.splitext(filename.lower())[1] if filename else ''
+
+    if ext in IMAGE_EXTENSIONS:
+        logger.info(f'Category detection: file extension {ext} → Images & Video (ID={CATEGORY_IMAGES_VIDEO})')
+        return CATEGORY_IMAGES_VIDEO
+
+    if ext in VIDEO_EXTENSIONS:
+        logger.info(f'Category detection: file extension {ext} → Images & Video (ID={CATEGORY_IMAGES_VIDEO})')
+        return CATEGORY_IMAGES_VIDEO
+
+    # Check tool hint
+    if tool_hint:
+        tool_lower = tool_hint.lower().strip()
+
+        # Check if it's an image generation tool
+        for image_tool in IMAGE_GENERATION_TOOLS:
+            if image_tool in tool_lower or tool_lower in image_tool:
+                logger.info(f'Category detection: tool "{tool_hint}" → Images & Video (ID={CATEGORY_IMAGES_VIDEO})')
+                return CATEGORY_IMAGES_VIDEO
+
+        # Check if it's a video generation tool
+        for video_tool in VIDEO_GENERATION_TOOLS:
+            if video_tool in tool_lower or tool_lower in video_tool:
+                logger.info(f'Category detection: tool "{tool_hint}" → Images & Video (ID={CATEGORY_IMAGES_VIDEO})')
+                return CATEGORY_IMAGES_VIDEO
+
+    # Default to Images & Video for media uploads
+    logger.info(f'Category detection: unknown file/tool → defaulting to Images & Video (ID={CATEGORY_IMAGES_VIDEO})')
+    return CATEGORY_IMAGES_VIDEO
 
 
 def _create_image_project_internal(
@@ -1603,7 +1737,7 @@ def _create_image_project_internal(
             'title': '',
             'description': '',
             'sections': [],
-            'category_ids': [1],
+            'category_ids': [CATEGORY_IMAGES_VIDEO],  # Images & Video
             'topics': ['ai-art'],
             'tool_names': [tool_hint] if tool_hint else [],
         }
@@ -1613,6 +1747,18 @@ def _create_image_project_internal(
     logger.info(
         f'Using title: {final_title} (user provided: {bool(title)}, AI generated: {bool(analysis.get("title"))})'
     )
+
+    # Override AI-assigned category based on file type and tool hint
+    # This ensures images get "AI Art & Design" and videos get "Video & Animation"
+    # regardless of what the AI analysis returns
+    correct_category_id = _get_category_for_media(filename, tool_hint)
+    ai_category_ids = analysis.get('category_ids', [])
+    if ai_category_ids != [correct_category_id]:
+        logger.info(
+            f'Overriding AI category {ai_category_ids} with detected category [{correct_category_id}] '
+            f'based on file={filename}, tool={tool_hint}'
+        )
+        analysis['category_ids'] = [correct_category_id]
 
     # Build content with image and AI-generated sections
     content = {

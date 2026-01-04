@@ -272,7 +272,7 @@ def analyze_image_for_template(
         'title': result.get('title', ''),  # AI-generated title from image analysis
         'description': result.get('description', ''),
         'sections': sections,
-        'category_ids': result.get('category_ids', [1]),  # Default to AI Art & Design
+        'category_ids': result.get('category_ids', [74]),  # Default to Images & Video (ID=74)
         'topics': result.get('topics', ['ai-art', 'digital-art']),
         'tool_names': tool_names,
     }
@@ -359,7 +359,7 @@ def _fallback_analysis(title: str, filename: str, tool_hint: str = '') -> dict:
                 },
             },
         ],
-        'category_ids': [1],  # AI Art & Design
+        'category_ids': [74],  # Images & Video
         'topics': ['ai-art', 'digital-art', 'creative'],
         'tool_names': tool_names,
     }
