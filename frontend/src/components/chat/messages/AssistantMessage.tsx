@@ -342,7 +342,7 @@ export function AssistantMessage({
         <p className={`text-sm mb-2 ${isNeon ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
           Here are some <span className="text-cyan-400 font-medium">{learningContent.topicDisplay}</span> resources:
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {learningContent.items.map((item) => (
             <LearningTeaserCard
               key={item.id}
