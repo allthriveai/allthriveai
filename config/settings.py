@@ -96,7 +96,7 @@ INSTALLED_APPS = [
     'core.ai_usage',  # AI usage tracking and cost analytics
     'core.stats',  # Platform statistics
     'core.notifications',  # Email notification system (AWS SES)
-    'core.sms',  # SMS notifications (Twilio)
+    'core.sms',  # SMS notifications (AWS SNS)
     'core.challenges',  # Weekly challenges with leaderboards
     'core.marketplace',  # Creator marketplace for digital products
     'core.vendors',  # Vendor analytics for tool companies
@@ -929,11 +929,16 @@ else:
     SERVER_EMAIL = config('SERVER_EMAIL', default=DEFAULT_FROM_EMAIL)  # Used for error emails
     ADMINS = [('Admin', config('ADMIN_EMAIL', default='admin@allthrive.ai'))]
 
-# Twilio SMS Configuration
+# AWS SNS SMS Configuration
 # Uses ConsoleSMSProvider for development if not configured
-TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
-TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
-TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
+# Credentials: Uses IAM role in production, or explicit keys for development
+AWS_SNS_ACCESS_KEY_ID = config('AWS_SNS_ACCESS_KEY_ID', default='')
+AWS_SNS_SECRET_ACCESS_KEY = config('AWS_SNS_SECRET_ACCESS_KEY', default='')
+AWS_SNS_REGION = config('AWS_SNS_REGION', default='us-east-1')
+# Optional: Sender ID (supported in some countries, max 11 alphanumeric chars)
+AWS_SNS_SENDER_ID = config('AWS_SNS_SENDER_ID', default='')
+# Message type: 'Promotional' or 'Transactional' (default: Transactional)
+AWS_SNS_MESSAGE_TYPE = config('AWS_SNS_MESSAGE_TYPE', default='Transactional')
 
 # Django Allauth Configuration
 AUTHENTICATION_BACKENDS = [

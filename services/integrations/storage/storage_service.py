@@ -148,8 +148,25 @@ class StorageService:
             file_size = len(file_data)
 
             # Set Content-Disposition to prevent browser from executing uploaded files
-            # Inline for safe types (images), attachment for others
-            safe_content_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'}
+            # Inline for safe types (images, videos, audio), attachment for others
+            safe_content_types = {
+                # Images
+                'image/jpeg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'image/svg+xml',
+                # Videos - must be inline for HTML5 video player to work
+                'video/mp4',
+                'video/webm',
+                'video/ogg',
+                'video/quicktime',
+                # Audio
+                'audio/mpeg',
+                'audio/ogg',
+                'audio/wav',
+                'audio/webm',
+            }
             if content_type in safe_content_types:
                 content_disposition = 'inline'
             else:
