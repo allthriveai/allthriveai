@@ -107,7 +107,13 @@ class BattleConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        """Handle WebSocket connection to a battle."""
+        """Handle WebSocket connection to a battle.
+
+        IMPORTANT: Call accept() early to avoid race conditions with websockets 15.x.
+        The newer websockets library has stricter state machine enforcement - if we do
+        async operations before accept() and the client disconnects, we get:
+        "Expected ASGI message 'websocket.send' or 'websocket.close', but got 'websocket.accept'"
+        """
         self.battle_id = self.scope['url_route']['kwargs']['battle_id']
         self.user = self.scope.get('user')
         self.group_name = f'battle_{self.battle_id}'
@@ -121,7 +127,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             extra={'channel': self.channel_name},
         )
 
-        # Validate origin
+        # Validate origin (sync check on scope data)
         headers = dict(self.scope.get('headers', []))
         origin = headers.get(b'origin', b'').decode()
 
@@ -139,7 +145,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
             await self.close(code=4003)
             return
 
-        # Reject unauthenticated users
+        # Reject unauthenticated users (sync check on scope data)
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
             _log_battle_event(
                 self.trace_id,
@@ -151,7 +157,11 @@ class BattleConsumer(AsyncWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        # Validate battle access
+        # Accept connection FIRST before any async DB/Redis operations
+        # This prevents race conditions with websockets 15.x
+        await self.accept()
+
+        # Now do async validation after accept()
         battle = await self._get_battle()
         if not battle:
             _log_battle_event(
@@ -162,6 +172,7 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 extra={'reason': 'battle_not_found'},
                 level='warning',
             )
+            await self._send_error('Battle not found')
             await self.close(code=4004)
             return
 
@@ -190,12 +201,12 @@ class BattleConsumer(AsyncWebsocketConsumer):
                 extra={'reason': 'not_participant'},
                 level='warning',
             )
+            await self._send_error('Not authorized for this battle')
             await self.close(code=4003)
             return
 
         # Join battle group
         await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()
 
         # Mark user as connected
         await self._set_user_connected(True)
@@ -1264,11 +1275,14 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        """Handle WebSocket connection for matchmaking."""
+        """Handle WebSocket connection for matchmaking.
+
+        IMPORTANT: Call accept() early to avoid race conditions with websockets 15.x.
+        """
         self.user = self.scope.get('user')
         self.user_group = None
 
-        # Validate origin
+        # Validate origin (sync check on scope data)
         headers = dict(self.scope.get('headers', []))
         origin = headers.get(b'origin', b'').decode()
 
@@ -1280,17 +1294,19 @@ class MatchmakingConsumer(AsyncWebsocketConsumer):
             await self.close(code=4003)
             return
 
-        # Reject unauthenticated users
+        # Reject unauthenticated users (sync check on scope data)
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
             logger.warning('Unauthenticated matchmaking WebSocket attempt')
             await self.close(code=4001)
             return
 
-        # Create user-specific group for direct messages
+        # Accept connection FIRST before any async Redis operations
+        # This prevents race conditions with websockets 15.x
+        await self.accept()
+
+        # Now do async operations after accept()
         self.user_group = f'matchmaking_user_{self.user.id}'
         await self.channel_layer.group_add(self.user_group, self.channel_name)
-
-        await self.accept()
 
         logger.info(f'Matchmaking WebSocket connected: user={self.user.id}')
 
@@ -1825,7 +1841,13 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        """Handle WebSocket connection for notifications."""
+        """Handle WebSocket connection for notifications.
+
+        IMPORTANT: Call accept() early to avoid race conditions with websockets 15.x.
+        The newer websockets library has stricter state machine enforcement - if we do
+        async operations before accept() and the client disconnects, we get:
+        "Expected ASGI message 'websocket.send' or 'websocket.close', but got 'websocket.accept'"
+        """
         self.user = self.scope.get('user')
         self.user_group = None
 
@@ -1843,11 +1865,10 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
             f'user_agent={user_agent!r}'
         )
 
-        # Validate origin to prevent CSRF attacks
+        # Validate origin to prevent CSRF attacks (sync check on scope data)
         from django.conf import settings
 
         allowed_origins = getattr(settings, 'CORS_ALLOWED_ORIGINS', [])
-        logger.info(f'[BattleNotifications] CORS check: allowed_origins={allowed_origins}')
 
         if origin and origin not in allowed_origins:
             logger.warning(
@@ -1856,7 +1877,7 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
             await self.close(code=4003)
             return
 
-        # Reject unauthenticated users
+        # Reject unauthenticated users (sync check on scope data)
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
             logger.warning(
                 f'[BattleNotifications] REJECTED - unauthenticated: '
@@ -1865,21 +1886,20 @@ class BattleNotificationConsumer(AsyncWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        # Check if user is available for battles
+        # Accept connection FIRST before any async DB/Redis operations
+        # This prevents race conditions with websockets 15.x
+        await self.accept()
+
+        # Now do async operations after accept()
         is_available = await self._is_user_available()
-        logger.info(f'[BattleNotifications] User {self.user.id} availability check: {is_available}')
 
         # Create user-specific group for receiving notifications
         self.user_group = f'battle_notifications_{self.user.id}'
         await self.channel_layer.group_add(self.user_group, self.channel_name)
-        logger.info(f'[BattleNotifications] Added to group: {self.user_group}')
 
         # Also add to general "available users" group if they opted in
         if is_available:
             await self.channel_layer.group_add('battle_available_users', self.channel_name)
-            logger.info('[BattleNotifications] Added to battle_available_users group')
-
-        await self.accept()
 
         logger.info(
             f'[BattleNotifications] CONNECTED: user={self.user.id}, '
