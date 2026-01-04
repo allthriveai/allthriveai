@@ -271,6 +271,7 @@ export function HeroDisplaySection({
               <video
                 src={heroVideoUrl}
                 controls
+                preload="auto"
                 className="w-full max-h-96 rounded-lg"
                 onError={() => {
                   console.error('Video load error');

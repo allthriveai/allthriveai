@@ -28,6 +28,7 @@ function getCookie(name: string): string | null {
 
 // Constants
 const MAX_MESSAGE_LENGTH = 10000;
+const RESPONSE_TIMEOUT_MS = 60000; // 60 seconds timeout for AI responses (accounts for slower models, tool execution)
 
 /**
  * WebSocket Message Interface
@@ -318,8 +319,12 @@ export function useIntelligentChat({
     return loaded.slice(-100); // Limit to last 100 messages on load
   });
   const [isLoading, setIsLoading] = useState(false);
+  // Track if response has timed out (no response after 30s)
+  const [hasTimedOut, setHasTimedOut] = useState(false);
   // Track current tool being executed for UI feedback
   const [currentTool, setCurrentTool] = useState<string | null>(null);
+  // Track the last message for retry functionality
+  const [lastUserMessage, setLastUserMessage] = useState<{ content: string; imageUrl?: string } | null>(null);
 
   // Constants
   const MAX_MESSAGES = 100; // Limit message history to prevent memory issues
@@ -331,6 +336,7 @@ export function useIntelligentChat({
   const isCancelledRef = useRef(false); // Track if processing was cancelled
   const pendingContentMessagesRef = useRef<ChatMessage[]>([]); // Content messages to add after streaming completes
   const sendRef = useRef<((message: unknown) => boolean) | null>(null);
+  const responseTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout for AI response
   const pendingLearningContentRef = useRef<{
     topicDisplay: string;
     contentType: string;
@@ -359,6 +365,23 @@ export function useIntelligentChat({
     onQuotaExceededRef.current = onQuotaExceeded;
     onOrchestrationActionRef.current = onOrchestrationAction;
   }, [onError, onProjectCreated, onQuotaExceeded, onOrchestrationAction]);
+
+  // Helper to clear the response timeout
+  const clearResponseTimeout = useCallback(() => {
+    if (responseTimeoutRef.current) {
+      clearTimeout(responseTimeoutRef.current);
+      responseTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Helper to start the response timeout
+  const startResponseTimeout = useCallback(() => {
+    clearResponseTimeout();
+    responseTimeoutRef.current = setTimeout(() => {
+      setHasTimedOut(true);
+      setIsLoading(false);
+    }, RESPONSE_TIMEOUT_MS);
+  }, [clearResponseTimeout]);
 
   // Helper to add a message with deduplication
   const addMessageWithDedup = useCallback((newMessage: ChatMessage) => {
@@ -398,10 +421,14 @@ export function useIntelligentChat({
 
         case 'task_queued':
           setIsLoading(true);
+          setHasTimedOut(false);
+          startResponseTimeout();
           break;
 
         case 'processing_started':
           setIsLoading(true);
+          setHasTimedOut(false);
+          startResponseTimeout();
           // Create a new assistant message
           currentMessageIdRef.current = `msg-${Date.now()}`;
           currentMessageRef.current = '';
@@ -412,6 +439,8 @@ export function useIntelligentChat({
           if (isCancelledRef.current) {
             return;
           }
+          // Reset timeout since we're receiving data
+          startResponseTimeout();
           // Append chunk to current message
           if (data.chunk) {
             // If no message ID exists (e.g., error from image generation), create one
@@ -453,6 +482,8 @@ export function useIntelligentChat({
 
         case 'tool_start':
           // Tool execution started - show which tool is running
+          // Reset timeout since tool execution can take a while
+          startResponseTimeout();
           if (data.tool) {
             setCurrentTool(data.tool);
           }
@@ -460,6 +491,8 @@ export function useIntelligentChat({
 
         case 'tool_end':
           // Tool execution completed - clear current tool
+          // Reset timeout in case another tool runs or streaming continues
+          startResponseTimeout();
           setCurrentTool(null);
           // Check for project creation
           // Handle create_project, import_github_project, and import_from_url
@@ -755,6 +788,8 @@ export function useIntelligentChat({
 
             case 'image_generating': {
               // Image generation started - show generating indicator
+              // Reset timeout since image generation can take 30-60+ seconds
+              startResponseTimeout();
               // Use a stable ID for generating state to prevent duplicates
               const generatingId = `generating-${conversationId}`;
               // Remove any existing generating message first, then add new one
@@ -807,6 +842,7 @@ export function useIntelligentChat({
             }
 
             case 'completed':
+              clearResponseTimeout();
               setIsLoading(false);
               currentMessageRef.current = '';
               currentMessageIdRef.current = '';
@@ -846,6 +882,7 @@ export function useIntelligentChat({
               break;
 
         case 'error':
+          clearResponseTimeout();
           setIsLoading(false);
           currentMessageRef.current = '';
           currentMessageIdRef.current = '';
@@ -854,6 +891,7 @@ export function useIntelligentChat({
 
         case 'quota_exceeded': {
           // User has exceeded their AI usage limit
+          clearResponseTimeout();
           setIsLoading(false);
           currentMessageRef.current = '';
           currentMessageIdRef.current = '';
@@ -942,8 +980,10 @@ export function useIntelligentChat({
 
   // Send message through WebSocket
   const sendMessage = useCallback((content: string) => {
-    // Reset cancelled flag when sending new message
+    // Reset cancelled flag and timeout when sending new message
     isCancelledRef.current = false;
+    setHasTimedOut(false);
+    setLastUserMessage({ content });
 
     // Validate message length
     if (content.length > MAX_MESSAGE_LENGTH) {
@@ -999,8 +1039,10 @@ export function useIntelligentChat({
 
   // Send message with an image through WebSocket (for multimodal messages like LinkedIn screenshots)
   const sendMessageWithImage = useCallback((content: string, imageUrl: string) => {
-    // Reset cancelled flag when sending new message
+    // Reset cancelled flag and timeout when sending new message
     isCancelledRef.current = false;
+    setHasTimedOut(false);
+    setLastUserMessage({ content, imageUrl });
 
     // Validate message length
     if (content.length > MAX_MESSAGE_LENGTH) {
@@ -1184,6 +1226,32 @@ export function useIntelligentChat({
     ]);
   }, [isLoading]);
 
+  // Retry the last message after timeout
+  const retryLastMessage = useCallback(() => {
+    if (!lastUserMessage) return;
+
+    // Clear timeout state
+    setHasTimedOut(false);
+
+    // Remove the last user message (it will be re-added by sendMessage)
+    setMessages((prev) => {
+      // Find and remove the last user message
+      const lastUserMsgIndex = [...prev].reverse().findIndex(m => m.sender === 'user');
+      if (lastUserMsgIndex >= 0) {
+        const indexToRemove = prev.length - 1 - lastUserMsgIndex;
+        return prev.filter((_, i) => i !== indexToRemove);
+      }
+      return prev;
+    });
+
+    // Resend the message
+    if (lastUserMessage.imageUrl) {
+      sendMessageWithImage(lastUserMessage.content, lastUserMessage.imageUrl);
+    } else {
+      sendMessage(lastUserMessage.content);
+    }
+  }, [lastUserMessage, sendMessage, sendMessageWithImage]);
+
   // Add a local assistant message (not sent to server)
   // Useful for integration flows that show prompts in the chat
   const addLocalMessage = useCallback((content: string, metadata?: IntelligentChatMetadata) => {
@@ -1202,6 +1270,7 @@ export function useIntelligentChat({
     isConnected,
     isConnecting,
     isLoading,
+    hasTimedOut,
     currentTool,
     reconnectAttempts,
     sendMessage,
@@ -1210,6 +1279,7 @@ export function useIntelligentChat({
     disconnect,
     clearMessages,
     cancelProcessing,
+    retryLastMessage,
     addLocalMessage,
   };
 }

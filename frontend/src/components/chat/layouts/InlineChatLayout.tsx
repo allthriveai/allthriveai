@@ -469,6 +469,8 @@ export function InlineChatLayout({
                     <ChatMessageList
                       messages={state.messages}
                       isLoading={state.isLoading}
+                      hasTimedOut={state.hasTimedOut}
+                      onRetry={state.retryLastMessage}
                       currentTool={state.currentTool}
                       onCancelProcessing={state.cancelProcessing}
                       userAvatarUrl={user?.avatarUrl}

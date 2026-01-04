@@ -96,7 +96,7 @@ const categoryColors: Record<string, { bg: string; border: string; text: string;
 // Ava's messages based on progress
 function getAvaMessage(progressPercent: number, completedCount: number): string {
   if (completedCount === 0) {
-    return "Welcome, adventurer! I'm Ava, your guide to AllThrive. Let's start your journey!";
+    return "Welcome, adventurer! I'm Ava, your guide to All Thrive. Let's start your journey!";
   }
   if (progressPercent < 25) {
     return "Great start! Every quest you complete makes you stronger. Keep going!";
@@ -105,12 +105,12 @@ function getAvaMessage(progressPercent: number, completedCount: number): string 
     return "You're on fire! 🔥 Half way there - I knew you had it in you!";
   }
   if (progressPercent < 75) {
-    return "Impressive progress! You're becoming a true AllThrive champion!";
+    return "Impressive progress! You're becoming a true All Thrive champion!";
   }
   if (progressPercent < 100) {
     return "Almost there! Just a few more quests to complete your adventure!";
   }
-  return "🎉 Legendary! You've completed all quests! You're a true AllThrive master!";
+  return "🎉 Legendary! You've completed all quests! You're a true All Thrive master!";
 }
 
 function QuestCard({ quest }: { quest: QuestItem }) {

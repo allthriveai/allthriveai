@@ -163,8 +163,8 @@ export function PortfolioVideoScene({ elapsed, isPlaying }: PortfolioVideoSceneP
               >
                 <div className="bg-slate-700/90 rounded-2xl rounded-bl-sm px-5 py-4 max-w-[90%] border border-slate-600/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <img src="/all-thrvie-logo-blue-900x900.png" alt="AllThrive" className="w-6 h-6" />
-                    <span className="text-green-400 text-sm font-semibold">AllThrive</span>
+                    <img src="/all-thrvie-logo-blue-900x900.png" alt="All Thrive" className="w-6 h-6" />
+                    <span className="text-green-400 text-sm font-semibold">All Thrive</span>
                   </div>
                   <p className="text-white/90 text-lg">
                     Importing project to your profile for you...

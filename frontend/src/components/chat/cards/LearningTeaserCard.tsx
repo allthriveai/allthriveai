@@ -74,8 +74,8 @@ export function LearningTeaserCard({
   if (compact) {
     const CompactCardContent = (
       <div className="group relative rounded-lg overflow-hidden bg-slate-800/50 border border-white/10 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-md hover:shadow-cyan-500/10">
-        {/* Image Section - smaller square aspect */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-violet-600/20 to-cyan-600/20">
+        {/* Image Section - taller aspect for better image fit */}
+        <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-violet-600/20 to-cyan-600/20">
           {hasImage ? (
             <img
               src={imageUrl}

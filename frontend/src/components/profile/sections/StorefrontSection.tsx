@@ -207,7 +207,7 @@ export function StorefrontSection({ content, user, isEditing, onUpdate }: Storef
               {/* Native product indicator */}
               {item.productId && (
                 <div className="absolute top-2 right-2 z-10 px-2 py-0.5 text-xs font-semibold bg-green-500 text-white rounded-full">
-                  AllThrive
+                  All Thrive
                 </div>
               )}
 

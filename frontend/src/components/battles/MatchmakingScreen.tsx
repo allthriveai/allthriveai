@@ -420,7 +420,7 @@ export function MatchmakingScreen({
                 </h3>
 
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-5">
-                  Challenge a friend or match with a random AllThrive member in real-time!
+                  Challenge a friend or match with a random All Thrive member in real-time!
                 </p>
 
                 <div className="flex items-center justify-center gap-2 text-cyan-400 text-sm font-medium">
@@ -607,7 +607,7 @@ export function MatchmakingScreen({
                               </span>
                             </div>
                             <p className="text-gray-600 dark:text-slate-400 text-sm">
-                              Match with a random AllThrive member
+                              Match with a random All Thrive member
                             </p>
                           </div>
                         </div>
@@ -808,7 +808,7 @@ export function MatchmakingScreen({
                     {/* SMS Opt-in Compliance Notice */}
                     <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                       <p className="text-xs text-gray-600 dark:text-slate-400 leading-relaxed">
-                        By clicking "Send Challenge", you confirm you have consent to send this person a one-time SMS battle invitation from AllThrive.
+                        By clicking "Send Challenge", you confirm you have consent to send this person a one-time SMS battle invitation from All Thrive.
                         They will receive a single message with a link to accept.
                         Reply STOP to opt out. Message & data rates may apply.
                       </p>

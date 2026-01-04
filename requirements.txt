@@ -76,8 +76,7 @@ docker>=7.0.0
 # Email (AWS SES)
 django-ses>=4.3.0
 
-# SMS
-twilio>=9.0.0
+# SMS (AWS SNS - boto3 already included above)
 
 # Security
 bleach>=6.1.0

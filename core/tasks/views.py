@@ -41,6 +41,7 @@ class TaskOptionViewSet(viewsets.ModelViewSet):
     queryset = TaskOption.objects.all()
     serializer_class = TaskOptionSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+    pagination_class = None  # Options are low-volume, return all without pagination
 
     def create(self, request, *args, **kwargs):
         """Only superusers can create new task options."""
@@ -109,6 +110,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     queryset = Task.objects.select_related('status', 'task_type', 'priority', 'assignee', 'created_by', 'updated_by')
     permission_classes = [IsAuthenticated, IsAdminRole]
+    pagination_class = None  # Admin tasks are low-volume, return all without pagination
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -561,6 +563,7 @@ class TaskDashboardViewSet(viewsets.ModelViewSet):
     queryset = TaskDashboard.objects.select_related('created_by')
     serializer_class = TaskDashboardSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+    pagination_class = None  # Dashboards are low-volume, return all without pagination
 
     def get_queryset(self):
         """Show shared dashboards and user's own private dashboards."""

@@ -627,7 +627,7 @@ function RelatedProjectsCard({ item, index, topicsCovered = [], pathId, isAdmin,
           <h3 className="text-slate-900 dark:text-white font-medium">{item.title}</h3>
           <p className="text-slate-600 dark:text-gray-400 text-sm mt-1">
             {projects.length > 0
-              ? `Explore projects from the AllThrive community${topicsCovered.length > 0 ? ` related to ${topicsCovered.slice(0, 2).join(' and ')}` : ''}`
+              ? `Explore projects from the All Thrive community${topicsCovered.length > 0 ? ` related to ${topicsCovered.slice(0, 2).join(' and ')}` : ''}`
               : 'Be the first to share a project on this topic!'}
           </p>
         </div>

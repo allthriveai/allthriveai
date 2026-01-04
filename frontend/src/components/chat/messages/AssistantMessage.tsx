@@ -204,9 +204,16 @@ function isStorageUrl(href: string): boolean {
  * 2. https://username/path → /username/path (AI adds https:// to relative paths)
  * 3. https://allthriveai.com/path → /path (alternate domain)
  * 4. S3/storage URLs → undefined (remove invalid navigation links)
+ * 5. # links → undefined (AI uses # as placeholder when no real URL exists)
  */
 function normalizeAllThriveUrl(href: string | undefined): string | undefined {
   if (!href) return href;
+
+  // Remove # placeholder links (AI hallucination when no real URL exists)
+  // Common in learning paths where AI tries to link individual lessons
+  if (href === '#' || href.startsWith('#')) {
+    return undefined; // Remove the link, render as plain text
+  }
 
   // Remove S3/storage URLs used as navigation links (AI hallucination)
   // These should be images, not link targets
@@ -335,7 +342,7 @@ export function AssistantMessage({
         <p className={`text-sm mb-2 ${isNeon ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
           Here are some <span className="text-cyan-400 font-medium">{learningContent.topicDisplay}</span> resources:
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {learningContent.items.map((item) => (
             <LearningTeaserCard
               key={item.id}

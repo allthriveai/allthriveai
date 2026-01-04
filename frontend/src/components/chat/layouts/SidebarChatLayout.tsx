@@ -70,7 +70,7 @@ const QUICK_ACTIONS: Record<ChatContext, Array<{ label: string; message: string 
   ],
   default: [
     { label: 'I need help', message: 'I need help with something' },
-    { label: 'I don\'t know what to do next', message: 'What can I do on AllThrive?' },
+    { label: 'I don\'t know what to do next', message: 'What can I do on All Thrive?' },
     { label: 'I want to do something fun', message: 'Suggest something fun for me to do' },
   ],
 };
@@ -591,7 +591,7 @@ export function SidebarChatLayout({
                     className="w-10 h-10 rounded-full object-cover -scale-x-100"
                   />
                   <div>
-                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">AllThrive Chat</h2>
+                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">All Thrive Chat</h2>
                     <div className="flex items-center gap-1.5 text-xs">
                       <span className={`w-2 h-2 rounded-full ${state.isConnected ? 'bg-green-500 dark:bg-green-400' : 'bg-amber-500 dark:bg-amber-400 animate-pulse'}`} />
                       <span className="text-slate-500 dark:text-slate-400">
@@ -669,6 +669,8 @@ export function SidebarChatLayout({
                       <ChatMessageList
                         messages={state.messages}
                         isLoading={state.isLoading}
+                        hasTimedOut={state.hasTimedOut}
+                        onRetry={state.retryLastMessage}
                         currentTool={state.currentTool}
                         onCancelProcessing={state.cancelProcessing}
                         userAvatarUrl={user?.avatarUrl}

@@ -54,7 +54,7 @@ export function CTAScene({ elapsed }: CTASceneProps) {
           >
             <img
               src="/all-thrvie-logo-blue.png"
-              alt="AllThrive"
+              alt="All Thrive"
               className="w-20 h-20 mb-2"
             />
             <div className="text-3xl font-black">

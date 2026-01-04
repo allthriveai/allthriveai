@@ -88,11 +88,25 @@ class BattleConsumerConnectionTestCase(TransactionTestCase):
         await communicator.disconnect()
 
     async def test_non_participant_rejected(self):
-        """Test that non-participants are rejected with code 4003."""
+        """Test that non-participants are rejected with code 4003.
+
+        Note: Due to websockets 15.x compatibility, the consumer accepts
+        connections first then closes with an error code if validation fails.
+        """
         communicator = self._create_communicator(self.non_participant)
 
         connected, subprotocol = await communicator.connect()
-        self.assertFalse(connected)
+        # Connection is accepted first, then closed after validation
+        self.assertTrue(connected)
+
+        # Should receive error message and then close
+        response = await communicator.receive_json_from()
+        self.assertEqual(response['event'], 'error')
+
+        # Connection should be closed by server
+        close_event = await communicator.receive_output()
+        self.assertEqual(close_event['type'], 'websocket.close')
+        self.assertEqual(close_event['code'], 4003)
 
         await communicator.disconnect()
 
@@ -111,11 +125,25 @@ class BattleConsumerConnectionTestCase(TransactionTestCase):
         await communicator.disconnect()
 
     async def test_invalid_battle_rejected(self):
-        """Test that connections to non-existent battles are rejected."""
+        """Test that connections to non-existent battles are rejected.
+
+        Note: Due to websockets 15.x compatibility, the consumer accepts
+        connections first then closes with an error code if validation fails.
+        """
         communicator = self._create_communicator(self.challenger, battle_id=99999)
 
         connected, subprotocol = await communicator.connect()
-        self.assertFalse(connected)
+        # Connection is accepted first, then closed after validation
+        self.assertTrue(connected)
+
+        # Should receive error message and then close
+        response = await communicator.receive_json_from()
+        self.assertEqual(response['event'], 'error')
+
+        # Connection should be closed by server
+        close_event = await communicator.receive_output()
+        self.assertEqual(close_event['type'], 'websocket.close')
+        self.assertEqual(close_event['code'], 4004)
 
         await communicator.disconnect()
 

@@ -722,14 +722,8 @@ export function AppRoutes() {
       />
       {/* Public profile route - shows only showcase when logged out */}
       <Route path="/:username" element={<ProfilePage />} />
-      <Route
-        path="/:username/:projectSlug"
-        element={
-          <ProtectedRoute>
-            <ProjectDetailPage />
-          </ProtectedRoute>
-        }
-      >
+      {/* Project detail - public for non-private projects (auth handled by API) */}
+      <Route path="/:username/:projectSlug" element={<ProjectDetailPage />}>
         <Route path="tools/:slug" element={<ToolDetailPage />} />
       </Route>
       <Route

@@ -123,6 +123,7 @@ export interface ChatCoreState {
   isConnected: boolean;
   isConnecting: boolean;
   isLoading: boolean;
+  hasTimedOut: boolean;
   currentTool: string | null;
 
   // File upload
@@ -134,6 +135,7 @@ export interface ChatCoreState {
   sendMessage: (content: string, attachments?: File[]) => void;
   clearMessages: () => void;
   cancelProcessing: () => void;
+  retryLastMessage: () => void;
 
   // Integrations
   integrationState: IntegrationState;
@@ -171,6 +173,8 @@ export interface ChatCoreProps {
 export interface ChatMessageListProps {
   messages: ChatMessage[];
   isLoading: boolean;
+  hasTimedOut?: boolean;
+  onRetry?: () => void;
   currentTool: string | null;
   onCancelProcessing?: () => void;
   // User avatar for displaying next to user messages

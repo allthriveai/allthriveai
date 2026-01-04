@@ -249,7 +249,7 @@ export function HookScene({ elapsed }: HookSceneProps) {
           </motion.div>
           <motion.img
             src="/all-thrvie-logo.png"
-            alt="AllThrive"
+            alt="All Thrive"
             className="w-24 h-24"
             initial={{ rotate: -180, scale: 0 }}
             animate={{ rotate: 0, scale: 1 }}

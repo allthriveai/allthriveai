@@ -303,7 +303,7 @@ export default function NotificationsSettingsPage() {
                     <NotificationToggle
                       id="available-for-battles"
                       label="Available for Battles"
-                      description="When enabled, other AllThrive members can send you real-time battle invitations while you're browsing the site"
+                      description="When enabled, other All Thrive members can send you real-time battle invitations while you're browsing the site"
                       icon={faBolt}
                       enabled={preferences.isAvailableForBattles}
                       onChange={(value) => handleToggle('isAvailableForBattles', value)}

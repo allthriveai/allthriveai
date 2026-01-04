@@ -157,7 +157,7 @@ export function StripeConnectButton({ onStatusChange }: StripeConnectButtonProps
   return (
     <div className="space-y-4">
       <p className="text-[var(--text-secondary)]">
-        To sell products on AllThrive, you need to set up payment processing through Stripe.
+        To sell products on All Thrive, you need to set up payment processing through Stripe.
         This allows you to receive {CREATOR_PAYOUT_PERCENT}% of each sale directly to your bank account.
       </p>
       <div className="p-4 rounded-lg bg-[var(--glass-fill-subtle)]">

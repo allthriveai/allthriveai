@@ -44,7 +44,7 @@ const SHOW_GAME_FOR_TOOLS = ['create_learning_path'];
 // Rotating status messages when no specific tool is active
 // Playful themed for Ava!
 const THINKING_MESSAGES = [
-  'Thinking...',
+  'The more complex the question, the longer my response time...',
   'Stoking the flames...',
   'Consulting my hoard...',
   'Warming up...',

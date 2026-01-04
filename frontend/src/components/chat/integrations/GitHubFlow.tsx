@@ -121,7 +121,7 @@ export function GitHubFlow({
             className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
           >
             <FontAwesomeIcon icon={faGithub} />
-            Install AllThrive App
+            Install All Thrive App
           </button>
         </div>
       </div>

@@ -461,7 +461,7 @@ export function VideoProjectLayout() {
                 muted
                 loop
                 playsInline
-                preload="metadata"
+                preload="auto"
                 className={`w-full h-full ${isShort ? 'rounded-xl object-cover' : ''}`}
                 style={!isShort ? { aspectRatio: '16 / 9' } : undefined}
               >

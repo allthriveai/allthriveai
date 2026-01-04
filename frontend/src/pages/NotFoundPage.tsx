@@ -332,7 +332,7 @@ export default function NotFoundPage() {
                   <Link to="/" className="flex-shrink-0">
                     <img
                       src="/all-thrvie-logo.png"
-                      alt="AllThrive"
+                      alt="All Thrive"
                       className="h-6 sm:h-8 w-auto"
                     />
                   </Link>
@@ -597,7 +597,7 @@ export default function NotFoundPage() {
                   <Link to="/" className="flex items-center gap-2">
                     <img
                       src="/all-thrvie-logo.png"
-                      alt="AllThrive"
+                      alt="All Thrive"
                       className="h-10 sm:h-12 w-auto"
                     />
                   </Link>

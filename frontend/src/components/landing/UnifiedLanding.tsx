@@ -9,7 +9,7 @@
 
 import { motion, useScroll, useTransform, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import { useRef, useState, useMemo, useEffect, useCallback } from 'react';
-import { AcademicCapIcon, ShareIcon, PuzzlePieceIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { AcademicCapIcon, ShareIcon, PuzzlePieceIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 
 // Custom hook for mobile detection
 function useIsMobile(breakpoint = 1024) {
@@ -25,9 +25,9 @@ function useIsMobile(breakpoint = 1024) {
   return isMobile;
 }
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWorm, faPlay, faLink } from '@fortawesome/free-solid-svg-icons';
+import { faWorm, faPlay, faLink, faCode, faWrench, faHammer } from '@fortawesome/free-solid-svg-icons';
 import { faGithub, faGitlab, faFigma, faYoutube } from '@fortawesome/free-brands-svg-icons';
-import { IconCloud } from './IconCloud';
+import { BattleSimulation } from './BattleSimulation';
 import { Testimonials } from './Testimonials';
 import { FinalCTA } from './FinalCTA';
 import { Footer } from './Footer';
@@ -42,8 +42,8 @@ interface UnifiedLandingProps {
 // TYPES & DATA
 // ============================================
 
-type SectionId = 'hero' | 'learn' | 'share' | 'see' | 'connect';
-type MessageType = 'user' | 'ava' | 'projects' | 'game' | 'cta' | 'url-input' | 'project-preview' | 'battle';
+type SectionId = 'hero' | 'learn' | 'paths' | 'share' | 'see';
+type MessageType = 'user' | 'ava' | 'projects' | 'game' | 'cta' | 'url-input' | 'project-preview' | 'learning-path-preview' | 'exercise-picker';
 
 interface ChatMessage {
   type: MessageType;
@@ -62,6 +62,12 @@ const allMessages: ConversationMessage[] = [
   { section: 'learn', type: 'user', text: "Help me understand what the context window is" },
   { section: 'learn', type: 'ava', text: "The best way to learn is by playing! In Context Snake, you ARE the context window. Eat tokens → your context fills up. Grow too long → context overflow!" },
   { section: 'learn', type: 'game' },
+  // Paths section
+  { section: 'paths', type: 'user', text: "I want to get better at building AI apps" },
+  { section: 'paths', type: 'ava', text: "Here's a personalized learning path based on your skills and interests:" },
+  { section: 'paths', type: 'learning-path-preview' },
+  { section: 'paths', type: 'ava', text: "Pick an exercise to get started:" },
+  { section: 'paths', type: 'exercise-picker' },
   // Share section
   { section: 'share', type: 'user', text: "I just made my first chatbot! It's pretty basic but I'm proud of it." },
   { section: 'share', type: 'ava', text: "That's amazing! I'd love to help you share it. Just paste a URL or upload an image!" },
@@ -72,9 +78,6 @@ const allMessages: ConversationMessage[] = [
   { section: 'see', type: 'user', text: "Help me understand and choose a Vector Database" },
   { section: 'see', type: 'ava', text: "Great question! Here are some projects from the community that use vector databases:" },
   { section: 'see', type: 'projects' },
-  // Connect section
-  { section: 'connect', type: 'ava', text: "Prompt Battles are a fun way to practice your prompting skills and connect with the community!" },
-  { section: 'connect', type: 'ava', text: "You both get the same challenge, write your best prompt, and AI judges the results. Ready to play?" },
 ];
 
 
@@ -153,6 +156,7 @@ function PlayableGame({ isPlaying, onPlay }: { isPlaying: boolean; onPlay: () =>
 
 const games = [
   { id: 'context-snake', name: 'Context Snake', image: '/games/game-context-snake-promo.png', description: 'Learn how AI context windows work by playing as the context itself. Eat tokens, grow longer, but don\'t overflow!' },
+  { id: 'weekly-challenge', name: 'Weekly Challenge', image: '/weekly-challenge-promo.png', description: 'Weekly community challenges about different AI concepts.' },
   { id: 'ethics-defender', name: 'Ethics Defender', image: '/games/game-ethics-defender-promo.png', description: 'Defend against AI ethics threats. Learn about bias, transparency, and responsible AI while blasting through challenges.' },
   { id: 'prompt-battle', name: 'Prompt Battle', image: '/games/game-prompt-battle-promo.png', description: 'Go head-to-head with other players. Write the best prompt to match the image and see who comes out on top.' },
 ];
@@ -194,6 +198,146 @@ function GameCarousel({ onPlayContextSnake }: { onPlayContextSnake: () => void }
   );
 }
 
+function LearningPathPreview() {
+  const topics = [
+    { name: 'Understanding Embeddings', current: true },
+    { name: 'Building RAG Applications', current: false },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4 }}
+      className="rounded bg-white/5 border border-cyan-500/30 p-3"
+    >
+      <h4 className="text-cyan-400 font-medium text-xs mb-2">Your Learning Path</h4>
+      <div className="space-y-1.5">
+        {topics.map((topic, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+              topic.current
+                ? 'bg-cyan-500'
+                : 'border border-white/30'
+            }`}>
+              {topic.current && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+            </div>
+            <span className={`text-xs ${topic.current ? 'text-white' : 'text-gray-500'}`}>
+              {topic.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function ExercisePicker() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4 }}
+      className="grid grid-cols-2 gap-1.5"
+    >
+      <div className="rounded bg-white/5 border border-white/10 p-2 hover:border-cyan-500/50 hover:bg-cyan-500/10 transition-all cursor-pointer">
+        <FontAwesomeIcon icon={faCode} className="w-3 h-3 text-cyan-400 mb-1" />
+        <div className="text-[10px] text-white/80">Code walkthrough</div>
+      </div>
+      <div className="rounded bg-white/5 border border-white/10 p-2 hover:border-cyan-500/50 hover:bg-cyan-500/10 transition-all cursor-pointer">
+        <FontAwesomeIcon icon={faWrench} className="w-3 h-3 text-cyan-400 mb-1" />
+        <div className="text-[10px] text-white/80">Hands-on exercise</div>
+      </div>
+      <div className="rounded bg-white/5 border border-white/10 p-2 hover:border-pink-500/50 hover:bg-pink-500/10 transition-all cursor-pointer">
+        <FontAwesomeIcon icon={faPlay} className="w-3 h-3 text-pink-400 mb-1" />
+        <div className="text-[10px] text-white/80">Video explanation</div>
+      </div>
+      <div className="rounded bg-white/5 border border-white/10 p-2 hover:border-pink-500/50 hover:bg-pink-500/10 transition-all cursor-pointer">
+        <FontAwesomeIcon icon={faHammer} className="w-3 h-3 text-pink-400 mb-1" />
+        <div className="text-[10px] text-white/80">Build a project</div>
+      </div>
+    </motion.div>
+  );
+}
+
+function CodeWalkthroughPreview() {
+  return (
+    <div className="rounded-lg bg-white/5 border border-white/10 overflow-hidden max-w-xl">
+      {/* Path header */}
+      <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+        <div className="text-sm text-white font-medium mb-2">Building a RAG Chatbot</div>
+        {/* Step indicators */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-[10px]">✓</div>
+            <span className="text-xs text-gray-500">Setup</span>
+          </div>
+          <div className="w-4 h-0.5 bg-green-500/30" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-cyan-500 text-white flex items-center justify-center text-[10px] font-medium">2</div>
+            <span className="text-xs text-white font-medium">Embeddings</span>
+          </div>
+          <div className="w-4 h-0.5 bg-white/10" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-white/10 text-gray-500 flex items-center justify-center text-[10px]">3</div>
+            <span className="text-xs text-gray-500">Vector DB</span>
+          </div>
+          <div className="w-4 h-0.5 bg-white/10" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-white/10 text-gray-500 flex items-center justify-center text-[10px]">4</div>
+            <span className="text-xs text-gray-500">Query</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Content: code + quiz side by side */}
+      <div className="flex">
+        {/* Code side */}
+        <div className="flex-1 p-4 border-r border-white/10 bg-slate-900/50">
+          <div className="text-xs text-gray-400 mb-2">Step through the code:</div>
+          <pre className="text-xs text-gray-400 font-mono leading-loose">
+            <span className="text-purple-400">def</span> chatbot_respond(msg):{'\n'}
+            {'  '}<span className="text-purple-400">if</span> <span className="text-green-400">"weather"</span> <span className="text-purple-400">in</span> msg:{'\n'}
+          </pre>
+          {/* Highlighted lines */}
+          <div className="bg-cyan-500/20 border-l-2 border-cyan-400 -mx-4 px-4 py-1 my-1">
+            <pre className="text-xs text-white font-mono leading-loose">
+              {'    '}city = extract_city(msg){'\n'}
+              {'    '}<span className="text-purple-400">return</span> get_weather(city)
+            </pre>
+          </div>
+          <pre className="text-xs text-gray-400 font-mono leading-loose">
+            {'  '}<span className="text-purple-400">return</span> <span className="text-green-400">"How can I help?"</span>
+          </pre>
+        </div>
+
+        {/* Quiz side */}
+        <div className="w-52 p-4 bg-slate-900/30">
+          <div className="text-xs text-cyan-400 font-medium mb-1">Question</div>
+          <div className="text-sm text-white font-medium mb-3">
+            When does the chatbot call get_weather?
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+              <div className="w-4 h-4 rounded-full border border-gray-600 flex-shrink-0" />
+              <span>On every message</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-green-400">
+              <div className="w-4 h-4 rounded-full border-2 border-green-400 bg-green-400/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-[10px]">✓</span>
+              </div>
+              <span>When "weather" is in msg</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+              <div className="w-4 h-4 rounded-full border border-gray-600 flex-shrink-0" />
+              <span>Only for city names</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function UrlInput() {
   return (
@@ -241,76 +385,6 @@ function ProjectPreview() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
         </svg>
         Auto-generated by Ava
-      </div>
-    </motion.div>
-  );
-}
-
-function BattlePreview() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded bg-slate-900/80 border border-white/10"
-    >
-      {/* Challenge prompt header */}
-      <div className="p-3 border-b border-white/10 bg-gradient-to-r from-rose-500/10 to-purple-500/10">
-        <p className="text-xs text-rose-400 font-medium uppercase tracking-wide mb-1">Challenge</p>
-        <p className="text-sm text-white italic">"A robot cat chef cooking a pizza in a futuristic kitchen"</p>
-      </div>
-
-      {/* Two images side by side */}
-      <div className="flex gap-2 p-3">
-        {/* Player 1 - Winner */}
-        <div className="flex-1 relative">
-          <div className="aspect-square rounded overflow-hidden bg-slate-800 mb-2 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] relative">
-            <img
-              src="/battle-robot-cat-1.png"
-              alt="Robot cat chef making pizza"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-1 right-1 p-1 rounded-full bg-amber-500">
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z"/>
-              </svg>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=alex" alt="alex" className="w-5 h-5 rounded-full border border-cyan-500" />
-              <span className="text-xs text-white font-medium">alex_dev</span>
-            </div>
-            <span className="text-xs font-bold text-amber-400">8.7</span>
-          </div>
-        </div>
-
-        {/* VS */}
-        <div className="flex flex-col items-center justify-center px-1">
-          <div className="w-px flex-1 bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent" />
-          <span className="my-2 px-2 py-0.5 rounded-full bg-slate-800 border border-cyan-500/30 text-cyan-400 font-bold text-xs">
-            VS
-          </span>
-          <div className="w-px flex-1 bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent" />
-        </div>
-
-        {/* Player 2 */}
-        <div className="flex-1">
-          <div className="aspect-square rounded overflow-hidden bg-slate-800 mb-2">
-            <img
-              src="/battle-robot-cat-2.png"
-              alt="Robot cat chef with pizza"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=maya" alt="maya" className="w-5 h-5 rounded-full border border-purple-500" />
-              <span className="text-xs text-white font-medium">maya_creates</span>
-            </div>
-            <span className="text-xs font-bold text-slate-400">7.2</span>
-          </div>
-        </div>
       </div>
     </motion.div>
   );
@@ -431,7 +505,7 @@ function ChatConversation({ messages, isGamePlaying, onStartGame, activeSection 
               </motion.div>
             );
           }
-          if (message.type === 'battle') {
+          if (message.type === 'learning-path-preview') {
             return (
               <motion.div
                 key={key}
@@ -440,7 +514,20 @@ function ChatConversation({ messages, isGamePlaying, onStartGame, activeSection 
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 className="ml-11"
               >
-                <BattlePreview />
+                <LearningPathPreview />
+              </motion.div>
+            );
+          }
+          if (message.type === 'exercise-picker') {
+            return (
+              <motion.div
+                key={key}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="ml-11"
+              >
+                <ExercisePicker />
               </motion.div>
             );
           }
@@ -466,7 +553,7 @@ function AvaChatPanel({ activeSection, isGamePlaying, onStartGame }: { activeSec
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-white/5">
         <img src="/ava-avatar.png" alt="Ava" className="w-10 h-10 rounded-full border-2 border-cyan-500/50" />
         <div>
-          <h3 className="text-white font-semibold">AllThrive Chat</h3>
+          <h3 className="text-white font-semibold">All Thrive Chat</h3>
           <p className="text-xs text-gray-400 flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-green-400"></span>
             Ava · Online
@@ -509,7 +596,7 @@ function HeroContent({ onRequestInvite }: { onRequestInvite: () => void }) {
               </span>
             </span>
           </h1>
-          <p className="text-2xl text-gray-300 mb-10">Learn through games. Share your work in progress. See what others are creating.</p>
+          <p className="text-2xl text-gray-300 mb-10">Games and challenges. Personalized learning paths.<br />Share what you're building.</p>
           <button
             onClick={onRequestInvite}
             className="px-8 py-4 rounded bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300 hover:scale-105"
@@ -567,7 +654,7 @@ function MobileHeroContent({ onRequestInvite }: { onRequestInvite: () => void })
             </span>
           </span>
         </h1>
-        <p className="text-lg sm:text-xl text-gray-300 mb-8">Learn through games. Share your work in progress. See what others are creating.</p>
+        <p className="text-lg sm:text-xl text-gray-300 mb-8">Games and challenges. Personalized learning paths. Share what you're building.</p>
         <button
           onClick={onRequestInvite}
           className="px-6 py-3 rounded bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-base shadow-neon hover:shadow-neon-strong transition-all duration-300"
@@ -575,15 +662,9 @@ function MobileHeroContent({ onRequestInvite }: { onRequestInvite: () => void })
           Join Waitlist
         </button>
       </motion.div>
-      {/* Icon cloud on mobile - below hero */}
-      <div className="mt-12 w-full max-w-[280px] aspect-square relative">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-green-500/20 blur-3xl" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <img src="/all-thrvie-logo.png" alt="" className="w-16 h-auto opacity-90" />
-        </div>
-        <div className="relative z-10">
-          <IconCloud />
-        </div>
+      {/* Battle simulation on mobile - below hero */}
+      <div className="mt-8 w-full max-w-[400px] px-2">
+        <BattleSimulation />
       </div>
     </div>
   );
@@ -670,6 +751,20 @@ function MobileChatMessages({ messages, isGamePlaying, onStartGame }: { messages
             </div>
           );
         }
+        if (message.type === 'learning-path-preview') {
+          return (
+            <div key={key} className="ml-8">
+              <LearningPathPreview />
+            </div>
+          );
+        }
+        if (message.type === 'exercise-picker') {
+          return (
+            <div key={key} className="ml-8">
+              <ExercisePicker />
+            </div>
+          );
+        }
         return null;
       })}
     </div>
@@ -691,7 +786,9 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
   useEffect(() => {
     getPlatformStats()
       .then(setStats)
-      .catch(console.error);
+      .catch(() => {
+        // Stats are optional - fail silently in production
+      });
   }, []);
 
   const { scrollYProgress } = useScroll({
@@ -700,15 +797,15 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
   });
 
   // Map scroll progress to active section (only used on desktop for parallax)
-  // Left content moves -3600px over full scroll (4 sections worth)
+  // Left content moves -3600px over full scroll (5 sections worth)
   // Thresholds tuned based on when sections become visible in viewport
   useMotionValueEvent(scrollYProgress, 'change', (progress) => {
     if (isMobile) return; // Skip on mobile - no parallax
-    if (progress < 0.20) setActiveSection('hero');
-    else if (progress < 0.40) setActiveSection('learn');
-    else if (progress < 0.60) setActiveSection('share');
-    else if (progress < 0.80) setActiveSection('see');
-    else setActiveSection('connect');
+    if (progress < 0.2) setActiveSection('hero');
+    else if (progress < 0.4) setActiveSection('learn');
+    else if (progress < 0.6) setActiveSection('paths');
+    else if (progress < 0.8) setActiveSection('share');
+    else setActiveSection('see');
   });
 
   // Transform for logo cloud opacity (fades out as you scroll) - desktop only
@@ -774,7 +871,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
           {/* Learn section */}
           <MobileFeatureSection
             icon={PuzzlePieceIcon}
-            title="Learn through games"
+            title="The best way to learn AI?"
             chatContent={
               <MobileChatMessages
                 messages={getMessagesForSection('learn')}
@@ -784,7 +881,24 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
             }
           >
             <p className="text-base text-gray-400 mb-4">
-              The best way to learn AI concepts? Play with them.
+              Play with AI concepts. Compete in weekly challenges against other community members.
+            </p>
+          </MobileFeatureSection>
+
+          {/* Paths section */}
+          <MobileFeatureSection
+            icon={BookOpenIcon}
+            title="Personalized learning paths"
+            chatContent={
+              <MobileChatMessages
+                messages={getMessagesForSection('paths')}
+                isGamePlaying={false}
+                onStartGame={() => {}}
+              />
+            }
+          >
+            <p className="text-base text-gray-400 mb-4">
+              Learn at your own pace with lessons personalized to your goals.
             </p>
           </MobileFeatureSection>
 
@@ -847,28 +961,6 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
               </div>
             </div>
           </MobileFeatureSection>
-
-          {/* Connect section */}
-          <MobileFeatureSection
-            icon={UserGroupIcon}
-            title="Connect with others"
-          >
-            <p className="text-base text-gray-400 mb-4">
-              Test your prompting skills in Prompt Battles. Compete head-to-head with other members.
-            </p>
-            <div className="mt-4">
-              <BattlePreview />
-            </div>
-          </MobileFeatureSection>
-
-          {/* Prompt Battle promo image */}
-          <div className="px-6 py-8">
-            <img
-              src="/games/game-prompt-battle-promo.png"
-              alt="Prompt Battle"
-              className="w-full max-w-sm mx-auto rounded"
-            />
-          </div>
         </div>
 
         {/* Testimonials and Final CTA */}
@@ -882,7 +974,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
   // Desktop layout - parallax scroll
   return (
     <div className="relative bg-[#020617] text-white">
-    <div ref={containerRef} className="relative" style={{ height: '500vh' }}>
+    <div ref={containerRef} className="relative" style={{ height: '400vh' }}>
       {/* Background gradients - top and bottom teal glows */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Top glow */}
@@ -936,12 +1028,21 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
             <HeroContent onRequestInvite={onRequestInvite} />
             <FeatureContent
               icon={PuzzlePieceIcon}
-              title="Learn through games"
+              title="The best way to learn AI?"
             >
               <p className="text-xl text-gray-400 mb-6">
-                The best way to learn AI concepts? Play with them.
+                Play with AI concepts. Compete in weekly challenges against other community members.
               </p>
               <GameCarousel onPlayContextSnake={() => setIsGamePlaying(true)} />
+            </FeatureContent>
+            <FeatureContent
+              icon={BookOpenIcon}
+              title="Personalized learning paths"
+            >
+              <p className="text-xl text-gray-400 mb-6">
+                Learn at your own pace with lessons personalized to your goals. Code walkthroughs, hands-on exercises, and project-based learning.
+              </p>
+              <CodeWalkthroughPreview />
             </FeatureContent>
             <FeatureContent
               icon={ShareIcon}
@@ -1024,40 +1125,21 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
                 </div>
               </div>
             </FeatureContent>
-            <FeatureContent
-              icon={UserGroupIcon}
-              title="Connect with others"
-            >
-              <p className="text-xl text-gray-400 mb-6">
-                Test your prompting skills in Prompt Battles. Compete head-to-head with other members and see who can write the best prompt.
-              </p>
-              <div className="max-w-sm">
-                <BattlePreview />
-              </div>
-            </FeatureContent>
           </motion.div>
         </div>
 
         {/* Right side - logo cloud / Ava chat */}
         <div className="w-[420px] xl:w-[480px] h-full p-6 pl-0 relative hidden lg:block">
-          {/* Logo cloud - visible on hero */}
+          {/* Battle simulation - visible on hero */}
           <motion.div
-            className="absolute inset-6 inset-l-0 flex items-center justify-center pointer-events-none"
+            className="absolute inset-0 flex items-center justify-center p-4"
             style={{ opacity: logoCloudOpacity }}
           >
-            <div className="relative w-full max-w-[400px] aspect-square">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-green-500/20 blur-3xl" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <img src="/all-thrvie-logo.png" alt="" className="w-20 h-auto opacity-90" />
-              </div>
-              <div className="relative z-10">
-                <IconCloud />
-              </div>
-            </div>
+            <BattleSimulation />
           </motion.div>
 
-          {/* Ava chat - fades in after hero, hidden on connect section */}
-          {activeSection !== 'hero' && activeSection !== 'connect' && (
+          {/* Ava chat - fades in after hero */}
+          {activeSection !== 'hero' && (
             <motion.div
               className="h-full"
               initial={{ opacity: 0 }}
@@ -1068,20 +1150,6 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
               <AvaChatPanel activeSection={activeSection} isGamePlaying={isGamePlaying} onStartGame={() => setIsGamePlaying(true)} />
             </motion.div>
           )}
-
-          {/* Prompt Battle promo - visible on connect section */}
-          <motion.div
-            className={`absolute inset-6 inset-l-0 flex items-center justify-center ${activeSection !== 'connect' ? 'pointer-events-none' : ''}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: activeSection === 'connect' ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <img
-              src="/games/game-prompt-battle-promo.png"
-              alt="Prompt Battle"
-              className="max-w-full max-h-full object-contain rounded"
-            />
-          </motion.div>
         </div>
         </div>
       </div>

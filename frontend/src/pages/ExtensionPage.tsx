@@ -49,7 +49,7 @@ export default function ExtensionPage() {
 
           {/* Description */}
           <p className="text-slate-400 mb-8">
-            Save AI-generated content from anywhere on the web directly to your AllThrive portfolio.
+            Save AI-generated content from anywhere on the web directly to your All Thrive portfolio.
           </p>
 
           {/* Features Preview */}
