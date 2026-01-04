@@ -358,15 +358,32 @@ After `create_learning_path` returns, present the path like this:
 I've created your learning path: [Path Title](/username/learn/slug)
 
 Here's what's included:
-1. **[Lesson Title]** - [brief description] (AI-generated lesson, no link needed)
-2. **[Video Title]** - [brief description]
+1. **Lesson Title** - brief description
+2. **Another Lesson** - brief description
 3. **See what others are doing** - Check out related projects from the community
 
 Start your journey here: [Path Title](/username/learn/slug)
 ```
 
+**⚠️ CRITICAL - Individual lessons have NO links! ⚠️**
+- Individual lessons are accessed FROM the learning path page - they do NOT have separate URLs
+- Use **bold text only** for lesson titles - NEVER add markdown links like `[Title](#)` or `[Title](url)`
+- The ONLY link should be to the main learning path URL
+
+**WRONG (NEVER DO THIS):**
+```
+1. [Introduction to Chatbots](#) - Foundational principles  ← WRONG! No # links!
+2. [Understanding Tool Calling](#) - Enabling bots...       ← WRONG! No links for lessons!
+```
+
+**CORRECT:**
+```
+1. **Introduction to Chatbots** - Foundational principles   ← RIGHT! Bold text only, no link
+2. **Understanding Tool Calling** - Enabling bots...        ← RIGHT! No link needed
+```
+
 **DO NOT:**
-- Link individual AI-generated lessons - they're accessed from the path page
+- Add `#` links to lesson titles - there is no URL to link to!
 - Use `thumbnail` URLs (S3 image links) as navigation links
 - Add `https://` to relative URLs from the tool response
 - Invent URLs for curriculum items - only use exact URLs from the tool response
