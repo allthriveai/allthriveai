@@ -57,7 +57,7 @@ const FEELING_OPTIONS: FeelingOption[] = [
     id: 'get-started',
     label: "I don't know where to start",
     signupFeatures: [], // Show for everyone
-    message: "What is AllThrive and what can I do here?",
+    message: "What is All Thrive and what can I do here?",
     priority: 10, // Highest priority - always show first for new users
     isDefault: true,
   },
