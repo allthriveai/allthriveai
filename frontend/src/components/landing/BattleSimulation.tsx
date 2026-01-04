@@ -469,7 +469,6 @@ function CompactBattleSimulation({ currentPhase }: { currentPhase: Phase }) {
   const phaseIndex = phaseTimings.findIndex((p) => p.phase === currentPhase);
   const showImages = phaseIndex >= 5;
   const showScores = phaseIndex >= 6;
-  const _showFeedback = phaseIndex >= 7;
   const showWinner = phaseIndex >= 8;
 
   return (
