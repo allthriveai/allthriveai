@@ -57,9 +57,16 @@ const FEELING_OPTIONS: FeelingOption[] = [
     id: 'get-started',
     label: "I don't know where to start",
     signupFeatures: [], // Show for everyone
-    message: "I don't know where to start",
+    message: "What is AllThrive and what can I do here?",
     priority: 10, // Highest priority - always show first for new users
     isDefault: true,
+  },
+  {
+    id: 'infographic',
+    label: 'Make an infographic',
+    signupFeatures: ['portfolio'],
+    message: "I want to make an infographic",
+    priority: 5,
   },
   {
     id: 'share',
@@ -489,20 +496,27 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
             return;
           }
           if (option.id === 'get-started') {
+            // Send to Ava to explain AllThrive - no canned response
+            if (option.message) {
+              sendMessage(option.message);
+            }
+            return;
+          }
+          if (option.id === 'infographic') {
             // Show encouraging response - inline action pills will appear after infographic is created
             const timestamp = Date.now();
 
             // Add user message
             const userMessage: ChatMessage = {
-              id: `user-get-started-${timestamp}`,
-              content: "I don't know where to start",
+              id: `user-infographic-${timestamp}`,
+              content: "I want to make an infographic",
               sender: 'user',
               timestamp: new Date(),
             };
 
             // Add assistant message prompting for a concept (simple, reduces overwhelm)
             const assistantMessage: ChatMessage = {
-              id: `ava-get-started-${timestamp}`,
+              id: `ava-infographic-${timestamp}`,
               content: "What's ONE thing you're curious about?",
               sender: 'assistant',
               timestamp: new Date(),
