@@ -19,7 +19,7 @@ export default function PrivacyPolicyPage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">Privacy Policy</h1>
-        <p className="text-slate-500 dark:text-slate-400 mb-8">Last updated: December 2025</p>
+        <p className="text-slate-500 dark:text-slate-400 mb-8">Last updated: January 2026</p>
 
         <div className="prose dark:prose-invert prose-slate max-w-none space-y-8">
           <section>
@@ -37,10 +37,34 @@ export default function PrivacyPolicyPage() {
             </p>
             <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-2">
               <li>Account information (name, email, profile details)</li>
+              <li>Phone number (optional, for SMS notifications)</li>
               <li>Content you create and share on the platform</li>
               <li>Communications with us and other users</li>
               <li>Usage data and preferences</li>
             </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-4">SMS Notifications</h2>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+              If you choose to provide your phone number and opt in to SMS notifications, we may send you text messages about:
+            </p>
+            <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-2">
+              <li>Battle invitations from friends</li>
+              <li>Battle results and updates</li>
+              <li>Streak alerts and reminders</li>
+            </ul>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed mt-4">
+              <strong className="text-slate-900 dark:text-white">Message frequency varies.</strong> Message and data rates may apply.
+              You can opt out at any time by replying STOP to any message or updating your preferences in{' '}
+              <Link to="/account/settings/notifications" className="text-cyan-400 hover:text-cyan-300 underline">
+                notification settings
+              </Link>.
+            </p>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed mt-4">
+              We do not share your phone number with third parties for marketing purposes. Your phone number is only used
+              to deliver the SMS notifications you have opted into.
+            </p>
           </section>
 
           <section>

@@ -19,9 +19,9 @@ class SMSLogAdmin(admin.ModelAdmin):
         'sent_at',
     ]
     list_filter = ['status', 'message_type', 'created_at']
-    search_fields = ['to_phone', 'provider_sid', 'user__username', 'user__email']
+    search_fields = ['to_phone', 'provider_message_id', 'user__username', 'user__email']
     readonly_fields = [
-        'provider_sid',
+        'provider_message_id',
         'error_code',
         'error_message',
         'created_at',
@@ -40,7 +40,7 @@ class SMSLogAdmin(admin.ModelAdmin):
         (
             'Status',
             {
-                'fields': ['status', 'provider_sid', 'error_code', 'error_message'],
+                'fields': ['status', 'provider_message_id', 'error_code', 'error_message'],
             },
         ),
         (

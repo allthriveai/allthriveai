@@ -19,7 +19,7 @@ export default function TermsOfServicePage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">Terms of Service</h1>
-        <p className="text-slate-500 dark:text-slate-400 mb-8">Last updated: December 2025</p>
+        <p className="text-slate-500 dark:text-slate-400 mb-8">Last updated: January 2026</p>
 
         <div className="prose dark:prose-invert prose-slate max-w-none space-y-8">
           <section>
@@ -83,6 +83,27 @@ export default function TermsOfServicePage() {
               We take security seriously and implement measures to protect our platform and users.
               You agree not to attempt to circumvent security measures, access unauthorized areas,
               or interfere with the platform's operation.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-4">SMS Notifications</h2>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+              By providing your phone number and opting in to SMS notifications, you consent to receive text messages
+              from All Thrive regarding:
+            </p>
+            <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-2">
+              <li>Battle invitations from friends</li>
+              <li>Battle results and updates</li>
+              <li>Streak alerts and reminders</li>
+            </ul>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed mt-4">
+              <strong className="text-slate-900 dark:text-white">Message frequency varies.</strong> Message and data rates may apply.
+              You can opt out at any time by replying <strong className="text-cyan-400">STOP</strong> to any message.
+              For help, reply <strong className="text-cyan-400">HELP</strong> or visit your{' '}
+              <Link to="/account/settings/notifications" className="text-cyan-400 hover:text-cyan-300 underline">
+                notification settings
+              </Link>.
             </p>
           </section>
 

@@ -20,6 +20,9 @@ class SMSLog(models.Model):
 
     class MessageType(models.TextChoices):
         BATTLE_INVITATION = 'battle_invitation', 'Battle Invitation'
+        BATTLE_RESULT = 'battle_result', 'Battle Result'
+        BATTLE_REMINDER = 'battle_reminder', 'Battle Reminder'
+        STREAK_ALERT = 'streak_alert', 'Streak Alert'
         PHONE_VERIFICATION = 'phone_verification', 'Phone Verification'
         OTHER = 'other', 'Other'
 
@@ -47,7 +50,7 @@ class SMSLog(models.Model):
 
     # Status tracking
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
-    provider_sid = models.CharField(max_length=100, blank=True, help_text='Twilio message SID')
+    provider_message_id = models.CharField(max_length=100, blank=True, help_text='Provider message ID')
     error_code = models.CharField(max_length=20, blank=True, help_text='Error code from provider')
     error_message = models.TextField(blank=True, help_text='Error details')
 

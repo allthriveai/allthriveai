@@ -1,9 +1,11 @@
-"""Views for email notification endpoints."""
+"""Views for email and SMS notification endpoints."""
 
 import json
 import logging
+from datetime import timedelta
 
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django_ratelimit.decorators import ratelimit
@@ -11,7 +13,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.notifications.models import EmailPreferences
+from core.notifications.models import EmailPreferences, SMSPreferences
 from core.notifications.utils import mask_email
 
 logger = logging.getLogger(__name__)
@@ -202,22 +204,30 @@ def my_email_preferences(request):
     user = request.user
 
     if request.method == 'GET':
+        # Get SMS preferences for response
+        sms_prefs = getattr(user, 'sms_preferences', None)
+
         return Response(
             {
                 # Email preferences
-                'email_billing': prefs.email_billing,
-                'email_welcome': prefs.email_welcome,
-                'email_battles': prefs.email_battles,
-                'email_achievements': prefs.email_achievements,
-                'email_social': prefs.email_social,
-                'email_quests': prefs.email_quests,
-                'email_marketing': prefs.email_marketing,
-                # SMS preferences (from User model)
-                'phone_number': user.phone_number or '',
-                'phone_verified': user.phone_verified,
-                'allow_sms_invitations': user.allow_sms_invitations,
+                'emailBilling': prefs.email_billing,
+                'emailWelcome': prefs.email_welcome,
+                'emailBattles': prefs.email_battles,
+                'emailAchievements': prefs.email_achievements,
+                'emailSocial': prefs.email_social,
+                'emailQuests': prefs.email_quests,
+                'emailMarketing': prefs.email_marketing,
+                # SMS preferences (master switch)
+                'phoneNumber': user.phone_number or '',
+                'phoneVerified': user.phone_verified,
+                'allowSmsInvitations': user.allow_sms_invitations,
+                # SMS category preferences
+                'smsBattleInvitations': sms_prefs.sms_battle_invitations if sms_prefs else True,
+                'smsBattleResults': sms_prefs.sms_battle_results if sms_prefs else True,
+                'smsBattleReminders': sms_prefs.sms_battle_reminders if sms_prefs else True,
+                'smsStreakAlerts': sms_prefs.sms_streak_alerts if sms_prefs else True,
                 # Battle availability
-                'is_available_for_battles': user.is_available_for_battles,
+                'isAvailableForBattles': user.is_available_for_battles,
             }
         )
 
@@ -280,23 +290,258 @@ def my_email_preferences(request):
         user.save(update_fields=user_updated)
         logger.info(f'User {user.id} ({mask_email(user.email)}) updated SMS preferences: {user_updated}')
 
+    # Get SMS preferences for response
+    sms_prefs = getattr(user, 'sms_preferences', None)
+
     return Response(
         {
             'success': True,
             'updated': updated + user_updated,
             # Email preferences
-            'email_billing': prefs.email_billing,
-            'email_welcome': prefs.email_welcome,
-            'email_battles': prefs.email_battles,
-            'email_achievements': prefs.email_achievements,
-            'email_social': prefs.email_social,
-            'email_quests': prefs.email_quests,
-            'email_marketing': prefs.email_marketing,
-            # SMS preferences
-            'phone_number': user.phone_number or '',
-            'phone_verified': user.phone_verified,
-            'allow_sms_invitations': user.allow_sms_invitations,
+            'emailBilling': prefs.email_billing,
+            'emailWelcome': prefs.email_welcome,
+            'emailBattles': prefs.email_battles,
+            'emailAchievements': prefs.email_achievements,
+            'emailSocial': prefs.email_social,
+            'emailQuests': prefs.email_quests,
+            'emailMarketing': prefs.email_marketing,
+            # SMS preferences (master switch)
+            'phoneNumber': user.phone_number or '',
+            'phoneVerified': user.phone_verified,
+            'allowSmsInvitations': user.allow_sms_invitations,
+            # SMS category preferences
+            'smsBattleInvitations': sms_prefs.sms_battle_invitations if sms_prefs else True,
+            'smsBattleResults': sms_prefs.sms_battle_results if sms_prefs else True,
+            'smsBattleReminders': sms_prefs.sms_battle_reminders if sms_prefs else True,
+            'smsStreakAlerts': sms_prefs.sms_streak_alerts if sms_prefs else True,
             # Battle availability
-            'is_available_for_battles': user.is_available_for_battles,
+            'isAvailableForBattles': user.is_available_for_battles,
+        }
+    )
+
+
+def get_client_ip(request) -> str | None:
+    """Get client IP address from request."""
+    x_forwarded_for = request.headers.get('x-forwarded-for')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@ratelimit(key='user', rate='30/m', method=['GET', 'POST'], block=True)
+def sms_opt_in(request):
+    """Handle SMS opt-in flow.
+
+    GET: Check if user should see SMS opt-in prompt
+        Returns:
+            - showPrompt: bool - Whether to show the opt-in modal
+            - alreadyOptedIn: bool - User has already opted in
+            - phoneNumber: str - User's phone number (if any)
+            - phoneVerified: bool - Whether phone is verified
+
+    POST: Record SMS opt-in or dismiss
+        Body:
+            - action: 'opt_in' | 'dismiss' | 'remind_later'
+            - phoneNumber: str (optional, for opt_in)
+
+        Returns:
+            - success: bool
+            - allowSmsInvitations: bool
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        # Check if user already opted in (has phone + verified + master switch on)
+        already_opted_in = user.phone_number and user.phone_verified and user.allow_sms_invitations
+
+        # Don't show prompt if:
+        # 1. User already opted in
+        # 2. User dismissed the prompt
+        # 3. User is too new (less than 3 minutes on platform)
+        # 4. Prompt was shown recently (within 24 hours)
+        should_show = True
+
+        if already_opted_in:
+            should_show = False
+        elif user.sms_prompt_dismissed_at:
+            should_show = False
+        elif user.date_joined > timezone.now() - timedelta(minutes=3):
+            should_show = False
+        elif user.sms_prompt_shown_at and user.sms_prompt_shown_at > timezone.now() - timedelta(hours=24):
+            should_show = False
+
+        # Track that we showed the prompt (so we don't spam if user closes browser)
+        if should_show and not user.sms_prompt_shown_at:
+            user.sms_prompt_shown_at = timezone.now()
+            user.save(update_fields=['sms_prompt_shown_at'])
+
+        return Response(
+            {
+                'showPrompt': should_show,
+                'alreadyOptedIn': already_opted_in,
+                'phoneNumber': user.phone_number or '',
+                'phoneVerified': user.phone_verified,
+            }
+        )
+
+    # POST: Handle opt-in action
+    action = request.data.get('action')
+
+    if action == 'opt_in':
+        # Enable SMS notifications
+        user.allow_sms_invitations = True
+        user.save(update_fields=['allow_sms_invitations'])
+
+        # Create or update SMS preferences with consent tracking
+        sms_prefs, created = SMSPreferences.objects.get_or_create(user=user)
+        sms_prefs.record_consent(
+            method=SMSPreferences.ConsentMethod.OPT_IN_MODAL,
+            ip_address=get_client_ip(request),
+        )
+
+        logger.info(f'User {user.id} ({mask_email(user.email)}) opted in to SMS notifications')
+
+        return Response(
+            {
+                'success': True,
+                'allowSmsInvitations': True,
+            }
+        )
+
+    elif action == 'dismiss':
+        # Record dismissal
+        user.sms_prompt_dismissed_at = timezone.now()
+        user.save(update_fields=['sms_prompt_dismissed_at'])
+
+        logger.info(f'User {user.id} ({mask_email(user.email)}) dismissed SMS opt-in prompt')
+
+        return Response(
+            {
+                'success': True,
+                'allowSmsInvitations': user.allow_sms_invitations,
+            }
+        )
+
+    elif action == 'remind_later':
+        # Just record that we showed the prompt (will show again after 24 hours)
+        user.sms_prompt_shown_at = timezone.now()
+        user.save(update_fields=['sms_prompt_shown_at'])
+
+        return Response(
+            {
+                'success': True,
+                'allowSmsInvitations': user.allow_sms_invitations,
+            }
+        )
+
+    return Response({'error': 'Invalid action'}, status=400)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@ratelimit(key='user', rate='30/m', method=['GET', 'PATCH'], block=True)
+def my_sms_preferences(request):
+    """Get or update authenticated user's SMS notification preferences.
+
+    GET: Returns current SMS preferences
+    PATCH: Updates SMS preferences
+
+    PATCH body (JSON):
+        allowSmsInvitations: bool (optional) - Master switch
+        smsBattleInvitations: bool (optional)
+        smsBattleResults: bool (optional)
+        smsBattleReminders: bool (optional)
+        smsStreakAlerts: bool (optional)
+
+    Returns:
+        JSON response with SMS preferences
+    """
+    user = request.user
+
+    # Get or create SMS preferences
+    sms_prefs, created = SMSPreferences.objects.get_or_create(user=user)
+
+    if request.method == 'GET':
+        return Response(
+            {
+                # Master switch (on User model)
+                'allowSmsInvitations': user.allow_sms_invitations,
+                'phoneNumber': user.phone_number or '',
+                'phoneVerified': user.phone_verified,
+                # Category preferences
+                'smsBattleInvitations': sms_prefs.sms_battle_invitations,
+                'smsBattleResults': sms_prefs.sms_battle_results,
+                'smsBattleReminders': sms_prefs.sms_battle_reminders,
+                'smsStreakAlerts': sms_prefs.sms_streak_alerts,
+                # Consent info
+                'hasConsent': sms_prefs.has_valid_consent,
+                'consentGivenAt': sms_prefs.consent_given_at.isoformat() if sms_prefs.consent_given_at else None,
+            }
+        )
+
+    # PATCH: Update preferences
+    user_updated = []
+    sms_updated = []
+
+    # Handle master switch
+    if 'allowSmsInvitations' in request.data:
+        new_value = bool(request.data['allowSmsInvitations'])
+
+        # If turning on, record consent
+        if new_value and not user.allow_sms_invitations:
+            sms_prefs.record_consent(
+                method=SMSPreferences.ConsentMethod.SETTINGS_PAGE,
+                ip_address=get_client_ip(request),
+            )
+
+        # If turning off, revoke consent
+        if not new_value and user.allow_sms_invitations:
+            sms_prefs.revoke_consent()
+
+        user.allow_sms_invitations = new_value
+        user_updated.append('allow_sms_invitations')
+
+    # Handle category preferences
+    category_fields = [
+        ('smsBattleInvitations', 'sms_battle_invitations'),
+        ('smsBattleResults', 'sms_battle_results'),
+        ('smsBattleReminders', 'sms_battle_reminders'),
+        ('smsStreakAlerts', 'sms_streak_alerts'),
+    ]
+
+    for camel_field, snake_field in category_fields:
+        if camel_field in request.data:
+            setattr(sms_prefs, snake_field, bool(request.data[camel_field]))
+            sms_updated.append(snake_field)
+
+    if user_updated:
+        user.save(update_fields=user_updated)
+
+    if sms_updated:
+        sms_prefs.save(update_fields=sms_updated + ['updated_at'])
+
+    if user_updated or sms_updated:
+        logger.info(
+            f'User {user.id} ({mask_email(user.email)}) updated SMS preferences: '
+            f'user={user_updated}, sms={sms_updated}'
+        )
+
+    return Response(
+        {
+            'success': True,
+            'updated': user_updated + sms_updated,
+            # Master switch
+            'allowSmsInvitations': user.allow_sms_invitations,
+            'phoneNumber': user.phone_number or '',
+            'phoneVerified': user.phone_verified,
+            # Category preferences
+            'smsBattleInvitations': sms_prefs.sms_battle_invitations,
+            'smsBattleResults': sms_prefs.sms_battle_results,
+            'smsBattleReminders': sms_prefs.sms_battle_reminders,
+            'smsStreakAlerts': sms_prefs.sms_streak_alerts,
+            # Consent info
+            'hasConsent': sms_prefs.has_valid_consent,
         }
     )

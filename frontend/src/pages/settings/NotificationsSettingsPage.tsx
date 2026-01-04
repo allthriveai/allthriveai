@@ -394,11 +394,11 @@ export default function NotificationsSettingsPage() {
                       </div>
                     </div>
 
-                    {/* SMS Opt-in Toggle */}
+                    {/* SMS Master Toggle */}
                     <NotificationToggle
                       id="sms-invitations"
-                      label="Battle Invitations via SMS"
-                      description="Receive text messages when friends challenge you to prompt battles"
+                      label="Enable SMS Notifications"
+                      description="Master switch for all SMS notifications"
                       icon={faMobileAlt}
                       enabled={preferences.allowSmsInvitations}
                       disabled={!preferences.phoneNumber}
@@ -408,6 +408,58 @@ export default function NotificationsSettingsPage() {
                     {!preferences.phoneNumber && (
                       <p className="text-xs text-slate-500 italic pl-14">
                         Add a phone number above to enable SMS notifications
+                      </p>
+                    )}
+
+                    {/* SMS Category Toggles - only show when master switch is on */}
+                    {preferences.allowSmsInvitations && preferences.phoneNumber && (
+                      <div className="ml-14 space-y-3 pt-2 border-t border-white/5">
+                        <p className="text-xs text-slate-500 mb-3">
+                          Choose which SMS notifications to receive:
+                        </p>
+
+                        <NotificationToggle
+                          id="sms-battle-invitations"
+                          label="Battle Invitations"
+                          description="Get notified when friends challenge you to battles"
+                          icon={faTrophy}
+                          enabled={preferences.smsBattleInvitations}
+                          onChange={(value) => handleToggle('smsBattleInvitations', value)}
+                        />
+
+                        <NotificationToggle
+                          id="sms-battle-results"
+                          label="Battle Results"
+                          description="Get notified when battle results are ready"
+                          icon={faTrophy}
+                          enabled={preferences.smsBattleResults}
+                          onChange={(value) => handleToggle('smsBattleResults', value)}
+                        />
+
+                        <NotificationToggle
+                          id="sms-battle-reminders"
+                          label="Battle Reminders"
+                          description="Reminders when you have active battles ending soon"
+                          icon={faBell}
+                          enabled={preferences.smsBattleReminders}
+                          onChange={(value) => handleToggle('smsBattleReminders', value)}
+                        />
+
+                        <NotificationToggle
+                          id="sms-streak-alerts"
+                          label="Streak Alerts"
+                          description="Alerts when your streak is at risk"
+                          icon={faBolt}
+                          enabled={preferences.smsStreakAlerts}
+                          onChange={(value) => handleToggle('smsStreakAlerts', value)}
+                        />
+                      </div>
+                    )}
+
+                    {/* TCPA Disclosure */}
+                    {preferences.phoneNumber && (
+                      <p className="text-xs text-slate-600 italic pl-14 pt-2">
+                        Message & data rates may apply. Reply STOP to unsubscribe at any time.
                       </p>
                     )}
                   </div>

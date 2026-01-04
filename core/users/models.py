@@ -233,8 +233,18 @@ class User(AbstractUser):
         help_text='When phone number was verified',
     )
     allow_sms_invitations = models.BooleanField(
-        default=True,
-        help_text='Allow receiving battle invitations via SMS',
+        default=False,
+        help_text='Master switch for receiving SMS notifications (must opt-in)',
+    )
+    sms_prompt_shown_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When SMS opt-in prompt was shown to user',
+    )
+    sms_prompt_dismissed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When user dismissed SMS opt-in prompt',
     )
 
     # Guest user support for battle invitations
