@@ -186,7 +186,7 @@ export function PromoVideoPlayer() {
         href="/"
         className="fixed bottom-20 right-4 z-50 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-purple-400 transition-all shadow-lg"
       >
-        Visit AllThrive
+        Visit All Thrive
       </a>
 
       {/* Dev controls - positioned outside video area */}

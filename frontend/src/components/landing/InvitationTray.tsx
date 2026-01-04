@@ -206,7 +206,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
                   {formState === 'success' ? 'You\'re on the list!' : 'Join the Waitlist'}
                 </h2>
                 <p className="text-xs text-gray-400">
-                  Join the AllThrive AI community
+                  Join the All Thrive AI community
                 </p>
               </div>
             </div>

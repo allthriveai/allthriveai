@@ -46,7 +46,7 @@ const PERK_PREVIEWS = [
   {
     icon: faStar,
     title: 'Member Exclusives',
-    description: 'Perks and surprises only for AllThrive members',
+    description: 'Perks and surprises only for All Thrive members',
     gradient: 'from-amber-500 to-orange-500',
     iconColor: 'text-amber-600 dark:text-amber-400',
     bgLight: 'bg-amber-100',
@@ -92,7 +92,7 @@ export default function PerksPage() {
                 {/* Description */}
                 <p className="text-xl text-gray-600 dark:text-gray-400 text-center max-w-2xl mx-auto mb-12 leading-relaxed">
                   Unlock exclusive discounts on tools, early access to events, and special offers
-                  curated just for AllThrive members.
+                  curated just for All Thrive members.
                 </p>
 
                 {/* Perk Preview Cards */}
@@ -126,7 +126,7 @@ export default function PerksPage() {
                       className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg dark:shadow-neon-strong transition-all duration-300"
                     >
                       <FontAwesomeIcon icon={faBolt} />
-                      Explore AllThrive
+                      Explore All Thrive
                     </a>
                     <span className="text-gray-500 dark:text-gray-500 text-sm">
                       Perks launching soon for all members

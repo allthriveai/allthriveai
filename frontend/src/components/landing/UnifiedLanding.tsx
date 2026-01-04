@@ -43,7 +43,7 @@ interface UnifiedLandingProps {
 // ============================================
 
 type SectionId = 'hero' | 'learn' | 'paths' | 'share' | 'see';
-type MessageType = 'user' | 'ava' | 'projects' | 'game' | 'cta' | 'url-input' | 'project-preview' | 'battle' | 'learning-path-preview' | 'exercise-picker';
+type MessageType = 'user' | 'ava' | 'projects' | 'game' | 'cta' | 'url-input' | 'project-preview' | 'learning-path-preview' | 'exercise-picker';
 
 interface ChatMessage {
   type: MessageType;
@@ -390,76 +390,6 @@ function ProjectPreview() {
   );
 }
 
-function BattlePreview() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded bg-slate-900/80 border border-white/10"
-    >
-      {/* Challenge prompt header */}
-      <div className="p-3 border-b border-white/10 bg-gradient-to-r from-rose-500/10 to-purple-500/10">
-        <p className="text-xs text-rose-400 font-medium uppercase tracking-wide mb-1">Challenge</p>
-        <p className="text-sm text-white italic">"A robot cat chef cooking a pizza in a futuristic kitchen"</p>
-      </div>
-
-      {/* Two images side by side */}
-      <div className="flex gap-2 p-3">
-        {/* Player 1 - Winner */}
-        <div className="flex-1 relative">
-          <div className="aspect-square rounded overflow-hidden bg-slate-800 mb-2 ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] relative">
-            <img
-              src="/battle-robot-cat-1.png"
-              alt="Robot cat chef making pizza"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-1 right-1 p-1 rounded-full bg-amber-500">
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z"/>
-              </svg>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=alex" alt="alex" className="w-5 h-5 rounded-full border border-cyan-500" />
-              <span className="text-xs text-white font-medium">alex_dev</span>
-            </div>
-            <span className="text-xs font-bold text-amber-400">8.7</span>
-          </div>
-        </div>
-
-        {/* VS */}
-        <div className="flex flex-col items-center justify-center px-1">
-          <div className="w-px flex-1 bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent" />
-          <span className="my-2 px-2 py-0.5 rounded-full bg-slate-800 border border-cyan-500/30 text-cyan-400 font-bold text-xs">
-            VS
-          </span>
-          <div className="w-px flex-1 bg-gradient-to-b from-transparent via-cyan-500/50 to-transparent" />
-        </div>
-
-        {/* Player 2 */}
-        <div className="flex-1">
-          <div className="aspect-square rounded overflow-hidden bg-slate-800 mb-2">
-            <img
-              src="/battle-robot-cat-2.png"
-              alt="Robot cat chef with pizza"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=maya" alt="maya" className="w-5 h-5 rounded-full border border-purple-500" />
-              <span className="text-xs text-white font-medium">maya_creates</span>
-            </div>
-            <span className="text-xs font-bold text-slate-400">7.2</span>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 function ChatBubble({ type, children, showAvatar = false }: { type: 'user' | 'ava'; children: React.ReactNode; showAvatar?: boolean }) {
   const isAva = type === 'ava';
   return (
@@ -572,19 +502,6 @@ function ChatConversation({ messages, isGamePlaying, onStartGame, activeSection 
                 className="ml-11"
               >
                 <ProjectPreview />
-              </motion.div>
-            );
-          }
-          if (message.type === 'battle') {
-            return (
-              <motion.div
-                key={key}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className="ml-11"
-              >
-                <BattlePreview />
               </motion.div>
             );
           }
@@ -869,7 +786,9 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
   useEffect(() => {
     getPlatformStats()
       .then(setStats)
-      .catch(console.error);
+      .catch(() => {
+        // Stats are optional - fail silently in production
+      });
   }, []);
 
   const { scrollYProgress } = useScroll({

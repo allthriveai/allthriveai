@@ -15,7 +15,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { CheckIcon, SparklesIcon, TrophyIcon } from '@heroicons/react/24/solid';
+import { SparklesIcon, TrophyIcon } from '@heroicons/react/24/solid';
 
 // Demo data for the battle simulation
 const demoData = {
@@ -24,14 +24,14 @@ const demoData = {
     name: 'alex_dev',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
     prompt: 'A sleek chrome robot cat with chef\'s hat, tossing pizza dough in a neon-lit kitchen',
-    score: 8.4,
+    score: 84,
     feedback: 'Great detail on lighting and composition!',
   },
   player2: {
     name: 'maya_creates',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=maya',
     prompt: 'Cyberpunk feline robot making pizza with laser precision',
-    score: 7.1,
+    score: 71,
     feedback: 'Try adding more specific details about the scene.',
   },
   images: {
@@ -148,7 +148,7 @@ export function BattleSimulation({ compact = false }: BattleSimulationProps) {
   const showImages = phaseIndex >= 5;
   const showScores = phaseIndex >= 6;
   const showFeedback = phaseIndex >= 7;
-  const showWinner = phaseIndex >= 8;
+  // showWinner (phaseIndex >= 8) not used in main component but kept for reference
 
   if (compact) {
     return <CompactBattleSimulation currentPhase={currentPhase} />;
@@ -160,7 +160,7 @@ export function BattleSimulation({ compact = false }: BattleSimulationProps) {
       <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/10 to-pink-500/10 blur-2xl" />
 
       {/* Main battle card */}
-      <div className="relative w-full max-w-[400px] max-h-full bg-slate-900/80 backdrop-blur-xl rounded border border-white/10 overflow-hidden">
+      <div className="relative w-full max-w-[500px] max-h-full bg-slate-900/80 backdrop-blur-xl rounded border border-white/10 overflow-hidden">
         {/* Header */}
         <div className="px-3 py-2 border-b border-white/5 flex items-center justify-center gap-2">
           <SparklesIcon className="w-4 h-4 text-cyan-400" />
@@ -169,25 +169,43 @@ export function BattleSimulation({ compact = false }: BattleSimulationProps) {
           </span>
         </div>
 
-        {/* Players row */}
-        <div className="px-3 py-3 flex items-center justify-between">
-          {/* Player 1 */}
-          <AnimatePresence>
-            {phaseIndex >= 0 && (
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ type: 'spring', stiffness: 100 }}
-                className="flex items-center gap-2"
-              >
-                <img
-                  src={demoData.player1.avatar}
-                  alt={demoData.player1.name}
-                  className="w-8 h-8 rounded-full bg-slate-700"
-                />
-                <div className="text-left">
-                  <div className="text-sm font-medium text-white flex items-center gap-1">
-                    {demoData.player1.name}
+        {/* Challenge - moved above player boxes */}
+        <AnimatePresence>
+          {showChallenge && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="px-3 py-2 border-b border-white/5"
+            >
+              <div className="text-[10px] text-slate-400 mb-0.5">Challenge:</div>
+              <div className="text-xs text-white font-medium leading-snug">
+                {demoData.challenge}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Two player boxes side by side */}
+        <div className="p-3">
+          <div className="flex gap-2 items-stretch">
+            {/* Player 1 Box - Cyan theme */}
+            <AnimatePresence>
+              {phaseIndex >= 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ type: 'spring', stiffness: 100 }}
+                  className="flex-1 rounded-lg border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-slate-800/50 overflow-hidden"
+                >
+                  {/* Player header */}
+                  <div className="px-2 py-1.5 border-b border-cyan-500/20 bg-cyan-500/5 flex items-center gap-1.5 md:gap-2">
+                    <img
+                      src={demoData.player1.avatar}
+                      alt={demoData.player1.name}
+                      className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-slate-700 flex-shrink-0"
+                    />
+                    <span className="text-[11px] md:text-xs font-medium text-white flex-1 truncate">{demoData.player1.name}</span>
                     {showScores && (
                       <motion.div
                         initial={{ scale: 0, rotate: -180 }}
@@ -198,257 +216,231 @@ export function BattleSimulation({ compact = false }: BattleSimulationProps) {
                       </motion.div>
                     )}
                   </div>
-                  {showScores && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 200 }}
-                      className="text-lg font-bold text-emerald-400"
-                    >
-                      {demoData.player1.score}
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* VS Badge */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-            className="relative"
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border border-cyan-500/50 flex items-center justify-center shadow-[0_0_10px_rgba(34,211,238,0.3)]">
-              {/* Animated ring */}
-              <motion.div
-                className="absolute inset-0 rounded-full border border-cyan-400/30"
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <span className="text-[10px] font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400">
-                VS
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Player 2 */}
-          <AnimatePresence>
-            {phaseIndex >= 0 && (
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ type: 'spring', stiffness: 100 }}
-                className="flex items-center gap-2"
-              >
-                <div className="text-right">
-                  <div className="text-sm font-medium text-white">{demoData.player2.name}</div>
-                  {showScores && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-                      className="text-lg font-bold text-slate-400"
-                    >
-                      {demoData.player2.score}
-                    </motion.div>
-                  )}
-                </div>
-                <img
-                  src={demoData.player2.avatar}
-                  alt={demoData.player2.name}
-                  className="w-8 h-8 rounded-full bg-slate-700"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Challenge */}
-        <AnimatePresence>
-          {showChallenge && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="px-3 pb-2"
-            >
-              <div className="text-[10px] text-slate-400 mb-0.5">Challenge:</div>
-              <div className="text-xs text-white font-medium leading-snug">
-                {demoData.challenge}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Typing / Submitted / Generating states */}
-        <div className="px-3 pb-3">
-          <div className="grid grid-cols-2 gap-2">
-            {/* Player 1 prompt area */}
-            <div className="bg-slate-800/50 rounded p-2 min-h-[60px]">
-              {showTyping && !showSubmitted && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-xs text-slate-300 leading-relaxed"
-                >
-                  {demoData.player1.prompt.slice(
-                    0,
-                    Math.floor(demoData.player1.prompt.length * typingProgress.player1)
-                  )}
-                  <motion.span
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.5, repeat: Infinity }}
-                    className="text-cyan-400"
-                  >
-                    |
-                  </motion.span>
-                </motion.div>
-              )}
-              {showSubmitted && !showImages && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="flex flex-col items-center justify-center h-full gap-1"
-                >
-                  <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <CheckIcon className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <span className="text-xs text-emerald-400">Submitted</span>
-                </motion.div>
-              )}
-              {showGenerating && !showImages && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center h-full gap-1"
-                >
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-6 h-6 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full"
-                  />
-                  <span className="text-xs text-cyan-400">Generating...</span>
-                </motion.div>
-              )}
-              {showImages && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="relative"
-                >
-                  {/* Gold gradient glow behind winner */}
-                  {showScores && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute -inset-1 rounded-lg bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 blur-sm"
-                    />
-                  )}
-                  <div className={`relative rounded overflow-hidden ${showScores ? 'ring-2 ring-yellow-400' : ''}`}>
-                    <img
-                      src={demoData.images.player1}
-                      alt="Generated image"
-                      className="w-full h-auto relative z-10"
-                    />
-                    {/* Gold shimmer overlay */}
-                    {showScores && (
+                  {/* Prompt area */}
+                  <div className="p-2 min-h-[40px] border-b border-cyan-500/10">
+                    {showTyping && !showSubmitted && (
                       <motion.div
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0.1, 0.2, 0.1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="absolute inset-0 bg-gradient-to-tr from-yellow-500/20 via-transparent to-amber-500/20 z-20"
-                      />
+                        animate={{ opacity: 1 }}
+                        className="text-xs text-white leading-relaxed"
+                      >
+                        {demoData.player1.prompt.slice(
+                          0,
+                          Math.floor(demoData.player1.prompt.length * typingProgress.player1)
+                        )}
+                        <motion.span
+                          animate={{ opacity: [1, 0] }}
+                          transition={{ duration: 0.5, repeat: Infinity }}
+                          className="text-cyan-400"
+                        >
+                          |
+                        </motion.span>
+                      </motion.div>
+                    )}
+                    {showSubmitted && (
+                      <div className="text-xs text-white/80 leading-relaxed">
+                        {demoData.player1.prompt}
+                      </div>
+                    )}
+                    {!showTyping && !showSubmitted && (
+                      <div className="text-[10px] text-slate-500 italic">Writing prompt...</div>
                     )}
                   </div>
+
+                  {/* Image area */}
+                  <div className="p-2">
+                    {!showImages && showGenerating && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center justify-center py-4 gap-1"
+                      >
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="w-5 h-5 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full"
+                        />
+                        <span className="text-[10px] text-cyan-400">Generating...</span>
+                      </motion.div>
+                    )}
+                    {!showImages && !showGenerating && (
+                      <div className="aspect-square bg-slate-800/30 rounded" />
+                    )}
+                    {showImages && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative"
+                      >
+                        {/* Gold gradient glow behind winner */}
+                        {showScores && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="absolute -inset-1 rounded-lg bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 blur-sm"
+                          />
+                        )}
+                        <div className={`relative rounded overflow-hidden ${showScores ? 'ring-2 ring-yellow-400' : ''}`}>
+                          <img
+                            src={demoData.images.player1}
+                            alt="Generated image"
+                            className="w-full h-auto relative z-10"
+                          />
+                          {showScores && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: [0.1, 0.2, 0.1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="absolute inset-0 bg-gradient-to-tr from-yellow-500/20 via-transparent to-amber-500/20 z-20"
+                            />
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Score */}
+                  {showScores && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="px-2 pb-2 text-center"
+                    >
+                      <span className="text-lg font-bold text-emerald-400">{demoData.player1.score}</span>
+                      {showFeedback && (
+                        <div className="text-[9px] text-emerald-400/80 mt-0.5">{demoData.player1.feedback}</div>
+                      )}
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
-              {showFeedback && (
-                <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 text-[10px] text-emerald-400 leading-tight"
-                >
-                  {demoData.player1.feedback}
-                </motion.div>
-              )}
+            </AnimatePresence>
+
+            {/* VS Badge in center */}
+            <div className="flex items-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+                className="relative"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                  <motion.div
+                    className="absolute inset-0 rounded-full border border-cyan-400/30"
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                  <span className="text-[10px] font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400">
+                    VS
+                  </span>
+                </div>
+              </motion.div>
             </div>
 
-            {/* Player 2 prompt area */}
-            <div className="bg-slate-800/50 rounded p-2 min-h-[60px]">
-              {showTyping && !showSubmitted && (
+            {/* Player 2 Box - Pink theme */}
+            <AnimatePresence>
+              {phaseIndex >= 0 && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-xs text-slate-300 leading-relaxed"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ type: 'spring', stiffness: 100 }}
+                  className="flex-1 rounded-lg border border-pink-500/30 bg-gradient-to-bl from-pink-500/10 to-slate-800/50 overflow-hidden"
                 >
-                  {demoData.player2.prompt.slice(
-                    0,
-                    Math.floor(demoData.player2.prompt.length * typingProgress.player2)
-                  )}
-                  <motion.span
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.5, repeat: Infinity }}
-                    className="text-pink-400"
-                  >
-                    |
-                  </motion.span>
-                </motion.div>
-              )}
-              {showSubmitted && !showImages && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex flex-col items-center justify-center h-full gap-1"
-                >
-                  <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <CheckIcon className="w-4 h-4 text-emerald-400" />
+                  {/* Player header */}
+                  <div className="px-2 py-1.5 border-b border-pink-500/20 bg-pink-500/5 flex items-center gap-1.5 md:gap-2">
+                    <img
+                      src={demoData.player2.avatar}
+                      alt={demoData.player2.name}
+                      className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-slate-700 flex-shrink-0"
+                    />
+                    <span className="text-[11px] md:text-xs font-medium text-white truncate">{demoData.player2.name}</span>
                   </div>
-                  <span className="text-xs text-emerald-400">Submitted</span>
+
+                  {/* Prompt area */}
+                  <div className="p-2 min-h-[40px] border-b border-pink-500/10">
+                    {showTyping && !showSubmitted && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-xs text-white leading-relaxed"
+                      >
+                        {demoData.player2.prompt.slice(
+                          0,
+                          Math.floor(demoData.player2.prompt.length * typingProgress.player2)
+                        )}
+                        <motion.span
+                          animate={{ opacity: [1, 0] }}
+                          transition={{ duration: 0.5, repeat: Infinity }}
+                          className="text-pink-400"
+                        >
+                          |
+                        </motion.span>
+                      </motion.div>
+                    )}
+                    {showSubmitted && (
+                      <div className="text-xs text-white/80 leading-relaxed">
+                        {demoData.player2.prompt}
+                      </div>
+                    )}
+                    {!showTyping && !showSubmitted && (
+                      <div className="text-[10px] text-slate-500 italic">Writing prompt...</div>
+                    )}
+                  </div>
+
+                  {/* Image area */}
+                  <div className="p-2">
+                    {!showImages && showGenerating && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.1 }}
+                        className="flex flex-col items-center justify-center py-4 gap-1"
+                      >
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="w-5 h-5 border-2 border-pink-400/30 border-t-pink-400 rounded-full"
+                        />
+                        <span className="text-[10px] text-pink-400">Generating...</span>
+                      </motion.div>
+                    )}
+                    {!showImages && !showGenerating && (
+                      <div className="aspect-square bg-slate-800/30 rounded" />
+                    )}
+                    {showImages && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.1 }}
+                        className="relative rounded overflow-hidden"
+                      >
+                        <img
+                          src={demoData.images.player2}
+                          alt="Generated image"
+                          className="w-full h-auto"
+                        />
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Score */}
+                  {showScores && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="px-2 pb-2 text-center"
+                    >
+                      <span className="text-lg font-bold text-slate-400">{demoData.player2.score}</span>
+                      {showFeedback && (
+                        <div className="text-[9px] text-slate-500 mt-0.5">{demoData.player2.feedback}</div>
+                      )}
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
-              {showGenerating && !showImages && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="flex flex-col items-center justify-center h-full gap-1"
-                >
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-6 h-6 border-2 border-pink-400/30 border-t-pink-400 rounded-full"
-                  />
-                  <span className="text-xs text-pink-400">Generating...</span>
-                </motion.div>
-              )}
-              {showImages && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="relative rounded overflow-hidden"
-                >
-                  <img
-                    src={demoData.images.player2}
-                    alt="Generated image"
-                    className="w-full h-auto"
-                  />
-                </motion.div>
-              )}
-              {showFeedback && (
-                <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="mt-2 text-[10px] text-slate-400 leading-tight"
-                >
-                  {demoData.player2.feedback}
-                </motion.div>
-              )}
-            </div>
+            </AnimatePresence>
           </div>
         </div>
 

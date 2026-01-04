@@ -128,7 +128,7 @@ function RequestCreatorAccess() {
       </h2>
 
       <p className="text-slate-400 mb-6 max-w-lg mx-auto">
-        To sell digital products on AllThrive, you need creator or mentor access.
+        To sell digital products on All Thrive, you need creator or mentor access.
         Share your expertise by creating courses, prompt packs, templates, and more.
       </p>
 

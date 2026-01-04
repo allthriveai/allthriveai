@@ -44,7 +44,7 @@ export function CTAVideoScene({ elapsed }: CTAVideoSceneProps) {
           >
             <img
               src="/all-thrvie-logo.png"
-              alt="AllThrive"
+              alt="All Thrive"
               className="w-24 h-24 mx-auto mb-3"
             />
             <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">

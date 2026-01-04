@@ -133,7 +133,7 @@ export default function CheckoutPage() {
   return (
     <DashboardLayout>
       <SEO
-        title={`Checkout - ${selectedTier.name} - AllThrive AI`}
+        title={`Checkout - ${selectedTier.name} - All Thrive AI`}
         description={`Complete your subscription to ${selectedTier.name}`}
       />
 

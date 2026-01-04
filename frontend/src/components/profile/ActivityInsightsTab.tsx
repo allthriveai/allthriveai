@@ -968,7 +968,7 @@ function AchievementDetailTray({
       longest_streak: `Achieve a ${value}-day activity streak to unlock this achievement.`,
       login_count: `Log in on ${value} different day${value !== 1 ? 's' : ''} to unlock this achievement.`,
       logins: `Log in on ${value} different day${value !== 1 ? 's' : ''} to unlock this achievement.`,
-      first_login: `Log in to AllThrive for the first time.`,
+      first_login: `Log in to All Thrive for the first time.`,
 
       // Points
       total_points: `Earn ${value.toLocaleString()} total points to unlock this achievement.`,

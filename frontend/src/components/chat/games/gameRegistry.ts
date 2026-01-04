@@ -60,7 +60,7 @@ export const GAME_REGISTRY: Record<PlayableGameType, GameConfig> = {
     icon: faQuestion,
     description: 'Test your AI knowledge with a quick question!',
     tagline: 'Test your AI knowledge',
-    // No promo image yet - will use icon fallback
+    promoImage: '/ai-trivia-promo.png',
     component: () => import('./QuickQuiz').then(m => ({ default: m.QuickQuiz })),
     category: 'trivia',
     enabled: true,

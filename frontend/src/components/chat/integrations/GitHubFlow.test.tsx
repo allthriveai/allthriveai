@@ -156,7 +156,7 @@ describe('GitHubFlow', () => {
         />
       );
 
-      expect(screen.getByText('Install AllThrive App')).toBeInTheDocument();
+      expect(screen.getByText('Install All Thrive App')).toBeInTheDocument();
       expect(screen.getByText('Install GitHub App')).toBeInTheDocument();
     });
 
@@ -170,7 +170,7 @@ describe('GitHubFlow', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Install AllThrive App'));
+      fireEvent.click(screen.getByText('Install All Thrive App'));
 
       expect(onInstallApp).toHaveBeenCalledTimes(1);
     });

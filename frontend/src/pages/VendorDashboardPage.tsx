@@ -173,7 +173,7 @@ export default function VendorDashboardPage() {
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Welcome to Vendor Analytics</h2>
             <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-              You don't have access to any tools yet. Contact our team to get analytics access for your tools listed on AllThrive AI.
+              You don't have access to any tools yet. Contact our team to get analytics access for your tools listed on All Thrive AI.
             </p>
           </div>
         </div>
@@ -198,7 +198,7 @@ export default function VendorDashboardPage() {
                 {selectedTool?.name || 'Dashboard'}
               </h1>
               <p className="text-slate-600 dark:text-slate-400">
-                Performance insights for your tools on AllThrive AI
+                Performance insights for your tools on All Thrive AI
               </p>
             </div>
 

@@ -95,7 +95,7 @@ export default function MarketplacePage() {
 
                 {/* Description */}
                 <p className="text-xl text-gray-600 dark:text-gray-400 text-center max-w-2xl mx-auto mb-12 leading-relaxed">
-                  Discover courses, prompt packs, and digital products created by the AllThrive community.
+                  Discover courses, prompt packs, and digital products created by the All Thrive community.
                   Or become a creator and share your expertise.
                 </p>
 
@@ -130,7 +130,7 @@ export default function MarketplacePage() {
                       className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg dark:shadow-neon-strong transition-all duration-300"
                     >
                       <FontAwesomeIcon icon={faBolt} />
-                      Explore AllThrive
+                      Explore All Thrive
                     </a>
                     <span className="text-gray-500 dark:text-gray-500 text-sm">
                       Marketplace launching soon

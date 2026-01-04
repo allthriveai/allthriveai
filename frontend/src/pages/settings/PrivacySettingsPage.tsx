@@ -438,7 +438,7 @@ export default function PrivacySettingsPage() {
                 </h2>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Control how AllThrive learns from your activity to personalize recommendations. These settings also affect what Ava knows about you.
+                Control how All Thrive learns from your activity to personalize recommendations. These settings also affect what Ava knows about you.
               </p>
 
               {personalizationLoading ? (
@@ -731,7 +731,7 @@ export default function PrivacySettingsPage() {
                   </p>
                   <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 list-disc list-inside">
                     <li><strong>Profile Visibility:</strong> Control what appears publicly on your profile, including achievements and projects.</li>
-                    <li><strong>Personalization:</strong> Control how AllThrive learns from your activity. These settings also affect what Ava knows about you.</li>
+                    <li><strong>Personalization:</strong> Control how All Thrive learns from your activity. These settings also affect what Ava knows about you.</li>
                     <li><strong>Similarity Matching:</strong> When disabled, recommendations use only your activity - not patterns from similar users.</li>
                     <li><strong>AI Training:</strong> Opt-out by default. Enable to help improve external AI models.</li>
                     <li><strong>Your Data:</strong> Export your data anytime or delete personalization data to reset Ava's knowledge.</li>

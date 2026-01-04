@@ -128,7 +128,7 @@ const FEELING_OPTIONS: FeelingOption[] = [
     id: 'personalize',
     label: 'Personalize my experience',
     signupFeatures: ['personalize'],
-    message: 'Help me personalize my AllThrive experience',
+    message: 'Help me personalize my All Thrive experience',
     priority: 1,
   },
   {
