@@ -902,6 +902,8 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                       return msg;
                     })}
                     isLoading={state.isLoading}
+                    hasTimedOut={state.hasTimedOut}
+                    onRetry={state.retryLastMessage}
                     currentTool={state.currentTool}
                     onCancelProcessing={state.cancelProcessing}
                     userAvatarUrl={user?.avatarUrl}

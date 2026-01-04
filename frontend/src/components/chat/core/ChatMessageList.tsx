@@ -31,6 +31,8 @@ import type { ChatMessage } from '@/hooks/useIntelligentChat';
 export function ChatMessageList({
   messages,
   isLoading,
+  hasTimedOut,
+  onRetry,
   currentTool,
   onCancelProcessing,
   userAvatarUrl,
@@ -278,12 +280,31 @@ export function ChatMessageList({
         {avatarCreation?.isActive && <AvatarCreationMessage avatarCreation={avatarCreation} />}
 
         {/* Loading indicator */}
-        {isLoading && (
+        {isLoading && !hasTimedOut && (
           <LoadingMessage
             currentTool={currentTool}
             onCancel={onCancelProcessing}
             variant="neon"
           />
+        )}
+
+        {/* Timeout message with retry */}
+        {hasTimedOut && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-2xl bg-amber-500/10 border border-amber-500/30 px-4 py-3">
+              <p className="text-amber-200 text-sm mb-2">
+                Ava is taking longer than expected. This might be a temporary issue.
+              </p>
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  Try again
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Scroll anchor */}

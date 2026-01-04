@@ -75,11 +75,13 @@ export function ChatCore({
     isConnected,
     isConnecting,
     isLoading,
+    hasTimedOut,
     currentTool,
     sendMessage: rawSendMessage,
     sendMessageWithImage: rawSendMessageWithImage,
     clearMessages,
     cancelProcessing,
+    retryLastMessage,
     addLocalMessage,
   } = useIntelligentChat({
     conversationId,
@@ -276,6 +278,7 @@ export function ChatCore({
     isConnected,
     isConnecting,
     isLoading,
+    hasTimedOut,
     currentTool,
 
     // File upload
@@ -287,6 +290,7 @@ export function ChatCore({
     sendMessage,
     clearMessages,
     cancelProcessing,
+    retryLastMessage,
 
     // Integrations
     integrationState: integrationFlow.state,
