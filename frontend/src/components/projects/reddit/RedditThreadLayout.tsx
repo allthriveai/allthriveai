@@ -372,11 +372,12 @@ export function RedditThreadLayout({ project }: RedditThreadLayoutProps) {
                   ref={videoRef}
                   controls
                   autoPlay
+                  muted
                   loop
                   playsInline
                   poster={thumbnailImage && thumbnailImage !== 'self' && thumbnailImage !== 'default' ? thumbnailImage : undefined}
                   className="w-full h-full object-contain"
-                  preload="metadata"
+                  preload="auto"
                 >
                   <source src={postVideoUrl} type="video/mp4" />
                   Your browser does not support the video tag.

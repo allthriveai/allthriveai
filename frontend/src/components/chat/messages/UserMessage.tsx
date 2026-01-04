@@ -65,6 +65,7 @@ function MediaPreview({ media, isNeon }: { media: MediaMatch; isNeon: boolean })
         <video
           src={media.url}
           controls
+          preload="auto"
           className={`max-w-full ${isNeon ? 'max-h-64' : 'max-h-48'} rounded-lg`}
         >
           Your browser does not support video.
@@ -86,6 +87,7 @@ function MediaPreview({ media, isNeon }: { media: MediaMatch; isNeon: boolean })
           <video
             src={media.url}
             controls
+            preload="auto"
             className={`max-w-full ${isNeon ? 'max-h-64' : 'max-h-48'} rounded-lg`}
           >
             Your browser does not support video.
