@@ -106,7 +106,7 @@ export function VideoSection({ content }: VideoSectionProps) {
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="auto"
               className="absolute inset-0 w-full h-full object-contain"
             >
               Your browser does not support the video tag.

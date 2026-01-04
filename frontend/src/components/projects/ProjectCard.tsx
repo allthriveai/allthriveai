@@ -672,6 +672,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                   loop
                   muted
                   playsInline
+                  preload="auto"
                 />
               );
             })()}

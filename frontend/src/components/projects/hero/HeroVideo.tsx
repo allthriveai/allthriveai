@@ -110,11 +110,13 @@ export function HeroVideo({ videoUrl, redditPermalink, autoplay = false }: HeroV
               src={videoUrl}
               controls
               autoPlay
+              muted
               loop
               playsInline
+              preload="auto"
               className="rounded-xl md:rounded-2xl max-h-[80vh] max-w-full"
-              onError={() => {
-                console.error('Video load error');
+              onError={(e) => {
+                console.error('Video load error:', e);
               }}
             />
           </div>
