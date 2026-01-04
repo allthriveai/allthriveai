@@ -498,7 +498,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
           if (option.id === 'get-started') {
             // Send to Ava to explain AllThrive - no canned response
             if (option.message) {
-              sendMessage(option.message);
+              state.sendMessage(option.message);
             }
             return;
           }
