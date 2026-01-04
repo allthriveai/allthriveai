@@ -147,8 +147,8 @@ export function BattleSimulation({ compact = false }: BattleSimulationProps) {
   const showGenerating = phaseIndex >= 4;
   const showImages = phaseIndex >= 5;
   const showScores = phaseIndex >= 6;
-  const _showFeedback = phaseIndex >= 7;
-  const _showWinner = phaseIndex >= 8;
+  const showFeedback = phaseIndex >= 7;
+  const showWinner = phaseIndex >= 8;
 
   if (compact) {
     return <CompactBattleSimulation currentPhase={currentPhase} />;
