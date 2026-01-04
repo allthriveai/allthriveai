@@ -204,9 +204,16 @@ function isStorageUrl(href: string): boolean {
  * 2. https://username/path → /username/path (AI adds https:// to relative paths)
  * 3. https://allthriveai.com/path → /path (alternate domain)
  * 4. S3/storage URLs → undefined (remove invalid navigation links)
+ * 5. # links → undefined (AI uses # as placeholder when no real URL exists)
  */
 function normalizeAllThriveUrl(href: string | undefined): string | undefined {
   if (!href) return href;
+
+  // Remove # placeholder links (AI hallucination when no real URL exists)
+  // Common in learning paths where AI tries to link individual lessons
+  if (href === '#' || href.startsWith('#')) {
+    return undefined; // Remove the link, render as plain text
+  }
 
   // Remove S3/storage URLs used as navigation links (AI hallucination)
   // These should be images, not link targets
