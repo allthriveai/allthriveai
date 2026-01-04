@@ -16,13 +16,13 @@ const demoData = {
   challenge: 'Robot cat chef making pizza',
   player1: {
     name: 'alex_dev',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
+    avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=alex',
     prompt: 'Chrome cat, neon kitchen',
     score: 84,
   },
   player2: {
     name: 'maya_creates',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=maya',
+    avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=maya',
     prompt: '80s retro robot cat chef',
     score: 71,
   },

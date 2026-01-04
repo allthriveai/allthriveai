@@ -776,36 +776,37 @@ export function ExplorePage() {
                   <>
                     <MasonryGrid>
                       {/* Interleave quizzes, learning paths, lessons, and projects with stable ordering */}
-                      {mixedItems.map((item) => (
-                        <div key={item.stableKey} className="break-inside-avoid mb-2">
-                          {item.type === 'quiz' ? (
-                            <QuizPreviewCard
-                              quiz={item.data}
-                              variant="compact"
-                              onOpen={() => handleOpenQuiz(item.data.slug)}
-                            />
-                          ) : item.type === 'learning-path' ? (
-                            <LearningPathCard learningPath={item.data} />
-                          ) : item.type === 'lesson' ? (
-                            <LessonCard lesson={item.data} />
-                          ) : item.type === 'game' ? (
-                            <GamePromoCard
-                              game={item.data}
-                              onClick={() => handleOpenGame(item.data)}
-                            />
-                          ) : (
-                            <ProjectCard
-                              project={item.data}
-                              variant="masonry"
-                              userAvatarUrl={item.data.userAvatarUrl}
-                              isOwner={user?.username === item.data.username}
-                              onCommentClick={openCommentPanel}
-                              onCardClick={handleProjectClick}
-                              enableInlinePreview={true}
-                            />
-                          )}
-                        </div>
-                      ))}
+                      {mixedItems.map((item) =>
+                        item.type === 'quiz' ? (
+                          <QuizPreviewCard
+                            key={item.stableKey}
+                            quiz={item.data}
+                            variant="compact"
+                            onOpen={() => handleOpenQuiz(item.data.slug)}
+                          />
+                        ) : item.type === 'learning-path' ? (
+                          <LearningPathCard key={item.stableKey} learningPath={item.data} />
+                        ) : item.type === 'lesson' ? (
+                          <LessonCard key={item.stableKey} lesson={item.data} />
+                        ) : item.type === 'game' ? (
+                          <GamePromoCard
+                            key={item.stableKey}
+                            game={item.data}
+                            onClick={() => handleOpenGame(item.data)}
+                          />
+                        ) : (
+                          <ProjectCard
+                            key={item.stableKey}
+                            project={item.data}
+                            variant="masonry"
+                            userAvatarUrl={item.data.userAvatarUrl}
+                            isOwner={user?.username === item.data.username}
+                            onCommentClick={openCommentPanel}
+                            onCardClick={handleProjectClick}
+                            enableInlinePreview={true}
+                          />
+                        )
+                      )}
                     </MasonryGrid>
 
                     {/* Infinite scroll trigger */}
