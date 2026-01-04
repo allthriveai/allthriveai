@@ -599,10 +599,13 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
               const urlIsShort = heroElement.url?.includes('/shorts/') || heroElement.url?.includes('youtube.com/shorts');
               const isYouTubeShort = hasVerticalFlag || urlIsShort;
 
-              // Only autoplay videos from midjourney-reddit-agent in the explore feed
-              const shouldAutoplay = project.username === 'midjourney-reddit-agent';
+              // Autoplay videos tagged with "midjourney" (muted, looped)
+              const hasMidjourneyTag = project.content?.tags?.some(
+                (tag: string) => tag.toLowerCase().includes('midjourney')
+              );
+              const shouldAutoplay = hasMidjourneyTag || project.username === 'midjourney-reddit-agent';
 
-              // Parse video URL to get embed URL (autoplay only for midjourney-reddit-agent)
+              // Parse video URL to get embed URL (autoplay for midjourney-tagged projects)
               const parseVideoUrl = (url: string) => {
                 const autoplayParam = shouldAutoplay ? '1' : '0';
 
