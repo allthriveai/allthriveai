@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { IconCloud } from '@/components/common/IconCloud';
 import { getTools, getToolCategories, getToolCompanies, prefetchTool } from '@/services/tools';
 import { ToolSearchBar, type ToolFilters } from '@/components/tools/ToolSearchBar';
 import { ToolRequestTray } from '@/components/tools/ToolRequestTray';
@@ -113,25 +114,33 @@ function ToolDirectoryPageContent() {
       {() => (
         <div className="flex-1 overflow-y-auto h-full">
           {/* Hero Banner - Neon Glass Style */}
-          <header className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Tool Directory page header">
-            {/* Ambient Glow Background */}
-            <div className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-cyan-500/20 dark:bg-cyan-500/20 blur-[120px] pointer-events-none" aria-hidden="true" />
-            <div className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full bg-yellow-500/10 dark:bg-yellow-500/10 blur-[100px] pointer-events-none" aria-hidden="true" />
+          <header className="relative h-72 md:h-64 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden" aria-label="Tool Directory page header">
+            {/* Ambient Glow Background - positioned behind icon cloud */}
+            <div className="absolute top-1/2 right-[15%] -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-cyan-500/30 dark:bg-cyan-500/25 blur-[100px] pointer-events-none" aria-hidden="true" />
+            <div className="absolute top-1/2 right-[18%] -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-green-500/20 dark:bg-green-500/15 blur-[80px] pointer-events-none" aria-hidden="true" />
 
-            <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-yellow-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-yellow-400 bg-clip-text text-transparent">Tool Directory</span>
-              </h1>
-              <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl mb-6">
-                Explore AI tools and technologies to enhance your workflow
-              </p>
-              <button
-                onClick={() => setIsRequestTrayOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/10 dark:bg-white/5 border border-gray-300 dark:border-gray-700 hover:border-cyan-400 dark:hover:border-cyan-500 text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-all duration-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] w-fit"
-              >
-                <PlusCircleIcon className="w-5 h-5" />
-                Request to Add a Tool
-              </button>
+            <div className="relative px-4 sm:px-6 lg:px-8 h-full flex items-center">
+              {/* Text content */}
+              <div className="flex-1 flex flex-col justify-center max-w-lg">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                  <span className="bg-gradient-to-r from-cyan-500 via-cyan-400 to-yellow-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-yellow-400 bg-clip-text text-transparent">Tool Directory</span>
+                </h1>
+                <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl mb-6">
+                  Explore AI tools and technologies to enhance your workflow
+                </p>
+                <button
+                  onClick={() => setIsRequestTrayOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/10 dark:bg-white/5 border border-gray-300 dark:border-gray-700 hover:border-cyan-400 dark:hover:border-cyan-500 text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-all duration-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] w-fit"
+                >
+                  <PlusCircleIcon className="w-5 h-5" />
+                  Request to Add a Tool
+                </button>
+              </div>
+
+              {/* Icon Cloud - hidden on mobile, positioned absolutely */}
+              <div className="hidden md:block absolute right-[15%] top-1/2 -translate-y-1/2">
+                <IconCloud size={300} iconSize={38} />
+              </div>
             </div>
           </header>
 
