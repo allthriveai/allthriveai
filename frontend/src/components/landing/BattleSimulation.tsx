@@ -470,7 +470,7 @@ function CompactBattleSimulation({ currentPhase }: { currentPhase: Phase }) {
   const showImages = phaseIndex >= 5;
   const showScores = phaseIndex >= 6;
   const _showFeedback = phaseIndex >= 7;
-  const _showWinner = phaseIndex >= 8;
+  const showWinner = phaseIndex >= 8;
 
   return (
     <div className="relative w-full h-full flex items-center justify-center">
