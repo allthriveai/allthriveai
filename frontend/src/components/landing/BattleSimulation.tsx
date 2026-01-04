@@ -42,11 +42,11 @@ type Phase =
 
 const phaseTimings: { phase: Phase; duration: number }[] = [
   { phase: 'intro', duration: 5000 },
-  { phase: 'challenge', duration: 1500 },
-  { phase: 'prompts', duration: 2000 },
-  { phase: 'generating', duration: 2000 },
-  { phase: 'images', duration: 3000 },
-  { phase: 'winner', duration: 3000 },
+  { phase: 'challenge', duration: 1000 },
+  { phase: 'prompts', duration: 800 },
+  { phase: 'generating', duration: 1000 },
+  { phase: 'images', duration: 1500 },
+  { phase: 'winner', duration: 2500 },
 ];
 
 export function BattleSimulation() {
