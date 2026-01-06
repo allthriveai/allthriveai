@@ -1,8 +1,8 @@
 /**
- * LearningGoalSelectionMessage - Learning goal selection for Ava chat
+ * LearningGoalSelectionMessage - Learning goal selection for chat companions
  *
  * Shows learning goal options as interactive buttons in chat.
- * Uses orange Ava theme with larger fonts.
+ * Supports different companions (Sage for Learn, Ava for general).
  */
 
 import { useState, lazy, Suspense } from 'react';
@@ -17,6 +17,58 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import type { LearningGoal } from '@/types/models';
 import { ChatErrorBoundary } from '../ChatErrorBoundary';
+
+// Companion configurations
+export interface CompanionConfig {
+  name: string;
+  avatar: string;
+  greeting: string;
+  theme: {
+    gradient: string;
+    border: string;
+    text: string;
+    textMuted: string;
+    button: string;
+    buttonHover: string;
+    buttonSelected: string;
+    skipText: string;
+    loadingText: string;
+  };
+}
+
+export const SAGE_COMPANION: CompanionConfig = {
+  name: 'Sage',
+  avatar: '/sage-avatar.png',
+  greeting: "Hey there! I'm Sage, your AI learning companion.",
+  theme: {
+    gradient: 'from-emerald-500/10 to-teal-500/5',
+    border: 'border-emerald-500/20',
+    text: 'text-emerald-100',
+    textMuted: 'text-emerald-200/70',
+    button: 'border-emerald-500/20 hover:border-emerald-500/40',
+    buttonHover: 'group-hover:text-emerald-200/90',
+    buttonSelected: 'ring-emerald-500 bg-emerald-500/10',
+    skipText: 'text-emerald-200/50 hover:text-emerald-200/80',
+    loadingText: 'text-emerald-400',
+  },
+};
+
+export const AVA_COMPANION: CompanionConfig = {
+  name: 'Ava',
+  avatar: '/ava-avatar.png',
+  greeting: "Hey there! I'm Ava, your AI learning companion.",
+  theme: {
+    gradient: 'from-orange-500/10 to-amber-500/5',
+    border: 'border-orange-500/20',
+    text: 'text-orange-100',
+    textMuted: 'text-orange-200/70',
+    button: 'border-orange-500/20 hover:border-orange-500/40',
+    buttonHover: 'group-hover:text-orange-200/90',
+    buttonSelected: 'ring-orange-500 bg-orange-500/10',
+    skipText: 'text-orange-200/50 hover:text-orange-200/80',
+    loadingText: 'text-orange-400',
+  },
+};
 
 // Lazy load game component to avoid blocking initial render
 const ChatGameCard = lazy(() => import('../games/ChatGameCard').then(m => ({ default: m.ChatGameCard })));
@@ -60,14 +112,15 @@ export const learningGoalOptions: LearningGoalOption[] = [
   },
 ];
 
-// Ava avatar component - positioned at bottom
-function AvaAvatar() {
+// Companion avatar component - positioned at bottom
+function CompanionAvatar({ companion }: { companion: CompanionConfig }) {
+  const borderColor = companion.name === 'Sage' ? 'border-emerald-500/50' : 'border-cyan-500/50';
   return (
     <div className="relative flex-shrink-0 self-start">
       <img
-        src="/ava-avatar.png"
-        alt="Ava"
-        className="w-12 h-12 rounded-full border-2 border-cyan-500/50"
+        src={companion.avatar}
+        alt={companion.name}
+        className={`w-12 h-12 rounded-full border-2 ${borderColor}`}
       />
     </div>
   );
@@ -77,19 +130,29 @@ interface LearningGoalSelectionMessageProps {
   onSelectGoal: (goal: LearningGoal) => void;
   onSkip: () => void;
   isPending?: boolean;
+  /** Which companion to show. Defaults to Sage for learning context. */
+  companion?: CompanionConfig;
 }
 
 export function LearningGoalSelectionMessage({
   onSelectGoal,
   onSkip,
   isPending = false,
+  companion = SAGE_COMPANION,
 }: LearningGoalSelectionMessageProps) {
   const [selectedGoal, setSelectedGoal] = useState<LearningGoal | null>(null);
+  const theme = companion.theme;
 
   const handleSelectGoal = (goal: LearningGoalOption) => {
     setSelectedGoal(goal.id);
     onSelectGoal(goal.id);
   };
+
+  // Dynamic loading indicator background based on theme
+  const loadingBgClass = companion.name === 'Sage' ? 'bg-emerald-800/20' : 'bg-orange-800/20';
+  const loadingSpinnerBorderClass = companion.name === 'Sage'
+    ? 'border-emerald-400 border-t-transparent'
+    : 'border-orange-400 border-t-transparent';
 
   return (
     <motion.div
@@ -97,19 +160,19 @@ export function LearningGoalSelectionMessage({
       animate={{ opacity: 1, y: 0 }}
       className="py-4"
     >
-      {/* Layout with Ava avatar alongside */}
+      {/* Layout with companion avatar alongside */}
       <div className="flex items-start gap-4">
-        <AvaAvatar />
+        <CompanionAvatar companion={companion} />
 
         <div className="flex-1 max-w-2xl space-y-4">
           {/* Header messages */}
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-subtle px-5 py-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20"
+            className={`glass-subtle px-5 py-4 rounded-xl bg-gradient-to-br ${theme.gradient} border ${theme.border}`}
           >
-            <p className="text-orange-100 text-lg leading-relaxed">
-              Hey there! I'm Ava, your AI learning companion.
+            <p className={`${theme.text} text-lg leading-relaxed`}>
+              {companion.greeting}
             </p>
           </motion.div>
 
@@ -117,9 +180,9 @@ export function LearningGoalSelectionMessage({
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass-subtle px-5 py-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20"
+            className={`glass-subtle px-5 py-4 rounded-xl bg-gradient-to-br ${theme.gradient} border ${theme.border}`}
           >
-            <p className="text-orange-100 text-lg leading-relaxed">
+            <p className={`${theme.text} text-lg leading-relaxed`}>
               What brings you here today? This helps me personalize your learning path.
             </p>
           </motion.div>
@@ -138,9 +201,9 @@ export function LearningGoalSelectionMessage({
                 disabled={selectedGoal !== null || isPending}
                 className={`
                   relative w-full p-4 rounded-xl text-left transition-all
-                  glass-subtle hover:bg-white/[0.08] border border-orange-500/20 hover:border-orange-500/40
+                  glass-subtle hover:bg-white/[0.08] border ${theme.button}
                   group overflow-hidden
-                  ${selectedGoal === goal.id ? 'ring-2 ring-orange-500 bg-orange-500/10' : ''}
+                  ${selectedGoal === goal.id ? `ring-2 ${theme.buttonSelected}` : ''}
                   ${selectedGoal !== null && selectedGoal !== goal.id ? 'opacity-40' : ''}
                   ${isPending ? 'cursor-wait' : ''}
                 `}
@@ -157,15 +220,15 @@ export function LearningGoalSelectionMessage({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg text-orange-100 group-hover:text-orange-50 transition-colors">
+                    <h3 className={`font-semibold text-lg ${theme.text} group-hover:text-white/90 transition-colors`}>
                       {goal.title}
                     </h3>
-                    <p className="text-base text-orange-200/70 group-hover:text-orange-200/90 transition-colors">
+                    <p className={`text-base ${theme.textMuted} ${theme.buttonHover} transition-colors`}>
                       {goal.description}
                     </p>
                   </div>
 
-                  <div className="text-orange-400/50 group-hover:text-orange-400 transition-colors">
+                  <div className={`${theme.textMuted} group-hover:text-white/80 transition-colors`}>
                     <FontAwesomeIcon icon={faArrowRight} className="w-5 h-5" />
                   </div>
                 </div>
@@ -183,7 +246,7 @@ export function LearningGoalSelectionMessage({
             <button
               onClick={onSkip}
               disabled={selectedGoal !== null || isPending}
-              className="text-orange-200/50 hover:text-orange-200/80 text-sm transition-colors disabled:cursor-wait"
+              className={`${theme.skipText} text-sm transition-colors disabled:cursor-wait`}
             >
               Skip for now - I'll figure it out as I go
             </button>
@@ -198,15 +261,15 @@ export function LearningGoalSelectionMessage({
             >
               {/* Loading text */}
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 text-orange-400">
-                  <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                <div className={`inline-flex items-center gap-2 ${theme.loadingText}`}>
+                  <div className={`w-4 h-4 border-2 ${loadingSpinnerBorderClass} rounded-full animate-spin`} />
                   <span>Building your personalized learning path — this can take a few minutes. Play a quick game while you wait!</span>
                 </div>
               </div>
 
               {/* Mini game while waiting */}
               <ChatErrorBoundary inline resetKey="learning-setup-game">
-                <Suspense fallback={<div className="h-32 animate-pulse bg-orange-800/20 rounded-xl" />}>
+                <Suspense fallback={<div className={`h-32 animate-pulse ${loadingBgClass} rounded-xl`} />}>
                   <ChatGameCard gameType="snake" config={{ difficulty: 'easy' }} />
                 </Suspense>
               </ChatErrorBoundary>

@@ -267,15 +267,27 @@ export function ImageUpload({
   };
 
   const handleOpenAva = () => {
-    // Dispatch event to open Ava with avatar generation context
-    // This works directly since we're in DashboardLayout which listens for this event
+    // Dispatch event to open Ava chat panel with avatar generation context
+    // DashboardLayout catches this and opens ChatSidebar with avatarGenerateContext
+    // After a delay, we dispatch open-avatar-creation to trigger the template selector UI
     if (user) {
+      // First, open the chat sidebar with avatar context
       window.dispatchEvent(new CustomEvent('openAvatarGenerate', {
         detail: {
           userId: user.id,
           username: user.username,
         }
       }));
+
+      // Then trigger the avatar creation UI flow after chat is mounted
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('open-avatar-creation', {
+          detail: {
+            userId: user.id,
+            username: user.username,
+          }
+        }));
+      }, 500);
     }
   };
 
