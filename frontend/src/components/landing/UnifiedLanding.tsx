@@ -641,6 +641,7 @@ function FeatureContent({ icon: Icon, title, description, children }: { icon: Re
 // Learning Path Animation - nodes connecting with animated lines
 function MobileLearningPathAnimation() {
   const prefersReducedMotion = useReducedMotion();
+  const [isInView, setIsInView] = useState(false);
 
   const nodes = [
     { x: 50, y: 35, label: 'Start', color: '#22d3ee' },
@@ -650,7 +651,12 @@ function MobileLearningPathAnimation() {
   ];
 
   return (
-    <svg viewBox="0 0 230 150" className="w-full h-auto">
+    <motion.svg
+      viewBox="0 0 230 150"
+      className="w-full h-auto"
+      onViewportEnter={() => setIsInView(true)}
+      viewport={{ once: true, margin: '-50px' }}
+    >
       <defs>
         <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#22d3ee" />
@@ -674,14 +680,13 @@ function MobileLearningPathAnimation() {
         strokeLinecap="round"
         filter="url(#glow)"
         initial={{ pathLength: 0, opacity: 0 }}
-        whileInView={{ pathLength: 1, opacity: 1 }}
-        viewport={{ once: true }}
+        animate={isInView ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
         transition={{ duration: 2, ease: 'easeInOut' }}
       />
 
       {/* Nodes */}
       {nodes.map((node, i) => (
-        <motion.g key={i}>
+        <g key={i}>
           {/* Glow ring */}
           <motion.circle
             cx={node.x}
@@ -691,13 +696,13 @@ function MobileLearningPathAnimation() {
             stroke={node.color}
             strokeWidth="2"
             opacity="0.3"
-            initial={{ scale: 0 }}
-            whileInView={{ scale: [1, 1.2, 1] }}
-            viewport={{ once: true }}
+            animate={isInView && !prefersReducedMotion ? {
+              r: [18, 22, 18],
+            } : {}}
             transition={{
               delay: 0.5 + i * 0.2,
               duration: 2,
-              repeat: prefersReducedMotion ? 0 : Infinity
+              repeat: Infinity
             }}
           />
           {/* Node circle */}
@@ -707,10 +712,9 @@ function MobileLearningPathAnimation() {
             r="12"
             fill={node.color}
             filter="url(#glow)"
-            initial={{ scale: 0, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 + i * 0.2, type: 'spring' }}
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ delay: 0.2 + i * 0.2, duration: 0.5 }}
           />
           {/* Label */}
           <motion.text
@@ -721,22 +725,28 @@ function MobileLearningPathAnimation() {
             fontSize="11"
             fontWeight="500"
             initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 + i * 0.2 }}
+            animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ delay: 0.4 + i * 0.2, duration: 0.3 }}
           >
             {node.label}
           </motion.text>
-        </motion.g>
+        </g>
       ))}
-    </svg>
+    </motion.svg>
   );
 }
 
 // Share Animation - project card assembling from pieces
 function MobileShareAnimation() {
+  const [isInView, setIsInView] = useState(false);
+
   return (
-    <svg viewBox="0 0 260 140" className="w-full h-auto">
+    <motion.svg
+      viewBox="0 0 260 140"
+      className="w-full h-auto"
+      onViewportEnter={() => setIsInView(true)}
+      viewport={{ once: true, margin: '-50px' }}
+    >
       <defs>
         <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.2" />
@@ -762,9 +772,8 @@ function MobileShareAnimation() {
         stroke="#22d3ee"
         strokeWidth="1"
         strokeOpacity="0.5"
-        initial={{ opacity: 0, scale: 0.8 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
         transition={{ duration: 0.5 }}
       />
 
@@ -779,10 +788,9 @@ function MobileShareAnimation() {
         fillOpacity="0.3"
         stroke="#4ade80"
         strokeWidth="1"
-        initial={{ x: -100, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.3, type: 'spring', stiffness: 100 }}
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
       />
 
       {/* Title line */}
@@ -794,9 +802,8 @@ function MobileShareAnimation() {
         rx="4"
         fill="white"
         fillOpacity="0.8"
-        initial={{ width: 0 }}
-        whileInView={{ width: 85 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
         transition={{ delay: 0.5, duration: 0.4 }}
       />
 
@@ -809,9 +816,8 @@ function MobileShareAnimation() {
         rx="2"
         fill="white"
         fillOpacity="0.4"
-        initial={{ width: 0 }}
-        whileInView={{ width: 70 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
         transition={{ delay: 0.6, duration: 0.3 }}
       />
       <motion.rect
@@ -822,9 +828,8 @@ function MobileShareAnimation() {
         rx="2"
         fill="white"
         fillOpacity="0.4"
-        initial={{ width: 0 }}
-        whileInView={{ width: 55 }}
-        viewport={{ once: true }}
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
         transition={{ delay: 0.7, duration: 0.3 }}
       />
 
@@ -841,27 +846,22 @@ function MobileShareAnimation() {
           fillOpacity="0.3"
           stroke={['#a855f7', '#22d3ee', '#f472b6'][i]}
           strokeWidth="1"
-          initial={{ y: 30, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.8 + i * 0.1, type: 'spring' }}
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ delay: 0.8 + i * 0.1, duration: 0.3 }}
         />
       ))}
 
       {/* Share icon pulse */}
-      <motion.g
-        initial={{ scale: 0 }}
-        whileInView={{ scale: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 1, type: 'spring' }}
-      >
+      <g>
         <motion.circle
           cx="200"
           cy="100"
           r="16"
           fill="#22d3ee"
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1, scale: [1, 1.1, 1] } : { opacity: 0 }}
+          transition={{ delay: 1, duration: 2, repeat: Infinity }}
         />
         <path
           d="M196 100 L204 100 M200 96 L200 104"
@@ -869,28 +869,33 @@ function MobileShareAnimation() {
           strokeWidth="2"
           strokeLinecap="round"
         />
-      </motion.g>
-    </svg>
+      </g>
+    </motion.svg>
   );
 }
 
 // Prompt Battle Animation - two players competing with real avatars
 function MobilePromptBattleAnimation() {
   const [showWinner, setShowWinner] = useState(false);
+  const [isInView, setIsInView] = useState(false);
 
   useEffect(() => {
+    if (!isInView) return;
     const timer = setTimeout(() => setShowWinner(true), 2500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isInView]);
 
   return (
-    <div className="flex items-start justify-center gap-4 py-4 px-8">
+    <motion.div
+      className="flex items-start justify-center gap-4 py-4 px-8"
+      onViewportEnter={() => setIsInView(true)}
+      viewport={{ once: true }}
+    >
       {/* Player 1 - Left side (Winner) */}
       <motion.div
         className="flex flex-col items-center relative"
         initial={{ x: -30, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1 }}
-        viewport={{ once: true }}
+        animate={isInView ? { x: 0, opacity: 1 } : {}}
         transition={{ type: 'spring', stiffness: 100 }}
       >
         {/* Winner trophy */}
@@ -928,12 +933,11 @@ function MobilePromptBattleAnimation() {
         <motion.div
           className="mt-2 w-24 h-24 rounded-lg overflow-hidden border-2"
           initial={{ scale: 0 }}
-          whileInView={{ scale: 1 }}
-          animate={{
+          animate={isInView ? {
+            scale: 1,
             borderColor: showWinner ? 'rgba(250, 204, 21, 0.7)' : 'rgba(34, 211, 238, 0.5)',
             boxShadow: showWinner ? '0 0 20px rgba(250, 204, 21, 0.4)' : 'none',
-          }}
-          viewport={{ once: true }}
+          } : {}}
           transition={{ delay: 0.5, type: 'spring' }}
         >
           <img src="/battle-robot-cat-1.png" alt="Battle image 1" className="w-full h-full object-cover" />
@@ -944,8 +948,7 @@ function MobilePromptBattleAnimation() {
       <motion.div
         className="relative self-center"
         initial={{ scale: 0, rotate: -180 }}
-        whileInView={{ scale: 1, rotate: 0 }}
-        viewport={{ once: true }}
+        animate={isInView ? { scale: 1, rotate: 0 } : {}}
         transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
       >
         <motion.div
@@ -968,8 +971,7 @@ function MobilePromptBattleAnimation() {
       <motion.div
         className="flex flex-col items-center"
         initial={{ x: 30, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1 }}
-        viewport={{ once: true }}
+        animate={isInView ? { x: 0, opacity: 1 } : {}}
         transition={{ type: 'spring', stiffness: 100 }}
       >
         {/* Avatar with glow ring */}
@@ -988,19 +990,19 @@ function MobilePromptBattleAnimation() {
         <motion.div
           className="mt-2 w-24 h-24 rounded-lg overflow-hidden border-2 border-green-400/50"
           initial={{ scale: 0 }}
-          whileInView={{ scale: 1 }}
-          viewport={{ once: true }}
+          animate={isInView ? { scale: 1 } : {}}
           transition={{ delay: 0.5, type: 'spring' }}
         >
           <img src="/battle-robot-cat-2.png" alt="Battle image 2" className="w-full h-full object-cover" />
         </motion.div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
 // Explore Animation - grid of real project thumbnails
 function MobileExploreAnimation() {
+  const [isInView, setIsInView] = useState(false);
   const projects = [
     { type: 'video', src: '/sammy.mp4', title: 'Sammy' },
     { type: 'image', src: '/vector-database-promo.png', title: 'Vector Database' },
@@ -1009,14 +1011,17 @@ function MobileExploreAnimation() {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <motion.div
+      className="grid grid-cols-2 gap-3"
+      onViewportEnter={() => setIsInView(true)}
+      viewport={{ once: true }}
+    >
       {projects.map((project, i) => (
         <motion.div
           key={i}
           className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-slate-800"
           initial={{ opacity: 0, scale: 0.8 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
+          animate={isInView ? { opacity: 1, scale: 1 } : {}}
           transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
         >
           {project.type === 'video' ? (
@@ -1041,7 +1046,7 @@ function MobileExploreAnimation() {
           </div>
         </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
@@ -1055,11 +1060,13 @@ interface MobileAnimatedSectionProps {
 
 function MobileAnimatedSection({ title, subtitle, glowColor, children }: MobileAnimatedSectionProps) {
   const prefersReducedMotion = useReducedMotion();
+  const [isInView, setIsInView] = useState(false);
 
   return (
     <motion.div
       initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      onViewportEnter={() => setIsInView(true)}
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.5 }}
       className="relative overflow-hidden rounded border border-white/10 bg-white/5 backdrop-blur-sm p-6 pt-8 pb-10"
