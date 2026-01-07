@@ -81,7 +81,7 @@ export function WhatIsAllThrive() {
           </h2>
 
           <p className="mt-6 text-xl text-gray-400">
-            All Thrive is your space to share, learn, and play with AI.
+            All Thrive is your space to play, learn, and share with AI.
           </p>
         </motion.div>
 

@@ -128,7 +128,6 @@ const PitchDeckPage = lazy(() => import('@/pages/PitchDeckPage'));
 const PromoPage = lazy(() => import('@/pages/PromoPage'));
 const PromoVideoPage = lazy(() => import('@/pages/PromoVideoPage'));
 const AllieConnectPage = lazy(() => import('@/pages/AllieConnectPage'));
-const LandingTestPage = lazy(() => import('@/pages/LandingTestPage'));
 
 // Creator Tools - lazy loaded
 const CreatePage = lazy(() => import('@/pages/CreatePage'));
@@ -251,9 +250,6 @@ export function AppRoutes() {
 
       {/* Allie's personal connect page - public */}
       <Route path="/allie-connect" element={<AllieConnectPage />} />
-
-      {/* Landing page test - simplified mobile design */}
-      <Route path="/landing-test" element={<LandingTestPage />} />
 
       {/* Creator Tools - protected, admin only */}
       <Route
