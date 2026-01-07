@@ -37,7 +37,7 @@ export default function AllieConnectPage() {
         image={ALLIE_CONFIG.image}
       />
 
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden px-4 py-6">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden px-4 py-4 sm:py-6">
         {/* Animated gradient background */}
         <div className="absolute inset-0" aria-hidden="true">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-background to-slate-900" />
@@ -68,7 +68,7 @@ export default function AllieConnectPage() {
         >
           {/* Profile Image */}
           <motion.div
-            className="mb-4"
+            className="mb-3 sm:mb-4"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
@@ -78,7 +78,7 @@ export default function AllieConnectPage() {
               <img
                 src={ALLIE_CONFIG.image}
                 alt={ALLIE_CONFIG.name}
-                className="relative w-28 h-28 rounded-full object-cover border-3 border-white/10 shadow-xl"
+                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-3 border-white/10 shadow-xl"
               />
             </div>
           </motion.div>
@@ -95,7 +95,7 @@ export default function AllieConnectPage() {
 
           {/* Blurb */}
           <motion.div
-            className="mt-3 mb-6 space-y-2 px-4"
+            className="mt-2 mb-4 sm:mt-3 sm:mb-6 space-y-1.5 sm:space-y-2 px-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -110,7 +110,7 @@ export default function AllieConnectPage() {
 
           {/* Links */}
           <motion.div
-            className="space-y-3"
+            className="space-y-2.5 sm:space-y-3"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
@@ -119,7 +119,7 @@ export default function AllieConnectPage() {
               href={ALLIE_CONFIG.links.linkedin}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary w-full py-4 text-base font-medium flex items-center justify-center gap-2"
+              className="btn-secondary w-full py-3 sm:py-4 text-base font-medium flex items-center justify-center gap-2"
             >
               <FontAwesomeIcon icon={faLinkedin} className="w-5 h-5" />
               LinkedIn
@@ -128,7 +128,7 @@ export default function AllieConnectPage() {
               href={ALLIE_CONFIG.links.calendly}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary w-full py-4 text-base font-medium flex items-center justify-center gap-2"
+              className="btn-secondary w-full py-3 sm:py-4 text-base font-medium flex items-center justify-center gap-2"
             >
               <FontAwesomeIcon icon={faCalendarAlt} className="w-5 h-5" />
               Book a Chat
@@ -137,7 +137,7 @@ export default function AllieConnectPage() {
               href={ALLIE_CONFIG.links.allthrive}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary w-full py-4 text-base font-medium flex items-center justify-center gap-2"
+              className="btn-secondary w-full py-3 sm:py-4 text-base font-medium flex items-center justify-center gap-2"
             >
               <img src="/all-thrvie-logo.png" alt="" className="w-5 h-5" />
               Join allthrive.ai
@@ -146,7 +146,7 @@ export default function AllieConnectPage() {
               href={ALLIE_CONFIG.links.promptBattle}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary w-full py-4 text-base font-semibold flex items-center justify-center gap-2 shadow-neon-strong"
+              className="btn-primary w-full py-3 sm:py-4 text-base font-semibold flex items-center justify-center gap-2 shadow-neon-strong"
             >
               <FontAwesomeIcon icon={faGamepad} className="w-5 h-5" />
               Play an Image Prompt Battle
