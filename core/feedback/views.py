@@ -217,3 +217,67 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         # Return updated item
         serializer = FeedbackItemSerializer(item, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'], url_path='update')
+    def user_update(self, request, pk=None):
+        """Allow feedback owner to update title and description."""
+        item = self.get_object()
+
+        # Only the owner can update their own submission
+        if item.user_id != request.user.id:
+            return Response(
+                {'error': 'You can only edit your own submissions'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Only allow editing open items (not in_progress, completed, or declined)
+        if item.status != 'open':
+            return Response(
+                {'error': 'Cannot edit feedback that is already being reviewed'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update allowed fields
+        if 'title' in request.data:
+            title = request.data['title'].strip()
+            if not title:
+                return Response({'error': 'Title cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+            if len(title) > 255:
+                return Response({'error': 'Title too long (max 255 characters)'}, status=status.HTTP_400_BAD_REQUEST)
+            item.title = title
+
+        if 'description' in request.data:
+            description = request.data['description'].strip()
+            if not description:
+                return Response({'error': 'Description cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+            item.description = description
+
+        item.save()
+
+        # Return updated item
+        serializer = FeedbackItemSerializer(item, context={'request': request})
+        return Response(serializer.data)
+
+    def destroy(self, request, pk=None):
+        """Delete a feedback item. Admins can delete any, owners can delete their own open items."""
+        item = self.get_object()
+
+        # Admins can delete any feedback
+        if request.user.is_staff:
+            item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # Owners can delete their own open submissions
+        if item.user_id == request.user.id:
+            if item.status != 'open':
+                return Response(
+                    {'error': 'Cannot delete feedback that is already being reviewed'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(
+            {'error': 'You can only delete your own submissions'},
+            status=status.HTTP_403_FORBIDDEN,
+        )

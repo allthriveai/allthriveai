@@ -355,3 +355,106 @@ export async function hasProductAccess(productId: number): Promise<boolean> {
     return false;
   }
 }
+
+// =============================================================================
+// Asset Download & Upload API
+// =============================================================================
+
+export interface AssetDownloadResponse {
+  downloadUrl: string;
+  filename: string;
+  fileSize: number;
+  contentType: string;
+}
+
+export interface AssetUploadResponse {
+  id: number;
+  title: string;
+  description: string;
+  assetType: string;
+  fileSize: number;
+  contentType: string;
+  order: number;
+  isPreview: boolean;
+  createdAt: string;
+}
+
+/**
+ * Get a presigned download URL for a product asset
+ * User must have purchased the product or be the creator
+ */
+export async function getAssetDownloadUrl(
+  productId: number,
+  assetId: number
+): Promise<AssetDownloadResponse> {
+  const response = await api.get<AssetDownloadResponse>(
+    `/marketplace/products/${productId}/assets/${assetId}/download/`
+  );
+  return response.data;
+}
+
+/**
+ * Download a product asset
+ * Opens the download URL in a new tab or triggers download
+ */
+export async function downloadAsset(
+  productId: number,
+  assetId: number
+): Promise<void> {
+  const { downloadUrl } = await getAssetDownloadUrl(productId, assetId);
+  // Open in new tab to trigger download
+  window.open(downloadUrl, '_blank');
+}
+
+/**
+ * Upload a file as a product asset
+ * Only the product creator can upload assets
+ */
+export async function uploadAsset(
+  productId: number,
+  file: File,
+  options?: {
+    title?: string;
+    description?: string;
+    assetType?: 'download' | 'video' | 'audio' | 'document';
+    isPreview?: boolean;
+  }
+): Promise<AssetUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  if (options?.title) {
+    formData.append('title', options.title);
+  }
+  if (options?.description) {
+    formData.append('description', options.description);
+  }
+  if (options?.assetType) {
+    formData.append('asset_type', options.assetType);
+  }
+  if (options?.isPreview !== undefined) {
+    formData.append('is_preview', options.isPreview.toString());
+  }
+
+  const response = await api.post<AssetUploadResponse>(
+    `/marketplace/products/${productId}/assets/`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Delete a product asset
+ * Only the product creator can delete assets
+ */
+export async function deleteAsset(
+  productId: number,
+  assetId: number
+): Promise<void> {
+  await api.delete(`/marketplace/products/${productId}/assets/${assetId}/`);
+}

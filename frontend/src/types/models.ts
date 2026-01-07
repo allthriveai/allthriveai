@@ -123,6 +123,15 @@ export interface ProjectRedirect {
   createdAt: string;
 }
 
+// Minimal product data for project cards (marketplace)
+export interface ProductMinimal {
+  id: number;
+  productType: 'course' | 'prompt_pack' | 'template' | 'ebook';
+  price: number;
+  currency: string;
+  status: 'draft' | 'published' | 'archived';
+}
+
 // Project model
 export interface Project {
   id: number;
@@ -170,6 +179,8 @@ export interface Project {
   publishedDate?: string; // Original publication date (for AI-imported/RSS content, editable)
   createdAt: string;
   updatedAt: string;
+  // Marketplace product data (for products with price badges in explore feed)
+  product?: ProductMinimal;
 }
 
 // Video content structure (for video projects)

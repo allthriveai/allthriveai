@@ -4,6 +4,7 @@ import time
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
+from django.http import HttpResponse
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -20,7 +21,7 @@ from core.users.models import User
 
 from .constants import MIN_RESPONSE_TIME_SECONDS
 from .models import Project, ProjectDismissal, ProjectLike
-from .serializers import ProjectCardSerializer, ProjectSerializer
+from .serializers import ProjectCardSerializer, ProjectContextSerializer, ProjectSerializer
 from .topic_utils import get_project_topic_names, set_project_topics
 
 logger = logging.getLogger(__name__)
@@ -832,6 +833,121 @@ def get_project_by_slug(request, username, slug):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def project_context_json(request, username, slug):
+    """Return project context as JSON for LLM/MCP consumption.
+
+    This endpoint provides structured data about a project that can be
+    used by AI tools, MCP servers, and other integrations.
+
+    Security:
+    - Only returns public, non-archived projects
+    - Private projects return 404 (not 403 to avoid enumeration)
+    - Respects user.is_profile_public setting
+    """
+    try:
+        user = User.objects.get(username__iexact=username)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check if user's profile is public
+    if not user.is_profile_public:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        project = (
+            Project.objects.select_related(
+                'user',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+                'content_source',
+            )
+            .prefetch_related('tools', 'categories', 'topics', 'likes')
+            .get(user=user, slug=slug)
+        )
+    except Project.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Only return public, non-archived projects
+    if project.is_private or project.is_archived:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check cache
+    cache_key = f'project_context_json_{project.id}_v1'
+    data = cache.get(cache_key)
+
+    if data is None:
+        serializer = ProjectContextSerializer(project, context={'request': request})
+        data = serializer.data
+        cache.set(cache_key, data, 900)  # 15 minutes
+
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def project_context_md(request, username, slug):
+    """Return project context as Markdown for download/LLM consumption.
+
+    Query params:
+        download=true: Forces download with Content-Disposition header
+
+    Security:
+    - Only returns public, non-archived projects
+    - Private projects return 404 (not 403 to avoid enumeration)
+    - Respects user.is_profile_public setting
+    """
+    try:
+        user = User.objects.get(username__iexact=username)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check if user's profile is public
+    if not user.is_profile_public:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        project = (
+            Project.objects.select_related(
+                'user',
+                'content_type_taxonomy',
+                'time_investment',
+                'difficulty_taxonomy',
+                'pricing_taxonomy',
+                'content_source',
+            )
+            .prefetch_related('tools', 'categories', 'topics', 'likes')
+            .get(user=user, slug=slug)
+        )
+    except Project.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Only return public, non-archived projects
+    if project.is_private or project.is_archived:
+        return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check cache
+    cache_key = f'project_context_md_{project.id}_v1'
+    markdown = cache.get(cache_key)
+
+    if markdown is None:
+        from .context import generate_project_markdown
+
+        markdown = generate_project_markdown(project, request)
+        cache.set(cache_key, markdown, 900)  # 15 minutes
+
+    response = HttpResponse(markdown, content_type='text/markdown; charset=utf-8')
+
+    # Only force download if ?download=true query param (for MCP/API access without download)
+    if request.query_params.get('download') == 'true':
+        response['Content-Disposition'] = f'attachment; filename="{project.slug}.md"'
+
+    return response
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def public_user_projects(request, username):
     """Get projects for a user by username.
 
@@ -1311,6 +1427,7 @@ def explore_projects(request):
             'time_investment',
             'difficulty_taxonomy',
             'pricing_taxonomy',
+            'product',  # Marketplace product for price badge
         )
         .prefetch_related('tools', 'categories')
     )

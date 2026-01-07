@@ -1,11 +1,12 @@
 /**
  * ProjectImportOptionsMessage - Card-based options for sharing/importing a project
  *
- * Displays 4 card-style options when user clicks "Share something I've been working on":
+ * Displays 5 card-style options when user clicks "Share an idea or project":
  * - Connect to an integration (GitHub, GitLab, Figma, YouTube)
  * - Paste in a URL
  * - Upload a project directly
  * - Install Chrome extension
+ * - I have an idea (get help developing it)
  *
  * Styled with Neon Glass aesthetic, similar to GamePicker.
  */
@@ -17,6 +18,7 @@ import {
   faLink,
   faCloudUpload,
   faPuzzlePiece,
+  faLightbulb,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import type { ProjectImportOption } from '@/hooks/useIntelligentChat';
@@ -53,6 +55,12 @@ const IMPORT_OPTIONS: ImportOptionConfig[] = [
     description: 'Install our extension to easily import from anywhere',
     icon: faPuzzlePiece,
   },
+  {
+    id: 'idea',
+    title: 'I have an idea',
+    description: 'Get help developing your idea with projects and people',
+    icon: faLightbulb,
+  },
 ];
 
 interface ProjectImportOptionsMessageProps {
@@ -70,17 +78,17 @@ export function ProjectImportOptionsMessage({ onOptionSelect }: ProjectImportOpt
       {/* Header text */}
       <div className="mb-4 px-1">
         <span className="text-base text-slate-600 dark:text-slate-300">
-          How would you like to share your project?
+          How would you like to share your idea?
         </span>
       </div>
 
-      {/* Option cards - responsive grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Option cards - responsive grid (5 columns on desktop, 2 on mobile with centered orphan) */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {IMPORT_OPTIONS.map((option, index) => (
           <motion.button
             key={option.id}
             onClick={() => onOptionSelect(option.id)}
-            className="group text-left"
+            className={`group text-left ${index === 4 ? 'col-span-2 md:col-span-1 max-w-[50%] mx-auto md:max-w-none' : ''}`}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.08, type: 'spring', stiffness: 300, damping: 25 }}

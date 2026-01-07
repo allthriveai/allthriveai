@@ -1,0 +1,30 @@
+Project,Region,Service,Resource Name,Resource Type,Oct 2024,Nov 2024,Dec 2024,Notes
+Kinlia/Kindra,us-west-1,EC2,Kindra-Backend-Recovery-v2,t2.large,$68,$68,$68,Production backend - $0.0928/hr
+Kinlia/Kindra,us-west-1,EC2,Kindra-Backend-Staging,t2.small,$17,$17,$17,Staging backend - $0.023/hr
+Kinlia/Kindra,us-west-1,RDS,kindra-dating-db-prod-01,db.t3.small,$29,$29,$29,PostgreSQL - $0.039/hr
+Kinlia/Kindra,us-west-1,RDS,kindra-dating-db-prod-02,db.t3.small,$29,$29,$29,PostgreSQL - $0.039/hr
+Kinlia/Kindra,us-west-1,RDS,kindra-dating-staging-2,db.t3.micro,$12,$12,$12,PostgreSQL - $0.017/hr
+Kinlia/Kindra,us-west-1,EBS,EC2 Volumes,2x 20GB,$4,$4,$4,gp2 + gp3 storage
+Kinlia/Kindra,us-west-1,Amplify,kinlia-web,Hosting,$15,$15,$15,Frontend hosting + builds
+Kinlia/Kindra,Global,CloudFront,4 distributions,CDN,$10,$10,$10,events/staging/www kinlia + kindraconnect
+Kinlia/Kindra,Global,S3,9 buckets,Storage,$5,$5,$5,Static site hosting
+Kinlia/Kindra,us-west-1,Data Transfer,Outbound,Variable,$50,$60,$80,Estimated - increases with traffic
+Kinlia/Kindra,us-west-1,Route 53,DNS,Hosted zones,$2,$2,$2,DNS queries
+Kinlia/Kindra,SUBTOTAL,,,,$241,$251,$271,
+AllThrive,us-east-1,ECS Fargate,allthriveai-web,2x (512/1024),$40,$40,$40,Daphne web servers
+AllThrive,us-east-1,ECS Fargate,allthriveai-celery,2x (512/1024),$40,$40,$40,Celery workers
+AllThrive,us-east-1,ECS Fargate,allthriveai-celery-beat,1x (256/512),$10,$10,$10,Celery scheduler
+AllThrive,us-east-1,ECS Fargate,allthriveai-weaviate,1x (512/1024),$20,$20,$20,Vector database
+AllThrive,us-east-1,RDS,Production DB,db.t4g.medium + Multi-AZ,$100,$100,$100,PostgreSQL with failover
+AllThrive,us-east-1,ElastiCache,Redis Cluster,2x cache.t4g.small,$50,$50,$50,Redis replication
+AllThrive,us-east-1,NAT Gateway,2 NAT Gateways,Fixed cost,$64,$64,$64,$32/mo each
+AllThrive,us-east-1,NAT Gateway,Data Processing,Variable,$40,$60,$150,AI API calls increase in Dec
+AllThrive,us-east-1,ALB,Load Balancer,Application LB,$18,$18,$18,Traffic distribution
+AllThrive,Global,CloudFront,api.allthrive.ai,Distribution,$8,$8,$8,API CDN
+AllThrive,us-east-1,EFS,Weaviate Storage,Elastic File System,$8,$8,$8,Persistent vector storage
+AllThrive,Global,S3,Media Bucket,Storage,$8,$10,$12,User uploads growing
+AllThrive,us-east-1,CloudWatch,Logs + Metrics,Monitoring,$10,$12,$15,Log ingestion
+AllThrive,us-east-1,Secrets Manager,8 secrets,Secret storage,$4,$4,$4,API keys
+AllThrive,us-east-1,ECR,Docker Images,Container registry,$3,$4,$5,Image storage
+AllThrive,SUBTOTAL,,,,$423,$448,$544,
+TOTAL,ALL,,,,$664,$699,$815,

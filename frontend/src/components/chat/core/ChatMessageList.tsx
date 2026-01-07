@@ -18,6 +18,7 @@ import {
   OnboardingMessage,
   GeneratingImageMessage,
   ProjectImportOptionsMessage,
+  IdeaDescriptionMessage,
   IntegrationCardsMessage,
   ProfileQuestionMessage,
   InlineActionsMessage,
@@ -51,6 +52,9 @@ export function ChatMessageList({
   onProfileQuestionAnswer,
   onInlineActionClick,
   onOpenProjectPreview,
+  onIdeaSubmit,
+  onIdeaCancel,
+  isIdeaSubmitting,
 }: ChatMessageListProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,6 +168,16 @@ export function ChatMessageList({
       return (
         <ProjectImportOptionsMessage
           onOptionSelect={onProjectImportOptionSelect}
+        />
+      );
+    }
+
+    if (metadata?.type === 'idea_description_input' && onIdeaSubmit && onIdeaCancel) {
+      return (
+        <IdeaDescriptionMessage
+          onSubmit={onIdeaSubmit}
+          onCancel={onIdeaCancel}
+          isSubmitting={isIdeaSubmitting}
         />
       );
     }

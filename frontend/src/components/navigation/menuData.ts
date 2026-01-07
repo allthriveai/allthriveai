@@ -15,6 +15,7 @@ import {
   faCog,
   faStore,
   faCouch,
+  faBookOpen,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -47,7 +48,8 @@ export const getMenuSections = (
     items: [
       { label: 'Explore', path: '/explore', icon: faCompass },
       { label: 'Tool Directory', path: '/tools', icon: faWrench },
-      { label: 'Marketplace', path: '#', icon: faStore },
+      { label: 'Marketplace', path: '/marketplace', icon: faStore },
+      { label: 'My Library', path: '/library', icon: faBookOpen },
     ],
   },
   {
@@ -115,6 +117,7 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'My Messages': (path) => path === '/messages' || path.startsWith('/messages/'),
   'Membership Perks': (path) => path === '/perks',
   'Marketplace': (path) => path === '/marketplace',
+  'My Library': (path) => path === '/library',
   'Tool Directory': (path) => path === '/tools',
   'Learning Paths': (path) => path === '/learn' || path.startsWith('/learn/'),
 };

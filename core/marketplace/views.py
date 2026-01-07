@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from .models import CreatorAccount, Order, Product, ProductAccess
+from .models import CreatorAccount, Order, Product, ProductAccess, ProductAsset
 from .serializers import (
     CreatorAccountSerializer,
     CreatorDashboardSerializer,
@@ -670,3 +670,239 @@ class FreeProductAccessView(APIView):
                 'product_id': product.id,
             }
         )
+
+
+# =============================================================================
+# Asset Download & Upload Views
+# =============================================================================
+
+
+class AssetDownloadView(APIView):
+    """
+    Download a product asset.
+
+    GET: Get presigned URL for downloading an asset
+
+    SECURITY:
+    - User must have ProductAccess or be the creator
+    - Returns time-limited presigned URL (1 hour)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, product_id, asset_id):
+        """Get download URL for an asset."""
+        from django.shortcuts import get_object_or_404
+
+        from services.integrations.storage.storage_service import get_storage_service
+
+        # Get product and asset
+        product = get_object_or_404(Product, id=product_id)
+        asset = get_object_or_404(ProductAsset, id=asset_id, product=product)
+
+        # Check access: user has purchased OR is creator
+        has_access = (
+            ProductAccess.objects.filter(
+                user=request.user,
+                product=product,
+                is_active=True,
+            ).exists()
+            or product.creator == request.user
+        )
+
+        if not has_access:
+            logger.warning(f'User {request.user.id} denied download access to asset {asset_id} of product {product_id}')
+            return Response(
+                {'error': 'You do not have access to this product. Please purchase it first.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Check if file_path exists
+        if not asset.file_path:
+            return Response(
+                {'error': 'Asset file not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            # Generate presigned URL (1-hour expiry)
+            storage = get_storage_service()
+            download_url = storage.get_presigned_url(asset.file_path, expires_seconds=3600)
+
+            logger.info(f'Generated download URL for asset {asset_id} for user {request.user.id}')
+
+            return Response(
+                {
+                    'download_url': download_url,
+                    'filename': asset.title,
+                    'file_size': asset.file_size,
+                    'content_type': asset.content_type,
+                }
+            )
+
+        except Exception as e:
+            logger.error(f'Failed to generate download URL for asset {asset_id}: {e}')
+            return Response(
+                {'error': 'Failed to generate download link. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class AssetUploadView(IsProductOwner, APIView):
+    """
+    Upload an asset to a product.
+
+    POST: Upload a file as a product asset
+
+    SECURITY:
+    - Only product creator can upload assets
+    - Files stored in private bucket with presigned URL access
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, product_id):
+        """Upload a new asset to a product."""
+        from django.shortcuts import get_object_or_404
+
+        from services.integrations.storage.storage_service import get_storage_service
+
+        # Get product
+        product = get_object_or_404(Product, id=product_id)
+
+        # Check ownership
+        self.check_product_ownership(product, request.user)
+
+        # Get uploaded file
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return Response(
+                {'error': 'No file provided'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate file size (max 100MB)
+        max_size = 100 * 1024 * 1024  # 100MB
+        if uploaded_file.size > max_size:
+            return Response(
+                {'error': 'File too large. Maximum size is 100MB.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get metadata from request
+        title = request.data.get('title', uploaded_file.name)
+        description = request.data.get('description', '')
+        asset_type = request.data.get('asset_type', ProductAsset.AssetType.DOWNLOAD)
+        is_preview = request.data.get('is_preview', 'false').lower() == 'true'
+
+        try:
+            # Upload to storage (private bucket)
+            storage = get_storage_service()
+            file_data = uploaded_file.read()
+
+            file_path, error = storage.upload_file(
+                file_data=file_data,
+                filename=uploaded_file.name,
+                content_type=uploaded_file.content_type or 'application/octet-stream',
+                user_id=request.user.id,
+                folder=f'product-assets/product_{product_id}',
+                is_public=False,  # Private - requires presigned URL
+            )
+
+            if error:
+                logger.error(f'Failed to upload asset: {error}')
+                return Response(
+                    {'error': f'Failed to upload file: {error}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            # Get current max order
+            max_order = ProductAsset.objects.filter(product=product).count()
+
+            # Create ProductAsset record
+            asset = ProductAsset.objects.create(
+                product=product,
+                title=title,
+                description=description,
+                asset_type=asset_type,
+                file_path=file_path,
+                file_size=len(file_data),
+                content_type=uploaded_file.content_type or 'application/octet-stream',
+                order=max_order,
+                is_preview=is_preview,
+            )
+
+            logger.info(f'Created asset {asset.id} for product {product_id} by user {request.user.id}')
+
+            from .serializers import ProductAssetSerializer
+
+            serializer = ProductAssetSerializer(asset)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f'Error uploading asset for product {product_id}: {e}', exc_info=True)
+            return Response(
+                {'error': 'Failed to upload file. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class AssetDeleteView(IsProductOwner, APIView):
+    """
+    Delete a product asset.
+
+    DELETE: Remove an asset from a product
+
+    SECURITY:
+    - Only product creator can delete assets
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, product_id, asset_id):
+        """Delete an asset from a product."""
+        from django.shortcuts import get_object_or_404
+
+        from services.integrations.storage.storage_service import get_storage_service
+
+        # Get product and asset
+        product = get_object_or_404(Product, id=product_id)
+        asset = get_object_or_404(ProductAsset, id=asset_id, product=product)
+
+        # Check ownership
+        self.check_product_ownership(product, request.user)
+
+        try:
+            # Delete from storage if file_path exists
+            if asset.file_path:
+                storage = get_storage_service()
+                # For private files, file_path is the object name
+                # Need to construct full URL for delete_file method
+                # Actually, let's delete by object name directly
+                try:
+                    storage.client.remove_object(
+                        bucket_name=storage.bucket_name,
+                        object_name=asset.file_path,
+                    )
+                    logger.info(f'Deleted file from storage: {asset.file_path}')
+                except Exception as e:
+                    # Log but don't fail - file might already be deleted
+                    logger.warning(f'Failed to delete file from storage: {e}')
+
+            # Delete the asset record
+            asset_id_saved = asset.id
+            asset.delete()
+
+            logger.info(f'Deleted asset {asset_id_saved} from product {product_id} by user {request.user.id}')
+
+            return Response(
+                {'success': True, 'message': 'Asset deleted'},
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f'Error deleting asset {asset_id} from product {product_id}: {e}', exc_info=True)
+            return Response(
+                {'error': 'Failed to delete asset. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

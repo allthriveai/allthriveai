@@ -172,6 +172,14 @@ export function FeedbackPage() {
     setSelectedItem(updatedItem);
   };
 
+  const handleItemDelete = (itemId: number) => {
+    // Remove the item from the list
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
+    // Clear selected item and close tray
+    setSelectedItem(null);
+    setIsDetailTrayOpen(false);
+  };
+
   return (
     <DashboardLayout>
       {() => (
@@ -345,6 +353,7 @@ export function FeedbackPage() {
             isOpen={isDetailTrayOpen}
             onClose={handleCloseDetailTray}
             onUpdate={handleItemUpdate}
+            onDelete={handleItemDelete}
           />
 
           {/* Submit Tray */}

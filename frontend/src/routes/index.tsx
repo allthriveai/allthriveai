@@ -93,6 +93,7 @@ const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
 const CheckoutSuccessPage = lazy(() => import('@/pages/CheckoutSuccessPage'));
 const PerksPage = lazy(() => import('@/pages/PerksPage'));
 const MarketplacePage = lazy(() => import('@/pages/MarketplacePage'));
+const MyLibraryPage = lazy(() => import('@/pages/MyLibraryPage'));
 
 // Admin pages - lazy loaded (admin only)
 const VendorDashboardPage = lazy(() => import('@/pages/VendorDashboardPage'));
@@ -126,6 +127,12 @@ const ExtensionPage = lazy(() => import('@/pages/ExtensionPage'));
 const PitchDeckPage = lazy(() => import('@/pages/PitchDeckPage'));
 const PromoPage = lazy(() => import('@/pages/PromoPage'));
 const PromoVideoPage = lazy(() => import('@/pages/PromoVideoPage'));
+const AllieConnectPage = lazy(() => import('@/pages/AllieConnectPage'));
+const LandingTestPage = lazy(() => import('@/pages/LandingTestPage'));
+
+// Creator Tools - lazy loaded
+const CreatePage = lazy(() => import('@/pages/CreatePage'));
+const SocialClipBuilderPage = lazy(() => import('@/pages/SocialClipBuilderPage'));
 
 // Legal pages - lazy loaded
 const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
@@ -242,11 +249,45 @@ export function AppRoutes() {
       {/* Promo video with real video clips */}
       <Route path="/promo" element={<PromoVideoPage />} />
 
+      {/* Allie's personal connect page - public */}
+      <Route path="/allie-connect" element={<AllieConnectPage />} />
+
+      {/* Landing page test - simplified mobile design */}
+      <Route path="/landing-test" element={<LandingTestPage />} />
+
+      {/* Creator Tools - protected, admin only */}
+      <Route
+        path="/create"
+        element={
+          <ProtectedRoute>
+            <CreatePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/create/social-clip"
+        element={
+          <ProtectedRoute>
+            <SocialClipBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Perks - public route (coming soon) */}
       <Route path="/perks" element={<PerksPage />} />
 
-      {/* Marketplace - public route (coming soon) */}
+      {/* Marketplace - public route */}
       <Route path="/marketplace" element={<MarketplacePage />} />
+
+      {/* My Library - protected route */}
+      <Route
+        path="/library"
+        element={
+          <ProtectedRoute>
+            <MyLibraryPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Checkout - protected route */}
       <Route
@@ -268,15 +309,8 @@ export function AppRoutes() {
         }
       />
 
-      {/* Prompt Battles - primary routes under /play */}
-      <Route
-        path="/play/prompt-battles"
-        element={
-          <ProtectedRoute>
-            <BattlesLobbyPage />
-          </ProtectedRoute>
-        }
-      />
+      {/* Prompt Battles - public lobby */}
+      <Route path="/play/prompt-battles" element={<BattlesLobbyPage />} />
       {/* Battle detail page - public for completed battles, requires auth for active */}
       <Route path="/play/prompt-battles/:battleId" element={<BattlePage />} />
       {/* Battle invitation link (from SMS) - public so users can see invitation before login */}

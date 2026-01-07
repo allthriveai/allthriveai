@@ -23,10 +23,11 @@ import {
   ClipboardDocumentIcon,
 } from '@heroicons/react/24/solid';
 
-const PIP_AVATAR_URL = '/prompt-battle.png';
+const PIP_AVATAR_VIDEO = '/pip-moving-avatar.mp4';
 import { api } from '@/services/api';
 import { clearStoredPendingBattle } from '@/utils/battleStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { setGuestBattleId } from '@/routes/ProtectedRoute';
 
 interface QueueStatus {
   inQueue: boolean;
@@ -54,8 +55,9 @@ export function MatchmakingScreen({
   initialOpenHumanModal = false,
 }: MatchmakingScreenProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated, refreshUser } = useAuth();
   const [selectedMode, setSelectedMode] = useState<'ai' | 'random' | null>(null);
+  const [isStartingGuestBattle, setIsStartingGuestBattle] = useState(false);
   const [showHumanModal, setShowHumanModal] = useState(initialOpenHumanModal);
   const [modalView, setModalView] = useState<'options' | 'sms' | 'link'>('options');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -103,9 +105,37 @@ export function MatchmakingScreen({
     }
   }, [showHumanModal, handleKeyDown]);
 
-  const handleBattlePip = () => {
+  const handleBattlePip = async () => {
+    // If user is authenticated, use normal WebSocket matchmaking
+    if (isAuthenticated) {
+      setSelectedMode('ai');
+      onMatchWithPip();
+      return;
+    }
+
+    // Guest flow: create guest user and battle via REST API
+    setIsStartingGuestBattle(true);
     setSelectedMode('ai');
-    onMatchWithPip();
+
+    try {
+      const response = await api.post('/battles/guest/start-pip/');
+      const battleId = response.data.id;
+
+      // Refresh auth context to pick up the new guest user from cookies
+      await refreshUser();
+
+      // Store battle ID so guest can return to it later
+      if (battleId) {
+        setGuestBattleId(battleId);
+        navigate(`/play/prompt-battles/${battleId}`);
+      }
+    } catch (error) {
+      console.error('Failed to start guest battle:', error);
+      setSelectedMode(null);
+      // TODO: Show error toast
+    } finally {
+      setIsStartingGuestBattle(false);
+    }
   };
 
   const handleSendSms = async () => {
@@ -382,15 +412,22 @@ export function MatchmakingScreen({
                 whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleBattlePip}
-                disabled={isConnecting}
+                disabled={isConnecting || isStartingGuestBattle}
                 className="glass-card p-8 text-center group cursor-pointer hover:border-violet-500/50 transition-colors disabled:opacity-50"
               >
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-500/20 overflow-hidden mb-5 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-shadow mx-auto">
-                  <img src={PIP_AVATAR_URL} alt="Pip" className="w-full h-full object-cover" />
+                  <video
+                    src={PIP_AVATAR_VIDEO}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
                 </div>
 
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors">
-                  Battle Pip
+                  {isStartingGuestBattle ? 'Starting Battle...' : 'Battle Pip'}
                 </h3>
 
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-5">
@@ -398,8 +435,16 @@ export function MatchmakingScreen({
                 </p>
 
                 <div className="flex items-center justify-center gap-2 text-violet-400 text-sm font-medium">
-                  <SparklesIcon className="w-4 h-4" />
-                  <span>Instant Match</span>
+                  {isStartingGuestBattle ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-4 h-4 border-2 border-violet-400/30 border-t-violet-400 rounded-full"
+                    />
+                  ) : (
+                    <SparklesIcon className="w-4 h-4" />
+                  )}
+                  <span>{isStartingGuestBattle ? 'Setting up...' : 'Instant Match'}</span>
                 </div>
               </motion.button>
 
@@ -407,8 +452,15 @@ export function MatchmakingScreen({
               <motion.button
                 whileHover={{ scale: 1.02, y: -4 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setShowHumanModal(true)}
-                disabled={isConnecting}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    // Redirect to sign up with return URL
+                    navigate(`/auth?next=${encodeURIComponent('/play/prompt-battles?openHumanModal=true')}`);
+                    return;
+                  }
+                  setShowHumanModal(true);
+                }}
+                disabled={isConnecting || isStartingGuestBattle}
                 className="glass-card p-8 text-center group cursor-pointer hover:border-cyan-500/50 transition-colors disabled:opacity-50"
               >
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center mb-5 group-hover:shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-shadow mx-auto">
@@ -425,7 +477,7 @@ export function MatchmakingScreen({
 
                 <div className="flex items-center justify-center gap-2 text-cyan-400 text-sm font-medium">
                   <BoltIcon className="w-4 h-4" />
-                  <span>Live PvP</span>
+                  <span>{isAuthenticated ? 'Live PvP' : 'Sign in to play'}</span>
                 </div>
               </motion.button>
             </motion.div>

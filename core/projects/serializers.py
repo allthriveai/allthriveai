@@ -1,5 +1,6 @@
 """Serializers for Project model."""
 
+from django.conf import settings
 from rest_framework import serializers
 
 from core.serializers.mixins import CamelCaseFieldsMixin
@@ -541,6 +542,8 @@ class ProjectCardSerializer(CamelCaseFieldsMixin, serializers.ModelSerializer):
     time_investment_details = serializers.SerializerMethodField()
     difficulty_details = serializers.SerializerMethodField()
     pricing_details = serializers.SerializerMethodField()
+    # Product data for marketplace items (price badge, product type)
+    product = serializers.SerializerMethodField()
 
     # CamelCase field mapping for frontend compatibility
     CAMEL_CASE_FIELDS = {
@@ -602,6 +605,7 @@ class ProjectCardSerializer(CamelCaseFieldsMixin, serializers.ModelSerializer):
             'published_date',
             'created_at',
             'content',  # Populated for battle and rss_article projects
+            'product',  # Marketplace product data (price, status) for price badge
         ]
 
     def get_is_liked_by_user(self, obj):
@@ -812,4 +816,220 @@ class ProjectCardSerializer(CamelCaseFieldsMixin, serializers.ModelSerializer):
 
         return None
 
+    def get_product(self, obj):
+        """Return product data if this project is a published marketplace product.
+
+        Only returns data for published products to avoid showing draft products
+        with price badges in the explore feed.
+        """
+        # Check if product is prefetched or exists
+        try:
+            product = obj.product
+        except AttributeError:
+            return None
+
+        if not product:
+            return None
+
+        # Only show published products in explore feed
+        if product.status != 'published':
+            return None
+
+        # Import here to avoid circular imports
+        from core.marketplace.serializers import ProductMinimalSerializer
+
+        return ProductMinimalSerializer(product).data
+
     # to_representation is handled by CamelCaseFieldsMixin using CAMEL_CASE_FIELDS
+
+
+class ProjectContextSerializer(serializers.ModelSerializer):
+    """Serializer for LLM/MCP context - includes all editable fields.
+
+    Used by context-json and context-md endpoints to expose project data
+    for AI tools, claude.md downloads, and llms.txt discovery.
+
+    Outputs camelCase keys for frontend/API consistency.
+    """
+
+    url = serializers.SerializerMethodField()
+    creator = serializers.SerializerMethodField()
+    visibility = serializers.SerializerMethodField()
+    media = serializers.SerializerMethodField()
+    tools = serializers.SerializerMethodField()
+    toolsOrder = serializers.ReadOnlyField(source='tools_order')
+    categories = serializers.SerializerMethodField()
+    hideCategories = serializers.ReadOnlyField(source='hide_categories')
+    topics = serializers.SerializerMethodField()
+    metadata = serializers.SerializerMethodField()
+    stats = serializers.SerializerMethodField()
+    contentSource = serializers.SerializerMethodField()
+    externalUrl = serializers.ReadOnlyField(source='external_url')
+    publishedDate = serializers.DateTimeField(source='published_date', read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+
+    class Meta:
+        model = Project
+        fields = [
+            'id',
+            'slug',
+            'url',
+            'title',
+            'description',
+            'type',
+            'creator',
+            'visibility',
+            'media',
+            'content',
+            'tools',
+            'toolsOrder',
+            'categories',
+            'hideCategories',
+            'topics',
+            'metadata',
+            'externalUrl',
+            'publishedDate',
+            'createdAt',
+            'updatedAt',
+            'stats',
+            'contentSource',
+        ]
+
+    def get_url(self, obj):
+        """Build absolute URL for the project."""
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(f'/@{obj.user.username}/{obj.slug}')
+        return f'{settings.FRONTEND_URL}/@{obj.user.username}/{obj.slug}'
+
+    def get_creator(self, obj):
+        """Return creator info with display name and profile URL."""
+        request = self.context.get('request')
+        base_url = request.build_absolute_uri('/')[:-1] if request else settings.FRONTEND_URL
+        return {
+            'username': obj.user.username,
+            'displayName': obj.user.get_full_name() or obj.user.username,
+            'avatarUrl': obj.user.avatar_url,
+            'profileUrl': f'{base_url}/@{obj.user.username}',
+        }
+
+    def get_visibility(self, obj):
+        """Return all visibility-related boolean fields."""
+        return {
+            'isPrivate': obj.is_private,
+            'isShowcased': obj.is_showcased,
+            'isHighlighted': obj.is_highlighted,
+            'isArchived': obj.is_archived,
+            'isProduct': obj.is_product,
+            'isTimeless': obj.is_timeless,
+        }
+
+    def get_media(self, obj):
+        """Return media URLs."""
+        return {
+            'bannerUrl': obj.banner_url or None,
+            'featuredImageUrl': obj.featured_image_url or None,
+        }
+
+    def get_tools(self, obj):
+        """Return tools with full details, ordered by tools_order."""
+        tools = list(obj.tools.all())
+
+        # Sort by tools_order if defined
+        if obj.tools_order:
+            order_map = {tool_id: idx for idx, tool_id in enumerate(obj.tools_order)}
+            tools = sorted(tools, key=lambda t: order_map.get(t.id, len(obj.tools_order)))
+
+        return [
+            {
+                'id': tool.id,
+                'name': tool.name,
+                'slug': tool.slug,
+                'category': tool.category,
+                'iconUrl': tool.logo_url,
+            }
+            for tool in tools
+        ]
+
+    def get_categories(self, obj):
+        """Return categories with full details, sorted by name.
+
+        Uses prefetched data and sorts in Python to avoid N+1 queries.
+        """
+        categories = sorted(obj.categories.all(), key=lambda c: c.name)
+        return [
+            {
+                'id': cat.id,
+                'name': cat.name,
+                'slug': cat.slug,
+            }
+            for cat in categories
+        ]
+
+    def get_topics(self, obj):
+        """Return topics with full details, sorted by name.
+
+        Uses prefetched data and sorts in Python to avoid N+1 queries.
+        """
+        topics = sorted(obj.topics.all(), key=lambda t: t.name)
+        return [
+            {
+                'id': topic.id,
+                'name': topic.name,
+                'slug': topic.slug,
+            }
+            for topic in topics
+        ]
+
+    def get_metadata(self, obj):
+        """Return content metadata taxonomy fields."""
+        result = {}
+
+        if obj.difficulty_taxonomy:
+            result['difficulty'] = {
+                'id': obj.difficulty_taxonomy.id,
+                'name': obj.difficulty_taxonomy.name,
+                'slug': obj.difficulty_taxonomy.slug,
+            }
+
+        if obj.time_investment:
+            result['timeInvestment'] = {
+                'id': obj.time_investment.id,
+                'name': obj.time_investment.name,
+                'slug': obj.time_investment.slug,
+            }
+
+        if obj.content_type_taxonomy:
+            result['contentType'] = {
+                'id': obj.content_type_taxonomy.id,
+                'name': obj.content_type_taxonomy.name,
+                'slug': obj.content_type_taxonomy.slug,
+            }
+
+        if obj.pricing_taxonomy:
+            result['pricing'] = {
+                'id': obj.pricing_taxonomy.id,
+                'name': obj.pricing_taxonomy.name,
+                'slug': obj.pricing_taxonomy.slug,
+            }
+
+        return result if result else None
+
+    def get_stats(self, obj):
+        """Return engagement statistics."""
+        return {
+            'hearts': obj.heart_count,
+            'views': obj.view_count,
+            'engagementVelocity': obj.engagement_velocity,
+        }
+
+    def get_contentSource(self, obj):
+        """Return content source info if auto-synced."""
+        if obj.content_source:
+            return {
+                'id': obj.content_source.id,
+                'name': obj.content_source.name,
+                'type': obj.content_source.source_type,
+            }
+        return None

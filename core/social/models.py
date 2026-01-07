@@ -19,6 +19,7 @@ class SocialProvider(models.TextChoices):
     FIGMA = 'figma', 'Figma'
     HUGGINGFACE = 'huggingface', 'Hugging Face'
     MIDJOURNEY = 'midjourney', 'Midjourney'
+    INSTAGRAM = 'instagram', 'Instagram'
 
 
 class SocialConnection(models.Model):

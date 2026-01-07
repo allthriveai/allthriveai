@@ -86,6 +86,21 @@ class OAuthProviderConfig:
             'client_id_setting': 'MIDJOURNEY_OAUTH_CLIENT_ID',
             'client_secret_setting': 'MIDJOURNEY_OAUTH_CLIENT_SECRET',
         },
+        SocialProvider.INSTAGRAM: {
+            # Instagram Graph API via Facebook Login
+            # Requires Business/Creator account connected to Facebook Page
+            'authorize_url': 'https://api.instagram.com/oauth/authorize',
+            'token_url': 'https://api.instagram.com/oauth/access_token',
+            'user_info_url': 'https://graph.instagram.com/me',
+            'scopes': [
+                'instagram_basic',
+                'instagram_content_publish',
+                'pages_show_list',
+                'pages_read_engagement',
+            ],
+            'client_id_setting': 'INSTAGRAM_OAUTH_CLIENT_ID',
+            'client_secret_setting': 'INSTAGRAM_OAUTH_CLIENT_SECRET',
+        },
     }
 
     @classmethod
@@ -276,6 +291,23 @@ class SocialOAuthService:
                 'profile_url': '',
                 'avatar_url': '',
                 'extra_data': user_info,
+            }
+
+        elif self.provider == SocialProvider.INSTAGRAM:
+            # Instagram Graph API user info
+            username = user_info.get('username', '')
+            return {
+                'provider_user_id': str(user_info.get('id', '')),
+                'provider_username': username,
+                'provider_email': None,  # Instagram doesn't provide email
+                'profile_url': f'https://instagram.com/{username}' if username else '',
+                'avatar_url': user_info.get('profile_picture_url', ''),
+                'extra_data': {
+                    'account_type': user_info.get('account_type'),
+                    'media_count': user_info.get('media_count'),
+                    'name': user_info.get('name'),
+                    'biography': user_info.get('biography'),
+                },
             }
 
         return {}

@@ -2094,6 +2094,116 @@ def battle_share_page(request, battle_id):
 
 
 # =============================================================================
+# GUEST BATTLE FLOW
+# =============================================================================
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def start_guest_pip_battle(request):
+    """Start a Pip battle for a guest user (no account required).
+
+    Creates a guest user, starts a battle with Pip, and sets auth cookies.
+    After the battle, the guest can convert to a full account.
+
+    Returns:
+        Battle data with auth tokens for the guest user
+    """
+    from core.users.models import User, UserRole
+    from services.auth import set_auth_cookies
+
+    try:
+        # Create guest user
+        guest_user, guest_token = GuestUserService.create_guest_user()
+
+        # Get Pip
+        try:
+            pip = User.objects.get(username='pip', role=UserRole.AGENT)
+        except User.DoesNotExist:
+            StructuredLogger.log_error(
+                message='Pip user not found for guest battle',
+                error=Exception('Pip user not found'),
+            )
+            return Response(
+                {'error': 'Battle system unavailable. Please try again later.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        # Get a random active prompt
+        prompt = PromptChallengePrompt.objects.filter(is_active=True).order_by('?').first()
+        if not prompt:
+            return Response(
+                {'error': 'No battle prompts available.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        # Create battle
+        battle = PromptBattle.objects.create(
+            challenger=guest_user,
+            opponent=pip,
+            challenge_text=prompt.prompt_text,
+            prompt=prompt,
+            match_source=MatchSource.AI_OPPONENT,
+            duration_minutes=3,
+            status=BattleStatus.PENDING,
+        )
+
+        # Increment prompt usage
+        prompt.times_used += 1
+        prompt.save(update_fields=['times_used'])
+
+        StructuredLogger.log_info(
+            message='Guest Pip battle created',
+            extra={
+                'battle_id': battle.id,
+                'guest_user_id': guest_user.id,
+            },
+        )
+
+        # Generate auth tokens
+        auth_tokens = GuestUserService.generate_guest_auth_tokens(guest_user)
+
+        # Build response
+        response_data = {
+            'id': battle.id,
+            'challenger': {
+                'id': guest_user.id,
+                'username': guest_user.username,
+                'avatarUrl': guest_user.avatar_url,
+            },
+            'opponent': {
+                'id': pip.id,
+                'username': pip.username,
+                'avatarUrl': pip.avatar_url,
+            },
+            'challengeText': battle.challenge_text,
+            'status': battle.status,
+            'matchSource': battle.match_source,
+            'durationMinutes': battle.duration_minutes,
+            'auth': auth_tokens,
+            'isGuest': True,
+        }
+
+        response = Response(response_data, status=status.HTTP_201_CREATED)
+
+        # Set auth cookies for the guest user
+        response = set_auth_cookies(response, guest_user)
+
+        return response
+
+    except Exception as e:
+        StructuredLogger.log_error(
+            message='Failed to create guest Pip battle',
+            error=e,
+            extra={'endpoint': '/battles/guest/start-pip/'},
+        )
+        return Response(
+            {'error': 'Failed to start battle. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# =============================================================================
 # ADMIN - PROMPT CHALLENGE PROMPTS MANAGEMENT
 # =============================================================================
 

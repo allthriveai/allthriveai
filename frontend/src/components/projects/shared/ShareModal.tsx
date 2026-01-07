@@ -6,7 +6,13 @@
  */
 
 import { useState } from 'react';
-import { XMarkIcon, LinkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  LinkIcon,
+  CheckIcon,
+  DocumentTextIcon,
+  CodeBracketIcon,
+} from '@heroicons/react/24/outline';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -27,6 +33,7 @@ export function ShareModal({
   shareText,
 }: ShareModalProps) {
   const [linkCopied, setLinkCopied] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -55,13 +62,50 @@ export function ShareModal({
     }
   };
 
+  const downloadContext = async (format: 'md' | 'json') => {
+    setDownloadError(null);
+    try {
+      const endpoint = format === 'md' ? 'context-md' : 'context-json';
+      // Add ?download=true for markdown to trigger Content-Disposition header
+      const queryParam = format === 'md' ? '?download=true' : '';
+      const url = `/api/v1/users/${username}/projects/${slug}/${endpoint}/${queryParam}`;
+      const response = await fetch(url, {
+        credentials: 'include',
+        headers: {
+          // Use */* for markdown since DRF content negotiation doesn't support text/markdown
+          'Accept': format === 'json' ? 'application/json' : '*/*',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Download error response:', response.status, errorText);
+        throw new Error(`Download failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const filename = format === 'md' ? 'claude.md' : `${slug}.json`;
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Failed to download context:', error);
+      setDownloadError('Download failed. Please try again.');
+      setTimeout(() => setDownloadError(null), 3000);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/50 z-50 animate-[fade-in_0.2s_ease-out] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-[scale-in_0.2s_ease-out] border border-gray-200 dark:border-gray-800"
+        className="bg-white dark:bg-gray-900 rounded shadow-2xl max-w-md w-full p-6 animate-[scale-in_0.2s_ease-out] border border-gray-200 dark:border-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -154,6 +198,30 @@ export function ShareModal({
               </>
             )}
           </button>
+        </div>
+
+        {/* Download for AI */}
+        <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Download for AI tools</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => downloadContext('md')}
+              className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+            >
+              <DocumentTextIcon className="w-5 h-5" />
+              <span className="font-medium">claude.md</span>
+            </button>
+            <button
+              onClick={() => downloadContext('json')}
+              className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+            >
+              <CodeBracketIcon className="w-5 h-5" />
+              <span className="font-medium">JSON</span>
+            </button>
+          </div>
+          {downloadError && (
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{downloadError}</p>
+          )}
         </div>
       </div>
     </div>

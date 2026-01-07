@@ -155,6 +155,24 @@ class ProductAssetSerializer(serializers.ModelSerializer):
         read_only_fields = ['file_size', 'content_type', 'created_at']
 
 
+class ProductMinimalSerializer(serializers.ModelSerializer):
+    """Minimal serializer for embedding product data in project cards.
+
+    Used by ProjectCardSerializer to show price badges in explore feed.
+    Only exposes fields needed for card display - no sensitive data.
+    """
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'product_type',
+            'price',
+            'currency',
+            'status',
+        ]
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for product lists."""
 

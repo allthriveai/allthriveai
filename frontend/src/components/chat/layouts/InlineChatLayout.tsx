@@ -40,7 +40,7 @@ import {
 } from '../integrations';
 import { LearningGoalSelectionMessage } from '../onboarding';
 import type { ConceptClickContext } from '@/components/learning/StructuredLearningPath';
-import type { ProjectImportOption } from '@/hooks/useIntelligentChat';
+import type { ProjectImportOption, ChatMessage } from '@/hooks/useIntelligentChat';
 
 // Context-aware quick actions for learning
 const LEARN_QUICK_ACTIONS = [
@@ -72,6 +72,8 @@ export function InlineChatLayout({
   const pointsNotification = usePointsNotificationOptional();
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [isIdeaSubmitting, setIsIdeaSubmitting] = useState(false);
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
   const triggerFileSelectRef = useRef<(() => void) | null>(null);
   const dropFilesRef = useRef<((files: File[]) => void) | null>(null);
 
@@ -229,13 +231,12 @@ export function InlineChatLayout({
 
         // Handle project import option selection
         const handleProjectImportOptionSelect = (option: ProjectImportOption) => {
+          const timestamp = Date.now();
+
           switch (option) {
             case 'integration':
               fetchConnectionStatuses();
               integrationFlow?.actions.startFlow('github');
-              break;
-            case 'describe':
-              state.sendMessage('I want to describe a project idea');
               break;
             case 'url':
               state.sendMessage('I want to import a project from a URL');
@@ -245,7 +246,50 @@ export function InlineChatLayout({
                 triggerFileSelectRef.current();
               }
               break;
+            case 'chrome-extension':
+              // Chrome extension not available on learn page
+              break;
+            case 'idea': {
+              // Show idea description input inline
+              const ideaMessage: ChatMessage = {
+                id: `assistant-idea-input-${timestamp}`,
+                content: '',
+                sender: 'assistant',
+                timestamp: new Date(),
+                metadata: {
+                  type: 'idea_description_input',
+                },
+              };
+              setLocalMessages((prev) => [...prev, ideaMessage]);
+              break;
+            }
           }
+        };
+
+        // Handle idea submission
+        const handleIdeaSubmit = (description: string) => {
+          setIsIdeaSubmitting(true);
+
+          // Remove both the input message AND the project_import_options message
+          setLocalMessages((prev) => prev.filter(m =>
+            m.metadata?.type !== 'idea_description_input' &&
+            m.metadata?.type !== 'project_import_options'
+          ));
+
+          // Send to Ava with context
+          state.sendMessage(`I have an idea and need help: ${description}`);
+
+          // Reset submitting state after message is sent
+          setIsIdeaSubmitting(false);
+        };
+
+        // Handle idea cancel
+        const handleIdeaCancel = () => {
+          // Remove both input and options messages, returning to normal chat
+          setLocalMessages((prev) => prev.filter(m =>
+            m.metadata?.type !== 'idea_description_input' &&
+            m.metadata?.type !== 'project_import_options'
+          ));
         };
 
         // Handle integration card selection
@@ -467,7 +511,7 @@ export function InlineChatLayout({
 
                     {/* Chat messages */}
                     <ChatMessageList
-                      messages={state.messages}
+                      messages={[...state.messages, ...localMessages]}
                       isLoading={state.isLoading}
                       hasTimedOut={state.hasTimedOut}
                       onRetry={state.retryLastMessage}
@@ -484,6 +528,9 @@ export function InlineChatLayout({
                       onConnectFigma={integrationFlow?.handleConnectFigma}
                       onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
                       onInlineActionClick={(message) => state.sendMessage(message)}
+                      onIdeaSubmit={handleIdeaSubmit}
+                      onIdeaCancel={handleIdeaCancel}
+                      isIdeaSubmitting={isIdeaSubmitting}
                     />
                   </div>
 

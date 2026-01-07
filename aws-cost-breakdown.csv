@@ -1,0 +1,38 @@
+Project,Region,Service,Resource Name,Resource Type,Monthly Cost (Est),Notes
+Kinlia/Kindra,us-west-1,EC2,Kindra-Backend-Recovery-v2,t2.large,$68,Production backend server
+Kinlia/Kindra,us-west-1,EC2,Kindra-Backend-Staging,t2.small,$17,Staging backend server
+Kinlia/Kindra,us-west-1,RDS,kindra-dating-db-prod-01,db.t3.small,$29,Production database 1
+Kinlia/Kindra,us-west-1,RDS,kindra-dating-db-prod-02,db.t3.small,$29,Production database 2
+Kinlia/Kindra,us-west-1,RDS,kindra-dating-staging-2,db.t3.micro,$12,Staging database
+Kinlia/Kindra,us-west-1,EBS,vol-0f50ecc6cc58d9d0a,20GB gp2,$2,EC2 volume
+Kinlia/Kindra,us-west-1,EBS,vol-0f64562e2dfc590bc,20GB gp3,$2,EC2 volume
+Kinlia/Kindra,us-west-1,Amplify,kinlia-web,Amplify Hosting,$10-20,Frontend hosting
+Kinlia/Kindra,Global,CloudFront,events.kinlia.com,Distribution,$2-5,CDN
+Kinlia/Kindra,Global,CloudFront,staging.kinlia.com,Distribution,$2-5,CDN staging
+Kinlia/Kindra,Global,CloudFront,www.staging.kinlia.com,Distribution,$2-5,CDN staging www
+Kinlia/Kindra,Global,CloudFront,kindraconnect.com,Distribution,$2-5,CDN Kindra
+Kinlia/Kindra,Global,S3,events.kinlia.com,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,kindra.life,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,kindraconnect.com,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,kinlia.com,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,staging.kinlia.com,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,www.events.kinlia.com,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,www.kindra.life,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,www.kindraconnect.com,Static hosting,$1,Static site
+Kinlia/Kindra,Global,S3,www.staging.kinlia.com,Static hosting,$1,Static site
+Kinlia/Kindra,us-west-1,Data Transfer,EC2/CloudFront data out,Variable,$50-100,Estimated based on usage
+AllThrive,us-east-1,ECS Fargate,allthriveai-web,2x (512 CPU 1024MB),$40,Web server (Daphne)
+AllThrive,us-east-1,ECS Fargate,allthriveai-celery,2x (512 CPU 1024MB),$40,Celery workers
+AllThrive,us-east-1,ECS Fargate,allthriveai-celery-beat,1x (256 CPU 512MB),$10,Celery beat scheduler
+AllThrive,us-east-1,ECS Fargate,allthriveai-weaviate,1x (512 CPU 1024MB),$20,Vector database
+AllThrive,us-east-1,RDS,allthriveai-production,db.t4g.medium + Multi-AZ,$100,PostgreSQL database
+AllThrive,us-east-1,ElastiCache,allthriveai-redis,2x cache.t4g.small,$50,Redis cluster
+AllThrive,us-east-1,NAT Gateway,NAT Gateway 1,Fixed + data,$42-82,NAT for private subnets
+AllThrive,us-east-1,NAT Gateway,NAT Gateway 2,Fixed + data,$42-82,NAT for private subnets
+AllThrive,us-east-1,ALB,allthriveai-alb,Application Load Balancer,$18,Load balancer
+AllThrive,Global,CloudFront,api.allthrive.ai,Distribution,$5-10,CDN for API
+AllThrive,us-east-1,EFS,Weaviate data,Elastic File System,$5-10,Persistent storage
+AllThrive,Global,S3,allthriveai-media,Media storage,$5-10,User uploads
+AllThrive,us-east-1,CloudWatch,Logs + Metrics,Monitoring,$5-15,Logging and monitoring
+AllThrive,us-east-1,Secrets Manager,~8 secrets,Secret storage,$4,API keys and secrets
+AllThrive,us-east-1,ECR,Docker images,Container registry,$2-5,Image storage
