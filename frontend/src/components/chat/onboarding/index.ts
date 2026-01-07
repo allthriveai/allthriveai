@@ -9,6 +9,12 @@
 export { OnboardingIntroMessage } from './OnboardingIntroMessage';
 export { AvatarTemplateSelector, defaultAvatarTemplates } from './AvatarTemplateSelector';
 export { AvatarPreviewMessage } from './AvatarPreviewMessage';
-export { LearningGoalSelectionMessage, learningGoalOptions } from './LearningGoalSelectionMessage';
+export {
+  LearningGoalSelectionMessage,
+  learningGoalOptions,
+  SAGE_COMPANION,
+  AVA_COMPANION,
+  type CompanionConfig,
+} from './LearningGoalSelectionMessage';
 // Note: PathSelectionMessage is kept for potential future use but not exported
 // Note: ProfileSetupMessage has been removed - profile generation handled via Ava chat
