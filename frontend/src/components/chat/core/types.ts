@@ -216,6 +216,10 @@ export interface ChatMessageListProps {
   onInlineActionClick?: (message: string) => void;
   // Open project preview tray instead of navigating (for projects in chat)
   onOpenProjectPreview?: (item: LearningContentItem) => void;
+  // Idea description handlers (for "I have an idea" flow)
+  onIdeaSubmit?: (description: string) => void;
+  onIdeaCancel?: () => void;
+  isIdeaSubmitting?: boolean;
 }
 
 // Input area props

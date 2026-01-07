@@ -3,12 +3,12 @@
  * Uses Neon Glass design system
  */
 
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Transition } from '@headlessui/react';
-import { XMarkIcon, ChevronUpIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronUpIcon, ShieldCheckIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { ChevronUpIcon as ChevronUpIconSolid } from '@heroicons/react/24/solid';
 import type { FeedbackItem, FeedbackCategory, AdminUpdateFeedbackData } from '@/services/feedback';
-import { adminUpdateFeedback } from '@/services/feedback';
+import { adminUpdateFeedback, updateFeedback, deleteFeedback } from '@/services/feedback';
 import { useFeedbackVote } from '@/hooks/useFeedbackVote';
 import { useAuth } from '@/hooks/useAuth';
 import { FeedbackComments } from './FeedbackComments';
@@ -41,6 +41,7 @@ interface FeedbackDetailTrayProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdate?: (updatedItem: FeedbackItem) => void;
+  onDelete?: (itemId: number) => void;
 }
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -67,16 +68,40 @@ const typeLabels: Record<string, string> = {
   bug: 'Bug Report',
 };
 
-export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate }: FeedbackDetailTrayProps) {
+export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate, onDelete }: FeedbackDetailTrayProps) {
   const { user } = useAuth();
   const isAuthenticated = !!user;
   const isAdmin = user?.isAdminRole || false;
   const isOwnSubmission = user?.username === item?.user?.username;
+  const canEdit = isOwnSubmission && item?.status === 'open';
+  const canDelete = isAdmin || (isOwnSubmission && item?.status === 'open');
 
   // Admin state
   const [isUpdating, setIsUpdating] = useState(false);
   const [adminResponse, setAdminResponse] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<FeedbackStatus | ''>('');
+
+  // Edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editError, setEditError] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Delete state
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Reset edit state when item changes or tray closes
+  useEffect(() => {
+    if (item) {
+      setEditTitle(item.title);
+      setEditDescription(item.description);
+    }
+    setIsEditing(false);
+    setEditError('');
+    setShowDeleteConfirm(false);
+  }, [item?.id, isOpen]);
 
   const { voted, voteCount, isVoting, toggleVote } = useFeedbackVote({
     itemId: item?.id || 0,
@@ -85,7 +110,64 @@ export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate }: Feedback
     isAuthenticated,
   });
 
-  // Reset admin form when item changes
+  // Handle saving user edits
+  const handleSaveEdit = async () => {
+    if (!item) return;
+    setEditError('');
+    setIsSavingEdit(true);
+
+    try {
+      const data: { title?: string; description?: string } = {};
+      if (editTitle.trim() !== item.title) {
+        data.title = editTitle.trim();
+      }
+      if (editDescription.trim() !== item.description) {
+        data.description = editDescription.trim();
+      }
+      if (Object.keys(data).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      const updated = await updateFeedback(item.id, data);
+      onUpdate?.(updated);
+      setIsEditing(false);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setEditError(error.response?.data?.error || 'Failed to save changes');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (item) {
+      setEditTitle(item.title);
+      setEditDescription(item.description);
+    }
+    setIsEditing(false);
+    setEditError('');
+  };
+
+  // Handle delete
+  const handleDelete = async () => {
+    if (!item) return;
+    setIsDeleting(true);
+
+    try {
+      await deleteFeedback(item.id);
+      onDelete?.(item.id);
+      onClose();
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setEditError(error.response?.data?.error || 'Failed to delete');
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle admin update
   const handleAdminUpdate = async () => {
     if (!item) return;
     setIsUpdating(true);
@@ -171,7 +253,48 @@ export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate }: Feedback
 
           {/* Content */}
           <div className="p-6 space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{item.title}</h2>
+              {/* Title - editable or static */}
+              {isEditing ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    maxLength={255}
+                    className="w-full px-3 py-2 text-base rounded border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  />
+                  <div className="text-xs text-gray-400 dark:text-slate-500 mt-1 text-right">
+                    {editTitle.length}/255
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{item.title}</h2>
+                  <div className="flex items-center gap-1">
+                    {canEdit && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                        title="Edit"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="p-1.5 rounded text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                        title="Delete"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-slate-400">
                 {item.user?.avatarUrl ? (
@@ -192,9 +315,72 @@ export function FeedbackDetailTray({ item, isOpen, onClose, onUpdate }: Feedback
                 <span>{formatRelativeTime(item.createdAt)}</span>
               </div>
 
-              <div className="prose prose-gray dark:prose-invert max-w-none text-gray-700 dark:text-slate-300 whitespace-pre-wrap text-sm leading-relaxed">
-                {item.description}
-              </div>
+              {/* Description - editable or static */}
+              {isEditing ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+                    Description
+                  </label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={6}
+                    className="w-full px-3 py-2 text-sm rounded border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-none"
+                  />
+
+                  {/* Edit error message */}
+                  {editError && (
+                    <p className="text-sm text-red-500 mt-2">{editError}</p>
+                  )}
+
+                  {/* Edit action buttons */}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={isSavingEdit}
+                      className="px-3 py-1.5 text-sm rounded border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={isSavingEdit || !editTitle.trim() || !editDescription.trim()}
+                      className="px-3 py-1.5 text-sm rounded bg-cyan-500 hover:bg-cyan-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="prose prose-gray dark:prose-invert max-w-none text-gray-700 dark:text-slate-300 whitespace-pre-wrap text-sm leading-relaxed">
+                  {item.description}
+                </div>
+              )}
+
+              {/* Delete confirmation */}
+              {showDeleteConfirm && (
+                <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/20">
+                  <p className="text-sm text-red-700 dark:text-red-400 mb-3">
+                    Are you sure you want to delete this {item.feedbackType === 'bug' ? 'bug report' : 'feature request'}? This action cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={isDeleting}
+                      className="px-3 py-1.5 text-sm rounded border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="px-3 py-1.5 text-sm rounded bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Vote section */}
               <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-slate-700">

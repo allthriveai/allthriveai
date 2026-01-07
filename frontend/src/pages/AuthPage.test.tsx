@@ -2,7 +2,6 @@
  * AuthPage Component Tests - Real User Scenarios (TDD)
  *
  * Tests for actual user-facing behavior:
- * - Beta code validation (valid/invalid codes)
  * - OAuth button rendering and clicks
  * - Referral code display
  * - Redirect when already authenticated
@@ -11,9 +10,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@/test/test-utils';
 import userEvent from '@testing-library/user-event';
-
-// Mock import.meta.env to disable dev bypass
-vi.stubEnv('VITE_DEV_BYPASS_BETA', 'false');
 
 import AuthPage from './AuthPage';
 
@@ -103,99 +99,8 @@ describe('AuthPage - Real User Scenarios', () => {
     });
   });
 
-  describe('Beta Code Gate', () => {
-    it('shows beta code input when beta is not unlocked', () => {
-      render(<AuthPage />);
-
-      expect(screen.getByText('Beta Access')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Enter beta code')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument();
-    });
-
-    it('shows error message for invalid beta code', async () => {
-      const user = userEvent.setup();
-      render(<AuthPage />);
-
-      const input = screen.getByPlaceholderText('Enter beta code');
-      const button = screen.getByRole('button', { name: 'Unlock' });
-
-      await user.type(input, 'WRONGCODE');
-      await user.click(button);
-
-      expect(screen.getByText('Invalid beta code. Please check and try again.')).toBeInTheDocument();
-    });
-
-    it('shows OAuth buttons after entering valid beta code', async () => {
-      const user = userEvent.setup();
-      render(<AuthPage />);
-
-      const input = screen.getByPlaceholderText('Enter beta code');
-      const button = screen.getByRole('button', { name: 'Unlock' });
-
-      await user.type(input, 'THRIVE');
-      await user.click(button);
-
-      // OAuth buttons should now be visible
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /sign in with github/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /sign in with linkedin/i })).toBeInTheDocument();
-      });
-
-      // Beta code input should be hidden
-      expect(screen.queryByPlaceholderText('Enter beta code')).not.toBeInTheDocument();
-    });
-
-    it('converts beta code to uppercase automatically', async () => {
-      const user = userEvent.setup();
-      render(<AuthPage />);
-
-      const input = screen.getByPlaceholderText('Enter beta code');
-      await user.type(input, 'thrive');
-
-      // Input should show uppercase
-      expect(input).toHaveValue('THRIVE');
-    });
-
-    it('clears error when user starts typing new code', async () => {
-      const user = userEvent.setup();
-      render(<AuthPage />);
-
-      const input = screen.getByPlaceholderText('Enter beta code');
-      const button = screen.getByRole('button', { name: 'Unlock' });
-
-      // Enter invalid code first
-      await user.type(input, 'WRONG');
-      await user.click(button);
-      expect(screen.getByText('Invalid beta code. Please check and try again.')).toBeInTheDocument();
-
-      // Start typing again - error should clear
-      await user.type(input, 'A');
-      expect(screen.queryByText('Invalid beta code. Please check and try again.')).not.toBeInTheDocument();
-    });
-
-    it('unlocks beta with Enter key', async () => {
-      const user = userEvent.setup();
-      render(<AuthPage />);
-
-      const input = screen.getByPlaceholderText('Enter beta code');
-      await user.type(input, 'THRIVE');
-      await user.keyboard('{Enter}');
-
-      // Should show OAuth buttons
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
-      });
-    });
-  });
-
   describe('OAuth Login Buttons', () => {
-    beforeEach(() => {
-      // Pre-unlock beta for OAuth tests
-      localStorage.setItem('betaUnlocked', 'true');
-    });
-
-    it('renders all OAuth provider buttons when beta is unlocked', () => {
+    it('renders all OAuth provider buttons', () => {
       render(<AuthPage />);
 
       expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
@@ -293,7 +198,6 @@ describe('AuthPage - Real User Scenarios', () => {
 
   describe('Accessibility', () => {
     it('has skip to main content link', () => {
-      localStorage.setItem('betaUnlocked', 'true');
       render(<AuthPage />);
 
       const skipLink = screen.getByText('Skip to main content');
@@ -302,19 +206,11 @@ describe('AuthPage - Real User Scenarios', () => {
     });
 
     it('has accessible labels on OAuth buttons', () => {
-      localStorage.setItem('betaUnlocked', 'true');
       render(<AuthPage />);
 
       expect(screen.getByRole('button', { name: /sign in with google/i })).toHaveAttribute('aria-label');
       expect(screen.getByRole('button', { name: /sign in with github/i })).toHaveAttribute('aria-label');
       expect(screen.getByRole('button', { name: /sign in with linkedin/i })).toHaveAttribute('aria-label');
-    });
-
-    it('has accessible label on beta code input', () => {
-      render(<AuthPage />);
-
-      const input = screen.getByPlaceholderText('Enter beta code');
-      expect(input).toHaveAttribute('aria-label', 'Beta access code');
     });
   });
 

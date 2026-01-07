@@ -203,7 +203,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-white">
-                  {formState === 'success' ? 'You\'re on the list!' : 'Join the Waitlist'}
+                  {formState === 'success' ? 'You\'re all set!' : 'Join All Thrive'}
                 </h2>
                 <p className="text-xs text-gray-400">
                   Join the All Thrive AI community
@@ -461,7 +461,7 @@ export function InvitationTray({ isOpen, onClose }: InvitationTrayProps) {
                   </>
                 ) : (
                   <>
-                    Join Waitlist
+                    Join All Thrive
                     <ArrowRightIcon className="w-4 h-4" />
                   </>
                 )}

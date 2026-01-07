@@ -131,6 +131,7 @@ export function getProviderIcon(provider: string): string {
     figma: '🎨',
     huggingface: '🤗',
     midjourney: '🎭',
+    instagram: '📸',
   };
   return icons[provider] || '🔗';
 }
@@ -146,6 +147,7 @@ export function getProviderColor(provider: string): string {
     figma: 'bg-purple-600 hover:bg-purple-700',
     huggingface: 'bg-yellow-500 hover:bg-yellow-600',
     midjourney: 'bg-indigo-600 hover:bg-indigo-700',
+    instagram: 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600',
   };
   return colors[provider] || 'bg-gray-600 hover:bg-gray-700';
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon, MagnifyingGlassPlusIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, HeartIcon, ChatBubbleLeftIcon, ArrowRightIcon, TrophyIcon, ArrowTopRightOnSquareIcon, PlayIcon, MagnifyingGlassPlusIcon, ClipboardDocumentIcon, CheckIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import * as FaIcons from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -10,6 +10,7 @@ import { faGripLinesVertical, faExpand, faCompress, faLightbulb } from '@fortawe
 import { HeroVideo } from './hero/HeroVideo';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { ImageLightbox } from '@/components/ui/ImageLightbox';
+import { ShareModal } from './shared/ShareModal';
 import { GAME_REGISTRY, type PlayableGameType } from '@/components/chat/games/gameRegistry';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
@@ -166,6 +167,9 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
 
   // Prompt copy state
   const [copied, setCopied] = useState(false);
+
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Enriched project with full content (fetched when tray opens)
   const [enrichedProject, setEnrichedProject] = useState<Project | null>(null);
@@ -645,6 +649,12 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
     }
   };
 
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowShareModal(true);
+  };
+
   if (!shouldRender || !project) return null;
 
   const projectUrl = `/${project.username}/${project.slug}`;
@@ -958,6 +968,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 <ChatBubbleLeftIcon className="w-4 h-4 text-gray-400" />
                 <span className="text-xs font-medium text-gray-300">Comment</span>
               </button>
+
+              {/* Share button */}
+              <button
+                onClick={handleShareClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 bg-slate-800 hover:bg-slate-700"
+                aria-label="Share"
+              >
+                <ShareIcon className="w-4 h-4 text-gray-400" />
+                <span className="text-xs font-medium text-gray-300">Share</span>
+              </button>
             </div>
           </div>
 
@@ -1190,6 +1210,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 <ChatBubbleLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Comment</span>
               </button>
+
+              {/* Share button */}
+              <button
+                onClick={handleShareClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                aria-label="Share"
+              >
+                <ShareIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Share</span>
+              </button>
             </div>
           </div>
 
@@ -1393,6 +1423,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
               >
                 <ChatBubbleLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Comment</span>
+              </button>
+
+              {/* Share button */}
+              <button
+                onClick={handleShareClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                aria-label="Share"
+              >
+                <ShareIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Share</span>
               </button>
             </div>
 
@@ -1786,6 +1826,16 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
                 <ChatBubbleLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Comment</span>
               </button>
+
+              {/* Share button */}
+              <button
+                onClick={handleShareClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:scale-105 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                aria-label="Share"
+              >
+                <ShareIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Share</span>
+              </button>
             </div>
           </div>
 
@@ -1881,6 +1931,15 @@ export function ProjectPreviewTray({ isOpen, onClose, project, feedScrollContain
         images={lightboxImages.length > 0 ? lightboxImages : undefined}
         currentIndex={lightboxIndex}
         onNavigate={setLightboxIndex}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        title={project.title}
+        username={project.username}
+        slug={project.slug}
       />
     </>,
     document.body

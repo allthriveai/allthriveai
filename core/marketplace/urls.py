@@ -8,6 +8,9 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AssetDeleteView,
+    AssetDownloadView,
+    AssetUploadView,
     CreatorAccountView,
     CreatorDashboardView,
     CreatorSalesView,
@@ -41,6 +44,12 @@ urlpatterns = [
     path('import/youtube/', YouTubeImportView.as_view(), name='import-youtube'),
     # Products router (CRUD)
     path('', include(router.urls)),
+    # Asset management (upload, download, delete)
+    path('products/<int:product_id>/assets/', AssetUploadView.as_view(), name='asset-upload'),
+    path(
+        'products/<int:product_id>/assets/<int:asset_id>/download/', AssetDownloadView.as_view(), name='asset-download'
+    ),
+    path('products/<int:product_id>/assets/<int:asset_id>/', AssetDeleteView.as_view(), name='asset-delete'),
     # Checkout endpoints
     path('checkout/<int:product_id>/', ProductCheckoutView.as_view(), name='product-checkout'),
     path('checkout/<int:product_id>/free/', FreeProductAccessView.as_view(), name='free-product-access'),

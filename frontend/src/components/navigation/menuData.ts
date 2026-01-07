@@ -114,7 +114,6 @@ export const ROUTE_PATTERNS: Record<string, (path: string, search: string, usern
   'Browse Members': (path, search) => path === '/explore' && search.includes('tab=profiles'),
   'My Messages': (path) => path === '/messages' || path.startsWith('/messages/'),
   'Membership Perks': (path) => path === '/perks',
-  'Marketplace': (path) => path === '/marketplace',
   'Tool Directory': (path) => path === '/tools',
   'Learning Paths': (path) => path === '/learn' || path.startsWith('/learn/'),
 };

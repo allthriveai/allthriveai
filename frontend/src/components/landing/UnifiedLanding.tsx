@@ -7,8 +7,9 @@
  * 3-5. Learn, Share, Play scenarios + Ava chat stays sticky
  */
 
-import { motion, useScroll, useTransform, useMotionValueEvent, AnimatePresence } from 'framer-motion';
-import { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, useScroll, useTransform, useMotionValueEvent, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { AcademicCapIcon, ShareIcon, PuzzlePieceIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 
 // Custom hook for mobile detection
@@ -25,7 +26,7 @@ function useIsMobile(breakpoint = 1024) {
   return isMobile;
 }
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWorm, faPlay, faLink, faCode, faWrench, faHammer } from '@fortawesome/free-solid-svg-icons';
+import { faWorm, faPlay, faLink, faCode, faWrench, faHammer, faTrophy } from '@fortawesome/free-solid-svg-icons';
 import { faGithub, faGitlab, faFigma, faYoutube } from '@fortawesome/free-brands-svg-icons';
 import { BattleSimulation } from './BattleSimulation';
 import { Testimonials } from './Testimonials';
@@ -577,7 +578,7 @@ function AvaChatPanel({ activeSection, isGamePlaying, onStartGame }: { activeSec
 // LEFT SIDE SECTIONS
 // ============================================
 
-function HeroContent({ onRequestInvite }: { onRequestInvite: () => void }) {
+function HeroContent() {
   return (
     <div className="h-screen flex items-center">
       <div className="text-left max-w-2xl">
@@ -597,12 +598,12 @@ function HeroContent({ onRequestInvite }: { onRequestInvite: () => void }) {
             </span>
           </h1>
           <p className="text-2xl text-gray-300 mb-10">Games and challenges. Personalized learning paths.<br />Share what you're building.</p>
-          <button
-            onClick={onRequestInvite}
-            className="px-8 py-4 rounded bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300 hover:scale-105"
+          <Link
+            to="/auth"
+            className="inline-block px-8 py-4 rounded bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300 hover:scale-105"
           >
-            Join Waitlist
-          </button>
+            Join All Thrive
+          </Link>
         </motion.div>
       </div>
     </div>
@@ -632,142 +633,461 @@ function FeatureContent({ icon: Icon, title, description, children }: { icon: Re
   );
 }
 
+
 // ============================================
-// MOBILE COMPONENTS
+// MOBILE ANIMATION COMPONENTS (Visual-first design)
 // ============================================
 
-function MobileHeroContent({ onRequestInvite }: { onRequestInvite: () => void }) {
+// Learning Path Animation - nodes connecting with animated lines
+function MobileLearningPathAnimation() {
+  const prefersReducedMotion = useReducedMotion();
+
+  const nodes = [
+    { x: 50, y: 35, label: 'Start', color: '#22d3ee' },
+    { x: 140, y: 55, label: 'Basics', color: '#a855f7' },
+    { x: 90, y: 95, label: 'Build', color: '#4ade80' },
+    { x: 180, y: 115, label: 'Thrive', color: '#f472b6' },
+  ];
+
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center px-6 pt-20 pb-8">
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-center">
-        <h1 className="font-bold tracking-tight mb-6">
-          <span className="block text-4xl sm:text-5xl leading-tight">
-            <span className="text-white">Explore AI </span>
-            <span
-              style={{
-                background: 'linear-gradient(90deg, #22d3ee, #4ade80)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              together
-            </span>
-          </span>
-        </h1>
-        <p className="text-lg sm:text-xl text-gray-300 mb-8">Games and challenges. Personalized learning paths. Share what you're building.</p>
-        <button
-          onClick={onRequestInvite}
-          className="px-6 py-3 rounded bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-base shadow-neon hover:shadow-neon-strong transition-all duration-300"
-        >
-          Join Waitlist
-        </button>
-      </motion.div>
-      {/* Battle simulation on mobile - below hero */}
-      <div className="mt-8 w-full max-w-[400px] px-2">
-        <BattleSimulation />
-      </div>
-    </div>
+    <svg viewBox="0 0 230 150" className="w-full h-auto">
+      <defs>
+        <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#22d3ee" />
+          <stop offset="100%" stopColor="#a855f7" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Animated connecting lines */}
+      <motion.path
+        d="M 50 35 Q 95 35 140 55 Q 115 75 90 95 Q 135 105 180 115"
+        fill="none"
+        stroke="url(#pathGradient)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        filter="url(#glow)"
+        initial={{ pathLength: 0, opacity: 0 }}
+        whileInView={{ pathLength: 1, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 2, ease: 'easeInOut' }}
+      />
+
+      {/* Nodes */}
+      {nodes.map((node, i) => (
+        <motion.g key={i}>
+          {/* Glow ring */}
+          <motion.circle
+            cx={node.x}
+            cy={node.y}
+            r="18"
+            fill="none"
+            stroke={node.color}
+            strokeWidth="2"
+            opacity="0.3"
+            initial={{ scale: 0 }}
+            whileInView={{ scale: [1, 1.2, 1] }}
+            viewport={{ once: true }}
+            transition={{
+              delay: 0.5 + i * 0.2,
+              duration: 2,
+              repeat: prefersReducedMotion ? 0 : Infinity
+            }}
+          />
+          {/* Node circle */}
+          <motion.circle
+            cx={node.x}
+            cy={node.y}
+            r="12"
+            fill={node.color}
+            filter="url(#glow)"
+            initial={{ scale: 0, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 + i * 0.2, type: 'spring' }}
+          />
+          {/* Label */}
+          <motion.text
+            x={node.x}
+            y={node.y + 26}
+            textAnchor="middle"
+            fill="white"
+            fontSize="11"
+            fontWeight="500"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 + i * 0.2 }}
+          >
+            {node.label}
+          </motion.text>
+        </motion.g>
+      ))}
+    </svg>
   );
 }
 
-function MobileFeatureSection({
-  icon: Icon,
-  title,
-  children,
-  chatContent
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  children?: React.ReactNode;
-  chatContent?: React.ReactNode;
-}) {
+// Share Animation - project card assembling from pieces
+function MobileShareAnimation() {
   return (
-    <div className="px-6 py-12 border-t border-white/5">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-50px' }}
+    <svg viewBox="0 0 260 140" className="w-full h-auto">
+      <defs>
+        <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#4ade80" stopOpacity="0.2" />
+        </linearGradient>
+        <filter id="cardGlow">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Card background */}
+      <motion.rect
+        x="40"
+        y="10"
+        width="180"
+        height="110"
+        rx="10"
+        fill="url(#cardGradient)"
+        stroke="#22d3ee"
+        strokeWidth="1"
+        strokeOpacity="0.5"
+        initial={{ opacity: 0, scale: 0.8 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
         transition={{ duration: 0.5 }}
+      />
+
+      {/* Image placeholder flying in */}
+      <motion.rect
+        x="52"
+        y="20"
+        width="60"
+        height="42"
+        rx="5"
+        fill="#4ade80"
+        fillOpacity="0.3"
+        stroke="#4ade80"
+        strokeWidth="1"
+        initial={{ x: -100, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.3, type: 'spring', stiffness: 100 }}
+      />
+
+      {/* Title line */}
+      <motion.rect
+        x="122"
+        y="24"
+        width="85"
+        height="8"
+        rx="4"
+        fill="white"
+        fillOpacity="0.8"
+        initial={{ width: 0 }}
+        whileInView={{ width: 85 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.5, duration: 0.4 }}
+      />
+
+      {/* Description lines */}
+      <motion.rect
+        x="122"
+        y="38"
+        width="70"
+        height="5"
+        rx="2"
+        fill="white"
+        fillOpacity="0.4"
+        initial={{ width: 0 }}
+        whileInView={{ width: 70 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.6, duration: 0.3 }}
+      />
+      <motion.rect
+        x="122"
+        y="48"
+        width="55"
+        height="5"
+        rx="2"
+        fill="white"
+        fillOpacity="0.4"
+        initial={{ width: 0 }}
+        whileInView={{ width: 55 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.7, duration: 0.3 }}
+      />
+
+      {/* Tags flying in */}
+      {[0, 1, 2].map((i) => (
+        <motion.rect
+          key={i}
+          x={52 + i * 42}
+          y="75"
+          width="36"
+          height="16"
+          rx="8"
+          fill={['#a855f7', '#22d3ee', '#f472b6'][i]}
+          fillOpacity="0.3"
+          stroke={['#a855f7', '#22d3ee', '#f472b6'][i]}
+          strokeWidth="1"
+          initial={{ y: 30, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.8 + i * 0.1, type: 'spring' }}
+        />
+      ))}
+
+      {/* Share icon pulse */}
+      <motion.g
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 1, type: 'spring' }}
       >
-        <div className="w-12 h-12 rounded bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center border border-cyan-500/20 mb-4">
-          <Icon className="w-6 h-6 text-cyan-400" />
+        <motion.circle
+          cx="200"
+          cy="100"
+          r="16"
+          fill="#22d3ee"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+        <path
+          d="M196 100 L204 100 M200 96 L200 104"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </motion.g>
+    </svg>
+  );
+}
+
+// Prompt Battle Animation - two players competing with real avatars
+function MobilePromptBattleAnimation() {
+  const [showWinner, setShowWinner] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowWinner(true), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="flex items-start justify-center gap-4 py-4 px-8">
+      {/* Player 1 - Left side (Winner) */}
+      <motion.div
+        className="flex flex-col items-center relative"
+        initial={{ x: -30, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ type: 'spring', stiffness: 100 }}
+      >
+        {/* Winner trophy */}
+        <AnimatePresence>
+          {showWinner && (
+            <motion.div
+              className="absolute -top-6 left-1/2 -translate-x-1/2 z-10"
+              initial={{ scale: 0, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+            >
+              <FontAwesomeIcon icon={faTrophy} className="w-6 h-6 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Avatar with glow ring */}
+        <div className="relative">
+          <motion.div
+            className="absolute -inset-1 rounded-full blur-sm"
+            animate={{
+              backgroundColor: showWinner ? 'rgba(250, 204, 21, 0.4)' : 'rgba(34, 211, 238, 0.3)',
+            }}
+            transition={{ duration: 0.5 }}
+          />
+          <video
+            src="/person-1.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-16 h-16 rounded-full object-cover border-2 border-cyan-400 relative"
+          />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">{title}</h2>
-        {children}
-      </motion.div>
-      {/* Chat content for this section */}
-      {chatContent && (
+        {/* Image card below */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-8 p-4 rounded bg-white/5 border border-white/10"
+          className="mt-2 w-24 h-24 rounded-lg overflow-hidden border-2"
+          initial={{ scale: 0 }}
+          whileInView={{ scale: 1 }}
+          animate={{
+            borderColor: showWinner ? 'rgba(250, 204, 21, 0.7)' : 'rgba(34, 211, 238, 0.5)',
+            boxShadow: showWinner ? '0 0 20px rgba(250, 204, 21, 0.4)' : 'none',
+          }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5, type: 'spring' }}
         >
-          {chatContent}
+          <img src="/battle-robot-cat-1.png" alt="Battle image 1" className="w-full h-full object-cover" />
         </motion.div>
-      )}
+      </motion.div>
+
+      {/* VS Badge - Center */}
+      <motion.div
+        className="relative self-center"
+        initial={{ scale: 0, rotate: -180 }}
+        whileInView={{ scale: 1, rotate: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+      >
+        <motion.div
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-cyan-400 via-purple-500 to-green-400 flex items-center justify-center shadow-lg shadow-purple-500/50"
+          animate={{
+            scale: [1, 1.1, 1],
+            boxShadow: [
+              '0 0 20px rgba(168, 85, 247, 0.5)',
+              '0 0 40px rgba(168, 85, 247, 0.8)',
+              '0 0 20px rgba(168, 85, 247, 0.5)',
+            ]
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <span className="text-white font-bold">VS</span>
+        </motion.div>
+      </motion.div>
+
+      {/* Player 2 - Right side */}
+      <motion.div
+        className="flex flex-col items-center"
+        initial={{ x: 30, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ type: 'spring', stiffness: 100 }}
+      >
+        {/* Avatar with glow ring */}
+        <div className="relative">
+          <div className="absolute -inset-1 rounded-full bg-green-400/30 blur-sm" />
+          <video
+            src="/person-2.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-16 h-16 rounded-full object-cover border-2 border-green-400 relative"
+          />
+        </div>
+        {/* Image card below */}
+        <motion.div
+          className="mt-2 w-24 h-24 rounded-lg overflow-hidden border-2 border-green-400/50"
+          initial={{ scale: 0 }}
+          whileInView={{ scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5, type: 'spring' }}
+        >
+          <img src="/battle-robot-cat-2.png" alt="Battle image 2" className="w-full h-full object-cover" />
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
 
-// Simplified chat messages for mobile (no panel chrome)
-function MobileChatMessages({ messages, isGamePlaying, onStartGame }: { messages: ChatMessage[]; isGamePlaying: boolean; onStartGame: () => void }) {
-  return (
-    <div className="space-y-3">
-      {messages.map((message, index) => {
-        const key = `mobile-${message.type}-${index}`;
+// Explore Animation - grid of real project thumbnails
+function MobileExploreAnimation() {
+  const projects = [
+    { type: 'video', src: '/sammy.mp4', title: 'Sammy' },
+    { type: 'image', src: '/vector-database-promo.png', title: 'Vector Database' },
+    { type: 'image', src: '/weave-cli.png', title: 'Weave CLI', position: 'object-right' },
+    { type: 'image', src: '/games/game-context-snake-promo.png', title: 'Context Snake' },
+  ];
 
-        if (message.type === 'user') {
-          return (
-            <div key={key} className="flex justify-end">
-              <div className="max-w-[85%] px-3 py-2 rounded bg-cyan-600 text-white">
-                <p className="text-base">{message.text}</p>
-              </div>
-            </div>
-          );
-        }
-        if (message.type === 'ava') {
-          return (
-            <div key={key} className="flex gap-2">
-              <img src="/ava-avatar.png" alt="Ava" className="w-6 h-6 rounded-full border border-cyan-500/50 flex-shrink-0" />
-              <div className="max-w-[85%] px-3 py-2 rounded bg-white/10 border border-white/10 text-white">
-                <p className="text-base">{message.text}</p>
-              </div>
-            </div>
-          );
-        }
-        if (message.type === 'game') {
-          return (
-            <div key={key} className="ml-8">
-              <PlayableGame isPlaying={isGamePlaying} onPlay={onStartGame} />
-            </div>
-          );
-        }
-        if (message.type === 'projects') {
-          return (
-            <div key={key} className="ml-8 grid grid-cols-2 gap-2">
-              {exampleProjects.map((project, pIndex) => <MiniProjectCard key={project.id} project={project} index={pIndex} />)}
-            </div>
-          );
-        }
-        if (message.type === 'learning-path-preview') {
-          return (
-            <div key={key} className="ml-8">
-              <LearningPathPreview />
-            </div>
-          );
-        }
-        if (message.type === 'exercise-picker') {
-          return (
-            <div key={key} className="ml-8">
-              <ExercisePicker />
-            </div>
-          );
-        }
-        return null;
-      })}
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {projects.map((project, i) => (
+        <motion.div
+          key={i}
+          className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-slate-800"
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
+        >
+          {project.type === 'video' ? (
+            <video
+              src={project.src}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <img
+              src={project.src}
+              alt={project.title}
+              className={`w-full h-full object-cover ${project.position || ''}`}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <div className="absolute bottom-3 left-3 right-3">
+            <p className="text-sm text-white font-medium">{project.title}</p>
+          </div>
+        </motion.div>
+      ))}
     </div>
+  );
+}
+
+// Mobile Feature Section with glow effect
+interface MobileAnimatedSectionProps {
+  title: string;
+  subtitle: string;
+  glowColor: string;
+  children: React.ReactNode;
+}
+
+function MobileAnimatedSection({ title, subtitle, glowColor, children }: MobileAnimatedSectionProps) {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-50px' }}
+      transition={{ duration: 0.5 }}
+      className="relative overflow-hidden rounded border border-white/10 bg-white/5 backdrop-blur-sm p-6 pt-8 pb-10"
+    >
+      {/* Glow effect */}
+      {!prefersReducedMotion && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none rounded"
+          animate={{
+            boxShadow: [
+              `0 0 20px ${glowColor}`,
+              `0 0 40px ${glowColor}`,
+              `0 0 20px ${glowColor}`,
+            ],
+          }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
+
+      {/* Title & Subtitle */}
+      <h2 className="text-xl font-bold text-white mb-1">{title}</h2>
+      <p className="text-sm text-gray-400 mb-6">{subtitle}</p>
+
+      {/* Animation */}
+      <div className="relative">
+        {children}
+      </div>
+    </motion.div>
   );
 }
 
@@ -814,10 +1134,6 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
   // Y transform for parallax content - desktop only
   const contentY = useTransform(scrollYProgress, [0, 1], [0, -3600]);
 
-  // Get messages for each section (for mobile inline display)
-  const getMessagesForSection = useCallback((section: SectionId) => {
-    return allMessages.filter(msg => msg.section === section);
-  }, []);
 
   // Mobile layout - stacked, no parallax
   if (isMobile) {
@@ -863,104 +1179,74 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
           </div>
         </header>
 
-        {/* Mobile content - stacked sections */}
+        {/* Mobile content - Visual-first design */}
         <div className="relative z-10">
-          {/* Hero with icon cloud */}
-          <MobileHeroContent onRequestInvite={onRequestInvite} />
+          {/* HERO - Simplified */}
+          <section className="min-h-[75vh] flex flex-col items-center justify-center px-6 pt-20 pb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-center"
+            >
+              <h1 className="text-5xl font-bold mb-4">
+                <span className="text-white">Explore AI </span>
+                <span className="bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
+                  together
+                </span>
+              </h1>
 
-          {/* Learn section */}
-          <MobileFeatureSection
-            icon={PuzzlePieceIcon}
-            title="The best way to learn AI?"
-            chatContent={
-              <MobileChatMessages
-                messages={getMessagesForSection('learn')}
-                isGamePlaying={isGamePlaying}
-                onStartGame={() => setIsGamePlaying(true)}
-              />
-            }
-          >
-            <p className="text-base text-gray-400 mb-4">
-              Play with AI concepts. Compete in weekly challenges against other community members.
-            </p>
-          </MobileFeatureSection>
+              {/* Brief value prop */}
+              <p className="text-xl text-gray-400 mb-8">Play. Learn. Share.</p>
 
-          {/* Paths section */}
-          <MobileFeatureSection
-            icon={BookOpenIcon}
-            title="Personalized learning paths"
-            chatContent={
-              <MobileChatMessages
-                messages={getMessagesForSection('paths')}
-                isGamePlaying={false}
-                onStartGame={() => {}}
-              />
-            }
-          >
-            <p className="text-base text-gray-400 mb-4">
-              Learn at your own pace with lessons personalized to your goals.
-            </p>
-          </MobileFeatureSection>
+              {/* CTA */}
+              <Link
+                to="/auth"
+                className="inline-block px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-400 to-green-400 text-[#020617] font-semibold text-lg shadow-neon hover:shadow-neon-strong transition-all duration-300"
+              >
+                Join All Thrive
+              </Link>
+            </motion.div>
+          </section>
 
-          {/* Share section */}
-          <MobileFeatureSection
-            icon={ShareIcon}
-            title="Share your work in progress"
-            chatContent={
-              <div className="space-y-3">
-                <MobileChatMessages
-                  messages={getMessagesForSection('share').filter(m => m.type === 'user' || m.type === 'ava')}
-                  isGamePlaying={false}
-                  onStartGame={() => {}}
-                />
-                <div className="ml-8">
-                  <ProjectPreview />
-                </div>
-              </div>
-            }
-          >
-            <p className="text-base text-gray-400 mb-4">
-              Every project starts somewhere. Share your progress, get feedback, and keep all your AI ideas in one place.
-            </p>
-          </MobileFeatureSection>
+          {/* FEATURE SECTIONS - Animated visuals */}
+          <section className="px-6 py-8 flex flex-col gap-8">
+            {/* PLAY - Prompt Battles */}
+            <MobileAnimatedSection
+              title="Play against your friends"
+              subtitle="Image prompt battles and weekly games and challenges"
+              glowColor="rgba(16, 185, 129, 0.3)"
+            >
+              <MobilePromptBattleAnimation />
+            </MobileAnimatedSection>
 
-          {/* See section */}
-          <MobileFeatureSection
-            icon={AcademicCapIcon}
-            title="See what others are creating"
-            chatContent={
-              <MobileChatMessages
-                messages={getMessagesForSection('see')}
-                isGamePlaying={false}
-                onStartGame={() => {}}
-              />
-            }
-          >
-            <p className="text-base text-gray-400 mb-4">
-              See what the community is building and find inspiration.
-            </p>
-            {/* Platform stats - mobile sized */}
-            <div className="flex gap-4 mb-4">
-              <div className="text-center">
-                <div className="text-xl font-bold text-cyan-400">
-                  {stats ? formatStat(stats.activeCreators) : '...'}
-                </div>
-                <div className="text-xs text-gray-400">Members</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-green-400">
-                  {stats ? formatStat(stats.projectsShared) : '...'}
-                </div>
-                <div className="text-xs text-gray-400">Projects</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-purple-400">
-                  {stats ? formatStat(stats.collectivePoints) : '...'}
-                </div>
-                <div className="text-xs text-gray-400">Points</div>
-              </div>
-            </div>
-          </MobileFeatureSection>
+            {/* LEARN - Animated learning path */}
+            <MobileAnimatedSection
+              title="Learn your way at your pace"
+              subtitle="Personalized learning paths with interactive exercises"
+              glowColor="rgba(168, 85, 247, 0.3)"
+            >
+              <MobileLearningPathAnimation />
+            </MobileAnimatedSection>
+
+            {/* SHARE - Project card assembly animation */}
+            <MobileAnimatedSection
+              title="Share your ideas and projects"
+              subtitle="Import your projects instantly from any URL to your profile"
+              glowColor="rgba(34, 211, 238, 0.3)"
+            >
+              <MobileShareAnimation />
+            </MobileAnimatedSection>
+
+            {/* SEE - Explore grid */}
+            <MobileAnimatedSection
+              title="Get inspired"
+              subtitle="Discover projects, tools, and ideas from the community"
+              glowColor="rgba(251, 191, 36, 0.3)"
+            >
+              <MobileExploreAnimation />
+            </MobileAnimatedSection>
+          </section>
         </div>
 
         {/* Testimonials and Final CTA */}
@@ -1025,7 +1311,7 @@ export function UnifiedLanding({ onRequestInvite }: UnifiedLandingProps) {
           <motion.div
             style={{ y: contentY }}
           >
-            <HeroContent onRequestInvite={onRequestInvite} />
+            <HeroContent />
             <FeatureContent
               icon={PuzzlePieceIcon}
               title="The best way to learn AI?"

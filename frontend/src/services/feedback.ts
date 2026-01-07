@@ -83,6 +83,11 @@ export interface AdminUpdateFeedbackData {
   adminResponse?: string;
 }
 
+export interface UserUpdateFeedbackData {
+  title?: string;
+  description?: string;
+}
+
 export interface VoteResponse {
   voted: boolean;
   voteCount: number;
@@ -187,4 +192,22 @@ export async function adminUpdateFeedback(
 ): Promise<FeedbackItem> {
   const response = await api.patch(`/feedback/${itemId}/admin-update/`, data);
   return response.data;
+}
+
+/**
+ * Update own feedback title and/or description (only for open items)
+ */
+export async function updateFeedback(
+  itemId: number,
+  data: UserUpdateFeedbackData
+): Promise<FeedbackItem> {
+  const response = await api.patch(`/feedback/${itemId}/update/`, data);
+  return response.data;
+}
+
+/**
+ * Delete a feedback item (admins can delete any, owners can delete their own open items)
+ */
+export async function deleteFeedback(itemId: number): Promise<void> {
+  await api.delete(`/feedback/${itemId}/`);
 }

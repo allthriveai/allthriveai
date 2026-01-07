@@ -265,6 +265,27 @@ class PromptBattle(models.Model):
         help_text='URL to the pre-generated OG image for social media sharing',
     )
 
+    # Instagram posting tracking (for @pip automated posts)
+    instagram_post_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Instagram post ID if battle was shared to Instagram',
+    )
+
+    instagram_posted_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='When the battle was posted to Instagram',
+    )
+
+    instagram_post_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text='URL to the Instagram post',
+    )
+
     # Async battle mode fields
     battle_mode = models.CharField(
         max_length=20,

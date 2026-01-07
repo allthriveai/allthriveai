@@ -30,6 +30,7 @@ import {
   StarIcon,
   AcademicCapIcon,
   PlayIcon,
+  ShareIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, MegaphoneIcon as MegaphoneIconSolid, StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { toggleProjectLike, deleteProjectById, toggleProjectPromotion, toggleProjectInShowcase, toggleLearningEligibility, dismissProject } from '@/services/projects';
@@ -37,6 +38,7 @@ import { ProjectModal } from './ProjectModal';
 import { CommentTray } from './CommentTray';
 import { ToolTray } from '@/components/tools/ToolTray';
 import { SlideUpHero } from './SlideUpHero';
+import { ShareModal } from './shared/ShareModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useReward } from 'react-rewards';
 import { getCategoryColors } from '@/utils/categoryColors';
@@ -101,6 +103,7 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
   const [isLearningEligible, setIsLearningEligible] = useState(project.isLearningEligible ?? true);
   const [isTogglingLearning, setIsTogglingLearning] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const Icon = typeIcons[project.type] || DocumentTextIcon;
   // Game projects link directly to the game URL
   const gameUrl = project.type === 'game' ? project.content?.gameUrl : null;
@@ -275,6 +278,12 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
     // Otherwise, use local comment tray
     setShowToolTray(false);
     setShowCommentTray(true);
+  };
+
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowShareModal(true);
   };
 
   const handleMoreInfoClick = (e: React.MouseEvent) => {
@@ -502,6 +511,12 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
           </div>
         )}
 
+        {/* Marketplace price badge */}
+        {project.product?.status === 'published' && (
+          <div className="absolute top-3 right-3 z-30 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-sm font-bold shadow-lg backdrop-blur-sm border border-emerald-400/30">
+            {project.product.price > 0 ? `$${project.product.price.toFixed(2)}` : 'Free'}
+          </div>
+        )}
 
         {/* BACKGROUND LAYER */}
         <div className={`${isQuote ? 'absolute inset-0 bg-gray-900 flex items-center justify-center' : 'relative'} ${heroElement.type === 'image' ? 'bg-gray-900' : ''}`}>
@@ -1013,6 +1028,15 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
                   <ChatBubbleLeftIcon className="w-4 h-4 text-white group-hover/comment:scale-110 transition-transform drop-shadow-sm" />
                 </button>
 
+                {/* Share Button */}
+                <button
+                  onClick={handleShareClick}
+                  className="p-1.5 rounded-full transition-all hover:scale-105 group/share bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20"
+                  aria-label="Share"
+                >
+                  <ShareIcon className="w-4 h-4 text-white group-hover/share:scale-110 transition-transform drop-shadow-sm" />
+                </button>
+
                 {/* Up Arrow - More Info or Slide Up */}
                 {isSlideup && project.content?.heroSlideUpElement1 && project.content?.heroSlideUpElement2 ? (
                   <button
@@ -1175,6 +1199,15 @@ export const ProjectCard = memo(function ProjectCard({ project, selectionMode = 
           toolSlug={selectedToolSlug || project.toolsDetails[0].slug}
         />
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        title={project.title}
+        username={project.username}
+        slug={project.slug}
+      />
     </>
     );
   }

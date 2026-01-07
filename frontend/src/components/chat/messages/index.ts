@@ -17,6 +17,7 @@ export { GeneratingImageMessage } from './GeneratingImageMessage';
 export { ChallengeTeaserMessage } from './ChallengeTeaserMessage';
 export { PeopleToConnectMessage } from './PeopleToConnectMessage';
 export { ProjectImportOptionsMessage } from './ProjectImportOptionsMessage';
+export { IdeaDescriptionMessage } from './IdeaDescriptionMessage';
 export { IntegrationCardsMessage } from './IntegrationCardsMessage';
 export { ProfileQuestionMessage } from './ProfileQuestionMessage';
 export type { ProfileQuestionConfig, ProfileQuestionOption } from './ProfileQuestionMessage';

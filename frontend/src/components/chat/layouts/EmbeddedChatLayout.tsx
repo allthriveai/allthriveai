@@ -70,9 +70,9 @@ const FEELING_OPTIONS: FeelingOption[] = [
   },
   {
     id: 'share',
-    label: 'Share something I\'ve been working on',
+    label: 'Share an idea or project',
     signupFeatures: ['portfolio'],
-    message: 'I want to share something I\'ve been working on',
+    message: 'I want to share an idea or project I\'ve been working on',
     timeOfDay: ['afternoon', 'evening'],
     priority: 3,
   },
@@ -254,6 +254,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
 
   // Track if we're in "quick win" flow (user said "I don't know where to start")
   const [isQuickWinFlow, setIsQuickWinFlow] = useState(false);
+  const [isIdeaSubmitting, setIsIdeaSubmitting] = useState(false);
 
   // Connection status for integrations
   const [connectionStatus, setConnectionStatus] = useState({
@@ -534,7 +535,7 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
             // Add user message
             const userMessage: ChatMessage = {
               id: `user-share-${timestamp}`,
-              content: 'I want to share something I\'ve been working on',
+              content: 'I want to share an idea or project I\'ve been working on',
               sender: 'user',
               timestamp: new Date(),
             };
@@ -594,7 +595,47 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
               // Show coming soon modal
               setShowComingSoon(true);
               break;
+            case 'idea': {
+              // Show idea description input inline
+              const ideaMessage: ChatMessage = {
+                id: `assistant-idea-input-${timestamp}`,
+                content: '',
+                sender: 'assistant',
+                timestamp: new Date(),
+                metadata: {
+                  type: 'idea_description_input',
+                },
+              };
+              setLocalMessages((prev) => [...prev, ideaMessage]);
+              break;
+            }
           }
+        };
+
+        // Handle idea submission
+        const handleIdeaSubmit = (description: string) => {
+          setIsIdeaSubmitting(true);
+
+          // Remove both the input message AND the project_import_options message
+          setLocalMessages((prev) => prev.filter(m =>
+            m.metadata?.type !== 'idea_description_input' &&
+            m.metadata?.type !== 'project_import_options'
+          ));
+
+          // Send to Ava with context
+          state.sendMessage(`I have an idea and need help: ${description}`);
+
+          // Reset submitting state after message is sent
+          setIsIdeaSubmitting(false);
+        };
+
+        // Handle idea cancel
+        const handleIdeaCancel = () => {
+          // Remove both input and options messages, returning to normal chat
+          setLocalMessages((prev) => prev.filter(m =>
+            m.metadata?.type !== 'idea_description_input' &&
+            m.metadata?.type !== 'project_import_options'
+          ));
         };
 
         // Handle game selection from picker
@@ -932,6 +973,9 @@ export function EmbeddedChatLayout({ conversationId }: EmbeddedChatLayoutProps) 
                     onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
                     onInlineActionClick={(message) => state.sendMessage(message)}
                     onOpenProjectPreview={handleOpenProjectPreview}
+                    onIdeaSubmit={handleIdeaSubmit}
+                    onIdeaCancel={handleIdeaCancel}
+                    isIdeaSubmitting={isIdeaSubmitting}
                   />
 
                   {/* Inline integration flow (GitHub/GitLab/Figma) */}

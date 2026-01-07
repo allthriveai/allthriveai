@@ -39,12 +39,14 @@ def get_existing_feedback_context(current_item, limit: int = 10) -> str:
 
     feedback_type = current_item.get_feedback_type_display().lower()
     duplicate_instruction = (
-        'If the new submission is similar to an existing one, kindly point the user to it '
-        'and encourage them to vote on it instead. Include the direct link (e.g., /feedback/123) '
-        'so they can easily find and vote on the existing request.'
+        'IMPORTANT: Only mention an existing item if it is TRULY about the same topic/feature. '
+        'Do NOT suggest unrelated items just because they exist. '
+        'For example, "user profiles" is NOT related to "skill analysis" - these are different features. '
+        'If you find a genuine duplicate (same core request), point the user to it and encourage them to vote. '
+        'If nothing is truly similar, do NOT mention any existing items - just thank them for their feedback.'
     )
     return f"""
-EXISTING {feedback_type.upper()}S (for duplicate detection):
+EXISTING {feedback_type.upper()}S (reference only - use STRICT matching):
 {chr(10).join(items_list)}
 
 {duplicate_instruction}
@@ -74,6 +76,12 @@ Guidelines:
 - Sign off as Haven with a heart emoji
 - Use relative URLs when linking (e.g., /explore not https://...)
 - NEVER use em dashes (—) - use regular hyphens (-) or commas instead
+
+CRITICAL - Duplicate detection:
+- Only suggest existing feedback items if they are GENUINELY about the same thing
+- Do NOT link to unrelated items - this confuses users
+- When in doubt, do NOT mention existing items - just thank them for the new feedback
+- "Similar" means the core request is the same, not just sharing a word or category
 """
 
 

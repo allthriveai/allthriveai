@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'core.achievements',
     'core.thrive_circle',
     'core.integrations',  # Content source integrations (YouTube, RSS, etc.)
+    'core.integrations.instagram',  # Instagram import and sharing
     'core.learning_paths',  # Auto-generated learning paths per topic
     'core.billing',  # Stripe subscriptions and token packages
     'core.ai_usage',  # AI usage tracking and cost analytics
@@ -102,6 +103,7 @@ INSTALLED_APPS = [
     'core.vendors',  # Vendor analytics for tool companies
     'core.tools',  # AI tools and technology directory
     'core.battles',  # Prompt battles feature
+    'core.clips',  # Social clip creator
     'core.events',  # Events and calendar
     'core.social',  # Social connections
     'core.engagement',  # Engagement tracking for personalization
@@ -485,6 +487,16 @@ HUGGINGFACE_OAUTH_CLIENT_SECRET = config('HUGGINGFACE_OAUTH_CLIENT_SECRET', defa
 
 MIDJOURNEY_OAUTH_CLIENT_ID = config('MIDJOURNEY_OAUTH_CLIENT_ID', default='')
 MIDJOURNEY_OAUTH_CLIENT_SECRET = config('MIDJOURNEY_OAUTH_CLIENT_SECRET', default='')
+
+# Instagram OAuth (for user account linking and posting)
+INSTAGRAM_OAUTH_CLIENT_ID = config('INSTAGRAM_OAUTH_CLIENT_ID', default='')
+INSTAGRAM_OAUTH_CLIENT_SECRET = config('INSTAGRAM_OAUTH_CLIENT_SECRET', default='')
+
+# @pipromptbattle Instagram account settings (for automated @pip battle posting)
+# This uses Development Mode tokens - no App Review required for posting to own account
+PIPROMPTBATTLE_INSTAGRAM_ENABLED = config('PIPROMPTBATTLE_INSTAGRAM_ENABLED', default=False, cast=bool)
+PIPROMPTBATTLE_INSTAGRAM_ACCESS_TOKEN = config('PIPROMPTBATTLE_INSTAGRAM_ACCESS_TOKEN', default='')
+PIPROMPTBATTLE_INSTAGRAM_USER_ID = config('PIPROMPTBATTLE_INSTAGRAM_USER_ID', default='')
 
 # Fallback AI Provider (used when DEFAULT_AI_PROVIDER is not set)
 FALLBACK_AI_PROVIDER = config('FALLBACK_AI_PROVIDER', default='openai')

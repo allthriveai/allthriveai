@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
 from core.integrations.utils import normalize_slug
@@ -60,6 +60,7 @@ class Project(WeaviateSyncMixin, models.Model):
         PRODUCT = 'product', 'Digital Product'
         CLIPPED = 'clipped', 'Clipped'  # External content user saved from the web
         GAME = 'game', 'Game'  # Interactive game teaser linking to /play/
+        SOCIAL_CLIP = 'social_clip', 'Social Clip'  # Animated clip for LinkedIn/YouTube
         OTHER = 'other', 'Other'
 
     class DifficultyLevel(models.TextChoices):
@@ -622,6 +623,36 @@ def auto_tag_project_on_save(sender, instance, created, **kwargs):
             ensure_topics_in_taxonomy([t.name for t in instance.topics.all()])
         except Exception as e:
             logger.error(f"Error syncing topics to taxonomy for '{instance.title}': {e}", exc_info=True)
+
+    # Invalidate context cache so schema updates reflect changes immediately
+    from django.core.cache import cache
+
+    cache.delete(f'project_context_json_{instance.id}_v1')
+    cache.delete(f'project_context_md_{instance.id}_v1')
+    cache.delete('llms_txt_v1')  # Project list may have changed
+
+
+@receiver(post_delete, sender=Project)
+def invalidate_cache_on_project_delete(sender, instance, **kwargs):
+    """Invalidate context caches when project is deleted."""
+    from django.core.cache import cache
+
+    cache.delete(f'project_context_json_{instance.id}_v1')
+    cache.delete(f'project_context_md_{instance.id}_v1')
+    cache.delete('llms_txt_v1')
+
+
+# M2M changes (tools, categories, topics) don't trigger post_save
+@receiver(m2m_changed, sender=Project.tools.through)
+@receiver(m2m_changed, sender=Project.categories.through)
+@receiver(m2m_changed, sender=Project.topics.through)
+def invalidate_cache_on_m2m_change(sender, instance, action, **kwargs):
+    """Invalidate context caches when M2M relationships change."""
+    if action in ('post_add', 'post_remove', 'post_clear'):
+        from django.core.cache import cache
+
+        cache.delete(f'project_context_json_{instance.id}_v1')
+        cache.delete(f'project_context_md_{instance.id}_v1')
 
 
 class ProjectDismissal(models.Model):

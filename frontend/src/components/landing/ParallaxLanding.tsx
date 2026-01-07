@@ -210,7 +210,7 @@ function WhatIsAllThriveSection() {
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
             All Thrive is your space to{' '}
             <span className="bg-gradient-to-r from-cyan-400 to-green-400 bg-clip-text text-transparent">
-              share, learn, and play
+              play, learn, and share
             </span>{' '}
             with AI.
           </h2>
@@ -508,7 +508,7 @@ function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img src="/all-thrvie-logo.png" alt="All Thrive" className="h-6 w-auto" />
-            <span className="text-gray-500 text-sm">Your space to share, learn, and play with AI.</span>
+            <span className="text-gray-500 text-sm">Your space to play, learn, and share with AI.</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-500">
             <a href="/privacy" className="hover:text-white transition-colors">Privacy</a>

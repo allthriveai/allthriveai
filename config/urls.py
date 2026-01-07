@@ -7,6 +7,7 @@ from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+from core.seo.views import LlmsTxtView
 from core.sitemaps import ProjectSitemap, StaticViewSitemap, ToolSitemap, UserProfileSitemap
 from core.views.core_views import ai_plugin_manifest, db_health, robots_txt
 from core.views.crawler_views import (
@@ -42,6 +43,7 @@ urlpatterns = [
         name='django.contrib.sitemaps.views.sitemap_section',
     ),
     path('robots.txt', robots_txt, name='robots_txt'),
+    path('llms.txt', LlmsTxtView.as_view(), name='llms_txt'),
     path('.well-known/ai-plugin.json', ai_plugin_manifest, name='ai_plugin_manifest'),
     # Versioned API namespace
     path('api/v1/', include('core.urls')),

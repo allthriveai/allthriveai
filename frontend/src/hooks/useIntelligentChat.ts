@@ -204,7 +204,7 @@ export interface LearningContentItem {
 }
 
 // Project import option types
-export type ProjectImportOption = 'integration' | 'url' | 'upload' | 'chrome-extension' | 'describe';
+export type ProjectImportOption = 'integration' | 'url' | 'upload' | 'chrome-extension' | 'idea';
 
 // Profile question option type
 export interface ProfileQuestionOption {
@@ -240,7 +240,8 @@ export interface IntelligentChatMetadata {
        | 'onboarding_avatar_preview' | 'inline_game'
        | 'learning_content' | 'project_import_options' | 'integration_picker'
        | 'profile_question' | 'inline_actions'
-       | 'figma_connect' | 'figma_url_input';
+       | 'figma_connect' | 'figma_url_input'
+       | 'idea_description_input';
   imageUrl?: string;
   filename?: string;
   sessionId?: number;

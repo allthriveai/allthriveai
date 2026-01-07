@@ -20,9 +20,23 @@ import {
   ChevronRightIcon,
   SparklesIcon,
   AcademicCapIcon,
+  CurrencyDollarIcon,
+  ArrowDownTrayIcon,
+  PlusIcon,
+  DocumentIcon,
 } from '@heroicons/react/24/outline';
 import { updateProject, deleteProjectRedirect } from '@/services/projects';
 import { getTaxonomiesByType } from '@/services/personalization';
+import {
+  getProduct,
+  createProduct,
+  updateProduct,
+  publishProduct,
+  unpublishProduct,
+  uploadAsset,
+  deleteAsset,
+} from '@/services/marketplace';
+import type { ProductDetail, ProductAsset } from '@/types/marketplace';
 import type { Project, Taxonomy } from '@/types/models';
 
 interface ProjectSettingsPanelProps {
@@ -35,7 +49,7 @@ interface ProjectSettingsPanelProps {
 }
 
 // Sections in the panel
-type SettingsSection = 'main' | 'background' | 'metadata' | 'redirects';
+type SettingsSection = 'main' | 'background' | 'metadata' | 'redirects' | 'marketplace';
 
 export function ProjectSettingsPanel({
   project,
@@ -58,6 +72,12 @@ export function ProjectSettingsPanel({
   // Background gradient state
   const [gradientFrom, setGradientFrom] = useState(project.content?.heroGradientFrom || '');
   const [gradientTo, setGradientTo] = useState(project.content?.heroGradientTo || '');
+
+  // Marketplace state
+  const [productData, setProductData] = useState<ProductDetail | null>(null);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  const [productPrice, setProductPrice] = useState('0.00');
+  const [isUploadingAsset, setIsUploadingAsset] = useState(false);
 
   // Reset to main when panel closes
   useEffect(() => {
@@ -139,6 +159,117 @@ export function ProjectSettingsPanel({
     }
   }, [project.id, onProjectUpdate]);
 
+  // Load product data when marketplace section opens
+  useEffect(() => {
+    if (activeSection === 'marketplace' && !productData && !marketplaceLoading) {
+      // Check if project already has a product
+      if (project.product?.id) {
+        setMarketplaceLoading(true);
+        getProduct(project.product.id)
+          .then((product) => {
+            setProductData(product);
+            setProductPrice(product.price?.toString() || '0.00');
+          })
+          .catch(console.error)
+          .finally(() => setMarketplaceLoading(false));
+      }
+    }
+  }, [activeSection, project.product?.id, productData, marketplaceLoading]);
+
+  // Handle enabling marketplace for this project
+  const handleEnableMarketplace = useCallback(async () => {
+    try {
+      setIsSaving(true);
+      const product = await createProduct({
+        title: project.title,
+        description: project.description || '',
+        productType: 'course', // Default to course type
+        price: '0.00',
+      });
+      setProductData(product);
+      setProductPrice('0.00');
+    } catch (error) {
+      console.error('Failed to enable marketplace:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project.title, project.description]);
+
+  // Handle price change
+  const handlePriceChange = useCallback(async (newPrice: string) => {
+    if (!productData) return;
+    // Format price as string for API
+    const priceFormatted = parseFloat(newPrice || '0').toFixed(2);
+    try {
+      setIsSaving(true);
+      const updated = await updateProduct(productData.id, { price: priceFormatted });
+      setProductData(updated);
+      setProductPrice(priceFormatted);
+    } catch (error) {
+      console.error('Failed to update price:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [productData]);
+
+  // Handle publish/unpublish
+  const handleTogglePublish = useCallback(async () => {
+    if (!productData) return;
+    try {
+      setIsSaving(true);
+      if (productData.status === 'published') {
+        const updated = await unpublishProduct(productData.id);
+        setProductData(updated);
+      } else {
+        const updated = await publishProduct(productData.id);
+        setProductData(updated);
+      }
+    } catch (error) {
+      console.error('Failed to toggle publish:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [productData]);
+
+  // Handle asset upload
+  const handleAssetUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!productData || !event.target.files?.length) return;
+    const file = event.target.files[0];
+    try {
+      setIsUploadingAsset(true);
+      await uploadAsset(productData.id, file, {
+        title: file.name,
+        assetType: 'download',
+      });
+      // Refresh product data to get updated assets list
+      const updated = await getProduct(productData.id);
+      setProductData(updated);
+    } catch (error) {
+      console.error('Failed to upload asset:', error);
+    } finally {
+      setIsUploadingAsset(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  }, [productData]);
+
+  // Handle asset delete
+  const handleAssetDelete = useCallback(async (assetId: number) => {
+    if (!productData) return;
+    if (!confirm('Delete this file? This cannot be undone.')) return;
+    try {
+      setIsSaving(true);
+      await deleteAsset(productData.id, assetId);
+      // Refresh product data
+      const updated = await getProduct(productData.id);
+      setProductData(updated);
+    } catch (error) {
+      console.error('Failed to delete asset:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [productData]);
+
   // Gradient presets
   const gradientPresets = [
     { from: '#7c3aed', to: '#4f46e5', name: 'Violet' },
@@ -181,6 +312,7 @@ export function ProjectSettingsPanel({
               {activeSection === 'background' && 'Background'}
               {activeSection === 'metadata' && 'Metadata'}
               {activeSection === 'redirects' && 'Redirects'}
+              {activeSection === 'marketplace' && 'Marketplace'}
             </h2>
           </div>
           <button
@@ -255,6 +387,23 @@ export function ProjectSettingsPanel({
                   </p>
                 </div>
                 <ChevronRightIcon className="w-4 h-4 text-white/40 group-hover:text-white/60" />
+              </button>
+
+              {/* Marketplace */}
+              <button
+                onClick={() => setActiveSection('marketplace')}
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-white transition-colors group border border-cyan-500/20"
+              >
+                <CurrencyDollarIcon className="w-5 h-5 text-cyan-400" />
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-cyan-300">Marketplace</p>
+                  <p className="text-sm text-white/60">
+                    {project.product?.status === 'published'
+                      ? `$${project.product.price?.toFixed(2) || '0.00'} - Published`
+                      : 'Sell digital downloads'}
+                  </p>
+                </div>
+                <ChevronRightIcon className="w-4 h-4 text-cyan-400/60 group-hover:text-cyan-400" />
               </button>
 
               {/* Divider */}
@@ -513,6 +662,177 @@ export function ProjectSettingsPanel({
                   <LinkIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p>No redirects yet</p>
                   <p className="text-xs mt-1">Redirects are created when you change the project URL</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeSection === 'marketplace' && (
+            <div className="p-4 space-y-4">
+              {marketplaceLoading ? (
+                <div className="text-center py-8 text-white/60">
+                  <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  Loading...
+                </div>
+              ) : !productData && !project.product?.id ? (
+                /* No product yet - show enable button */
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
+                    <CurrencyDollarIcon className="w-8 h-8 text-cyan-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Sell This Project</h3>
+                  <p className="text-sm text-white/60 mb-6">
+                    Turn this project into a digital product. Add downloadable files and set your price.
+                  </p>
+                  <button
+                    onClick={handleEnableMarketplace}
+                    disabled={isSaving}
+                    className="w-full py-3 px-4 rounded-xl font-semibold text-white transition-all disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, #0EA5E9, #22D3EE)',
+                      boxShadow: '0 0 20px rgba(14, 165, 233, 0.3)',
+                    }}
+                  >
+                    {isSaving ? 'Enabling...' : 'Enable Marketplace'}
+                  </button>
+                </div>
+              ) : productData ? (
+                /* Product exists - show management UI */
+                <>
+                  {/* Status Badge */}
+                  <div className={`flex items-center justify-between p-3 rounded-lg border ${
+                    productData.status === 'published'
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : 'bg-amber-500/10 border-amber-500/30'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        productData.status === 'published' ? 'bg-emerald-400' : 'bg-amber-400'
+                      }`} />
+                      <span className={`text-sm font-medium ${
+                        productData.status === 'published' ? 'text-emerald-300' : 'text-amber-300'
+                      }`}>
+                        {productData.status === 'published' ? 'Published' : 'Draft'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleTogglePublish}
+                      disabled={isSaving}
+                      className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                        productData.status === 'published'
+                          ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                          : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                      }`}
+                    >
+                      {productData.status === 'published' ? 'Unpublish' : 'Publish'}
+                    </button>
+                  </div>
+
+                  {/* Price Setting */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Price (USD)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400 font-medium">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={productPrice}
+                        onChange={(e) => setProductPrice(e.target.value)}
+                        onBlur={() => handlePriceChange(productPrice)}
+                        disabled={isSaving}
+                        className="w-full pl-8 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 disabled:opacity-50"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <p className="text-xs text-white/40 mt-1">Set to 0 for free access</p>
+                  </div>
+
+                  {/* Downloadable Files */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-medium text-white">Downloadable Files</label>
+                      <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+                        isUploadingAsset
+                          ? 'bg-white/5 text-white/40'
+                          : 'bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30'
+                      }`}>
+                        {isUploadingAsset ? (
+                          <>
+                            <div className="w-3 h-3 border border-cyan-300 border-t-transparent rounded-full animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <PlusIcon className="w-3 h-3" />
+                            Add File
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          onChange={handleAssetUpload}
+                          disabled={isUploadingAsset}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {productData.assets && productData.assets.length > 0 ? (
+                      <div className="space-y-2">
+                        {productData.assets.map((asset: ProductAsset) => (
+                          <div
+                            key={asset.id}
+                            className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10"
+                          >
+                            <DocumentIcon className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white truncate">{asset.title}</p>
+                              <p className="text-xs text-white/40">
+                                {asset.fileSize ? `${(asset.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Unknown size'}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleAssetDelete(asset.id)}
+                              disabled={isSaving}
+                              className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Delete file"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 rounded-lg border border-dashed border-white/20">
+                        <ArrowDownTrayIcon className="w-6 h-6 mx-auto mb-2 text-white/30" />
+                        <p className="text-sm text-white/40">No files yet</p>
+                        <p className="text-xs text-white/30 mt-1">Upload files for buyers to download</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sales Stats (if published) */}
+                  {productData.status === 'published' && (
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/20">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-white/50 uppercase tracking-wider">Total Sales</p>
+                          <p className="text-xl font-bold text-white">{productData.totalSales || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-white/50 uppercase tracking-wider">Revenue</p>
+                          <p className="text-xl font-bold text-cyan-400">
+                            ${parseFloat(productData.totalRevenue || '0').toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 text-white/40">
+                  <CurrencyDollarIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>Loading product data...</p>
                 </div>
               )}
             </div>

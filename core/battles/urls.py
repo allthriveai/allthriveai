@@ -25,6 +25,8 @@ urlpatterns = [
     # SMS invitation token-based endpoints
     path('invite/<str:token>/', views.get_invitation_by_token, name='invitation-by-token'),
     path('invite/<str:token>/accept/', views.accept_invitation_by_token, name='accept-invitation-by-token'),
+    # Guest battle flow - start a Pip battle without account
+    path('guest/start-pip/', views.start_guest_pip_battle, name='guest-start-pip-battle'),
     # Public endpoint for viewing completed battles (for social sharing)
     path('<int:battle_id>/public/', views.get_battle_public, name='battle-public'),
     # Share data endpoint for social sharing (OG image, share URLs)

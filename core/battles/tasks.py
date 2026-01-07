@@ -24,6 +24,49 @@ from core.battles.services import BattleService, PipBattleAI
 logger = logging.getLogger(__name__)
 
 
+def _queue_pip_instagram_post_if_applicable(battle: 'PromptBattle') -> None:
+    """Queue Instagram post if @pip participated in this battle.
+
+    Checks if @pip was challenger or opponent, and if so queues the
+    post_pip_battle_to_instagram task for automated posting to @pipromptbattle.
+
+    Args:
+        battle: The completed PromptBattle instance
+    """
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+
+    # Check if Instagram posting is enabled
+    if not getattr(settings, 'PIPROMPTBATTLE_INSTAGRAM_ENABLED', False):
+        return
+
+    User = get_user_model()
+
+    try:
+        pip_user = User.objects.get(username='pip')
+    except User.DoesNotExist:
+        logger.debug('Pip user not found - skipping Instagram queue check')
+        return
+
+    # Check if @pip participated (as challenger or opponent)
+    if battle.challenger_id != pip_user.id and battle.opponent_id != pip_user.id:
+        return
+
+    # Already posted check
+    if battle.instagram_post_id:
+        logger.info(f'Battle {battle.id} already posted to Instagram, skipping')
+        return
+
+    # Queue the Instagram post task
+    from core.battles.instagram_sharing import post_pip_battle_to_instagram
+
+    logger.info(f'Queueing Instagram post for @pip battle {battle.id}')
+    post_pip_battle_to_instagram.apply_async(
+        args=[battle.id],
+        countdown=30,  # 30 second delay to ensure OG image is uploaded
+    )
+
+
 def _generate_trace_id() -> str:
     """Generate a short trace ID for request tracing."""
     return uuid.uuid4().hex[:8]
@@ -1332,6 +1375,10 @@ def generate_og_image_task(self, battle_id: int) -> dict[str, Any]:
             battle.save(update_fields=['og_image_url'])
 
             logger.info(f'Generated OG image for battle {battle_id}: {og_image_url}')
+
+            # Check if @pip participated in this battle for auto-posting to Instagram
+            _queue_pip_instagram_post_if_applicable(battle)
+
             return {'status': 'success', 'og_image_url': og_image_url}
         else:
             logger.error(f'Failed to generate OG image for battle {battle_id}')
