@@ -429,82 +429,83 @@ export function InlineChatLayout({
                 </div>
               ) : (
                 <>
-                  {/* Messages */}
-                  <div className="flex-1 overflow-y-auto px-4">
-                    {/* Learning goal selection (when needed) */}
-                    {showLearningSetup && learningSetupContext && (
+                  {/* Learning goal selection (when needed) - takes full height */}
+                  {showLearningSetup && learningSetupContext ? (
+                    <div className="flex-1 overflow-y-auto px-4">
                       <LearningGoalSelectionMessage
                         onSelectGoal={learningSetupContext.onSelectGoal}
                         onSkip={learningSetupContext.onSkip}
                         isPending={learningSetupContext.isPending}
                       />
-                    )}
-
-                    {/* Quick actions (when no messages and no special context) */}
-                    {shouldShowQuickActions && (
-                      <div className="py-6">
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                          I'm here to help you learn! What would you like to do?
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {quickActions.map((action) => (
-                            <button
-                              key={action.label}
-                              onClick={() => handleQuickAction(action.message)}
-                              className="px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                                bg-gradient-to-r from-emerald-500/10 to-teal-500/10
-                                border border-emerald-500/30
-                                text-emerald-600 dark:text-emerald-300 hover:text-emerald-500 dark:hover:text-emerald-200
-                                hover:border-emerald-400/50 hover:from-emerald-500/20 hover:to-teal-500/20
-                                hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                            >
-                              {action.label}
-                            </button>
-                          ))}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Quick actions (when no messages and no special context) */}
+                      {shouldShowQuickActions && (
+                        <div className="px-4 py-6 flex-shrink-0">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                            I'm here to help you learn! What would you like to do?
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {quickActions.map((action) => (
+                              <button
+                                key={action.label}
+                                onClick={() => handleQuickAction(action.message)}
+                                className="px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                                  bg-gradient-to-r from-emerald-500/10 to-teal-500/10
+                                  border border-emerald-500/30
+                                  text-emerald-600 dark:text-emerald-300 hover:text-emerald-500 dark:hover:text-emerald-200
+                                  hover:border-emerald-400/50 hover:from-emerald-500/20 hover:to-teal-500/20
+                                  hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                              >
+                                {action.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Chat messages */}
-                    <ChatMessageList
-                      messages={state.messages}
-                      isLoading={state.isLoading}
-                      hasTimedOut={state.hasTimedOut}
-                      onRetry={state.retryLastMessage}
-                      currentTool={state.currentTool}
-                      onCancelProcessing={state.cancelProcessing}
-                      userAvatarUrl={user?.avatarUrl}
-                      onboarding={state.onboarding}
-                      avatarCreation={state.avatarCreation}
-                      onNavigate={handleNavigate}
-                      onCreateProjectFromImage={handleCreateProjectFromImage}
-                      onProjectImportOptionSelect={handleProjectImportOptionSelect}
-                      onIntegrationSelect={handleIntegrationCardSelect}
-                      connectionStatus={connectionStatus}
-                      onConnectFigma={integrationFlow?.handleConnectFigma}
-                      onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
-                      onInlineActionClick={(message) => state.sendMessage(message)}
-                    />
-                  </div>
+                      {/* Chat messages - ChatMessageList handles its own scrolling */}
+                      <ChatMessageList
+                        messages={state.messages}
+                        isLoading={state.isLoading}
+                        hasTimedOut={state.hasTimedOut}
+                        onRetry={state.retryLastMessage}
+                        currentTool={state.currentTool}
+                        onCancelProcessing={state.cancelProcessing}
+                        userAvatarUrl={user?.avatarUrl}
+                        onboarding={state.onboarding}
+                        avatarCreation={state.avatarCreation}
+                        onNavigate={handleNavigate}
+                        onCreateProjectFromImage={handleCreateProjectFromImage}
+                        onProjectImportOptionSelect={handleProjectImportOptionSelect}
+                        onIntegrationSelect={handleIntegrationCardSelect}
+                        connectionStatus={connectionStatus}
+                        onConnectFigma={integrationFlow?.handleConnectFigma}
+                        onFigmaUrlSubmit={integrationFlow?.handleFigmaUrlImport}
+                        onInlineActionClick={(message) => state.sendMessage(message)}
+                      />
 
-                  {/* Pending action confirmation */}
-                  {state.pendingAction && (
-                    <OrchestrationPrompt
-                      action={state.pendingAction}
-                      onConfirm={state.confirmPendingAction}
-                      onCancel={state.cancelPendingAction}
-                      variant="neon"
-                    />
-                  )}
+                      {/* Pending action confirmation */}
+                      {state.pendingAction && (
+                        <OrchestrationPrompt
+                          action={state.pendingAction}
+                          onConfirm={state.confirmPendingAction}
+                          onCancel={state.cancelPendingAction}
+                          variant="neon"
+                        />
+                      )}
 
-                  {/* Quota exceeded banner */}
-                  {state.quotaExceeded && (
-                    <QuotaExceededBanner
-                      info={state.quotaExceeded}
-                      onDismiss={state.dismissQuotaExceeded}
-                      onNavigate={handleNavigate}
-                      variant="neon"
-                    />
+                      {/* Quota exceeded banner */}
+                      {state.quotaExceeded && (
+                        <QuotaExceededBanner
+                          info={state.quotaExceeded}
+                          onDismiss={state.dismissQuotaExceeded}
+                          onNavigate={handleNavigate}
+                          variant="neon"
+                        />
+                      )}
+                    </>
                   )}
                 </>
               )}

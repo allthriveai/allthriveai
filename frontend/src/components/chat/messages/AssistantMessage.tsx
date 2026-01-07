@@ -581,17 +581,11 @@ export function AssistantMessage({
   };
 
   if (isNeon) {
-    // Neon Glass variant (AvaHomePage)
+    // Neon Glass variant - no avatar since header shows companion identity
     return (
       <div className="flex flex-col justify-start w-full" data-testid="assistant-message">
-        <div className="flex items-end">
-          <img
-            src="/ava-avatar.png"
-            alt="Ava"
-            className="w-12 h-12 rounded-full flex-shrink-0 mr-4 object-cover -scale-x-100"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="glass-message px-5 py-4 rounded-2xl rounded-bl-sm">
+        <div className="max-w-[90%]">
+          <div className="glass-message px-5 py-4 rounded-2xl">
               <div className="text-lg text-slate-700 dark:text-slate-200 prose prose-lg prose-slate dark:prose-invert max-w-none">
                 {renderMarkdownContent(mainContent, true)}
               </div>
@@ -608,7 +602,6 @@ export function AssistantMessage({
               )}
               {renderFigmaAction()}
             </div>
-          </div>
         </div>
         {renderLearningCards()}
         {renderInlineGame()}
