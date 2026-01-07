@@ -363,16 +363,10 @@ export default function AuthPage() {
               </span>
             </motion.h1>
             <motion.p
-              className="text-lg text-slate-200 mb-3"
+              className="text-lg text-slate-200"
               variants={motionVariants}
             >
-              Ready to build your AI playground?
-            </motion.p>
-            <motion.p
-              className="text-slate-400 text-sm"
-              variants={motionVariants}
-            >
-              Join thousands of members exploring AI.
+              Your space to play, learn, and share with AI.
             </motion.p>
           </motion.div>
 
