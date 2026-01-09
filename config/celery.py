@@ -40,6 +40,7 @@ app.autodiscover_tasks(
         'core.sms',  # SMS notification tasks
         'core.ai_usage',  # Admin analytics tasks
         'core.feedback',  # Haven auto-comment on feedback
+        'core.clips',  # Social clip creator tasks
         'services.weaviate',  # Weaviate sync tasks
         'services.tagging',  # AI tagging tasks
         'core.engagement',  # Engagement tracking tasks

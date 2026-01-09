@@ -1133,3 +1133,51 @@ export interface LearningSetupRequest {
 
 // Re-export section types from sections.ts for convenience
 export type { ProjectSection, SectionType } from './sections';
+
+// ============================================================================
+// Brand Voice Types
+// ============================================================================
+
+export type BrandVoiceTone =
+  | 'casual'
+  | 'professional'
+  | 'provocative'
+  | 'educational'
+  | 'inspirational'
+  | 'humorous';
+
+export interface BrandVoice {
+  id: number;
+  name: string;
+  targetAudience: string;
+  tone: BrandVoiceTone;
+  toneDisplay: string;
+  description: string;
+  catchphrases: string[];
+  topicsToAvoid: string[];
+  exampleHooks: string[];
+  keywords: string[];
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BrandVoiceMinimal {
+  id: number;
+  name: string;
+  tone: BrandVoiceTone;
+  toneDisplay: string;
+  isDefault: boolean;
+}
+
+export interface BrandVoiceFormData {
+  name: string;
+  targetAudience?: string;
+  tone: BrandVoiceTone;
+  description?: string;
+  catchphrases?: string[];
+  topicsToAvoid?: string[];
+  exampleHooks?: string[];
+  keywords?: string[];
+  isDefault?: boolean;
+}

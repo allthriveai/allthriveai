@@ -42,7 +42,10 @@ import AuthPage from '@/pages/AuthPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 // Core pages - lazy loaded
+// PHASE_1: [HIDDEN] AvaHomePage replaced by CollectiveHomePage for AI Collective pivot
 const AvaHomePage = lazy(() => import('@/pages/AvaHomePage'));
+// TODO: Swap /home route to use CollectiveHomePage in Sprint 1 completion
+const _CollectiveHomePage = lazy(() => import('@/pages/CollectiveHomePage'));
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
 const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
@@ -57,6 +60,7 @@ const PersonalizationSettingsPage = lazy(() => import('@/pages/settings/Personal
 const NotificationsSettingsPage = lazy(() => import('@/pages/settings/NotificationsSettingsPage'));
 const BillingSettingsPage = lazy(() => import('@/pages/settings/BillingSettingsPage'));
 const CreatorSettingsPage = lazy(() => import('@/pages/settings/CreatorSettingsPage'));
+const BrandVoiceSettingsPage = lazy(() => import('@/pages/settings/BrandVoiceSettingsPage'));
 const PrivacySettingsPage = lazy(() => import('@/pages/settings/PrivacySettingsPage'));
 const ReferralsPage = lazy(() => import('@/pages/settings/ReferralsPage'));
 
@@ -128,6 +132,7 @@ const PitchDeckPage = lazy(() => import('@/pages/PitchDeckPage'));
 const PromoPage = lazy(() => import('@/pages/PromoPage'));
 const PromoVideoPage = lazy(() => import('@/pages/PromoVideoPage'));
 const AllieConnectPage = lazy(() => import('@/pages/AllieConnectPage'));
+const CollectiveLandingPage = lazy(() => import('@/pages/CollectiveLandingPage'));
 
 // Creator Tools - lazy loaded
 const CreatePage = lazy(() => import('@/pages/CreatePage'));
@@ -250,6 +255,9 @@ export function AppRoutes() {
 
       {/* Allie's personal connect page - public */}
       <Route path="/allie-connect" element={<AllieConnectPage />} />
+
+      {/* AI Collective landing page - public */}
+      <Route path="/collective" element={<CollectiveLandingPage />} />
 
       {/* Creator Tools - protected, admin only */}
       <Route
@@ -739,6 +747,14 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <CreatorSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/settings/brand-voice"
+        element={
+          <ProtectedRoute>
+            <BrandVoiceSettingsPage />
           </ProtectedRoute>
         }
       />

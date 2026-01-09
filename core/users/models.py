@@ -1011,3 +1011,126 @@ class ImpersonationLog(models.Model):
         """Mark the impersonation session as ended."""
         self.ended_at = timezone.now()
         self.save(update_fields=['ended_at'])
+
+
+class BrandVoice(models.Model):
+    """Brand voice profile for content creation.
+
+    Stores user's brand identity, target audience, tone preferences,
+    and style guidelines to personalize AI-generated content.
+    """
+
+    TONE_CHOICES = [
+        ('casual', 'Casual & Friendly'),
+        ('professional', 'Professional'),
+        ('provocative', 'Bold & Provocative'),
+        ('educational', 'Educational'),
+        ('inspirational', 'Inspirational'),
+        ('humorous', 'Humorous'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='brand_voices',
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text='Name for this brand voice (e.g., "LinkedIn Professional", "Twitter Casual")',
+    )
+    target_audience = models.TextField(
+        blank=True,
+        help_text='Description of your target audience (e.g., "developers learning AI")',
+    )
+    tone = models.CharField(
+        max_length=20,
+        choices=TONE_CHOICES,
+        default='professional',
+        help_text='Primary communication tone',
+    )
+    description = models.TextField(
+        blank=True,
+        help_text='Additional notes about your brand voice',
+    )
+    catchphrases = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Signature phrases or expressions you like to use',
+    )
+    topics_to_avoid = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Topics or themes to steer away from',
+    )
+    example_hooks = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Example hooks or openings that worked well',
+    )
+    keywords = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Key terms or jargon relevant to your content',
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text='Use this brand voice by default when creating content',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_default', '-updated_at']
+        indexes = [
+            models.Index(fields=['user', '-is_default']),
+        ]
+        constraints = [
+            # Ensure only one default brand voice per user
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(is_default=True),
+                name='unique_default_brand_voice_per_user',
+            ),
+        ]
+
+    def __str__(self):
+        default_indicator = ' (default)' if self.is_default else ''
+        return f'{self.name}{default_indicator} - {self.user.username}'
+
+    def save(self, *args, **kwargs):
+        """Ensure only one default brand voice per user."""
+        if self.is_default:
+            # Unset other defaults for this user
+            BrandVoice.objects.filter(user=self.user, is_default=True).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    def to_prompt_context(self) -> str:
+        """Generate a prompt-friendly representation of the brand voice."""
+        lines = [f'## Brand Voice: {self.name}']
+
+        if self.target_audience:
+            lines.append(f'**Target Audience**: {self.target_audience}')
+
+        lines.append(f'**Tone**: {self.get_tone_display()}')
+
+        if self.description:
+            lines.append(f'**Style Notes**: {self.description}')
+
+        if self.catchphrases:
+            phrases = ', '.join(f'"{p}"' for p in self.catchphrases[:5])
+            lines.append(f'**Signature Phrases**: {phrases}')
+
+        if self.keywords:
+            words = ', '.join(self.keywords[:10])
+            lines.append(f'**Key Terms**: {words}')
+
+        if self.topics_to_avoid:
+            avoid = ', '.join(self.topics_to_avoid[:5])
+            lines.append(f'**Topics to Avoid**: {avoid}')
+
+        if self.example_hooks:
+            lines.append('**Example Hooks That Work**:')
+            for hook in self.example_hooks[:3]:
+                lines.append(f'  - "{hook}"')
+
+        return '\n'.join(lines)

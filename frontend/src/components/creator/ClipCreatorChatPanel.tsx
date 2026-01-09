@@ -2,7 +2,11 @@
  * ClipCreatorChatPanel - Chat panel for creating social clips
  *
  * Users chat with the Clip agent to create and refine animated clips.
- * The agent generates clip data that updates the preview in real-time.
+ * The agent guides users through a conversational flow:
+ * 1. Discovery: Questions about audience/goal
+ * 2. Hook: Refining the opening hook
+ * 3. Story: Building the transcript
+ * 4. Generate: Creating the final clip
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -12,12 +16,21 @@ import {
   faPaperPlane,
   faSpinner,
   faCircleExclamation,
+  faCheck,
 } from '@fortawesome/free-solid-svg-icons';
 
 import type { SocialClipContent } from '@/types/clips';
-import { createClipConnection, type ClipAgentConnection } from '@/services/clipApi';
+import type { BrandVoiceMinimal } from '@/types/models';
+import {
+  createClipConnection,
+  type ClipAgentConnection,
+  type ConversationPhase,
+  type SceneTranscript,
+  type ClipEvent,
+} from '@/services/clipApi';
+import { getBrandVoicesMinimal } from '@/services/brandVoice';
 
-// Placeholder messages for when we don't have a real agent yet
+// Initial message for new conversations
 const INITIAL_MESSAGE = {
   id: '1',
   role: 'assistant' as const,
@@ -35,6 +48,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  options?: string[]; // Clickable options for the user
 }
 
 export interface ClipCreatorChatPanelProps {
@@ -48,8 +62,28 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [currentClip, setCurrentClip] = useState<SocialClipContent | null>(null);
+  const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('discovery');
+  const [transcript, setTranscript] = useState<SceneTranscript[]>([]);
+  const [brandVoices, setBrandVoices] = useState<BrandVoiceMinimal[]>([]);
+  const [selectedBrandVoiceId, setSelectedBrandVoiceId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const connectionRef = useRef<ClipAgentConnection | null>(null);
+
+  // Fetch brand voices on mount
+  useEffect(() => {
+    getBrandVoicesMinimal()
+      .then((voices) => {
+        setBrandVoices(voices);
+        // Auto-select default brand voice if one exists
+        const defaultVoice = voices.find((v) => v.isDefault);
+        if (defaultVoice) {
+          setSelectedBrandVoiceId(defaultVoice.id);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch brand voices:', err);
+      });
+  }, []);
 
   // Connect to WebSocket on mount
   useEffect(() => {
@@ -57,17 +91,50 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
     connectionRef.current = connection;
 
     // Set up event handlers
-    connection.on('connected', () => {
+    connection.on('connected', (event: ClipEvent) => {
       setIsConnected(true);
       setConnectionError(null);
+      if (event.phase) {
+        setConversationPhase(event.phase);
+      }
     });
 
     connection.on('processing', () => {
       setIsLoading(true);
     });
 
-    connection.on('clip_generated', (event) => {
+    // Handle conversation response (no clip yet)
+    connection.on('conversation', (event: ClipEvent) => {
       setIsLoading(false);
+
+      if (event.phase) {
+        setConversationPhase(event.phase);
+      }
+      if (event.transcript) {
+        setTranscript(event.transcript);
+      }
+
+      if (event.message) {
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: event.message,
+          options: event.options,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      }
+    });
+
+    // Handle clip generated
+    connection.on('clip_generated', (event: ClipEvent) => {
+      setIsLoading(false);
+
+      if (event.phase) {
+        setConversationPhase(event.phase);
+      }
+      if (event.transcript) {
+        setTranscript(event.transcript);
+      }
 
       if (event.clip) {
         setCurrentClip(event.clip);
@@ -84,7 +151,7 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
       }
     });
 
-    connection.on('error', (event) => {
+    connection.on('error', (event: ClipEvent) => {
       setIsLoading(false);
       setConnectionError(event.message || event.error || 'Unknown error');
 
@@ -114,52 +181,84 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
   }, [messages]);
 
   // Handle sending a message
-  const handleSend = useCallback(() => {
-    if (!inputValue.trim() || isLoading) return;
+  const handleSend = useCallback(
+    (messageText?: string) => {
+      const text = messageText || inputValue.trim();
+      if (!text || isLoading) return;
 
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: inputValue.trim(),
-    };
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: text,
+      };
 
-    setMessages((prev) => [...prev, userMessage]);
-    const prompt = inputValue.trim();
-    setInputValue('');
-    setIsLoading(true);
+      setMessages((prev) => [...prev, userMessage]);
+      setInputValue('');
+      setIsLoading(true);
 
-    // Send to WebSocket if connected
-    if (connectionRef.current?.isConnected()) {
-      if (currentClip) {
-        // Edit existing clip
-        connectionRef.current.edit(prompt, currentClip);
+      // Send to WebSocket if connected
+      if (connectionRef.current?.isConnected()) {
+        if (currentClip) {
+          // Edit existing clip
+          connectionRef.current.edit(text, currentClip);
+        } else if (messages.length <= 1) {
+          // First message - start new conversation with optional brand voice
+          connectionRef.current.generate(text, selectedBrandVoiceId ?? undefined);
+        } else {
+          // Continue conversation
+          connectionRef.current.sendMessage(text);
+        }
       } else {
-        // Generate new clip
-        connectionRef.current.generate(prompt);
-      }
-    } else {
-      // Fallback: Use mock data if not connected
-      setTimeout(() => {
-        const mockClip = getMockClip();
-        setCurrentClip(mockClip);
-        onClipUpdate(mockClip);
+        // Fallback: Use mock data if not connected
+        setTimeout(() => {
+          const mockClip = getMockClip();
+          setCurrentClip(mockClip);
+          onClipUpdate(mockClip);
 
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: getMockResponse(mockClip),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        setIsLoading(false);
-      }, 1500);
-    }
-  }, [inputValue, isLoading, currentClip, onClipUpdate]);
+          const assistantMessage: Message = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: getMockResponse(mockClip),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          setIsLoading(false);
+        }, 1500);
+      }
+    },
+    [inputValue, isLoading, currentClip, onClipUpdate, messages.length, selectedBrandVoiceId]
+  );
+
+  // Handle clicking an option button
+  const handleOptionClick = useCallback(
+    (option: string) => {
+      handleSend(option);
+    },
+    [handleSend]
+  );
 
   // Handle Enter key
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  // Get phase indicator text
+  const getPhaseText = () => {
+    switch (conversationPhase) {
+      case 'discovery':
+        return 'Getting to know your goals';
+      case 'hook':
+        return 'Crafting your hook';
+      case 'story':
+        return 'Building your story';
+      case 'ready_to_generate':
+        return 'Ready to generate';
+      case 'generating':
+        return 'Creating your clip';
+      default:
+        return null;
     }
   };
 
@@ -176,46 +275,114 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
         </div>
       </div>
 
-      {/* Connection status */}
+      {/* Connection & Phase status */}
       <div className="px-4 py-2 border-b border-white/5">
-        <div className="flex items-center gap-1.5 text-xs">
-          {connectionError ? (
-            <>
-              <FontAwesomeIcon icon={faCircleExclamation} className="text-yellow-400" />
-              <span className="text-yellow-400">Offline mode</span>
-            </>
-          ) : isConnected ? (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <span className="text-muted">Connected</span>
-            </>
-          ) : (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-              <span className="text-muted">Connecting...</span>
-            </>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs">
+            {connectionError ? (
+              <>
+                <FontAwesomeIcon icon={faCircleExclamation} className="text-yellow-400" />
+                <span className="text-yellow-400">Offline mode</span>
+              </>
+            ) : isConnected ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                <span className="text-muted">Connected</span>
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                <span className="text-muted">Connecting...</span>
+              </>
+            )}
+          </div>
+          {getPhaseText() && (
+            <div className="text-xs text-cyan-400/70">{getPhaseText()}</div>
           )}
         </div>
       </div>
 
+      {/* Brand Voice Selector */}
+      {brandVoices.length > 0 && (
+        <div className="px-4 py-2 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <label htmlFor="brand-voice-select" className="text-xs text-muted whitespace-nowrap">
+              Brand Voice:
+            </label>
+            <select
+              id="brand-voice-select"
+              value={selectedBrandVoiceId ?? ''}
+              onChange={(e) => setSelectedBrandVoiceId(e.target.value ? Number(e.target.value) : null)}
+              disabled={messages.length > 1}
+              className="flex-1 text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-primary focus:outline-none focus:border-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">No brand voice</option>
+              {brandVoices.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name} ({voice.toneDisplay})
+                </option>
+              ))}
+            </select>
+          </div>
+          {messages.length > 1 && (
+            <p className="text-xs text-muted/60 mt-1">
+              Brand voice is locked after starting a conversation
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Transcript preview (when available) */}
+      {transcript.length > 0 && (
+        <div className="px-4 py-2 border-b border-white/5 bg-white/2">
+          <div className="text-xs text-muted mb-1">Story so far:</div>
+          <div className="space-y-1">
+            {transcript.map((scene, idx) => (
+              <div key={idx} className="flex items-start gap-2 text-xs">
+                <span className="text-cyan-400 font-mono">{scene.scene}.</span>
+                <span className="text-secondary">{scene.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+          <div key={message.id}>
             <div
-              className={`
-                max-w-[85%] rounded-2xl px-4 py-3 text-sm
-                ${message.role === 'user'
-                  ? 'bg-cyan-500/20 text-primary'
-                  : 'bg-white/5 text-secondary'
-                }
-              `}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              <div
+                className={`
+                  max-w-[85%] rounded-2xl px-4 py-3 text-sm
+                  ${
+                    message.role === 'user'
+                      ? 'bg-cyan-500/20 text-primary'
+                      : 'bg-white/5 text-secondary'
+                  }
+                `}
+              >
+                <div className="whitespace-pre-wrap">{message.content}</div>
+              </div>
             </div>
+
+            {/* Clickable options */}
+            {message.options && message.options.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2 pl-2">
+                {message.options.map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleOptionClick(option)}
+                    disabled={isLoading}
+                    className="px-3 py-1.5 text-sm rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
 
@@ -226,7 +393,9 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
               <div className="flex items-center gap-2 text-muted">
                 <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
                 <span className="text-sm">
-                  {currentClip ? 'Updating your clip...' : 'Creating your clip...'}
+                  {conversationPhase === 'generating' || conversationPhase === 'ready_to_generate'
+                    ? 'Generating your video...'
+                    : 'Thinking...'}
                 </span>
               </div>
             </div>
@@ -238,6 +407,19 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
 
       {/* Input */}
       <div className="p-4 border-t border-white/10">
+        {/* Approve button when ready */}
+        {conversationPhase === 'ready_to_generate' && transcript.length > 0 && !isLoading && (
+          <div className="mb-3">
+            <button
+              onClick={() => connectionRef.current?.approve()}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-green-500 text-slate-900 font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              <FontAwesomeIcon icon={faCheck} />
+              Generate Video
+            </button>
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
@@ -247,7 +429,9 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
               placeholder={
                 currentClip
                   ? 'Describe changes to your clip...'
-                  : 'Describe the clip you want to create...'
+                  : conversationPhase === 'ready_to_generate'
+                    ? 'Or type to make changes...'
+                    : 'Type your response...'
               }
               rows={1}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-primary placeholder-muted resize-none focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
@@ -256,7 +440,7 @@ export function ClipCreatorChatPanel({ onClipUpdate }: ClipCreatorChatPanelProps
             />
           </div>
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!inputValue.trim() || isLoading}
             className="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-green-500 flex items-center justify-center text-slate-900 font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105"
           >
@@ -386,7 +570,7 @@ function getMockResponse(clip: SocialClipContent): string {
   }
 
   parts.push(`\n**Duration:** ${(clip.duration / 1000).toFixed(1)} seconds`);
-  parts.push('\nThe preview is now playing! Let me know if you\'d like to:');
+  parts.push("\nThe preview is now playing! Let me know if you'd like to:");
   parts.push('- Change the hook or make it more attention-grabbing');
   parts.push('- Add, remove, or reorder points');
   parts.push('- Adjust the pacing or timing');

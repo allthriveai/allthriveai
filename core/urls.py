@@ -152,6 +152,10 @@ from .users.invitation_api_views import (
 )
 from .users.invitation_views import request_invitation
 from .users.views import (
+    brand_voice_detail,
+    brand_voice_list,
+    brand_voice_minimal_list,
+    brand_voice_set_default,
     delete_personalization_data,
     explore_users,
     export_personalization_data,
@@ -392,6 +396,11 @@ urlpatterns = [
     path('me/account/delete/', delete_account, name='delete_account'),
     path('me/account/convert-guest/', convert_guest_account, name='convert_guest_account'),
     path('me/account/prepare-guest-oauth/', prepare_guest_oauth_conversion, name='prepare_guest_oauth_conversion'),
+    # Brand voice endpoints
+    path('me/brand-voices/', brand_voice_list, name='brand_voice_list'),
+    path('me/brand-voices/minimal/', brand_voice_minimal_list, name='brand_voice_minimal_list'),
+    path('me/brand-voices/<int:pk>/', brand_voice_detail, name='brand_voice_detail'),
+    path('me/brand-voices/<int:pk>/set-default/', brand_voice_set_default, name='brand_voice_set_default'),
     path('me/', include(me_router.urls)),
     # Learning paths endpoints
     path('', include('core.learning_paths.urls')),

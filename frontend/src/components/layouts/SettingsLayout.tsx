@@ -13,6 +13,7 @@ import {
   RocketLaunchIcon,
   ChartBarIcon,
   BoltIcon,
+  MegaphoneIcon,
 } from '@heroicons/react/24/outline';
 
 interface SettingsSidebarItem {
@@ -73,6 +74,11 @@ const settingsNavItems: SettingsSidebarItem[] = [
     path: '/account/settings/creator',
     icon: ShoppingBagIcon,
     comingSoon: true,
+  },
+  {
+    label: 'Brand Voice',
+    path: '/account/settings/brand-voice',
+    icon: MegaphoneIcon,
   },
   {
     label: 'Privacy & Security',

@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core.serializers.mixins import AnnotatedFieldMixin
 from core.taxonomy.models import Taxonomy
-from core.users.models import PersonalizationSettings, User, UserFollow
+from core.users.models import BrandVoice, PersonalizationSettings, User, UserFollow
 
 
 class TaxonomyMinimalSerializer(serializers.ModelSerializer):
@@ -440,3 +440,95 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         if obj.username.lower() in core_team_usernames:
             return 'core'
         return 'contributor'
+
+
+class BrandVoiceSerializer(serializers.ModelSerializer):
+    """Serializer for brand voice profiles.
+
+    Used for CRUD operations on user's brand voice settings.
+    """
+
+    tone_display = serializers.CharField(source='get_tone_display', read_only=True)
+
+    class Meta:
+        model = BrandVoice
+        fields = [
+            'id',
+            'name',
+            'target_audience',
+            'tone',
+            'tone_display',
+            'description',
+            'catchphrases',
+            'topics_to_avoid',
+            'example_hooks',
+            'keywords',
+            'is_default',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'tone_display']
+
+    def validate_catchphrases(self, value):
+        """Ensure catchphrases is a list of strings."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Catchphrases must be a list.')
+        if len(value) > 10:
+            raise serializers.ValidationError('Maximum 10 catchphrases allowed.')
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError('Each catchphrase must be a string.')
+            if len(item) > 200:
+                raise serializers.ValidationError('Each catchphrase must be under 200 characters.')
+        return value
+
+    def validate_topics_to_avoid(self, value):
+        """Ensure topics_to_avoid is a list of strings."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Topics to avoid must be a list.')
+        if len(value) > 20:
+            raise serializers.ValidationError('Maximum 20 topics allowed.')
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError('Each topic must be a string.')
+        return value
+
+    def validate_example_hooks(self, value):
+        """Ensure example_hooks is a list of strings."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Example hooks must be a list.')
+        if len(value) > 10:
+            raise serializers.ValidationError('Maximum 10 example hooks allowed.')
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError('Each hook must be a string.')
+            if len(item) > 500:
+                raise serializers.ValidationError('Each hook must be under 500 characters.')
+        return value
+
+    def validate_keywords(self, value):
+        """Ensure keywords is a list of strings."""
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Keywords must be a list.')
+        if len(value) > 30:
+            raise serializers.ValidationError('Maximum 30 keywords allowed.')
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError('Each keyword must be a string.')
+        return value
+
+    def create(self, validated_data):
+        """Create brand voice for the current user."""
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class BrandVoiceMinimalSerializer(serializers.ModelSerializer):
+    """Minimal serializer for brand voice selection dropdowns."""
+
+    tone_display = serializers.CharField(source='get_tone_display', read_only=True)
+
+    class Meta:
+        model = BrandVoice
+        fields = ['id', 'name', 'tone', 'tone_display', 'is_default']
+        read_only_fields = fields

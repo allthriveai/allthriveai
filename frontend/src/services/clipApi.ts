@@ -1,25 +1,62 @@
 /**
  * Clip Agent API - WebSocket connection for clip generation
+ *
+ * Supports conversational flow with phases:
+ * - discovery: Initial questions about audience/goal
+ * - hook: Refining the opening hook
+ * - story: Building the transcript
+ * - ready_to_generate: Final review before generating
+ * - generating: Creating the clip
  */
 
 import { api } from './api';
 import { buildWebSocketUrl } from '@/utils/websocket';
 import type { SocialClipContent } from '@/types/clips';
 
+// Conversation phases
+export type ConversationPhase =
+  | 'discovery'
+  | 'hook'
+  | 'story'
+  | 'ready_to_generate'
+  | 'generating';
+
+// Scene transcript entry
+export interface SceneTranscript {
+  scene: number;
+  type: 'hook' | 'point' | 'cta';
+  text: string;
+}
+
+// User preferences gathered during conversation
+export interface UserPreferences {
+  topic?: string;
+  audience?: string;
+  goal?: string;
+  tone?: string;
+  keyTakeaway?: string;
+}
+
 type ClipEventType =
   | 'connected'
   | 'processing'
+  | 'conversation' // AI responded (no clip yet)
   | 'clip_generated'
   | 'error'
   | 'pong';
 
-interface ClipEvent {
+export interface ClipEvent {
   event: ClipEventType;
   clip?: SocialClipContent;
   message?: string;
   sessionId?: string;
   timestamp?: string;
   error?: string;
+  // Conversation state
+  phase?: ConversationPhase;
+  transcript?: SceneTranscript[];
+  preferences?: UserPreferences;
+  options?: string[]; // Clickable options for user
 }
 
 type ClipEventHandler = (event: ClipEvent) => void;
@@ -42,8 +79,24 @@ export class ClipAgentConnection {
   private pingInterval: number | null = null;
   private isConnecting = false;
 
+  // Conversation state (synced from server)
+  private _phase: ConversationPhase = 'discovery';
+  private _transcript: SceneTranscript[] = [];
+  private _preferences: UserPreferences = {};
+
   constructor(sessionId: string) {
     this.sessionId = sessionId;
+  }
+
+  // Getters for conversation state
+  get phase(): ConversationPhase {
+    return this._phase;
+  }
+  get transcript(): SceneTranscript[] {
+    return this._transcript;
+  }
+  get preferences(): UserPreferences {
+    return this._preferences;
   }
 
   /**
@@ -130,10 +183,41 @@ export class ClipAgentConnection {
   }
 
   /**
-   * Generate a new clip from a prompt
+   * Start a new clip conversation
+   * @param prompt - The initial prompt/topic for the clip
+   * @param brandVoiceId - Optional brand voice ID for personalization
    * @returns true if message was sent, false if not connected
    */
-  generate(prompt: string): boolean {
+  generate(prompt: string, brandVoiceId?: number): boolean {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[ClipAgent] WebSocket not connected');
+      this.emit('error', { event: 'error', error: 'Not connected to clip agent' });
+      return false;
+    }
+
+    // Reset local state for new conversation
+    this._phase = 'discovery';
+    this._transcript = [];
+    this._preferences = {};
+
+    const message: { type: string; prompt: string; brandVoiceId?: number } = {
+      type: 'generate',
+      prompt,
+    };
+
+    if (brandVoiceId) {
+      message.brandVoiceId = brandVoiceId;
+    }
+
+    this.ws.send(JSON.stringify(message));
+    return true;
+  }
+
+  /**
+   * Continue the conversation (answer questions, provide feedback)
+   * @returns true if message was sent, false if not connected
+   */
+  sendMessage(prompt: string): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.error('[ClipAgent] WebSocket not connected');
       this.emit('error', { event: 'error', error: 'Not connected to clip agent' });
@@ -142,8 +226,27 @@ export class ClipAgentConnection {
 
     this.ws.send(
       JSON.stringify({
-        type: 'generate',
+        type: 'message',
         prompt,
+      })
+    );
+    return true;
+  }
+
+  /**
+   * Approve the transcript and generate the clip
+   * @returns true if message was sent, false if not connected
+   */
+  approve(): boolean {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[ClipAgent] WebSocket not connected');
+      this.emit('error', { event: 'error', error: 'Not connected to clip agent' });
+      return false;
+    }
+
+    this.ws.send(
+      JSON.stringify({
+        type: 'approve',
       })
     );
     return true;
@@ -197,6 +300,17 @@ export class ClipAgentConnection {
   }
 
   private handleEvent(event: ClipEvent): void {
+    // Update local conversation state from server
+    if (event.phase) {
+      this._phase = event.phase;
+    }
+    if (event.transcript) {
+      this._transcript = event.transcript;
+    }
+    if (event.preferences) {
+      this._preferences = event.preferences;
+    }
+
     // Notify specific event handlers
     const handlers = this.eventHandlers.get(event.event);
     if (handlers) {

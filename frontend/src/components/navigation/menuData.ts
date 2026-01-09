@@ -36,7 +36,45 @@ export interface MenuSection {
   onClick?: () => void; // Optional click handler for section header
 }
 
+/**
+ * PHASE_1: [HIDDEN] Legacy navigation sections hidden for AI Collective pivot
+ * Routes still work, just not shown in nav
+ * Delete after Phase 3 when new Discovery is stable
+ */
 export const getMenuSections = (
+  onMenuClick: (item: string) => void,
+  username?: string
+): MenuSection[] => [
+  // PHASE_1: [KEEP] Connect section - messaging essential for Ask/Offer connections
+  {
+    title: 'CONNECT',
+    icon: faUsers,
+    path: '/lounge',
+    items: [
+      { label: 'The Lounge', path: '/lounge', icon: faCouch },
+    ],
+  },
+  // PHASE_1: [KEEP] Account section - core user functionality
+  {
+    title: 'ACCOUNT',
+    icon: faUser,
+    path: username ? `/${username}?tab=playground` : '#',
+    items: [
+      {
+        label: 'My Profile',
+        path: username ? `/${username}?tab=playground` : '#',
+        icon: faIdCard,
+      },
+      { label: 'Account Settings', path: '/account/settings', icon: faCog },
+    ],
+  },
+];
+
+/**
+ * PHASE_1: [HIDDEN] Full legacy menu sections
+ * Kept here for reference during Phase 1 - delete in Phase 3
+ */
+export const _LEGACY_MENU_SECTIONS = (
   onMenuClick: (item: string) => void,
   username?: string
 ): MenuSection[] => [

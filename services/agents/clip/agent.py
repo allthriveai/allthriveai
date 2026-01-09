@@ -2,7 +2,13 @@
 Clip Agent - LangGraph agent for generating social media clips.
 
 Uses GPT-4 to generate structured clip content from user prompts,
-supporting iterative editing and refinement.
+with a conversational approach that builds the story collaboratively.
+
+Flow:
+1. Discovery: Ask about audience, goal, key takeaway
+2. Hook: Propose hooks and let user pick/refine
+3. Story: Build transcript scene-by-scene
+4. Generate: Create final clip with AI images
 """
 
 import json
@@ -16,11 +22,8 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
-from .prompts import CLIP_SYSTEM_PROMPT
+from .prompts import CONVERSATIONAL_SYSTEM_PROMPT, GENERATION_SYSTEM_PROMPT
 from .templates import get_default_style
-
-# Constants
-MESSAGE_CONTEXT_WINDOW = 3  # Number of recent messages to include
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +67,40 @@ class SocialClipContent(BaseModel):
     sourceLesson: int | None = None
 
 
+class SceneTranscript(TypedDict):
+    """A single scene in the story transcript."""
+
+    scene: int
+    type: str  # hook, point, cta
+    text: str
+
+
+class UserPreferences(TypedDict):
+    """User preferences gathered during discovery."""
+
+    audience: str | None
+    goal: str | None
+    tone: str | None
+    key_takeaway: str | None
+
+
+# Conversation phases
+ConversationPhase = Literal['discovery', 'hook', 'story', 'ready_to_generate', 'generating']
+
+
+class BrandVoiceContext(TypedDict, total=False):
+    """Brand voice context for personalization."""
+
+    name: str
+    target_audience: str
+    tone: str
+    description: str
+    catchphrases: list[str]
+    topics_to_avoid: list[str]
+    example_hooks: list[str]
+    keywords: list[str]
+
+
 class ClipAgentState(TypedDict):
     """State for the clip agent graph."""
 
@@ -71,13 +108,24 @@ class ClipAgentState(TypedDict):
     user_id: int | None
     username: str
     session_id: str
+    conversation_phase: ConversationPhase
+    story_transcript: list[SceneTranscript]
+    user_preferences: UserPreferences
     current_clip: dict | None  # Current SocialClipContent as dict
     edit_mode: bool  # Are we editing existing clip?
+    should_generate: bool  # User approved transcript, ready to generate
+    brand_voice: BrandVoiceContext | None  # Optional brand voice for personalization
 
 
 class ClipAgent:
     """
-    LangGraph agent for generating social media clips.
+    LangGraph agent for generating social media clips collaboratively.
+
+    The agent guides users through building a story before generating visuals:
+    1. Discovery: Understand audience, goal, key takeaway
+    2. Hook: Propose and refine the opening hook
+    3. Story: Build the transcript scene-by-scene
+    4. Generate: Create final clip with proper timing
 
     Usage:
         agent = ClipAgent()
@@ -103,38 +151,177 @@ class ClipAgent:
         graph = StateGraph(ClipAgentState)
 
         # Add nodes
+        graph.add_node('route_conversation', self._route_conversation_node)
+        graph.add_node('converse', self._converse_node)
         graph.add_node('generate_clip', self._generate_clip_node)
-        graph.add_node('format_response', self._format_response_node)
 
         # Set entry point
-        graph.set_entry_point('generate_clip')
+        graph.set_entry_point('route_conversation')
 
-        # Add edges
-        graph.add_edge('generate_clip', 'format_response')
-        graph.add_edge('format_response', END)
+        # Add conditional edges based on conversation state
+        graph.add_conditional_edges(
+            'route_conversation',
+            self._should_generate,
+            {
+                'generate': 'generate_clip',
+                'converse': 'converse',
+            },
+        )
+        graph.add_edge('converse', END)
+        graph.add_edge('generate_clip', END)
 
         return graph.compile()
 
-    async def _generate_clip_node(self, state: ClipAgentState) -> dict:
-        """Generate or edit the clip content."""
+    def _should_generate(self, state: ClipAgentState) -> str:
+        """Determine whether to generate clip or continue conversation."""
+        if state.get('should_generate'):
+            return 'generate'
+        return 'converse'
+
+    async def _route_conversation_node(self, state: ClipAgentState) -> dict:
+        """Route to appropriate handler based on conversation phase."""
+        # This node just passes through - routing happens via conditional edges
+        return {}
+
+    async def _converse_node(self, state: ClipAgentState) -> dict:
+        """Handle conversational turns - ask questions, refine story."""
         messages = state.get('messages', [])
+        phase = state.get('conversation_phase', 'discovery')
+        transcript = state.get('story_transcript', [])
+        preferences = state.get('user_preferences', {})
+        brand_voice = state.get('brand_voice')
+
+        # Build context for the LLM
+        system_prompt = CONVERSATIONAL_SYSTEM_PROMPT.format(
+            phase=phase,
+            transcript=json.dumps(transcript, indent=2) if transcript else 'None yet',
+            preferences=json.dumps(preferences, indent=2) if any(preferences.values()) else 'None yet',
+        )
+
+        # Add brand voice context if available
+        if brand_voice:
+            brand_voice_context = self._format_brand_voice_context(brand_voice)
+            system_prompt = brand_voice_context + '\n\n' + system_prompt
+
+        system_message = SystemMessage(content=system_prompt)
+        prompt_messages = [system_message] + list(messages)
+
+        try:
+            response = await self.llm.ainvoke(prompt_messages)
+
+            # Parse the response to update state
+            new_state = self._parse_conversation_response(response.content, state)
+            new_state['messages'] = [response]
+
+            return new_state
+        except Exception as e:
+            logger.error(f'Conversation failed: {e}')
+            error_response = AIMessage(
+                content="I had trouble processing that. Could you rephrase what you'd like to do?"
+            )
+            return {'messages': [error_response]}
+
+    def _parse_conversation_response(self, response_text: str, state: ClipAgentState) -> dict:
+        """Parse AI response to extract state updates."""
+        updates = {}
+
+        # Look for JSON state updates in the response
+        if '```state' in response_text:
+            try:
+                state_start = response_text.find('```state') + 8
+                state_end = response_text.find('```', state_start)
+                state_json = response_text[state_start:state_end].strip()
+                state_updates = json.loads(state_json)
+
+                if 'phase' in state_updates:
+                    updates['conversation_phase'] = state_updates['phase']
+                if 'transcript' in state_updates:
+                    updates['story_transcript'] = state_updates['transcript']
+                if 'preferences' in state_updates:
+                    current_prefs = state.get('user_preferences', {})
+                    updates['user_preferences'] = {**current_prefs, **state_updates['preferences']}
+                if state_updates.get('ready_to_generate'):
+                    updates['should_generate'] = True
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f'Failed to parse state updates: {e}')
+
+        return updates
+
+    def _format_brand_voice_context(self, brand_voice: BrandVoiceContext) -> str:
+        """Format brand voice into prompt context."""
+        lines = ["## User's Brand Voice Profile"]
+        lines.append(f'**Brand Name**: {brand_voice.get("name", "Default")}')
+
+        if brand_voice.get('target_audience'):
+            lines.append(f'**Target Audience**: {brand_voice["target_audience"]}')
+
+        if brand_voice.get('tone'):
+            lines.append(f'**Preferred Tone**: {brand_voice["tone"]}')
+
+        if brand_voice.get('description'):
+            lines.append(f'**Style Notes**: {brand_voice["description"]}')
+
+        if brand_voice.get('catchphrases'):
+            phrases = ', '.join(f'"{p}"' for p in brand_voice['catchphrases'][:5])
+            lines.append(f'**Signature Phrases to Use**: {phrases}')
+
+        if brand_voice.get('keywords'):
+            keywords = ', '.join(brand_voice['keywords'][:10])
+            lines.append(f'**Key Terms/Jargon**: {keywords}')
+
+        if brand_voice.get('topics_to_avoid'):
+            avoid = ', '.join(brand_voice['topics_to_avoid'][:5])
+            lines.append(f'**Topics to Avoid**: {avoid}')
+
+        if brand_voice.get('example_hooks'):
+            lines.append('**Example Hooks That Work for This User**:')
+            for hook in brand_voice['example_hooks'][:3]:
+                lines.append(f'  - "{hook}"')
+
+        lines.append('')
+        lines.append(
+            '**IMPORTANT**: Use this brand voice to personalize all responses. '
+            'Match the tone, use signature phrases where appropriate, and avoid listed topics.'
+        )
+
+        return '\n'.join(lines)
+
+    async def _generate_clip_node(self, state: ClipAgentState) -> dict:
+        """Generate the final clip from the approved transcript."""
+        messages = state.get('messages', [])
+        transcript = state.get('story_transcript', [])
+        preferences = state.get('user_preferences', {})
         current_clip = state.get('current_clip')
         edit_mode = state.get('edit_mode', False)
+        brand_voice = state.get('brand_voice')
 
-        # Build the prompt
-        system_message = SystemMessage(content=CLIP_SYSTEM_PROMPT)
+        # Build generation prompt with transcript
+        generation_prompt = GENERATION_SYSTEM_PROMPT
+        if brand_voice:
+            brand_context = self._format_brand_voice_context(brand_voice)
+            generation_prompt = brand_context + '\n\n' + generation_prompt
 
-        # If editing, include current clip in context
+        system_message = SystemMessage(content=generation_prompt)
+
+        # Create context message with transcript and preferences
+        context = {
+            'transcript': transcript,
+            'preferences': preferences,
+        }
         if edit_mode and current_clip:
-            clip_json = json.dumps(current_clip, indent=2)
-            context_message = HumanMessage(
-                content=f'Current clip content:\n```json\n{clip_json}\n```\n\nPlease modify it based on my request.'
-            )
-            prompt_messages = [system_message, context_message] + messages[-MESSAGE_CONTEXT_WINDOW:]
-        else:
-            prompt_messages = [system_message] + messages[-MESSAGE_CONTEXT_WINDOW:]
+            context['current_clip'] = current_clip
+        if brand_voice:
+            context['brand_voice'] = {
+                'tone': brand_voice.get('tone'),
+                'target_audience': brand_voice.get('target_audience'),
+            }
 
-        # Generate with structured output
+        context_message = HumanMessage(
+            content=f'Generate the clip from this approved transcript:\n```json\n{json.dumps(context, indent=2)}\n```'
+        )
+
+        prompt_messages = [system_message, context_message] + list(messages[-3:])
+
         try:
             response = await self.llm.ainvoke(prompt_messages)
 
@@ -144,22 +331,15 @@ class ClipAgent:
             return {
                 'messages': [response],
                 'current_clip': clip_content,
+                'conversation_phase': 'generating',
             }
         except Exception as e:
             logger.error(f'Clip generation failed: {e}')
-            error_response = AIMessage(
-                content='I encountered an error generating the clip. Please try again with a different prompt.'
-            )
+            error_response = AIMessage(content='I encountered an error generating the clip. Please try again.')
             return {'messages': [error_response]}
-
-    async def _format_response_node(self, state: ClipAgentState) -> dict:
-        """Format the final response for the frontend."""
-        # The response is already formatted by generate_clip_node
-        return {}
 
     def _extract_clip_content(self, response_text: str, current_clip: dict | None = None) -> dict:
         """Extract structured clip content from LLM response."""
-        # Try to find JSON in the response
         try:
             # Look for JSON block
             if '```json' in response_text:
@@ -171,7 +351,6 @@ class ClipAgent:
                 json_end = response_text.find('```', json_start)
                 json_str = response_text[json_start:json_end].strip()
             elif '{' in response_text:
-                # Try to find raw JSON
                 json_start = response_text.find('{')
                 json_end = response_text.rfind('}') + 1
                 json_str = response_text[json_start:json_end]
@@ -179,21 +358,16 @@ class ClipAgent:
                 raise ValueError('No JSON found in response')
 
             clip_data = json.loads(json_str)
-
-            # Validate and normalize the structure
             return self._normalize_clip_content(clip_data)
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f'Failed to parse clip JSON: {e}')
-            # Return a default clip based on the response
             return self._generate_fallback_clip(response_text, current_clip)
 
     def _normalize_clip_content(self, data: dict) -> dict:
         """Normalize clip content to expected structure."""
-        # Ensure required fields
         template = data.get('template', 'explainer')
         scenes = data.get('scenes', [])
 
-        # Calculate timing for scenes
         current_time = 0
         normalized_scenes = []
 
@@ -211,7 +385,6 @@ class ClipAgent:
                 'content': scene.get('content', {}),
             }
 
-            # Add visual if specified
             if 'visual' in scene:
                 normalized_scene['content']['visual'] = scene['visual']
 
@@ -238,9 +411,8 @@ class ClipAgent:
         }
         base = durations.get(scene_type, 8000)
 
-        # Adjust for content length
         if content.get('code'):
-            base += 2000  # Extra time for code
+            base += 2000
         if content.get('bullets') and len(content['bullets']) > 2:
             base += len(content['bullets']) * 1000
 
@@ -251,7 +423,6 @@ class ClipAgent:
         if current_clip:
             return current_clip
 
-        # Create a simple explainer clip
         return {
             'template': 'explainer',
             'scenes': [
@@ -277,9 +448,15 @@ class ClipAgent:
         username: str = 'user',
         session_id: str = '',
         current_clip: dict | None = None,
+        conversation_history: list[BaseMessage] | None = None,
+        conversation_phase: ConversationPhase = 'discovery',
+        story_transcript: list[SceneTranscript] | None = None,
+        user_preferences: UserPreferences | None = None,
+        should_generate: bool = False,
+        brand_voice: BrandVoiceContext | None = None,
     ) -> dict:
         """
-        Generate a clip from a user prompt.
+        Generate a clip or continue the conversation.
 
         Args:
             prompt: The user's request
@@ -287,76 +464,97 @@ class ClipAgent:
             username: Username for context
             session_id: Session ID for tracking
             current_clip: Existing clip if editing
+            conversation_history: Previous messages in this session
+            conversation_phase: Current phase of the conversation
+            story_transcript: Story built so far
+            user_preferences: Preferences gathered during discovery
+            should_generate: True if user approved transcript
+            brand_voice: Optional brand voice for personalization
 
         Returns:
-            dict with 'clip' (SocialClipContent) and 'message' (assistant response)
+            dict with:
+            - 'clip': SocialClipContent (if generated)
+            - 'message': assistant response
+            - 'phase': current conversation phase
+            - 'transcript': current story transcript
+            - 'preferences': user preferences
+            - 'options': clickable options for user (if applicable)
         """
         edit_mode = current_clip is not None
 
+        # Build message history
+        messages = list(conversation_history) if conversation_history else []
+        messages.append(HumanMessage(content=prompt))
+
         initial_state: ClipAgentState = {
-            'messages': [HumanMessage(content=prompt)],
+            'messages': messages,
             'user_id': user_id,
             'username': username,
             'session_id': session_id,
+            'conversation_phase': conversation_phase,
+            'story_transcript': story_transcript or [],
+            'user_preferences': user_preferences or {},
             'current_clip': current_clip,
             'edit_mode': edit_mode,
+            'should_generate': should_generate,
+            'brand_voice': brand_voice,
         }
 
         result = await self.graph.ainvoke(initial_state)
 
-        # Extract the clip and format response
+        # Extract results
         clip_content = result.get('current_clip')
-        messages = result.get('messages', [])
+        result_messages = result.get('messages', [])
+        new_phase = result.get('conversation_phase', conversation_phase)
+        new_transcript = result.get('story_transcript', story_transcript or [])
+        new_preferences = result.get('user_preferences', user_preferences or {})
 
         # Get the assistant's message
         assistant_message = ''
-        for msg in reversed(messages):
+        for msg in reversed(result_messages):
             if isinstance(msg, AIMessage):
                 assistant_message = msg.content
                 break
 
-        return {
-            'clip': clip_content,
-            'message': self._format_assistant_message(clip_content, assistant_message, edit_mode),
+        # Clean up the message (remove state blocks)
+        display_message = self._clean_message(assistant_message)
+
+        # Extract options if present
+        options = self._extract_options(assistant_message)
+
+        response = {
+            'message': display_message,
+            'phase': new_phase,
+            'transcript': new_transcript,
+            'preferences': new_preferences,
         }
 
-    def _format_assistant_message(self, clip: dict | None, raw_message: str, edit_mode: bool) -> str:
-        """Format a user-friendly assistant message."""
-        if not clip or not clip.get('scenes'):
-            return "I had trouble generating the clip. Could you provide more details about what you'd like to create?"
+        if clip_content:
+            response['clip'] = clip_content
 
-        scenes = clip['scenes']
-        duration_sec = clip['duration'] / 1000
+        if options:
+            response['options'] = options
 
-        action = 'updated' if edit_mode else 'created'
+        return response
 
-        parts = [f"I've {action} your clip! Here's the breakdown:\n"]
+    def _clean_message(self, message: str) -> str:
+        """Remove state blocks from message for display."""
+        if '```state' in message:
+            # Remove state block
+            state_start = message.find('```state')
+            state_end = message.find('```', state_start + 8) + 3
+            message = message[:state_start] + message[state_end:]
 
-        # Hook
-        hook_scene = next((s for s in scenes if s['type'] == 'hook'), None)
-        if hook_scene:
-            headline = hook_scene['content'].get('headline', 'Opening hook')
-            parts.append(f'**Hook:** "{headline}"')
+        return message.strip()
 
-        # Points
-        points = [s for s in scenes if s['type'] in ('point', 'example')]
-        if points:
-            parts.append('\n**Key Points:**')
-            for i, p in enumerate(points, 1):
-                headline = p['content'].get('headline', f'Point {i}')
-                parts.append(f'{i}. {headline}')
-
-        # CTA
-        cta_scene = next((s for s in scenes if s['type'] == 'cta'), None)
-        if cta_scene:
-            headline = cta_scene['content'].get('headline', 'Call to action')
-            parts.append(f'\n**CTA:** "{headline}"')
-
-        parts.append(f'\n**Duration:** {duration_sec:.1f} seconds')
-        parts.append("\nThe preview is now playing! Let me know if you'd like to:")
-        parts.append('- Change the hook or make it more attention-grabbing')
-        parts.append('- Add, remove, or reorder points')
-        parts.append('- Adjust the pacing or timing')
-        parts.append('- Change the visual style or add icons')
-
-        return '\n'.join(parts)
+    def _extract_options(self, message: str) -> list[str] | None:
+        """Extract clickable options from message if present."""
+        if '```options' in message:
+            try:
+                opts_start = message.find('```options') + 10
+                opts_end = message.find('```', opts_start)
+                opts_json = message[opts_start:opts_end].strip()
+                return json.loads(opts_json)
+            except (json.JSONDecodeError, ValueError):
+                pass
+        return None

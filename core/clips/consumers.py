@@ -1,7 +1,8 @@
 """
 WebSocket consumer for the Clip Agent.
 
-Handles real-time clip generation via WebSocket connection.
+Handles real-time clip generation via WebSocket connection with
+conversational story-building flow.
 """
 
 import json
@@ -25,6 +26,13 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
 
     Authentication is handled by JWTAuthMiddlewareStack which populates
     self.scope['user'] with the authenticated user.
+
+    Message types:
+    - generate: Start a new clip conversation
+    - message: Continue the conversation (answer questions, provide feedback)
+    - approve: Approve transcript and generate the final clip
+    - edit: Edit an existing clip
+    - ping: Keepalive
     """
 
     async def connect(self):
@@ -41,6 +49,13 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
             await self.close(code=4001)
             return
 
+        # Initialize conversation state (stored per connection)
+        self.conversation_phase = 'discovery'
+        self.story_transcript = []
+        self.user_preferences = {}
+        self.current_clip = None
+        self.brand_voice_id = None  # Optional brand voice for personalization
+
         # Join the session group
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
@@ -53,6 +68,7 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
                 {
                     'event': 'connected',
                     'sessionId': self.session_id,
+                    'phase': self.conversation_phase,
                     'timestamp': datetime.now(UTC).isoformat(),
                 }
             )
@@ -72,6 +88,10 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
 
             if message_type == 'generate':
                 await self._handle_generate(data)
+            elif message_type == 'message':
+                await self._handle_message(data)
+            elif message_type == 'approve':
+                await self._handle_approve(data)
             elif message_type == 'edit':
                 await self._handle_edit(data)
             elif message_type == 'ping':
@@ -106,8 +126,9 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
             )
 
     async def _handle_generate(self, data: dict):
-        """Handle clip generation request."""
+        """Handle clip generation request - starts a new conversation."""
         prompt = data.get('prompt', '').strip()
+        brand_voice_id = data.get('brandVoiceId')  # Optional brand voice selection
 
         if not prompt:
             await self.send(
@@ -131,27 +152,38 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
             )
             return
 
+        # Reset conversation state for new clip
+        self.conversation_phase = 'discovery'
+        self.story_transcript = []
+        self.user_preferences = {}
+        self.current_clip = None
+        self.brand_voice_id = brand_voice_id  # Store for subsequent messages
+
         # Send processing started
         await self.send(
             text_data=json.dumps(
                 {
                     'event': 'processing',
-                    'message': 'Generating your clip...',
+                    'message': 'Starting your clip...',
                 }
             )
         )
 
         try:
-            # Import here to avoid circular imports
             from .tasks import generate_clip_task
 
-            # Queue the Celery task
+            # Queue the Celery task with conversation state
             generate_clip_task.delay(
                 session_id=self.session_id,
                 prompt=prompt,
                 user_id=self.user.id,
                 username=self.user.username,
                 current_clip=None,
+                conversation_phase=self.conversation_phase,
+                story_transcript=self.story_transcript,
+                user_preferences=self.user_preferences,
+                should_generate=False,
+                brand_voice_id=self.brand_voice_id,
             )
 
         except Exception as e:
@@ -161,6 +193,99 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
                     {
                         'event': 'error',
                         'error': 'Failed to start clip generation',
+                    }
+                )
+            )
+
+    async def _handle_message(self, data: dict):
+        """Handle conversation message - continue building the story."""
+        prompt = data.get('prompt', '').strip()
+
+        if not prompt:
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        'event': 'error',
+                        'error': 'No message provided',
+                    }
+                )
+            )
+            return
+
+        # Send processing indicator
+        await self.send(
+            text_data=json.dumps(
+                {
+                    'event': 'processing',
+                    'message': 'Thinking...',
+                }
+            )
+        )
+
+        try:
+            from .tasks import generate_clip_task
+
+            # Continue conversation with current state
+            generate_clip_task.delay(
+                session_id=self.session_id,
+                prompt=prompt,
+                user_id=self.user.id,
+                username=self.user.username,
+                current_clip=self.current_clip,
+                conversation_phase=self.conversation_phase,
+                story_transcript=self.story_transcript,
+                user_preferences=self.user_preferences,
+                should_generate=False,
+                brand_voice_id=self.brand_voice_id,
+            )
+
+        except Exception as e:
+            logger.error(f'Failed to queue conversation message: {e}', exc_info=True)
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        'event': 'error',
+                        'error': 'Failed to process message',
+                    }
+                )
+            )
+
+    async def _handle_approve(self, data: dict):
+        """Handle transcript approval - generate the final clip."""
+        # Send processing indicator
+        await self.send(
+            text_data=json.dumps(
+                {
+                    'event': 'processing',
+                    'message': 'Generating your video...',
+                }
+            )
+        )
+
+        try:
+            from .tasks import generate_clip_task
+
+            # Generate clip from approved transcript
+            generate_clip_task.delay(
+                session_id=self.session_id,
+                prompt='Generate the clip from the approved transcript',
+                user_id=self.user.id,
+                username=self.user.username,
+                current_clip=self.current_clip,
+                conversation_phase='ready_to_generate',
+                story_transcript=self.story_transcript,
+                user_preferences=self.user_preferences,
+                should_generate=True,
+                brand_voice_id=self.brand_voice_id,
+            )
+
+        except Exception as e:
+            logger.error(f'Failed to queue clip approval: {e}', exc_info=True)
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        'event': 'error',
+                        'error': 'Failed to generate clip',
                     }
                 )
             )
@@ -180,6 +305,9 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
                 )
             )
             return
+
+        # Store current clip for editing
+        self.current_clip = current_clip
 
         # Send processing started
         await self.send(
@@ -201,6 +329,11 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
                 user_id=self.user.id,
                 username=self.user.username,
                 current_clip=current_clip,
+                conversation_phase=self.conversation_phase,
+                story_transcript=self.story_transcript,
+                user_preferences=self.user_preferences,
+                should_generate=True,  # Regenerate clip with edits
+                brand_voice_id=self.brand_voice_id,
             )
 
         except Exception as e:
@@ -221,14 +354,36 @@ class ClipAgentConsumer(AsyncWebsocketConsumer):
         This is called when the task broadcasts results via:
         channel_layer.group_send(group_name, {'type': 'clip.message', ...})
         """
+        # Update local conversation state from task results
+        if 'phase' in event:
+            self.conversation_phase = event['phase']
+        if 'transcript' in event:
+            self.story_transcript = event['transcript']
+        if 'preferences' in event:
+            self.user_preferences = event['preferences']
+        if 'clip' in event and event['clip']:
+            self.current_clip = event['clip']
+
+        # Build response for frontend
+        response = {
+            'event': event.get('event'),
+            'message': event.get('message'),
+            'timestamp': event.get('timestamp', datetime.now(UTC).isoformat()),
+        }
+
+        # Include conversation state
+        if 'phase' in event:
+            response['phase'] = event['phase']
+        if 'transcript' in event:
+            response['transcript'] = event['transcript']
+        if 'preferences' in event:
+            response['preferences'] = event['preferences']
+        if 'options' in event:
+            response['options'] = event['options']
+
+        # Include clip if generated
+        if 'clip' in event and event['clip']:
+            response['clip'] = event['clip']
+
         # Forward to WebSocket client
-        await self.send(
-            text_data=json.dumps(
-                {
-                    'event': event.get('event'),
-                    'clip': event.get('clip'),
-                    'message': event.get('message'),
-                    'timestamp': event.get('timestamp', datetime.now(UTC).isoformat()),
-                }
-            )
-        )
+        await self.send(text_data=json.dumps(response))

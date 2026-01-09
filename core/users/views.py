@@ -13,8 +13,10 @@ from rest_framework.response import Response
 from core.logging_utils import StructuredLogger
 from core.projects.models import Project
 
-from .models import PersonalizationSettings, User, UserFollow
+from .models import BrandVoice, PersonalizationSettings, User, UserFollow
 from .serializers import (
+    BrandVoiceMinimalSerializer,
+    BrandVoiceSerializer,
     FollowerSerializer,
     PersonalizationSettingsSerializer,
     ProfileSectionsSerializer,
@@ -1191,3 +1193,197 @@ def taxonomy_preferences(request):
             logger_instance=logger,
         )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ============================================================================
+# BRAND VOICE API
+# ============================================================================
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def brand_voice_list(request):
+    """List or create brand voices for the current user.
+
+    GET: Returns all brand voices for the current user
+    POST: Creates a new brand voice
+
+    POST body:
+    {
+        "name": "LinkedIn Professional",
+        "target_audience": "Tech professionals interested in AI",
+        "tone": "professional",  // casual, professional, provocative, educational, inspirational, humorous
+        "description": "My professional LinkedIn voice",
+        "catchphrases": ["Let's dive in", "Here's the thing"],
+        "topics_to_avoid": ["Politics", "Controversial topics"],
+        "example_hooks": ["Most developers don't know this about AI..."],
+        "keywords": ["AI", "machine learning", "developer"],
+        "is_default": true
+    }
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        brand_voices = BrandVoice.objects.filter(user=user)
+        serializer = BrandVoiceSerializer(brand_voices, many=True)
+
+        StructuredLogger.log_service_operation(
+            service_name='BrandVoice',
+            operation='list',
+            success=True,
+            metadata={'user_id': user.id, 'count': brand_voices.count()},
+            logger_instance=logger,
+        )
+
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = BrandVoiceSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            brand_voice = serializer.save()
+
+            StructuredLogger.log_service_operation(
+                service_name='BrandVoice',
+                operation='create',
+                success=True,
+                metadata={'user_id': user.id, 'brand_voice_id': brand_voice.id},
+                logger_instance=logger,
+            )
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        StructuredLogger.log_service_operation(
+            service_name='BrandVoice',
+            operation='create',
+            success=False,
+            metadata={'user_id': user.id, 'errors': serializer.errors},
+            logger_instance=logger,
+        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def brand_voice_detail(request, pk):
+    """Retrieve, update or delete a brand voice.
+
+    GET: Returns the brand voice details
+    PUT/PATCH: Updates the brand voice (PUT requires all fields, PATCH is partial)
+    DELETE: Deletes the brand voice
+    """
+    user = request.user
+
+    try:
+        brand_voice = BrandVoice.objects.get(pk=pk, user=user)
+    except BrandVoice.DoesNotExist:
+        return Response(
+            {'error': 'Brand voice not found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if request.method == 'GET':
+        serializer = BrandVoiceSerializer(brand_voice)
+
+        StructuredLogger.log_service_operation(
+            service_name='BrandVoice',
+            operation='retrieve',
+            success=True,
+            metadata={'user_id': user.id, 'brand_voice_id': pk},
+            logger_instance=logger,
+        )
+
+        return Response(serializer.data)
+
+    elif request.method in ['PUT', 'PATCH']:
+        partial = request.method == 'PATCH'
+        serializer = BrandVoiceSerializer(
+            brand_voice,
+            data=request.data,
+            partial=partial,
+            context={'request': request},
+        )
+        if serializer.is_valid():
+            serializer.save()
+
+            StructuredLogger.log_service_operation(
+                service_name='BrandVoice',
+                operation='update',
+                success=True,
+                metadata={
+                    'user_id': user.id,
+                    'brand_voice_id': pk,
+                    'updated_fields': list(request.data.keys()),
+                },
+                logger_instance=logger,
+            )
+
+            return Response(serializer.data)
+
+        StructuredLogger.log_service_operation(
+            service_name='BrandVoice',
+            operation='update',
+            success=False,
+            metadata={'user_id': user.id, 'brand_voice_id': pk, 'errors': serializer.errors},
+            logger_instance=logger,
+        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        brand_voice.delete()
+
+        StructuredLogger.log_service_operation(
+            service_name='BrandVoice',
+            operation='delete',
+            success=True,
+            metadata={'user_id': user.id, 'brand_voice_id': pk},
+            logger_instance=logger,
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def brand_voice_set_default(request, pk):
+    """Set a brand voice as the default.
+
+    This will unset any other default brand voice for the user.
+    """
+    user = request.user
+
+    try:
+        brand_voice = BrandVoice.objects.get(pk=pk, user=user)
+    except BrandVoice.DoesNotExist:
+        return Response(
+            {'error': 'Brand voice not found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    brand_voice.is_default = True
+    brand_voice.save()  # save() handles unsetting other defaults
+
+    serializer = BrandVoiceSerializer(brand_voice)
+
+    StructuredLogger.log_service_operation(
+        service_name='BrandVoice',
+        operation='set_default',
+        success=True,
+        metadata={'user_id': user.id, 'brand_voice_id': pk},
+        logger_instance=logger,
+    )
+
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def brand_voice_minimal_list(request):
+    """Get minimal brand voice list for dropdowns/selectors.
+
+    Returns only id, name, tone, and is_default for quick loading.
+    """
+    user = request.user
+    brand_voices = BrandVoice.objects.filter(user=user)
+    serializer = BrandVoiceMinimalSerializer(brand_voices, many=True)
+
+    return Response(serializer.data)

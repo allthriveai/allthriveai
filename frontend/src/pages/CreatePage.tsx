@@ -6,6 +6,7 @@ import {
   faPlay,
   faLock,
   faWandMagicSparkles,
+  faBullhorn,
 } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,6 +32,15 @@ const CREATOR_TOOLS: CreatorToolCard[] = [
     colorTo: '#10B981', // green
     isAvailable: true,
     badge: 'NEW',
+  },
+  {
+    title: 'Brand Voice',
+    description: 'Define your unique tone of voice and style. Your clips will automatically match your brand personality.',
+    icon: faBullhorn,
+    href: '/account/settings/brand-voice',
+    color: '#A855F7', // purple
+    colorTo: '#EC4899', // pink
+    isAvailable: true,
   },
   {
     title: 'Learning Path Builder',
@@ -70,29 +80,29 @@ export default function CreatePage() {
     <DashboardLayout>
       <div className="h-full overflow-y-auto">
         {/* Hero Banner */}
-        <header className="relative h-64 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden">
+        <header className="relative h-64 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
           {/* Ambient Glow Background */}
           <div
-            className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full blur-[120px] pointer-events-none"
+            className="absolute top-1/2 left-1/4 -translate-x-1/4 -translate-y-1/2 w-[600px] h-[400px] rounded-full blur-[120px] pointer-events-none opacity-30 dark:opacity-100"
             style={{ background: 'rgba(34, 211, 238, 0.15)' }}
           />
           <div
-            className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full blur-[100px] pointer-events-none"
+            className="absolute top-1/4 right-1/4 w-[400px] h-[300px] rounded-full blur-[100px] pointer-events-none opacity-30 dark:opacity-100"
             style={{ background: 'rgba(16, 185, 129, 0.1)' }}
           />
 
           <div className="relative px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-green-500/20 flex items-center justify-center">
-                <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xl text-cyan-400" />
+                <FontAwesomeIcon icon={faWandMagicSparkles} className="text-xl text-cyan-500 dark:text-cyan-400" />
               </div>
               <h1 className="text-4xl font-bold">
-                <span className="bg-gradient-to-r from-cyan-400 via-cyan-300 to-green-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-cyan-600 via-cyan-500 to-green-500 dark:from-cyan-400 dark:via-cyan-300 dark:to-green-400 bg-clip-text text-transparent">
                   Creator Tools
                 </span>
               </h1>
             </div>
-            <p className="text-xl text-gray-300 max-w-2xl">
+            <p className="text-xl text-slate-600 dark:text-gray-300 max-w-2xl">
               Build content that grows your audience. Create animated clips, learning paths, and more.
             </p>
           </div>
@@ -131,8 +141,8 @@ export default function CreatePage() {
                         className={`
                           px-2 py-0.5 rounded-full text-[10px] font-bold
                           ${tool.isAvailable
-                            ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 animate-pulse'
-                            : 'bg-gray-500/30 text-gray-400 border border-gray-500/30'
+                            ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 animate-pulse'
+                            : 'bg-slate-500/20 text-slate-500 dark:text-gray-400 border border-slate-500/30 dark:border-gray-500/30'
                           }
                         `}
                       >
@@ -157,14 +167,17 @@ export default function CreatePage() {
 
                   {/* Title */}
                   <h3
-                    className="font-bold text-xl mb-2 transition-colors"
-                    style={{ color: tool.isAvailable ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                    className={`font-bold text-xl mb-2 transition-colors ${
+                      tool.isAvailable
+                        ? 'text-slate-900 dark:text-white'
+                        : 'text-slate-400 dark:text-slate-500'
+                    }`}
                   >
                     {tool.title}
                   </h3>
 
                   {/* Description */}
-                  <p className="text-secondary text-sm mb-4">
+                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">
                     {tool.description}
                   </p>
 

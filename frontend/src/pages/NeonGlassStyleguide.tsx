@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  HomeIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   BellIcon,
@@ -79,6 +78,92 @@ export default function NeonGlassStyleguide() {
         </div>
 
         <div className="space-y-24">
+{/* === THEME MODES === */}
+          <section>
+            <SectionHeader title="Theme Modes" />
+
+            <div className="glass-panel p-8 mb-8">
+              <div className="flex items-center gap-3 mb-6 p-4 rounded bg-cyan-500/10 border border-cyan-500/30">
+                <span className="text-cyan-400 text-xl">💡</span>
+                <div>
+                  <p className="text-cyan-300 font-semibold">Light & Dark Theme Support</p>
+                  <p className="text-slate-400 text-sm">Use Tailwind's <code className="text-cyan-bright">dark:</code> prefix for theme-aware styling.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* Light Theme Preview */}
+                <div className="rounded-xl overflow-hidden border border-white/10">
+                  <div className="p-3 bg-white/10 border-b border-white/10">
+                    <span className="text-sm font-medium text-white">Light Theme</span>
+                  </div>
+                  <div className="p-6" style={{ background: '#f8fafc' }}>
+                    <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm mb-4">
+                      <p className="text-slate-900 font-medium mb-1">Card Title</p>
+                      <p className="text-slate-600 text-sm">Secondary text uses slate-600</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="px-3 py-1.5 rounded text-sm bg-cyan-500 text-white">Primary</button>
+                      <button className="px-3 py-1.5 rounded text-sm bg-slate-100 text-slate-700 border border-slate-200">Secondary</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dark Theme Preview */}
+                <div className="rounded-xl overflow-hidden border border-white/10">
+                  <div className="p-3 bg-white/10 border-b border-white/10">
+                    <span className="text-sm font-medium text-white">Dark Theme (Default)</span>
+                  </div>
+                  <div className="p-6" style={{ background: '#020617' }}>
+                    <div className="p-4 rounded-lg bg-white/5 border border-white/10 mb-4">
+                      <p className="text-white font-medium mb-1">Card Title</p>
+                      <p className="text-slate-400 text-sm">Secondary text uses slate-400</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="px-3 py-1.5 rounded text-sm bg-gradient-to-r from-cyan-500 to-green-500 text-slate-900">Primary</button>
+                      <button className="px-3 py-1.5 rounded text-sm bg-white/5 text-white border border-white/10">Secondary</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Usage Examples */}
+              <div className="p-4 bg-white/5 rounded border border-white/10">
+                <h4 className="text-sm font-semibold text-white mb-3">Theme-Aware Class Pattern</h4>
+                <pre className="text-sm text-slate-300 overflow-x-auto font-mono">
+{`/* Background Colors */
+bg-white dark:bg-slate-900
+bg-slate-50 dark:bg-slate-800
+bg-slate-100 dark:bg-white/5
+
+/* Text Colors */
+text-slate-900 dark:text-white        /* Primary text */
+text-slate-600 dark:text-slate-400    /* Secondary text */
+text-slate-500 dark:text-slate-500    /* Muted text */
+
+/* Borders */
+border-slate-200 dark:border-white/10
+border-slate-300 dark:border-white/20
+
+/* Hover States */
+hover:bg-slate-100 dark:hover:bg-white/5
+hover:bg-slate-50 dark:hover:bg-white/[0.08]`}
+                </pre>
+              </div>
+
+              {/* Implementation Notes */}
+              <div className="mt-6 p-4 bg-white/5 rounded border border-white/10">
+                <h4 className="text-sm font-semibold text-white mb-3">Implementation</h4>
+                <ul className="text-sm text-slate-400 space-y-2">
+                  <li><strong className="text-cyan-bright">Config:</strong> <code>darkMode: 'class'</code> in tailwind.config.js</li>
+                  <li><strong className="text-cyan-bright">Default:</strong> Dark theme (stored in localStorage)</li>
+                  <li><strong className="text-cyan-bright">Toggle:</strong> <code>useTheme()</code> hook from <code>@/hooks/useTheme</code></li>
+                  <li><strong className="text-cyan-bright">Storage:</strong> Preference saved to <code>localStorage.theme</code></li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
           {/* === COLOR PALETTE === */}
           <section>
             <SectionHeader title="Color Palette" />
@@ -447,32 +532,36 @@ export default function NeonGlassStyleguide() {
           <section>
             <SectionHeader title="Navigation Preview" />
 
-            {/* Mock Top Navigation */}
+            {/* Mock Top Navigation - Matches actual TopNavigation.tsx */}
             <div className="glass-panel p-0 overflow-hidden mb-8">
               <div
-                className="px-6 py-4 border-b border-white/10"
+                className="px-6 border-b border-white/10"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  backdropFilter: 'blur(20px)',
+                  backdropFilter: 'blur(20px) saturate(180%)',
                 }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between h-16">
+                  {/* Left Side - Logo + Nav */}
                   <div className="flex items-center gap-8">
+                    {/* Logo */}
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-gradient-to-br from-cyan-400/20 to-cyan-600/20">
-                        <HomeIcon className="w-5 h-5 text-cyan-bright" />
-                      </div>
-                      <span className="font-bold text-lg text-gradient-cyan">All Thrive</span>
+                      <img
+                        src="/all-thrvie-logo.png"
+                        alt="All Thrive"
+                        className="h-8 w-auto"
+                      />
                     </div>
 
+                    {/* Desktop Nav Items */}
                     <div className="hidden md:flex items-center gap-1">
-                      {['Explore', 'Play', 'Learn', 'Support'].map((item, i) => (
+                      {['Discover', 'Learn', 'Play', 'Connect'].map((item, i) => (
                         <button
                           key={item}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 border ${
                             i === 0
-                              ? 'bg-cyan-400/10 text-cyan-bright border-cyan-400/40 shadow-neon'
-                              : 'text-slate-300 border-transparent hover:bg-white/5 hover:border-white/20'
+                              ? 'bg-teal-400/[0.08] text-teal-300 border-teal-400/40 shadow-lg shadow-teal-500/10'
+                              : 'text-gray-100 border-transparent hover:bg-white/[0.08] hover:border-white/30'
                           }`}
                         >
                           {item}
@@ -481,14 +570,31 @@ export default function NeonGlassStyleguide() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <button className="p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/20 transition-all">
-                      <MagnifyingGlassIcon className="w-5 h-5 text-slate-300" />
+                  {/* Right Side - Actions */}
+                  <div className="flex items-center gap-2">
+                    {/* Search */}
+                    <button className="p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300">
+                      <MagnifyingGlassIcon className="w-5 h-5 text-gray-200" />
                     </button>
-                    <button className="btn-primary text-sm px-4 py-2 inline-flex items-center gap-2">
-                      <PlusIcon className="w-4 h-4" />
-                      Add Project
+
+                    {/* Chat Button - Cyan/Green Gradient */}
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-white/20 text-slate-900"
+                      style={{
+                        background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+                        boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
+                      }}
+                    >
+                      <SparklesIcon className="w-4 h-4" />
+                      <span>Chat</span>
                     </button>
+
+                    {/* Theme Toggle */}
+                    <button className="p-2 rounded-xl hover:bg-white/[0.08] border border-transparent hover:border-white/30 transition-all duration-300">
+                      <BoltIcon className="w-5 h-5 text-amber-300" />
+                    </button>
+
+                    {/* User Avatar */}
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-pink-accent flex items-center justify-center">
                       <UserIcon className="w-4 h-4 text-white" />
                     </div>
@@ -500,6 +606,18 @@ export default function NeonGlassStyleguide() {
               <div className="p-8 bg-background">
                 <p className="text-slate-500 text-center">Page content area</p>
               </div>
+            </div>
+
+            {/* Navigation Component Notes */}
+            <div className="glass-panel p-6">
+              <h4 className="text-sm font-semibold text-white mb-3">Navigation Implementation Notes</h4>
+              <ul className="text-sm text-slate-400 space-y-2">
+                <li><strong className="text-cyan-bright">Logo:</strong> Uses actual logo image, links to /home</li>
+                <li><strong className="text-cyan-bright">Nav Items:</strong> Discover, Learn, Play, Connect — each with dropdown menus</li>
+                <li><strong className="text-cyan-bright">Active State:</strong> Teal background with teal border and shadow</li>
+                <li><strong className="text-cyan-bright">Chat Button:</strong> Cyan-to-green gradient, dark text, prominent CTA</li>
+                <li><strong className="text-cyan-bright">Glass Effect:</strong> <code>backdrop-filter: blur(20px) saturate(180%)</code></li>
+              </ul>
             </div>
           </section>
 
@@ -1123,6 +1241,69 @@ export default function NeonGlassStyleguide() {
             </div>
           </section>
 
+          {/* === BORDER RADIUS === */}
+          <section>
+            <SectionHeader title="Border Radius" />
+
+            <div className="glass-panel p-8 mb-8">
+              <div className="flex items-center gap-3 mb-6 p-4 rounded bg-amber-500/10 border border-amber-500/30">
+                <span className="text-amber-400 text-xl">⚠️</span>
+                <div>
+                  <p className="text-amber-300 font-semibold">Standard Border Radius: 4px</p>
+                  <p className="text-slate-400 text-sm">Use <code className="text-cyan-bright">rounded</code> (4px) as the default for all interactive elements.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="h-20 bg-white/10 border border-white/20 mb-3 flex items-center justify-center" style={{ borderRadius: '4px' }}>
+                    <span className="text-cyan-bright text-sm font-mono">4px</span>
+                  </div>
+                  <p className="text-sm font-medium text-white">Default (rounded)</p>
+                  <code className="text-xs text-slate-400">rounded / rounded-sm</code>
+                  <p className="text-xs text-emerald-400 mt-1">✓ Use this</p>
+                </div>
+
+                <div className="text-center">
+                  <div className="h-20 bg-white/10 border border-white/20 mb-3 flex items-center justify-center rounded-lg">
+                    <span className="text-slate-400 text-sm font-mono">8px</span>
+                  </div>
+                  <p className="text-sm font-medium text-slate-400">Medium (rounded-lg)</p>
+                  <code className="text-xs text-slate-500">Only for cards/panels</code>
+                  <p className="text-xs text-amber-400 mt-1">⚠ Sparingly</p>
+                </div>
+
+                <div className="text-center">
+                  <div className="h-20 bg-white/10 border border-white/20 mb-3 flex items-center justify-center rounded-xl">
+                    <span className="text-slate-500 text-sm font-mono">12px</span>
+                  </div>
+                  <p className="text-sm font-medium text-slate-500">Large (rounded-xl)</p>
+                  <code className="text-xs text-slate-500">Feature cards only</code>
+                  <p className="text-xs text-rose-400 mt-1">✗ Avoid</p>
+                </div>
+
+                <div className="text-center">
+                  <div className="h-20 bg-white/10 border border-white/20 mb-3 flex items-center justify-center rounded-full">
+                    <span className="text-slate-500 text-sm font-mono">full</span>
+                  </div>
+                  <p className="text-sm font-medium text-slate-500">Full (rounded-full)</p>
+                  <code className="text-xs text-slate-500">Pills, avatars, dots</code>
+                  <p className="text-xs text-slate-400 mt-1">Context-specific</p>
+                </div>
+              </div>
+
+              <div className="mt-8 p-4 bg-white/5 rounded border border-white/10">
+                <h4 className="text-sm font-semibold text-white mb-3">When to use each:</h4>
+                <ul className="text-sm text-slate-400 space-y-2">
+                  <li><code className="text-cyan-bright">rounded (4px)</code> — Buttons, inputs, tags, chips, small cards, form controls</li>
+                  <li><code className="text-cyan-bright">rounded-lg (8px)</code> — Glass panels, modal dialogs, dropdown menus</li>
+                  <li><code className="text-cyan-bright">rounded-xl (12px)</code> — Hero cards, feature showcases (rare)</li>
+                  <li><code className="text-cyan-bright">rounded-full</code> — Avatars, status dots, pill badges, icon buttons</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
           {/* === CODE REFERENCE === */}
           <section>
             <SectionHeader title="Code Reference" color="pink" />
@@ -1149,6 +1330,12 @@ export default function NeonGlassStyleguide() {
 .luminous-dot    /* Glowing indicator */
 .circuit-connector /* Decorative line */
 .text-gradient-cyan /* Cyan text gradient */
+
+/* Border Radius (IMPORTANT) */
+rounded          /* 4px - DEFAULT for most elements */
+rounded-lg       /* 8px - Panels and containers */
+rounded-xl       /* 12px - Feature cards (rare) */
+rounded-full     /* Pills, avatars, dots */
 
 /* Colors (Tailwind) */
 bg-background    /* #020617 */

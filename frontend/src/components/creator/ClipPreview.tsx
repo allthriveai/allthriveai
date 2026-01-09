@@ -250,12 +250,12 @@ function SceneBackground({
 
 // Floating particles for visual interest
 function FloatingParticles({ style }: { style: SocialClipContent['style'] }) {
-  const particles = Array.from({ length: 6 }, (_, i) => ({
+  const particles = Array.from({ length: 3 }, (_, i) => ({
     id: i,
-    size: 2 + Math.random() * 4,
-    x: Math.random() * 100,
-    delay: Math.random() * 2,
-    duration: 3 + Math.random() * 2,
+    size: 2 + Math.random() * 3,
+    x: 15 + i * 35, // Spread evenly across width
+    delay: i * 2,
+    duration: 8 + Math.random() * 4, // Slower: 8-12 seconds
   }));
 
   return (
