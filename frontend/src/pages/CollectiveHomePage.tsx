@@ -17,15 +17,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHandshake, faLightbulb, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 
 function CollectiveHomeContent() {
-  const { user } = useAuth();
-  const conversationId = useStableConversationId({ context: 'collective-home' });
+  const { user: _user } = useAuth();
+  const conversationId = useStableConversationId({ context: 'home' });
 
   // Ensure page starts at top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-
-  const _firstName = user?.firstName || user?.username || 'there'; // TODO: Use in Sprint 4 dashboard
 
   return (
     <div className="min-h-[calc(100vh-12rem)] flex flex-col lg:flex-row gap-6 p-4 sm:p-6 lg:p-8">

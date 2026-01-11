@@ -44,8 +44,6 @@ import NotFoundPage from '@/pages/NotFoundPage';
 // Core pages - lazy loaded
 // PHASE_1: [HIDDEN] AvaHomePage replaced by CollectiveHomePage for AI Collective pivot
 const AvaHomePage = lazy(() => import('@/pages/AvaHomePage'));
-// TODO: Swap /home route to use CollectiveHomePage in Sprint 1 completion
-const _CollectiveHomePage = lazy(() => import('@/pages/CollectiveHomePage'));
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
 const TeamPage = lazy(() => import('@/pages/TeamPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));

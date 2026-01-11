@@ -42,7 +42,7 @@ export interface MenuSection {
  * Delete after Phase 3 when new Discovery is stable
  */
 export const getMenuSections = (
-  onMenuClick: (item: string) => void,
+  _onMenuClick: (item: string) => void,
   username?: string
 ): MenuSection[] => [
   // PHASE_1: [KEEP] Connect section - messaging essential for Ask/Offer connections
