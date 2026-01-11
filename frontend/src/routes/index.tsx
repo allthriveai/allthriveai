@@ -37,7 +37,7 @@ export { setGuestBattleId, clearGuestBattleId, getGuestBattleId };
 // =============================================================================
 
 // Critical path - load immediately
-import LandingPage from '@/pages/LandingPage';
+import _LandingPage from '@/pages/LandingPage';
 import AuthPage from '@/pages/AuthPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
@@ -147,7 +147,7 @@ export function AppRoutes() {
     <Suspense fallback={<PageLoader />}>
     <Routes>
       {/* Landing page - public, redirects authenticated users to /home */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<CollectiveLandingPage />} />
 
       {/* Home - Ava chat-first experience for authenticated users */}
       <Route

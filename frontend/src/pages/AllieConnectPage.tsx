@@ -9,7 +9,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLinkedin } from '@fortawesome/free-brands-svg-icons';
 import {
   faCalendarAlt,
-  faGamepad,
 } from '@fortawesome/free-solid-svg-icons';
 import { SEO } from '@/components/common/SEO';
 
@@ -19,12 +18,11 @@ const ALLIE_CONFIG = {
   title: 'Founder and CTO of All Thrive',
   image: '/allie-headshot-2026.png',
   blurb1: "I'm building All Thrive to make AI accessible and fun for everyone.",
-  blurb2: "Whether you're just getting started with AI or want to share what you're working on with others, I'd love to connect!",
+  blurb2: "Whether you have something to offer or need help with AI, I'd love to connect and see how we can help each other thrive!",
   links: {
     linkedin: 'https://www.linkedin.com/in/allierays/',
     calendly: 'https://calendly.com/allie-allthrive/30min',
     allthrive: window.location.origin,
-    promptBattle: `${window.location.origin}/play/prompt-battles`,
   },
 };
 
@@ -153,19 +151,10 @@ export default function AllieConnectPage() {
               href={ALLIE_CONFIG.links.allthrive}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary w-full py-3 sm:py-4 text-base font-medium flex items-center justify-center gap-2"
-            >
-              <img src="/all-thrvie-logo.png" alt="" className="w-5 h-5" />
-              Join allthrive.ai
-            </a>
-            <a
-              href={ALLIE_CONFIG.links.promptBattle}
-              target="_blank"
-              rel="noopener noreferrer"
               className="btn-primary w-full py-3 sm:py-4 text-base font-semibold flex items-center justify-center gap-2 shadow-neon-strong"
             >
-              <FontAwesomeIcon icon={faGamepad} className="w-5 h-5" />
-              Play an Image Prompt Battle
+              <img src="/all-thrvie-logo.png" alt="" className="w-5 h-5" />
+              Join All Thrive
             </a>
           </motion.div>
         </motion.div>

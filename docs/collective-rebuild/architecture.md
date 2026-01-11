@@ -34,22 +34,23 @@ The platform must work for both. Builders need a place to showcase work. Non-tec
 
 | Old Concept | New Concept | Why |
 |-------------|-------------|-----|
-| Tools Directory | Offers (type=app) | All apps in one place, whether built by users or curated |
 | Projects | Offers | Projects become offer showcase pages |
 | Products (marketplace) | Offers (paid) | Products are just paid offers |
-| Learning Paths | Offers (type=course) | Courses are offers from creators |
 | Services | Offers (type=service) | New category for consulting, mentorship |
 
-### What Gets Kept
+### What Gets Kept (NOT Merged)
 
-| Feature | Why Keep |
-|---------|----------|
-| User accounts & auth | Core identity |
-| Stripe Connect | Payment infrastructure for creators |
-| Ava chat | Core AI assistant, reuse components |
-| URL scraper | Import apps/projects during onboarding |
-| Taxonomy system | Reuse for offer categories |
-| Community messaging | Essential for Ask/Offer connections |
+| Feature | Status | Integration |
+|---------|--------|-------------|
+| User accounts & auth | **KEEP** | Core identity |
+| Stripe Connect | **KEEP** | Payment infrastructure for creators |
+| Ava chat | **KEEP** | Core AI assistant, reuse components |
+| URL scraper | **KEEP** | Import apps/projects during onboarding |
+| Taxonomy system | **KEEP** | Reuse for offer categories |
+| Community messaging | **KEEP** | Essential for Ask/Offer connections |
+| **Tools Directory** | **KEEP** | Curated resource library. M2M links to Offers/Asks. See below. |
+| **SavedLearningPath** | **KEEP** | Course Publisher foundation. See below. |
+| **Sage** | **KEEP** | @allierays's AI agent for learning. |
 
 ### What Gets Hidden (Then Deleted)
 
@@ -57,7 +58,6 @@ The platform must work for both. Builders need a place to showcase work. Non-tec
 |---------|--------|
 | Learn pages | Hide in Phase 1, delete after Discovery is built |
 | Play pages (Games, Battles) | Hide in Phase 1, evaluate later |
-| Tools directory | Hide in Phase 1, merged into Offers |
 | Old home page | Replace with new Collective home |
 | Old onboarding | Replace with Ava chat-based onboarding |
 
@@ -69,29 +69,102 @@ Clear separation between browsing others and managing your own:
 
 | Purpose | URL Pattern | Examples |
 |---------|-------------|----------|
-| **Browse others** | `/discover/*` | `/discover`, `/discover/offers`, `/discover/asks`, `/discover/people` |
-| **Manage yours** | `/my/*` | `/my/offers`, `/my/asks`, `/my/offers/new` |
+| **Browse others** | `/discover/*` | `/discover`, `/discover/offers`, `/discover/asks`, `/discover/people`, `/discover/tools`, `/discover/courses` |
+| **Manage yours** | `/my/*` | `/my/offers`, `/my/asks`, `/my/learning`, `/my/purchases` |
 | **Profiles** | `/@username` | `/@sarah`, `/@aiconsultant` |
-| **Dashboard** | `/home` | User's personal dashboard |
+| **Dashboard** | `/home` | User's personal dashboard (also reachable via Connect nav) |
+| **Creator Tools** | `/creator/*` | `/creator/clips`, `/creator/courses` |
+| **Messages** | `/messages` | User-to-user messaging (accessible via Connect page) |
+| **Community** | `/community` | Events, weekly challenges, community activities |
+| **Ava** | `/ava` | AI assistant chat |
+| **Settings** | `/settings` | Account settings, `/settings/earnings` for creators |
 
 ---
 
-## Navigation Evolution
+## Navigation Structure
 
-### Phase 1 (Sprints 1-5): Minimal
-```
-Logo | [Search] [Ava] [User Menu]
-```
-- Strip down to essentials
-- Focus on onboarding and home dashboard
-- No Discover link yet (page doesn't exist)
+### Design Philosophy
 
-### Phase 2 (Sprint 6+): Full
+Action-oriented, feeling-based names that reflect the two-sided marketplace journey:
+1. **Discover** - Find what you need (people, offers, asks, tools, courses)
+2. **Connect** - Match with people, manage connections, have conversations
+3. **Ava** - AI assistant for guidance and help (separate from user-to-user messages)
+
+### Top Navigation (4 items)
+
 ```
-Logo | Discover | [Search] [Ava] [User Menu]
+[Logo] | Discover | Connect | Ava | [Avatar]
 ```
-- Add Discover when the page is built
-- Footer expands with: Discover, Creator Tools, Company, Resources
+
+| Item | Type | Destination | Description |
+|------|------|-------------|-------------|
+| Logo | Link | `/` or `/home` | Landing (logged out) or Dashboard (logged in) |
+| Discover | Link/Dropdown | `/discover` | Browse offers, asks, people, tools, courses |
+| Connect | Link | `/home` | Dashboard, connections, and messages |
+| Ava | Link/Button | `/ava` or drawer | AI assistant chat (NOT user-to-user messages) |
+| Avatar | Dropdown | See below | Profile, learning, creator tools, settings |
+
+### Connect Page (tabs or sections)
+
+```
+Dashboard    ← Activity feed, matches, quick stats
+Connections  ← Active connections with people
+Messages     ← User-to-user conversations
+Community    ← Events, weekly challenges, community activities
+```
+
+### Discover (dropdown or page with tabs)
+
+```
+All         ← /discover
+────────────
+Offers      ← /discover/offers
+Asks        ← /discover/asks
+People      ← /discover/people
+Tools       ← /discover/tools
+Courses     ← /discover/courses
+```
+
+### Avatar Dropdown
+
+```
+My Profile          → /@username
+────────────────────
+My Learning         → /my/learning (enrolled courses, progress)
+My Purchases        → /my/purchases
+My Earnings         → /my/earnings (creators only, shows if has Stripe)
+────────────────────
+Creator Tools
+  Social Clips      → /creator/clips
+  Course Builder    → /creator/courses
+────────────────────
+Settings            → /settings
+Sign Out
+```
+
+### Footer (minimal, 3 columns)
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  Discover         │ Creator Tools    │ About                   │
+│  ─────────────────│──────────────────│─────────────────────────│
+│  Offers           │ Social Clips     │ Our Story               │
+│  Asks             │ Course Builder   │ Community Guidelines    │
+│  People           │                  │ Help & Feedback         │
+│  Tools            │                  │                         │
+│  Courses          │                  │                         │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Key Decisions
+
+- "Discover, Connect, Ava" = action/feeling-based, not feature-based
+- Learning is in two places: Discover/Courses (browse) + Avatar/My Learning (enrolled)
+- Creator Tools in avatar dropdown (not top nav) - keeps nav clean
+- Payments split: Purchases (buyer), Earnings (seller/creator)
+- No separate "Learn" top nav - courses are discoverable content
+- Messages live under Connect (not separate nav item)
+- Community events/challenges live under Connect (community building activities)
 
 ---
 
@@ -120,6 +193,117 @@ Logo | Discover | [Search] [Ava] [User Menu]
 
 - **Follow** — User follows another user (for creator profiles)
 - **Taxonomy** — Categories for offers (reuses existing system)
+- **Tool** — Curated external AI tools (M2M with Offers/Asks)
+- **AgentProfile** — Links AI agent users to human owners
+
+---
+
+## Tools Directory Integration
+
+> **Tools are NOT deprecated.** The Tools Directory is a curated resource library that complements Ask/Offer.
+
+### Concept: Tools as Resources
+
+| Concept | Description | Example |
+|---------|-------------|---------|
+| **Tools Directory** | Curated external AI tools (team-managed via YAML) | Claude, Midjourney, ElevenLabs |
+| **Offer with Tools** | User-created offering that uses tools | "Built with Claude" badge |
+| **Ask with Tools** | User request for help with specific tools | "Need help with Midjourney" badge |
+
+### How Tools Connect to Ask/Offer
+
+```
+┌─────────────────┐
+│  Tools Directory │  ← Curated by team (YAML fixture)
+│  /tools          │  ← Browse, search, compare
+└────────┬────────┘
+         │
+         │ M2M relationships
+         ▼
+┌────────────────────────────────────────────┐
+│                                            │
+│  ┌──────────┐          ┌──────────┐        │
+│  │  Offer   │          │   Ask    │        │
+│  │          │          │          │        │
+│  │ tools ───┼──────────┼── tools  │        │
+│  │          │          │          │        │
+│  └──────────┘          └──────────┘        │
+│                                            │
+│  "Built with Claude"   "Need help with     │
+│  "Uses Midjourney"      Midjourney"        │
+│                                            │
+└────────────────────────────────────────────┘
+```
+
+### Tool Badge Display
+
+**On Offers:**
+- Shows tool logos as small badges
+- Clicking badge opens Tool detail tray
+- Discovery: Filter offers by tools used
+
+**On Asks:**
+- Shows "Help wanted with [Tool]" indicator
+- Links to tool page for context
+- Discovery: Find experts for specific tools
+
+### Tool Page Enhancements (Future)
+
+On each Tool's detail page (`/tools/:slug`), show:
+- **Offers using this tool** — "Apps built with Claude"
+- **Asks needing this tool** — "People looking for Claude help"
+- **Experts for this tool** — Users who've helped others with it
+
+---
+
+## Learning Path Integration
+
+> **LearningPaths evolve into Course Publisher** — A creator tool for experts to build AI-assisted courses as Offers.
+
+### Two-Part Strategy
+
+**1. Sage as @allierays's Agent**
+- Sage becomes a visible AI agent owned by @allierays
+- Demonstrates the agent ownership model before Sprint 9
+- Sage's existing learning paths become Offers from the profile
+- Shows in "Learn From Me" section: courses by Sage
+
+**2. Course Publisher (Creator Tool)**
+- New creator tool for experts/creators (like Social Clips)
+- AI-assisted course building: creators provide expertise, AI helps structure
+- Published courses become Offers (type: `course`)
+- Target audience: experts/creators (Teachable/Kajabi style)
+
+### How It Maps to Ask/Offer
+
+| LearningPath Concept | Ask/Offer Equivalent |
+|---------------------|----------------------|
+| Published SavedLearningPath | Offer (type: `course`) |
+| Path creator | Offer.user (the expert) |
+| Path pricing | Offer.price_cents, pricing_type |
+| Path tools | Offer.tools (M2M) |
+| Path curriculum | Stored in SavedLearningPath.path_data |
+
+### AgentProfile Model
+
+```python
+class AgentProfile(models.Model):
+    """Links agent users to their human owners"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE,
+                                  related_name='agent_profile',
+                                  limit_choices_to={'role': 'agent'})
+    owner = models.ForeignKey(User, on_delete=models.CASCADE,
+                               related_name='owned_agents')
+    created_at = models.DateTimeField(auto_now_add=True)
+```
+
+### Implementation Phases
+
+| Phase | What | When |
+|-------|------|------|
+| Phase 1 (Sprint 2) | Add AgentProfile model, link Sage to @allierays | Sprint 2 |
+| Phase 1 (Sprint 5) | Show Sage's courses on @allierays profile | Sprint 5 |
+| Phase 2 (Future) | Course Publisher creator tool | Future Sprint |
 
 ---
 
