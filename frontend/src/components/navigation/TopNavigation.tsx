@@ -34,14 +34,16 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
 
   const menuSections = getMenuSections(onMenuClick, user?.username);
 
-  // Main navigation items (sections that should appear in top nav)
-  // menuSections: [0]=Discover, [1]=Learn, [2]=Play, [3]=Connect, [4]=Account
-  const mainNavItems = [
-    { label: 'Discover', path: '/explore', section: menuSections[0] },
-    { label: 'Learn', path: '/learn', section: menuSections[1] },
-    { label: 'Play', section: menuSections[2] },
-    { label: 'Connect', section: menuSections[3] },
-  ];
+  // PHASE_1: Simplified navigation for AI Collective pivot
+  // menuSections now only has: [0]=CONNECT, [1]=ACCOUNT
+  // Build mainNavItems from actual sections, excluding ACCOUNT (handled by UserMenu)
+  const mainNavItems = menuSections
+    .filter(section => section.title !== 'ACCOUNT')
+    .map(section => ({
+      label: section.title === 'CONNECT' ? 'Connect' : section.title,
+      path: section.path,
+      section,
+    }));
 
   const isActivePath = (path?: string) => {
     if (!path) return false;
@@ -101,7 +103,7 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
               {/* Desktop Navigation Links */}
               <div className="hidden lg:flex items-center gap-1">
                 {mainNavItems.map((item) => (
-                  item.section.items.length > 0 ? (
+                  item.section?.items?.length > 0 ? (
                     // Dropdown for sections with items
                     <NavDropdown
                       key={item.label}
