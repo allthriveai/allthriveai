@@ -25,7 +25,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 /**
  * CollectiveLandingPage - Landing page for the AI Collective concept
  *
- * Tagline: "Share what you offer. Ask for what you need. The All Thrive AI Collective."
+ * Tagline: "Share what you offer. Ask for what you need. The AI Network Collective."
  *
  * Uses Framer Motion animations inspired by the mobile homepage
  * and Neon Glass design system from /styleguide

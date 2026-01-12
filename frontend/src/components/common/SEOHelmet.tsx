@@ -44,9 +44,9 @@ const getBaseUrl = (): string => {
  * Optimized for search engines, social media, and LLM discoverability
  */
 export function SEO({
-  title = 'All Thrive - A Community for the AI Curious',
-  description = 'Join our AI curious community. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
-  keywords = 'AI community, AI curious, share AI work, prompt battles, AI challenges, learn AI, AI showcase, AI builders, level up',
+  title = 'All Thrive - The AI Network Collective',
+  description = 'Share what you offer. Ask for what you need. The AI Network Collective.',
+  keywords = 'AI collective, AI network, AI community, share AI work, ask for help, AI builders, AI collaboration, offers, asks, AI marketplace',
   image = `${getBaseUrl()}/og-image.jpg`,
   url,
   type = 'website',
@@ -94,14 +94,14 @@ export function SEO({
 // Preset configurations for common pages
 export const SEOPresets = {
   home: {
-    title: 'All Thrive - A Community for the AI Curious',
-    description: 'Join our AI curious community. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
-    keywords: 'AI community, AI curious, share AI work, prompt battles, AI challenges, learn AI, AI showcase, AI builders, level up',
+    title: 'All Thrive - The AI Network Collective',
+    description: 'Share what you offer. Ask for what you need. The AI Network Collective.',
+    keywords: 'AI collective, AI network, AI community, share AI work, ask for help, AI builders, AI collaboration, offers, asks',
   },
   about: {
     title: 'About All Thrive',
-    description: 'Join our AI curious community. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
-    keywords: 'about allthrive, AI platform, AI curious, AI community, learn AI, prompt battles',
+    description: 'The AI Network Collective - Share what you offer. Ask for what you need.',
+    keywords: 'about allthrive, AI collective, AI network, AI community, offers, asks',
   },
   explore: {
     title: 'Explore AI Projects',

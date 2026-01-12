@@ -1,6 +1,6 @@
 # AI Collective Architecture Overview
 
-> **Vision:** Transform All Thrive from a learning platform into "The Ask & Offer AI Collective" — a place where AI builders share what they offer, ask for what they need, and connect with each other.
+> **Vision:** Transform All Thrive into "The AI Network Collective" — Share what you offer. Ask for what you need. A place where AI builders share what they're working on, connect with each other, and thrive together.
 
 ---
 

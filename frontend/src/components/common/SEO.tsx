@@ -29,9 +29,9 @@ const getBaseUrl = (): string => {
  * Optimized for search engines and social media sharing
  */
 export function SEO({
-  title = 'All Thrive - A Community for the AI Curious',
-  description = 'Join our AI curious community. Showcase your projects, learn from others, and level up your skills through gamified challenges.',
-  keywords = 'AI community, AI curious, share AI work, prompt battles, AI challenges, learn AI, AI showcase, AI builders, level up',
+  title = 'All Thrive - The AI Network Collective',
+  description = 'Share what you offer. Ask for what you need. The AI Network Collective.',
+  keywords = 'AI collective, AI network, AI community, share AI work, ask for help, AI builders, AI collaboration, offers, asks, AI marketplace',
   image,
   url,
   type = 'website',
