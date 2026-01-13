@@ -168,12 +168,36 @@ hover:bg-slate-50 dark:hover:bg-white/[0.08]`}
           <section>
             <SectionHeader title="Color Palette" />
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-              <ColorSwatch name="Background" value="#020617" />
-              <ColorSwatch name="Cyan" value="#0EA5E9" />
-              <ColorSwatch name="Bright Teal" value="#22D3EE" />
-              <ColorSwatch name="Neon Bright" value="#4ADEE7" />
-              <ColorSwatch name="Pink Accent" value="#FB37FF" />
+            {/* Core Brand Colors */}
+            <h4 className="text-lg font-semibold text-white mb-4">Core Brand Colors</h4>
+            <p className="text-sm text-slate-400 mb-4">The essential All Thrive palette. Cyberpunk meets growth.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="glass-panel p-6 text-center">
+                <div className="h-24 rounded-xl mb-4" style={{ backgroundColor: '#22d3ee' }} />
+                <p className="text-lg font-semibold text-cyan-400 mb-1">Cyan</p>
+                <code className="text-sm text-slate-400 block mb-2">#22D3EE</code>
+                <p className="text-xs text-slate-500">Primary actions, buttons, links, CTAs</p>
+              </div>
+              <div className="glass-panel p-6 text-center">
+                <div className="h-24 rounded-xl mb-4" style={{ backgroundColor: '#4ade80' }} />
+                <p className="text-lg font-semibold text-green-400 mb-1">Green</p>
+                <code className="text-sm text-slate-400 block mb-2">#4ADE80</code>
+                <p className="text-xs text-slate-500">Growth, success, gradients</p>
+              </div>
+              <div className="glass-panel p-6 text-center">
+                <div className="h-24 rounded-xl mb-4" style={{ backgroundColor: '#d946ef' }} />
+                <p className="text-lg font-semibold" style={{ color: '#d946ef' }}>Magenta</p>
+                <code className="text-sm text-slate-400 block mb-2">#D946EF</code>
+                <p className="text-xs text-slate-500">Accent, badges, highlights, AI agents</p>
+              </div>
+            </div>
+
+            {/* Primary Gradient */}
+            <h4 className="text-lg font-semibold text-white mb-4 mt-8">Primary Gradient</h4>
+            <p className="text-sm text-slate-400 mb-4">Use for primary buttons and key CTAs.</p>
+            <div className="glass-panel p-6 mb-8">
+              <div className="h-16 rounded-xl bg-gradient-to-r from-cyan-400 to-green-400 mb-4" />
+              <code className="text-sm text-slate-400">bg-gradient-to-r from-cyan-400 to-green-400</code>
             </div>
 
             {/* Semantic Colors */}
@@ -1370,19 +1394,6 @@ function SectionHeader({ title, color = 'cyan' }: { title: string; color?: 'cyan
       <div className={`h-[1px] flex-1 bg-gradient-to-r ${
         color === 'pink' ? 'from-pink-500/50' : 'from-cyan-500/50'
       } to-transparent opacity-30`} />
-    </div>
-  );
-}
-
-function ColorSwatch({ name, value }: { name: string; value: string }) {
-  return (
-    <div className="text-center">
-      <div
-        className="h-20 rounded-xl mb-2 border border-white/10"
-        style={{ backgroundColor: value }}
-      />
-      <p className="text-sm font-medium text-white">{name}</p>
-      <code className="text-xs text-slate-400">{value}</code>
     </div>
   );
 }

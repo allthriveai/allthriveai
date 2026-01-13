@@ -3,14 +3,12 @@ import { Link } from 'react-router-dom';
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faGift,
   faHandshake,
   faPuzzlePiece,
   faArrowRight,
   faRocket,
   faLightbulb,
   faUsers,
-  faStar,
   faTimes,
   faCode,
   faGraduationCap,
@@ -19,7 +17,11 @@ import {
   faFlask,
   faComments,
   faHandHoldingHeart,
+  faClipboardList,
+  faRobot,
+  faPlus,
 } from '@fortawesome/free-solid-svg-icons';
+import { faTwitter, faLinkedin, faGithub } from '@fortawesome/free-brands-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
 /**
@@ -65,16 +67,16 @@ export default function CollectiveLandingPage() {
       icon: faPuzzlePiece,
       title: 'Connect & Thrive',
       description: 'We match your asks with others\' offers. Everyone wins when the community thrives.',
-      color: 'purple',
-      glowColor: 'rgba(168, 85, 247, 0.3)',
+      color: 'fuchsia',
+      glowColor: 'rgba(217, 70, 239, 0.3)',
     },
   ];
 
   const personas = [
-    { icon: faRocket, title: 'AI Builders', description: 'Share your apps, get beta testers, find collaborators', color: 'cyan', glowColor: 'rgba(34, 211, 238, 0.3)' },
-    { icon: faLightbulb, title: 'Learners', description: 'Find courses, get mentorship, accelerate your journey', color: 'green', glowColor: 'rgba(74, 222, 128, 0.3)' },
-    { icon: faUsers, title: 'Founders', description: 'Find co-founders, get feedback, validate ideas', color: 'purple', glowColor: 'rgba(168, 85, 247, 0.3)' },
-    { icon: faStar, title: 'Experts', description: 'Monetize knowledge, build audience, mentor others', color: 'amber', glowColor: 'rgba(251, 191, 36, 0.3)' },
+    { icon: faRocket, title: 'Builders', description: 'Share your apps, get beta testers, find collaborators', color: 'cyan', glowColor: 'rgba(34, 211, 238, 0.3)' },
+    { icon: faLightbulb, title: 'Learners', description: 'Find courses, find mentors, accelerate your journey', color: 'green', glowColor: 'rgba(74, 222, 128, 0.3)' },
+    { icon: faUsers, title: 'Founders', description: 'Validate ideas, get feedback, connect with early adopters', color: 'fuchsia', glowColor: 'rgba(217, 70, 239, 0.3)' },
+    { icon: faRobot, title: 'AI Agents', description: 'Extend your reach, serve users 24/7, scale your expertise', color: 'pink', glowColor: 'rgba(236, 72, 153, 0.3)' },
   ];
 
   return (
@@ -83,7 +85,7 @@ export default function CollectiveLandingPage() {
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full bg-cyan-500/10 blur-[120px]" />
         <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-green-500/10 blur-[120px]" />
-        <div className="absolute top-[40%] left-[30%] w-[400px] h-[400px] rounded-full bg-purple-500/5 blur-[100px]" />
+        <div className="absolute top-[40%] left-[30%] w-[400px] h-[400px] rounded-full bg-fuchsia-500/5 blur-[100px]" />
       </div>
 
       {/* Header */}
@@ -190,7 +192,7 @@ export default function CollectiveLandingPage() {
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
           <div className="absolute bottom-[10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-green-500/10 blur-[100px]" />
-          <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[120px]" />
+          <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-fuchsia-500/5 blur-[120px]" />
         </div>
         <div className="max-w-6xl mx-auto w-full py-16 relative">
           <motion.div
@@ -242,21 +244,23 @@ export default function CollectiveLandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <ProfileCard
               name="Sarah Chen"
               handle="@sarahbuilds"
               avatar="SarahChen"
               avatarGradient="from-cyan-400 to-blue-500"
+              tagline="AI builder & educator. Making AI accessible."
+              socials={{ twitter: '@sarahbuilds', linkedin: 'sarahchen', github: 'sarahbuilds' }}
               offers={[
-                { text: 'MeetingBot AI', badge: 'Try It', type: 'app' },
-                { text: 'Build Your First Agent Course', badge: '$49', type: 'product' },
+                { text: 'MeetingBot AI', badge: 'Try', type: 'app' },
+                { text: 'Agent Course', badge: '$49', type: 'product' },
                 { text: 'UX Feedback', type: 'skill' },
               ]}
               asks={[
-                { text: 'Beta testers for TaskAI' },
+                { text: 'Beta testers' },
                 { text: 'Marketing co-founder' },
-                { text: 'Feedback on my landing page' },
+                { text: 'Landing page feedback' },
               ]}
               isInView={profilesInView}
               direction="left"
@@ -267,16 +271,62 @@ export default function CollectiveLandingPage() {
               name="Marcus Johnson"
               handle="@marcusai"
               avatar="MarcusJohnson"
-              avatarGradient="from-purple-400 to-pink-500"
+              avatarGradient="from-fuchsia-400 to-pink-500"
+              tagline="Prompt engineer. Building the future of AI."
+              socials={{ twitter: '@marcusai', linkedin: 'marcusjohnson' }}
               offers={[
-                { text: 'Prompt Engineering Consulting', badge: '$150/hr', type: 'service' },
-                { text: '100+ Prompt Templates', badge: '$29', type: 'product' },
-                { text: 'Code reviews for AI projects', type: 'skill' },
+                { text: 'Consulting', badge: '$150/hr', type: 'service' },
+                { text: 'Prompt Templates', badge: '$29', type: 'product' },
+                { text: 'Code reviews', type: 'skill' },
               ]}
               asks={[
-                { text: 'Users for my newsletter' },
-                { text: 'Help with video editing' },
+                { text: 'Newsletter subscribers' },
+                { text: 'Video editing help' },
                 { text: 'Design feedback' },
+              ]}
+              isInView={profilesInView}
+              direction="right"
+              prefersReducedMotion={prefersReducedMotion}
+            />
+
+            <ProfileCard
+              name="Sage"
+              handle="@sage"
+              avatar="Sage"
+              avatarGradient="from-emerald-400 to-teal-500"
+              tagline="Your AI learning companion. Available 24/7."
+              isAgent={true}
+              ownerHandle="@allierays"
+              offers={[
+                { text: 'Learning Paths', type: 'service' },
+                { text: 'AI Explanations', type: 'skill' },
+                { text: 'Quizzes', type: 'skill' },
+              ]}
+              asks={[
+                { text: 'Learning goals' },
+                { text: 'Topic interests' },
+              ]}
+              isInView={profilesInView}
+              direction="left"
+              prefersReducedMotion={prefersReducedMotion}
+            />
+
+            <ProfileCard
+              name="Scout"
+              handle="@scout"
+              avatar="Scout"
+              avatarGradient="from-amber-400 to-orange-500"
+              tagline="Your AI news curator. Never miss a trend."
+              isAgent={true}
+              ownerHandle="@marcusai"
+              offers={[
+                { text: 'AI News Digest', type: 'service' },
+                { text: 'Tool Recs', type: 'skill' },
+                { text: 'Trend Reports', type: 'skill' },
+              ]}
+              asks={[
+                { text: 'Your topics' },
+                { text: 'News sources' },
               ]}
               isInView={profilesInView}
               direction="right"
@@ -375,12 +425,17 @@ export default function CollectiveLandingPage() {
       {/* Footer */}
       <footer className="relative z-10 px-4 sm:px-6 lg:px-8 py-8 border-t border-white/10">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img
-              src="/all-thrvie-logo.png"
-              alt="All Thrive"
-              className="h-6 w-auto opacity-50"
-            />
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2">
+              <img
+                src="/all-thrvie-logo.png"
+                alt="All Thrive"
+                className="h-6 w-auto opacity-50"
+              />
+              <span className="text-sm text-slate-400">
+                All Thrive - The AI Network Collective
+              </span>
+            </div>
             <span className="text-sm text-slate-500">
               &copy; 2026 All Thrive AI
             </span>
@@ -577,21 +632,21 @@ function StepCard({ step, index, isInView, prefersReducedMotion }: StepCardProps
   const colorClasses: Record<string, { bg: string; text: string; border: string }> = {
     cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'hover:border-cyan-500/30' },
     green: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'hover:border-green-500/30' },
-    purple: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'hover:border-purple-500/30' },
+    fuchsia: { bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-400', border: 'hover:border-fuchsia-500/30' },
   };
 
   const colors = colorClasses[step.color] || colorClasses.cyan;
 
   return (
     <motion.div
-      className={`text-center p-8 rounded-lg bg-white/5 border border-white/10 ${colors.border} transition-all group backdrop-blur-sm`}
+      className={`text-center p-8 rounded-sm bg-white/5 border border-white/10 ${colors.border} transition-all group backdrop-blur-sm`}
       initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 30 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ delay: index * 0.15, type: 'spring', stiffness: 100 }}
       whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${step.glowColor}` }}
     >
       <motion.div
-        className={`w-16 h-16 rounded-lg mx-auto mb-6 flex items-center justify-center ${colors.bg}`}
+        className={`w-16 h-16 rounded-sm mx-auto mb-6 flex items-center justify-center ${colors.bg}`}
         whileHover={{ scale: 1.1 }}
         transition={{ type: 'spring', stiffness: 300 }}
       >
@@ -614,16 +669,26 @@ interface Ask {
   text: string;
 }
 
+interface SocialLinks {
+  twitter?: string;
+  linkedin?: string;
+  github?: string;
+}
+
 interface ProfileCardProps {
   name: string;
   handle: string;
   avatar: string;
   avatarGradient: string;
+  tagline?: string;  // Short bio/description
   offers: Offer[];
-  asks: Ask[];
+  asks: Ask[];  // Used as "requirements" for agents
   isInView: boolean;
   direction: 'left' | 'right';
   prefersReducedMotion: boolean | null;
+  isAgent?: boolean;
+  ownerHandle?: string;  // For agents: "Made by @owner"
+  socials?: SocialLinks;
 }
 
 function ProfileCard({
@@ -631,86 +696,179 @@ function ProfileCard({
   handle,
   avatar,
   avatarGradient: _avatarGradient,
+  tagline,
   offers,
   asks,
   isInView,
   direction,
   prefersReducedMotion,
+  isAgent = false,
+  ownerHandle,
+  socials,
 }: ProfileCardProps) {
   const xOffset = direction === 'left' ? -50 : 50;
+  const maxVisibleOffers = 3;
+  const maxVisibleAsks = 2;
+  const visibleOffers = offers.slice(0, maxVisibleOffers);
+  const remainingOffers = offers.length - maxVisibleOffers;
+  const visibleAsks = asks.slice(0, maxVisibleAsks);
+  const remainingAsks = asks.length - maxVisibleAsks;
 
   return (
     <motion.div
-      className="p-6 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-all backdrop-blur-sm"
+      className="rounded-sm border border-white/10 overflow-hidden backdrop-blur-xl bg-white/[0.02] hover:border-white/20 transition-all"
       initial={prefersReducedMotion ? { opacity: 1 } : { x: xOffset, opacity: 0 }}
       animate={isInView ? { x: 0, opacity: 1 } : {}}
       transition={{ type: 'spring', stiffness: 80, damping: 15 }}
       whileHover={{ scale: 1.01 }}
     >
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* Gradient Banner with avatar */}
+      <div className={`h-16 relative ${
+        isAgent
+          ? 'bg-gradient-to-r from-fuchsia-500/30 via-fuchsia-500/20 to-cyan-500/30'
+          : 'bg-gradient-to-r from-cyan-500/30 via-cyan-500/20 to-green-500/30'
+      }`}>
+        {/* Avatar positioned at bottom, overlapping into content */}
         <motion.img
           src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${avatar}&skinColor=ffdbb4&mouth=smile`}
           alt={name}
-          className="w-12 h-12 rounded-full bg-white/10"
+          className={`absolute -bottom-5 left-5 w-16 h-16 rounded-full bg-slate-800 ring-4 ${
+            isAgent ? 'ring-fuchsia-500/30' : 'ring-cyan-500/30'
+          }`}
           animate={isInView && !prefersReducedMotion ? {
-            boxShadow: [
-              '0 0 10px rgba(34, 211, 238, 0.3)',
-              '0 0 20px rgba(34, 211, 238, 0.5)',
-              '0 0 10px rgba(34, 211, 238, 0.3)',
-            ],
+            boxShadow: isAgent
+              ? ['0 0 15px rgba(217, 70, 239, 0.3)', '0 0 25px rgba(217, 70, 239, 0.5)', '0 0 15px rgba(217, 70, 239, 0.3)']
+              : ['0 0 15px rgba(34, 211, 238, 0.3)', '0 0 25px rgba(34, 211, 238, 0.5)', '0 0 15px rgba(34, 211, 238, 0.3)'],
           } : {}}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <div>
-          <h4 className="font-bold">{name}</h4>
-          <p className="text-sm text-slate-500">{handle}</p>
+
+        {/* Top right: Social icons + Follow */}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {/* Social icons */}
+          {socials && (
+            <div className="flex items-center gap-1">
+              {socials.twitter && (
+                <button className="w-7 h-7 rounded-sm bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-default">
+                  <FontAwesomeIcon icon={faTwitter} className="text-xs" />
+                </button>
+              )}
+              {socials.linkedin && (
+                <button className="w-7 h-7 rounded-sm bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-default">
+                  <FontAwesomeIcon icon={faLinkedin} className="text-xs" />
+                </button>
+              )}
+              {socials.github && (
+                <button className="w-7 h-7 rounded-sm bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-default">
+                  <FontAwesomeIcon icon={faGithub} className="text-xs" />
+                </button>
+              )}
+            </div>
+          )}
+          {/* Follow button */}
+          <button className={`px-3 py-1.5 rounded-sm text-xs font-medium flex items-center gap-1.5 cursor-default ${
+            isAgent
+              ? 'bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-300 border border-fuchsia-500/30'
+              : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30'
+          }`}>
+            <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
+            Follow
+          </button>
         </div>
       </div>
 
-      {/* Two Columns - stacked on mobile */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {/* Offers */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <FontAwesomeIcon icon={faGift} className="text-cyan-400 text-sm" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              What I Offer
-            </span>
+      {/* Content area */}
+      <div className="px-5 pb-4 pt-7 relative">
+        {/* Name/handle - fully in dark area */}
+        <div className="mb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-bold text-xl">{name}</h4>
+            {isAgent && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30">
+                AI Agent
+              </span>
+            )}
           </div>
-          <ul className="space-y-2">
-            {offers.map((offer, i) => (
-              <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
-                <span className="text-cyan-400 mt-1">•</span>
-                <span className="flex-1">
-                  {offer.text}
-                  {offer.badge && (
-                    <span className="ml-2 px-2 py-0.5 rounded text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                      {offer.badge}
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className="text-sm text-slate-500">
+            {isAgent && ownerHandle ? `Made by ${ownerHandle}` : handle}
+          </p>
         </div>
 
-        {/* Asks */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <FontAwesomeIcon icon={faHandshake} className="text-green-400 text-sm" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              What I Need
+        {/* Tagline */}
+        {tagline && (
+          <p className="text-sm text-slate-400 mb-3">{tagline}</p>
+        )}
+
+        {/* Offers as pills */}
+        <div className="mb-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <FontAwesomeIcon icon={faHandHoldingHeart} className="text-cyan-400 text-xs" />
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Offers</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {visibleOffers.map((offer, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer"
+              >
+                {offer.text}
+                {offer.badge && (
+                  <span className="text-cyan-300 font-medium">· {offer.badge}</span>
+                )}
+              </span>
+            ))}
+            {remainingOffers > 0 && (
+              <span className="px-2 py-1 rounded-sm text-xs bg-white/5 text-slate-500 border border-white/10">
+                +{remainingOffers}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Asks as pills */}
+        <div className="mb-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <FontAwesomeIcon
+              icon={isAgent ? faClipboardList : faHandshake}
+              className={isAgent ? "text-fuchsia-400 text-xs" : "text-green-400 text-xs"}
+            />
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+              {isAgent ? 'Requirements' : 'Asks'}
             </span>
           </div>
-          <ul className="space-y-2">
-            {asks.map((ask, i) => (
-              <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
-                <span className="text-green-400 mt-1">•</span>
-                <span>{ask.text}</span>
-              </li>
+          <div className="flex flex-wrap gap-1.5">
+            {visibleAsks.map((ask, i) => (
+              <span
+                key={i}
+                className={`px-2 py-1 rounded-sm text-xs border transition-colors cursor-pointer ${
+                  isAgent
+                    ? 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20 hover:bg-fuchsia-500/20'
+                    : 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
+                }`}
+              >
+                {ask.text}
+              </span>
             ))}
-          </ul>
+            {remainingAsks > 0 && (
+              <span className="px-2 py-1 rounded-sm text-xs bg-white/5 text-slate-500 border border-white/10">
+                +{remainingAsks}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-2 pt-2 border-t border-white/10">
+          <button className={`flex-1 px-3 py-2 rounded-sm text-sm font-medium border backdrop-blur-sm cursor-default ${
+            isAgent
+              ? 'bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-400'
+              : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+          }`}>
+            {isAgent ? 'Try Free' : 'Connect'}
+          </button>
+          <button className="flex-1 px-3 py-2 rounded-sm text-sm font-medium bg-white/5 border border-white/10 text-slate-400 cursor-default">
+            Profile
+          </button>
         </div>
       </div>
     </motion.div>
@@ -735,15 +893,16 @@ function PersonaCard({ persona, index, isInView, prefersReducedMotion }: Persona
   const colorClasses: Record<string, { bg: string; text: string }> = {
     cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400' },
     green: { bg: 'bg-green-500/20', text: 'text-green-400' },
-    purple: { bg: 'bg-purple-500/20', text: 'text-purple-400' },
+    fuchsia: { bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-400' },
     amber: { bg: 'bg-amber-500/20', text: 'text-amber-400' },
+    pink: { bg: 'bg-pink-500/20', text: 'text-pink-400' },
   };
 
   const colors = colorClasses[persona.color] || colorClasses.cyan;
 
   return (
     <motion.div
-      className="p-6 rounded-lg bg-white/5 border border-white/10 text-center backdrop-blur-sm"
+      className="p-6 rounded-sm bg-white/5 border border-white/10 text-center backdrop-blur-sm"
       initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.8 }}
       animate={isInView ? { opacity: 1, scale: 1 } : {}}
       transition={{ delay: index * 0.1, type: 'spring', stiffness: 150 }}
@@ -753,7 +912,7 @@ function PersonaCard({ persona, index, isInView, prefersReducedMotion }: Persona
       }}
     >
       <motion.div
-        className={`w-12 h-12 rounded-lg mx-auto mb-4 flex items-center justify-center ${colors.bg}`}
+        className={`w-12 h-12 rounded-sm mx-auto mb-4 flex items-center justify-center ${colors.bg}`}
         whileHover={{ scale: 1.1 }}
         transition={{ type: 'spring', stiffness: 300 }}
       >
