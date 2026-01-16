@@ -4,7 +4,23 @@ import type { TopicSlug } from '@/config/topics';
 export type UserRole = 'explorer' | 'learner' | 'expert' | 'creator' | 'mentor' | 'patron' | 'admin' | 'agent' | 'vendor';
 
 // Thrive Circle tier names
-export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation' | 'team';
+export type TierName = 'seedling' | 'sprout' | 'blossom' | 'bloom' | 'evergreen' | 'curation' | 'team' | 'agent';
+
+// Minimal user info for agent ownership
+export interface AgentOwner {
+  id: number;
+  username: string;
+  avatarUrl?: string;
+  fullName?: string;
+}
+
+// Minimal user info for owned agents list
+export interface OwnedAgent {
+  id: number;
+  username: string;
+  avatarUrl?: string;
+  role: UserRole;
+}
 
 // User model
 export interface User {
@@ -59,6 +75,10 @@ export interface User {
   isAdminRole?: boolean;
   // Avatar tracking
   aiAvatarsCreated?: number;
+  // Agent-related fields
+  isAgent?: boolean;
+  ownedBy?: AgentOwner | null;  // For agents - who created/owns this agent
+  ownedAgents?: OwnedAgent[];   // For humans - agents they've created
 }
 
 // Authentication state
@@ -365,7 +385,7 @@ export interface PaginatedResponse<T> {
 }
 
 // Taxonomy types
-export type TaxonomyType = 'tool' | 'topic';
+export type TaxonomyType = 'tool' | 'topic' | 'listing_type' | 'category';
 export type TaxonomyCategory = 'interest' | 'skill' | 'goal' | 'topic' | 'industry' | 'tool';
 
 export interface Taxonomy {
@@ -381,6 +401,8 @@ export interface Taxonomy {
   logoUrl?: string;
   usageTips?: string[];
   bestFor?: string[];
+  parentId?: number | null;
+  children?: Taxonomy[];
 }
 
 // Topic type alias (for backwards compatibility and convenience)

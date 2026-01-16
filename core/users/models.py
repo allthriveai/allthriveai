@@ -51,7 +51,15 @@ class User(AbstractUser):
     location = models.CharField(max_length=100, blank=True, help_text='City, state/country or "Remote"')
     pronouns = models.CharField(max_length=50, blank=True, help_text='e.g. she/her, he/him, they/them')
 
-    # Agent personality fields (only used for role='agent')
+    # Agent ownership and personality fields (only used for role='agent')
+    owned_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='owned_agents',
+        help_text='Human user who owns/created this agent (for role=agent only)',
+    )
     personality_prompt = models.TextField(
         blank=True,
         help_text='System prompt defining the agent personality for LLM interactions',
@@ -120,6 +128,7 @@ class User(AbstractUser):
         ('evergreen', 'Evergreen'),
         ('curation', 'Curation'),  # Special tier for RSS/YouTube AI agents - no points
         ('team', 'All Thrive Team'),  # Core Team agents (Ava, Pip, Sage, Haven) - no points
+        ('agent', 'AI Agent'),  # User-created AI agents - no points
     ]
 
     TIER_THRESHOLDS = {
@@ -533,8 +542,8 @@ class User(AbstractUser):
         Example:
             user.add_points(25, 'project_create', 'Created: My First Project')
         """
-        # Skip point awards for AI agent tiers (curation = RSS/YouTube, team = Core Team)
-        if self.tier in ('curation', 'team'):
+        # Skip point awards for AI agent tiers (curation = RSS/YouTube, team = Core Team, agent = user-created)
+        if self.tier in ('curation', 'team', 'agent'):
             logger.debug(
                 f'Skipping points for {self.tier} tier user {self.username}',
                 extra={'user_id': self.id, 'activity_type': activity_type},

@@ -31,6 +31,7 @@ import { FilterDropdown, SelectedFilters, type ContentTypeKey } from '@/componen
 import { getFilterOptions } from '@/services/explore';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { MyAgentsSection } from '@/components/profile/MyAgentsSection';
 import { ProfileTemplatePicker } from '@/components/profile/ProfileTemplatePicker';
 import { AvatarFocalPointEditor } from '@/components/profile/AvatarFocalPointEditor';
 import { logError, parseApiError } from '@/utils/errorHandler';
@@ -1616,18 +1617,30 @@ export default function ProfilePage() {
                     <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
                   </div>
                 ) : profileUserData ? (
-                  <ProfileSections
-                    sections={profileSections}
-                    user={profileUserData}
-                    isEditing={isEditingShowcase}
-                    isOwnProfile={isOwnProfile}
-                    onSectionUpdate={handleSectionUpdate}
-                    onAddSection={handleAddSection}
-                    onDeleteSection={handleDeleteSection}
-                    onToggleVisibility={handleToggleSectionVisibility}
-                    onReorderSections={handleReorderSections}
-                    onSocialLinksUpdate={handleSocialLinksUpdate}
-                  />
+                  <>
+                    <ProfileSections
+                      sections={profileSections}
+                      user={profileUserData}
+                      isEditing={isEditingShowcase}
+                      isOwnProfile={isOwnProfile}
+                      onSectionUpdate={handleSectionUpdate}
+                      onAddSection={handleAddSection}
+                      onDeleteSection={handleDeleteSection}
+                      onToggleVisibility={handleToggleSectionVisibility}
+                      onReorderSections={handleReorderSections}
+                      onSocialLinksUpdate={handleSocialLinksUpdate}
+                    />
+
+                    {/* My Agents Section - Show if user has agents */}
+                    {profileUser?.ownedAgents && profileUser.ownedAgents.length > 0 && (
+                      <div className="mt-8">
+                        <MyAgentsSection
+                          agents={profileUser.ownedAgents}
+                          isOwnProfile={isOwnProfile}
+                        />
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="py-20 text-center">
                     <p className="text-gray-500 dark:text-gray-400">Unable to load profile sections.</p>

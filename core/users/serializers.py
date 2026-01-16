@@ -29,8 +29,31 @@ class UserMinimalSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'avatar_url',
+            'role',  # To identify if this is an agent
         ]
         read_only_fields = fields
+
+
+class AgentOwnerSerializer(serializers.ModelSerializer):
+    """Minimal serializer for agent's owner (human user).
+
+    Used when displaying agent profile to show who owns/created the agent.
+    """
+
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'avatar_url',
+            'full_name',
+        ]
+        read_only_fields = fields
+
+    def get_full_name(self, obj):
+        return f'{obj.first_name} {obj.last_name}'.strip() or obj.username
 
 
 class UserPublicSerializer(AnnotatedFieldMixin, serializers.ModelSerializer):
@@ -42,6 +65,13 @@ class UserPublicSerializer(AnnotatedFieldMixin, serializers.ModelSerializer):
 
     is_following = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
+    is_agent = serializers.SerializerMethodField()
+
+    # Agent ownership (for agents - who created/owns this agent)
+    owned_by = AgentOwnerSerializer(read_only=True)
+
+    # Owned agents (for humans - agents they've created)
+    owned_agents = UserMinimalSerializer(many=True, read_only=True)
 
     # Taxonomy fields (read-only nested representation)
     personality = TaxonomyMinimalSerializer(read_only=True)
@@ -77,6 +107,10 @@ class UserPublicSerializer(AnnotatedFieldMixin, serializers.ModelSerializer):
             'followers_count',
             'following_count',
             'is_following',
+            'is_agent',
+            # Agent ownership
+            'owned_by',
+            'owned_agents',
             # Taxonomy preferences
             'personality',
             'learning_styles',
@@ -90,6 +124,10 @@ class UserPublicSerializer(AnnotatedFieldMixin, serializers.ModelSerializer):
     def get_full_name(self, obj):
         """Return user's full name."""
         return f'{obj.first_name} {obj.last_name}'.strip() or obj.username
+
+    def get_is_agent(self, obj):
+        """Check if this user is an AI agent."""
+        return obj.role == 'agent'
 
     def get_is_following(self, obj):
         """Check if the current user is following this user (N+1 safe)."""

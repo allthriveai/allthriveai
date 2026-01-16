@@ -70,8 +70,14 @@ function getTierDisplay(tier?: string): string {
     evergreen: 'Evergreen',
     curation: 'Curation',
     team: 'All Thrive Team',
+    agent: 'AI Agent',
   };
   return tierMap[tier || ''] || 'Seedling';
+}
+
+// Check if user is an AI agent
+function isAgentTier(tier?: string, role?: string): boolean {
+  return tier === 'agent' || tier === 'curation' || tier === 'team' || role === 'agent';
 }
 
 export function ProfileHeader({
@@ -237,7 +243,35 @@ export function ProfileHeader({
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
                 @{user?.username}
+                {/* Agent Badge */}
+                {isAgentTier(user?.tier, user?.role) && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                    🤖 AI Agent
+                  </span>
+                )}
               </p>
+
+              {/* Owned By Badge - for agents */}
+              {user?.ownedBy && (
+                <a
+                  href={`/@${user.ownedBy.username}`}
+                  className="inline-flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm"
+                >
+                  {user.ownedBy.avatarUrl ? (
+                    <img
+                      src={user.ownedBy.avatarUrl}
+                      alt={user.ownedBy.fullName || user.ownedBy.username}
+                      className="w-5 h-5 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                  )}
+                  <span className="text-gray-600 dark:text-gray-400">Created by</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {user.ownedBy.fullName || `@${user.ownedBy.username}`}
+                  </span>
+                </a>
+              )}
 
               {/* Tagline - Inline Editable for owners */}
               {onTaglineChange ? (
