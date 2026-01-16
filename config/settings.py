@@ -114,6 +114,7 @@ INSTALLED_APPS = [
     'core.community',  # Community messaging (forums, DMs, circle chat)
     'core.feedback',  # Member feedback system (feature requests, bug reports)
     'core.admin_logs',  # Admin log streaming dashboard
+    'core.listings',  # Unified Asks & Offers for The Collective
     'allauth',
     'allauth.account',
     'allauth.socialaccount',

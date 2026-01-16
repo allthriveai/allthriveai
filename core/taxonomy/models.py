@@ -73,6 +73,7 @@ class Taxonomy(models.Model):
         PERSONALITY = 'personality', 'Personality Type'
         LEARNING_STYLE = 'learning_style', 'Learning Style'
         ROLE = 'role', 'Role'
+        LISTING_TYPE = 'listing_type', 'Listing Type'
 
     taxonomy_type = models.CharField(
         max_length=20, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True

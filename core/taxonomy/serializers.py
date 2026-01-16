@@ -22,6 +22,7 @@ class TaxonomySerializer(serializers.ModelSerializer):
     """Serializer for predefined taxonomies."""
 
     taxonomy_type_display = serializers.ReadOnlyField(source='get_taxonomy_type_display')
+    parent_id = serializers.IntegerField(source='parent.id', read_only=True, allow_null=True)
 
     class Meta:
         model = Taxonomy
@@ -38,8 +39,18 @@ class TaxonomySerializer(serializers.ModelSerializer):
             'logo_url',
             'usage_tips',
             'best_for',
+            'parent_id',
         ]
         read_only_fields = ['id']
+
+
+class TaxonomyWithChildrenSerializer(TaxonomySerializer):
+    """Serializer for taxonomies with their children (for hierarchical display)."""
+
+    children = TaxonomySerializer(many=True, read_only=True)
+
+    class Meta(TaxonomySerializer.Meta):
+        fields = TaxonomySerializer.Meta.fields + ['children']
 
 
 class UserTagSerializer(serializers.ModelSerializer):
