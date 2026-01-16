@@ -131,6 +131,7 @@ const PromoPage = lazy(() => import('@/pages/PromoPage'));
 const PromoVideoPage = lazy(() => import('@/pages/PromoVideoPage'));
 const AllieConnectPage = lazy(() => import('@/pages/AllieConnectPage'));
 const CollectiveLandingPage = lazy(() => import('@/pages/CollectiveLandingPage'));
+const ListingDetailPage = lazy(() => import('@/pages/ListingDetailPage'));
 
 // Creator Tools - lazy loaded
 const CreatePage = lazy(() => import('@/pages/CreatePage'));
@@ -766,6 +767,8 @@ export function AppRoutes() {
       />
       {/* Public profile route - shows only showcase when logged out */}
       <Route path="/:username" element={<ProfilePage />} />
+      {/* Listing detail - public for non-private listings (auth handled by API) */}
+      <Route path="/:username/listing/:listingSlug" element={<ListingDetailPage />} />
       {/* Project detail - public for non-private projects (auth handled by API) */}
       <Route path="/:username/:projectSlug" element={<ProjectDetailPage />}>
         <Route path="tools/:slug" element={<ToolDetailPage />} />

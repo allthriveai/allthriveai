@@ -294,6 +294,8 @@ urlpatterns = [
     path('admin/circles/assign/', AdminCircleViewSet.as_view({'post': 'assign'}), name='admin_circles_assign'),
     path('admin/circles/remove/', AdminCircleViewSet.as_view({'post': 'remove'}), name='admin_circles_remove'),
     path('admin/circles/move/', AdminCircleViewSet.as_view({'post': 'move'}), name='admin_circles_move'),
+    # Listings endpoints (The Collective - Asks & Offers)
+    path('', include('core.listings.urls')),
     # Explore endpoints (public)
     path('projects/explore/', explore_projects, name='explore_projects'),
     path('projects/topic-suggestions/', get_topic_suggestions, name='topic_suggestions'),
