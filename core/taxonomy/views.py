@@ -36,8 +36,15 @@ class TaxonomyViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Filter by taxonomy_type if provided in query params
         taxonomy_type = self.request.query_params.get('taxonomy_type')
+        taxonomy_type_in = self.request.query_params.get('taxonomy_type__in')
+
         if taxonomy_type:
             queryset = queryset.filter(taxonomy_type=taxonomy_type)
+        elif taxonomy_type_in:
+            # Support comma-separated list of types: ?taxonomy_type__in=interest,skill
+            types = [t.strip() for t in taxonomy_type_in.split(',') if t.strip()]
+            if types:
+                queryset = queryset.filter(taxonomy_type__in=types)
 
         return queryset
 

@@ -5,7 +5,7 @@
  * listing type, and auto-save functionality (via ListingEditor parent).
  */
 
-import { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   InlineEditableTitle,
   InlineEditableText,
@@ -312,6 +312,112 @@ function ToolsMultiSelect({
               ))}
             </div>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Simple image upload with preview
+ */
+function ImageUploadField({
+  label,
+  value,
+  onChange,
+  onUpload,
+  isUploading = false,
+  isEditable = true,
+  placeholder = 'https://...',
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  onUpload?: (file: File) => Promise<void>;
+  isUploading?: boolean;
+  isEditable?: boolean;
+  placeholder?: string;
+}) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onUpload) {
+      await onUpload(file);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs text-gray-500">{label}</label>
+
+      {/* Preview */}
+      {value && (
+        <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-800 mb-2">
+          <img
+            src={value}
+            alt="Preview"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+          {isEditable && (
+            <button
+              onClick={() => onChange('')}
+              className="absolute top-2 right-2 p-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* URL Input */}
+      <input
+        type="url"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={!isEditable}
+        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 disabled:opacity-50"
+      />
+
+      {/* Upload button */}
+      {isEditable && onUpload && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded-lg text-sm transition-colors"
+          >
+            {isUploading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Uploading...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Upload Image
+              </>
+            )}
+          </button>
         </>
       )}
     </div>
@@ -714,20 +820,20 @@ export function ListingEditView(props: ListingEditViewProps) {
         title="Media"
         show={shouldShowFieldGroup(listingTypeSlug ?? undefined, 'media', intent)}
       >
-        <InlineInput
-          label="Featured Image URL"
+        <ImageUploadField
+          label="Featured Image"
           value={featuredImageUrl}
           onChange={setFeaturedImageUrl}
-          placeholder="https://..."
-          type="url"
+          onUpload={props.handleFeaturedImageUpload}
+          isUploading={props.isUploadingFeatured}
           isEditable={isEditMode}
         />
-        <InlineInput
-          label="Banner URL"
+        <ImageUploadField
+          label="Banner Image"
           value={bannerUrl}
           onChange={setBannerUrl}
-          placeholder="https://..."
-          type="url"
+          onUpload={props.handleBannerUpload}
+          isUploading={props.isUploadingBanner}
           isEditable={isEditMode}
         />
       </FieldSection>

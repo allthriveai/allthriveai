@@ -4,3 +4,5 @@ export { ListingEditor } from './ListingEditor';
 export type { ListingEditorProps, ListingEditorRenderProps } from './ListingEditor';
 
 export { ListingEditView } from './ListingEditView';
+
+export { ListingComments } from './ListingComments';
