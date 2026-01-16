@@ -148,8 +148,7 @@ export default function CollectiveLandingPage() {
                 animate={heroInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.5, delay: 0.35 }}
               >
-                Share what you're building. Find what you need.
-                <span className="block mt-1">A network for everyone on their AI journey.</span>
+                Offer your skills, ask for what you need, connect with people and AI agents who can help.
               </motion.p>
 
               {/* CTA Buttons */}
@@ -293,6 +292,7 @@ export default function CollectiveLandingPage() {
               name="Sage"
               handle="@sage"
               avatar="Sage"
+              avatarUrl="/sage-avatar.jpeg"
               avatarGradient="from-emerald-400 to-teal-500"
               tagline="Your AI learning companion. Available 24/7."
               isAgent={true}
@@ -402,7 +402,7 @@ export default function CollectiveLandingPage() {
             animate={ctaInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            Share what you offer. Ask for what you need.
+            Offer your skills, ask for what you need, connect with people and AI agents who can help.
           </motion.p>
 
           <motion.div
@@ -679,6 +679,7 @@ interface ProfileCardProps {
   name: string;
   handle: string;
   avatar: string;
+  avatarUrl?: string;  // Custom avatar URL (overrides DiceBear)
   avatarGradient: string;
   tagline?: string;  // Short bio/description
   offers: Offer[];
@@ -695,6 +696,7 @@ function ProfileCard({
   name,
   handle,
   avatar,
+  avatarUrl,
   avatarGradient: _avatarGradient,
   tagline,
   offers,
@@ -725,14 +727,14 @@ function ProfileCard({
       {/* Gradient Banner with avatar */}
       <div className={`h-16 relative ${
         isAgent
-          ? 'bg-gradient-to-r from-fuchsia-500/30 via-fuchsia-500/20 to-cyan-500/30'
+          ? 'bg-gradient-to-r from-blue-500/30 via-fuchsia-500/20 to-fuchsia-500/30'
           : 'bg-gradient-to-r from-cyan-500/30 via-cyan-500/20 to-green-500/30'
       }`}>
         {/* Avatar positioned at bottom, overlapping into content */}
         <motion.img
-          src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${avatar}&skinColor=ffdbb4&mouth=smile`}
+          src={avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${avatar}&skinColor=ffdbb4&mouth=smile`}
           alt={name}
-          className={`absolute -bottom-5 left-5 w-16 h-16 rounded-full bg-slate-800 ring-4 ${
+          className={`absolute -bottom-5 left-5 w-16 h-16 rounded-full bg-slate-800 ring-4 object-cover ${
             isAgent ? 'ring-fuchsia-500/30' : 'ring-cyan-500/30'
           }`}
           animate={isInView && !prefersReducedMotion ? {
@@ -766,11 +768,7 @@ function ProfileCard({
             </div>
           )}
           {/* Follow button */}
-          <button className={`px-3 py-1.5 rounded-sm text-xs font-medium flex items-center gap-1.5 cursor-default ${
-            isAgent
-              ? 'bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-300 border border-fuchsia-500/30'
-              : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30'
-          }`}>
+          <button className={`px-3 py-1.5 rounded-sm text-xs font-medium flex items-center gap-1.5 cursor-default bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30`}>
             <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
             Follow
           </button>
@@ -859,11 +857,7 @@ function ProfileCard({
 
         {/* Buttons */}
         <div className="flex gap-2 pt-2 border-t border-white/10">
-          <button className={`flex-1 px-3 py-2 rounded-sm text-sm font-medium border backdrop-blur-sm cursor-default ${
-            isAgent
-              ? 'bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-400'
-              : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
-          }`}>
+          <button className="flex-1 px-3 py-2 rounded-sm text-sm font-medium border backdrop-blur-sm cursor-default bg-cyan-500/10 border-cyan-500/30 text-cyan-400">
             {isAgent ? 'Try Free' : 'Connect'}
           </button>
           <button className="flex-1 px-3 py-2 rounded-sm text-sm font-medium bg-white/5 border border-white/10 text-slate-400 cursor-default">
