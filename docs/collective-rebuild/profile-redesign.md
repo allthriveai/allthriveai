@@ -3,6 +3,7 @@
 > **Last Updated:** January 2025
 >
 > This document defines the new profile layout for the Ask & Offer AI Collective.
+> **Updated to use the unified Listing model.**
 
 ---
 
@@ -12,18 +13,24 @@ Profiles are **creative hubs** that prominently feature **Asks and Offers side-b
 
 **Key insight:** An app isn't an offer — it's a thing. The *offer* is what you do with it (mentoring, consulting, courses). The *ask* is what you need for it (testers, feedback, collaborators). By separating "Things I'm Working On" from Asks/Offers, we avoid forcing creative content into transactional boxes.
 
+**Data Model:** Everything is a **Listing** with:
+- `intent`: `ask` or `offer`
+- `listing_type`: categorizes what kind of listing (project, service, content, etc.)
+- `parent`: optional FK to another listing (e.g., an Ask for testers linked to an App)
+
 **Structure:**
 1. **Header** — Name, tagline, stats, social links
 2. **Asks + Offers** — Side-by-side columns (the core marketplace)
-3. **Things I'm Working On or Thinking About** — Projects, apps, WIPs, ideas, blog posts (creative showcase)
+3. **Things I'm Working On** — Projects, apps, agents (creative showcase)
 4. **Things I Love** — Curated links and recommendations
 5. **Recent Activity** — Shows engagement
 6. **Achievements** — Gamification/badges
+7. **My Agents** — AI agents created by this user (for human profiles)
 
 **Key principles:**
 - Asks and Offers are **equal and prominent** — side-by-side, not sequential
-- Creative content (apps, WIPs, ideas, blog posts) lives in its own section
-- Each project card shows its linked asks and offers
+- Creative content (apps, agents, MCPs) lives in its own section
+- Each project card shows its linked asks and offers (via `parent` relationship)
 - Empty sections are hidden automatically
 
 ---
@@ -52,52 +59,44 @@ Profiles are **creative hubs** that prominently feature **Asks and Offers side-b
 │                                            - Fridays [Request]              │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  🛠️ THINGS I'M WORKING ON OR THINKING ABOUT                                 │
+│  🛠️ THINGS I'M WORKING ON                                                   │
 │  ─────────────────────────────────────────────────────────────────────────  │
 │                                                                             │
 │  ┌────────────────────────────────────┐  ┌────────────────────────────────┐ │
 │  │ [IMAGE]                            │  │ [IMAGE]                        │ │
 │  │ Kinlia                             │  │ FounderBot                     │ │
-│  │ "AI-powered customer onboarding"   │  │ "Your AI co-founder that       │ │
-│  │                                    │  │  never sleeps"                 │ │
-│  │ Tags: [SaaS] [Onboarding] [AI]     │  │                                │ │
-│  │ Tools: [Claude] [Vercel]           │  │ Tags: [Agents] [Productivity]  │ │
-│  │ Status: Live                       │  │ Tools: [Claude] [MCP]          │ │
-│  │                                    │  │ Status: Coming Soon            │ │
-│  │ ASK: Beta testers needed [Open]    │  │                                │ │
-│  │ OFFER: Onboarding strategy         │  │ ASK: Technical co-founder      │ │
-│  │        consult - $150/hr [Book]    │  │      [Open]                    │ │
+│  │ "AI-powered customer onboarding"   │  │ "Your AI co-founder"           │ │
+│  │                                    │  │                                │ │
+│  │ Tags: [SaaS] [Onboarding] [AI]     │  │ Tags: [Agents] [Productivity]  │ │
+│  │ Tools: [Claude] [Vercel]           │  │ Tools: [Claude] [MCP]          │ │
+│  │ Status: Published                  │  │ Status: Draft                  │ │
+│  │                                    │  │                                │ │
+│  │ ASK: Beta testers needed [Open]    │  │ ASK: Technical co-founder      │ │
+│  │ OFFER: Onboarding consult [Book]   │  │      [Open]                    │ │
 │  └────────────────────────────────────┘  └────────────────────────────────┘ │
 │                                                                             │
-│  ┌────────────────────────────────────┐  ┌────────────────────────────────┐ │
-│  │ [IMAGE]                            │  │ [IMAGE]                        │ │
-│  │ "How I Got My First 1000 Users"    │  │ AI Voice App for Podcasters    │ │
-│  │ "The unconventional playbook       │  │ "Clone your voice for show     │ │
-│  │  that worked for Kinlia"           │  │  notes and promos"             │ │
-│  │                                    │  │                                │ │
-│  │ Tags: [Growth] [Startups]          │  │ Tags: [Voice] [Podcasting]     │ │
-│  │ Type: Blog Post                    │  │ Tools: [ElevenLabs] [Claude]   │ │
-│  │                                    │  │ Status: Idea                   │ │
-│  │ [Read on Substack]                 │  │                                │ │
-│  │                                    │  │ ASK: Would anyone use this?    │ │
-│  │ OFFER: Growth strategy session     │  │      Looking for feedback      │ │
-│  │        - $200/hr [Book]            │  │      [Open]                    │ │
-│  └────────────────────────────────────┘  └────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  🤖 MY AGENTS                                                               │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  ┌──────────────┐  ┌──────────────┐                                         │
+│  │ [Avatar]     │  │ [Avatar]     │                                         │
+│  │ @founderbot  │  │ @kinlia-help │                                         │
+│  │ AI Agent     │  │ AI Agent     │                                         │
+│  └──────────────┘  └──────────────┘                                         │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ❤️ THINGS I LOVE                                                           │
 │  ─────────────────────────────────────────────────────────────────────────  │
 │  • "The best Claude prompting guide I've found" [Link]                      │
-│  • "How Linear builds product - incredible process doc" [Link]              │
+│  • "How Linear builds product" [Link]                                       │
 │  • "My favorite MCP tutorial for beginners" [Link]                          │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  📝 RECENT ACTIVITY                                                         │
 │  ─────────────────────────────────────────────────────────────────────────  │
 │  • Helped @marcus with pricing strategy - 2 days ago                        │
-│  • Shipped Kinlia v2.0 with AI suggestions - 1 week ago                     │
+│  • Published Kinlia v2.0 - 1 week ago                                       │
 │  • Posted "How I Got My First 1000 Users" - 2 weeks ago                     │
-│  • Helped @jenny with landing page feedback - 3 weeks ago                   │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  🏆 ACHIEVEMENTS                                                            │
@@ -107,16 +106,80 @@ Profiles are **creative hubs** that prominently feature **Asks and Offers side-b
 
 ---
 
+## Unified Listing Model
+
+All content on profiles comes from the **Listing** model with different `intent` and `listing_type` values.
+
+### How Listings Map to Profile Sections
+
+| Profile Section | Listing Filter |
+|-----------------|----------------|
+| **My Asks** | `intent='ask'`, `status in ['open', 'in_progress']` |
+| **My Offers** | `intent='offer'`, `status='published'`, `is_available=True` |
+| **Things I'm Working On** | `listing_type.parent.slug='project'` (apps, agents, MCPs, side-projects) |
+| **Things I Love** | `listing_type.slug='curated-link'` (new type needed) |
+
+### Listing Types Hierarchy
+
+```
+project (parent)
+├── app
+├── agent
+├── mcp-server
+└── side-project
+
+content (parent)
+├── article
+├── course
+├── newsletter
+└── curated-link  ← NEW for "Things I Love"
+
+services (parent)
+├── consulting
+├── freelance
+└── hiring
+
+mentorship (parent)
+├── mentor
+├── accountability
+└── learning
+
+feedback (parent)
+├── beta-testing
+├── code-review
+├── design-critique
+└── general-feedback
+
+growth (parent)
+├── promotion
+├── introduction
+└── collaboration
+```
+
+### Parent-Child Relationships
+
+Listings can link to a parent listing via the `parent` FK:
+
+```
+Listing: "Kinlia" (type=app, intent=offer)
+  └── Listing: "Beta testers for Kinlia" (type=beta-testing, intent=ask, parent=Kinlia)
+  └── Listing: "Onboarding consulting" (type=consulting, intent=offer, parent=Kinlia)
+```
+
+This allows project cards to show their linked asks/offers.
+
+---
+
 ## Header Section
 
 ### Stats to Display
 
-| Stat | Icon | Description |
-|------|------|-------------|
-| Points | 🌱 | Total contribution points |
-| Asks | 🚀 | Number of open asks |
-| Offers | 💫 | Number of active offers |
-| Followers | 👀 | Follower count |
+| Stat | Icon | Description | Query |
+|------|------|-------------|-------|
+| Points | 🌱 | Total contribution points | `user.total_points` |
+| Asks | 🚀 | Number of open asks | `Listing.filter(user, intent='ask', status='open').count()` |
+| Offers | 💫 | Number of active offers | `Listing.filter(user, intent='offer', status='published').count()` |
+| Followers | 👀 | Follower count | `user.followers.count()` |
 
 ### Header Elements
 
@@ -125,6 +188,8 @@ Profiles are **creative hubs** that prominently feature **Asks and Offers side-b
 - **Stats row** — Points, asks count, offers count, followers
 - **Social links** — Twitter, LinkedIn, GitHub, etc.
 - **Actions** — Follow button, Share button
+- **Agent Badge** — If user is an AI agent, show "🤖 AI Agent" badge
+- **Created By** — If agent, show link to human owner
 
 ---
 
@@ -134,95 +199,79 @@ Two columns displayed together at the top — the core marketplace interaction.
 
 ### Asks Column (🚀 MY ASKS)
 
-What this person needs help with. Categories are flexible and user-defined, but common types include:
+Query: `Listing.filter(user=user, intent='ask', status__in=['open', 'in_progress'], is_archived=False)`
 
-| Category | Subcategories |
-|----------|---------------|
-| **Testers** | beta_testers, alpha_testers, ux_testers |
-| **Feedback** | landing_page, pitch_deck, product, pricing, copy |
-| **Collaborators** | cofounder, technical, creative, marketing |
-| **Growth** | users, subscribers, followers, attendees |
-| **Learning** | skill, tool, concept |
-| **Hiring** | fulltime, contract, freelance |
-| **Advice** | strategy, technical, business, career |
-| **Introductions** | investors, customers, partners, mentors |
-
-Each ask shows:
+Each ask card shows:
 - **Title** — What they need
-- **Category badge** — Visual indicator
+- **Type badge** — From `listing_type` (testers, feedback, collaborator, etc.)
 - **Status** — Open, In Progress, Fulfilled
-- **[CTA]** button — Opens right-side tray
+- **Parent link** — If linked to a project, show "for [Project Name]"
+- **[CTA]** button — Opens detail page or tray
 
 ### Offers Column (💫 MY OFFERS)
 
-What this person can provide to others. Categories include:
+Query: `Listing.filter(user=user, intent='offer', status='published', is_available=True, is_archived=False)`
 
-| Category | Subcategories |
-|----------|---------------|
-| **Testing** | will_test, qa_review |
-| **Feedback** | landing_page, pitch_deck, product, code_review |
-| **Collaboration** | cofounder, partner, contributor |
-| **Teaching** | course, mentorship, workshop, office_hours |
-| **Services** | consulting, coaching, implementation, strategy |
-| **Products** | template, tool, download, resource |
-| **Introductions** | network, referrals |
-
-Each offer shows:
+Each offer card shows:
 - **Title** — What they're offering
-- **Price** — Free, $ amount, or "from $X"
-- **[CTA]** button — Opens right-side tray
+- **Type badge** — From `listing_type` (course, consulting, template, etc.)
+- **Price** — Free, $ amount, or "from $X" (from `price`, `pricing_type`)
+- **Parent link** — If linked to a project
+- **[CTA]** button — Opens detail page or tray
 
 ---
 
-## Things I'm Working On or Thinking About
+## Things I'm Working On
 
-Rich project cards displayed 2 per row on desktop, 1 per row on mobile.
+Query: `Listing.filter(user=user, listing_type__parent__slug='project', is_archived=False)`
+
+This includes: apps, agents, MCP servers, side-projects.
 
 ### Project Card Contents
 
-| Element | Description |
-|---------|-------------|
-| **Image** | Screenshot or logo |
-| **Title** | Name of the project |
-| **Description** | Brief tagline |
-| **Tags** | Categories (Productivity, Marketing, etc.) |
-| **Tools** | AI tools used (Claude, Midjourney, etc.) — links to Tools Directory |
-| **Status** | Live, Coming Soon, WIP, Idea |
-| **ASK** | What they need for this project (linked) |
-| **OFFER** | What they can provide related to this project (linked) |
+| Element | Source |
+|---------|--------|
+| **Image** | `listing.featured_image_url` or `listing.banner_url` |
+| **Title** | `listing.title` |
+| **Description** | `listing.description` |
+| **Tags** | `listing.topics` (M2M to Taxonomy) |
+| **Tools** | `listing.tools` (M2M to Tool) |
+| **Status** | `listing.status` (draft, published, etc.) |
+| **Linked Asks** | `Listing.filter(parent=listing, intent='ask')` |
+| **Linked Offers** | `Listing.filter(parent=listing, intent='offer')` |
 
-### Item Types
+### Display Rules
 
-- **Apps** — Finished products
-- **Agents** — AI agents, MCPs
-- **Blog posts** — Content they've written
-- **Ideas** — Things they're considering building
-- **WIPs** — Work in progress
-- **Games** — Interactive projects
+- 2 cards per row on desktop, 1 on mobile
+- Show linked asks/offers inline on card
+- Click card → goes to `/@username/listing-slug`
 
-### Project-Linked Asks & Offers
+---
 
-**Data model:** Asks and Offers have an optional `project` foreign key.
+## My Agents Section
 
-When viewing a project card:
-- Shows attached asks (e.g., "ASK: Looking for beta testers [Open]")
-- Shows attached offers (e.g., "OFFER: Setup consulting - $50/hr [Book]")
-- Clicking opens the right-side tray
+Query: `user.owned_agents.all()` (Users with `owned_by=user`)
 
-When creating an ask or offer:
-- User can optionally link it to one of their projects
-- "What project is this for?" dropdown
+Only shown for human profiles that have created AI agents.
+
+Each agent card shows:
+- **Avatar** — Agent's avatar
+- **Username** — `@agent-username`
+- **Badge** — "AI Agent"
+- **Link** — Goes to agent's profile page
 
 ---
 
 ## Things I Love
 
-Curated external resources and recommendations.
+Query: `Listing.filter(user=user, listing_type__slug='curated-link', is_archived=False)`
+
+**Note:** Need to add `curated-link` listing type under `content` category.
 
 Each item shows:
-- **Title** — What they're recommending
-- **Source** — Domain or creator
-- **[Link]** button — External link
+- **Title** — `listing.title`
+- **URL** — `listing.external_url`
+- **Description** — `listing.description` (optional)
 
 ---
 
@@ -230,13 +279,13 @@ Each item shows:
 
 Shows engagement and that the person is active.
 
-| Activity Type | Display Format |
-|---------------|----------------|
-| Helped someone | "Helped @username with [ask title]" |
-| Shipped update | "Shipped [project] v2.0" |
-| Posted content | "Posted '[title]'" |
-| New offer | "Added '[offer title]'" |
-| Ask fulfilled | "[Ask title] was fulfilled" |
+| Activity Type | Display Format | Source |
+|---------------|----------------|--------|
+| Published listing | "Published [title]" | Listing with `published_at` |
+| Helped someone | "Helped @username with [title]" | Connection/transaction |
+| New ask | "Looking for [title]" | Listing with `intent='ask'` |
+| New offer | "Now offering [title]" | Listing with `intent='offer'` |
+| Comment | "Commented on [title]" | ListingComment |
 
 Display rules:
 - Show last 5-10 activities
@@ -251,166 +300,27 @@ Gamification badges earned through platform activity.
 
 Display as horizontal badge row with tooltips showing badge name and how it was earned.
 
+Query: `user.achievements.all()`
+
 ---
 
 ## CTA Interaction: Right-Side Tray
 
-When a user clicks any CTA button on someone's profile, it opens a **right-side tray** (similar to Ava's chat drawer).
+When a user clicks a CTA on someone's profile, options:
 
-### Tray Flow Templates
+1. **Navigate to listing detail page** — `/@username/listing-slug`
+2. **Open right-side tray** — Quick interaction without leaving profile
 
-**Flow A: Message Only (free asks/offers)**
-```
-┌──────────────────────────────────┐
-│  ▶ RESPOND TO ASK                │
-│  ─────────────────────────────── │
-│  "Beta testers for Kinlia"       │
-│  from @gina                      │
-│                                  │
-│  Send a message:                 │
-│  ┌─────────────────────────────┐ │
-│  │ I'd like to help test...    │ │
-│  └─────────────────────────────┘ │
-│                                  │
-│  [Send Request]                  │
-│  @gina will be notified via SMS  │
-└──────────────────────────────────┘
-```
+### Tray Flows (Future)
 
-**Flow B: Message + Payment (paid services)**
-```
-┌──────────────────────────────────┐
-│  ▶ BOOK SESSION                  │
-│  ─────────────────────────────── │
-│  1:1 Founder Coaching            │
-│  with @gina                      │
-│  $250/hr                         │
-│                                  │
-│  Send a message:                 │
-│  ┌─────────────────────────────┐ │
-│  │ I'd like to book a session  │ │
-│  │ to discuss...               │ │
-│  └─────────────────────────────┘ │
-│                                  │
-│  💳 Payment                      │
-│  [Pay $250]                      │
-│                                  │
-│  @gina will be notified via SMS  │
-└──────────────────────────────────┘
-```
+| Flow | Use Case |
+|------|----------|
+| **Message Only** | Free asks/offers — send a message |
+| **Message + Payment** | Paid services — message + Stripe |
+| **External Link** | Link to external resource |
+| **Instant Delivery** | Digital products — pay & download |
 
-**Flow C: External Link (subscribers, attendees, etc.)**
-```
-┌──────────────────────────────────┐
-│  ▶ SUBSCRIBE                     │
-│  ─────────────────────────────── │
-│  @gina's Substack                │
-│                                  │
-│  You'll be taken to:             │
-│  substack.com/...                │
-│                                  │
-│  [Open Link ↗]                   │
-│                                  │
-│  Optional: Send @gina            │
-│  a message too?                  │
-│  [Add Message]                   │
-└──────────────────────────────────┘
-```
-
-**Flow D: Instant Delivery (digital products)**
-```
-┌──────────────────────────────────┐
-│  ▶ BUY TEMPLATE                  │
-│  ─────────────────────────────── │
-│  "AI Strategy Template"          │
-│  by @gina                        │
-│  $19                             │
-│                                  │
-│  Preview:                        │
-│  [Template preview image]        │
-│                                  │
-│  💳 Payment                      │
-│  [Pay $19 & Download]            │
-│                                  │
-│  Delivered instantly             │
-└──────────────────────────────────┘
-```
-
-### CTA to Tray Flow Mapping
-
-| CTA | Tray Flow | Pre-filled Message |
-|-----|-----------|-------------------|
-| **Asks** | | |
-| [I'll Test] | A (message) | "I'd like to help test [project]..." |
-| [Give Feedback] | A (message) | "I can give you feedback on..." |
-| [Let's Talk] | A (message) | "I'm interested in collaborating..." |
-| [Try It] | C (external) | — |
-| [Subscribe] | C (external) | — |
-| [RSVP] | C (external) | — |
-| [I Can Help] | A (message) | "I can help with..." |
-| [Apply] | A (message) | "I'm interested in this role..." |
-| [I Can Teach] | A (message) | "I can teach you..." |
-| **Offers** | | |
-| [Book] (paid) | B (message + pay) | "I'd like to book..." |
-| [Request] (free) | A (message) | "I'd like to request..." |
-| [Enroll] (course) | D (instant) | — |
-| [Buy] (template) | D (instant) | — |
-| [Download] (free) | D (instant) | — |
-
----
-
-## Category Matching System
-
-Categories enable matching asks to offers. The system uses main categories with subcategories for specificity.
-
-### Matching Pairs
-
-| Ask Category | Matches Offer Category |
-|--------------|------------------------|
-| Testers | Testing |
-| Feedback | Feedback |
-| Collaborators | Collaboration |
-| Learning | Teaching |
-| Hiring | Services |
-| Advice | Services, Teaching |
-| Introductions | Introductions |
-| Growth | (browse/external) |
-
-### Discovery Integration
-
-On the Discover page, we can show matches:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  🔥 MATCHES FOR YOU                                         │
-│  Based on your asks and offers                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Your Ask: "Need beta testers for Kinlia"                   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ @marcus offered to help                              │   │
-│  │ "I love testing new SaaS tools"                      │   │
-│  │ Helped 12 people • [Accept] [Message]                │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  Your Offer: "1:1 Founder Coaching"                         │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ @jenny is asking for coaching                        │   │
-│  │ "Need help with go-to-market strategy"               │   │
-│  │ Tags: [GTM] [Strategy] • [Reach Out]                 │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Category Flexibility
-
-Categories are **not hardcoded** — users can add custom categories. The matching system uses:
-1. **Category match** — Main category pairing
-2. **Tag overlap** — Shared tags (AI, Marketing, etc.)
-3. **Tool overlap** — Both use Claude, etc.
-4. **Recency** — Newer = more relevant
-5. **Reputation** — Helped count, ratings
+For MVP, clicking CTA goes to listing detail page.
 
 ---
 
@@ -433,6 +343,9 @@ Categories are **not hardcoded** — users can add custom categories. The matchi
 │  🛠️ THINGS I'M WORKING ON   │
 │  (cards stack vertically)   │
 ├─────────────────────────────┤
+│  🤖 MY AGENTS               │
+│  (if applicable)            │
+├─────────────────────────────┤
 │  ❤️ THINGS I LOVE           │
 │  (collapsible)              │
 ├─────────────────────────────┤
@@ -445,164 +358,113 @@ Categories are **not hardcoded** — users can add custom categories. The matchi
 
 ---
 
-## Data Model
+## API Endpoints
 
-### Project Model (Things I'm Working On)
+### Profile Data Endpoint
 
-```python
-class Project(models.Model):
-    PROJECT_TYPES = [
-        ('app', 'App'),
-        ('agent', 'Agent'),
-        ('mcp', 'MCP Server'),
-        ('post', 'Blog Post'),
-        ('game', 'Game'),
-        ('idea', 'Idea'),
-        ('wip', 'Work in Progress'),
-    ]
-
-    STATUS_CHOICES = [
-        ('live', 'Live'),
-        ('coming_soon', 'Coming Soon'),
-        ('wip', 'Work in Progress'),
-        ('idea', 'Idea'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects')
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    project_type = models.CharField(max_length=20, choices=PROJECT_TYPES)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='wip')
-    featured_image_url = models.URLField(blank=True)
-    url = models.URLField(blank=True)  # Link to try it / read it
-    tags = models.ManyToManyField('taxonomy.Taxonomy', blank=True)
-    tools = models.ManyToManyField('tools.Tool', blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-```
-
-### Ask Model (with project link)
-
-```python
-class Ask(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='asks')
-    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name='asks')  # Optional link to project
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    category = models.ForeignKey('taxonomy.Taxonomy', on_delete=models.SET_NULL, null=True)
-    tags = models.ManyToManyField('taxonomy.Taxonomy', blank=True, related_name='tagged_asks')
-    status = models.CharField(max_length=20, default='open')
-    created_at = models.DateTimeField(auto_now_add=True)
-```
-
-### Offer Model (with project link)
-
-```python
-class Offer(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='offers')
-    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name='offers')  # Optional link to project
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    category = models.ForeignKey('taxonomy.Taxonomy', on_delete=models.SET_NULL, null=True)
-    tags = models.ManyToManyField('taxonomy.Taxonomy', blank=True, related_name='tagged_offers')
-    price_cents = models.PositiveIntegerField(null=True, blank=True)
-    pricing_type = models.CharField(max_length=20)  # free, one_time, hourly, monthly
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-```
-
-### Link Model (Things I Love)
-
-```python
-class Link(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='links')
-    title = models.CharField(max_length=200)
-    url = models.URLField()
-    description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-```
-
----
-
-## Profile API Response
+`GET /api/v1/users/{username}/profile/`
 
 ```typescript
 interface ProfileData {
   user: {
     id: number;
     username: string;
+    fullName: string;
     tagline: string;
+    bio: string;
     avatarUrl: string;
+    bannerUrl: string;
     totalPoints: number;
-    asksCount: number;
-    offersCount: number;
-    followersCount: number;
+    tier: string;
+    role: string;
+    isAgent: boolean;
+    ownedBy?: {
+      id: number;
+      username: string;
+      fullName: string;
+      avatarUrl: string;
+    };
     socialLinks: {
       twitter?: string;
       linkedin?: string;
       github?: string;
       website?: string;
     };
+    followersCount: number;
+    followingCount: number;
+    createdAt: string;
   };
-  asks: Ask[];
-  offers: Offer[];
-  projects: Project[];  // Things I'm Working On
-  links: Link[];        // Things I Love
+  asks: ListingCard[];        // intent='ask', status='open'
+  offers: ListingCard[];      // intent='offer', status='published'
+  projects: ListingCard[];    // listing_type under 'project' category
+  curatedLinks: ListingCard[]; // listing_type='curated-link'
+  ownedAgents: OwnedAgent[];  // Users owned by this user
   recentActivity: Activity[];
   achievements: Achievement[];
+  stats: {
+    asksCount: number;
+    offersCount: number;
+    projectsCount: number;
+  };
   isFollowing: boolean;
+  isOwnProfile: boolean;
 }
 ```
 
+### User Listings Endpoints
+
+Already built:
+- `GET /api/v1/users/{username}/listings/` — All listings
+- `GET /api/v1/users/{username}/listings/asks/` — Just asks
+- `GET /api/v1/users/{username}/listings/offers/` — Just offers
+
+Need to add:
+- `GET /api/v1/users/{username}/listings/projects/` — Project-type listings
+- `GET /api/v1/users/{username}/profile/` — Aggregated profile data
+
 ---
 
-## Implementation Files
+## Implementation Checklist
 
-```
-frontend/src/components/profile/
-  ProfileHeader.tsx              # Name, tagline, stats, social links
-  AsksOffersSection.tsx          # Side-by-side columns container
-  AskColumn.tsx                  # List of asks
-  OfferColumn.tsx                # List of offers
-  AskCard.tsx                    # Individual ask item
-  OfferCard.tsx                  # Individual offer item
-  ProjectsSection.tsx            # Things I'm Working On
-  ProjectCard.tsx                # Rich card with image, tags, tools, ASK/OFFER
-  LinksSection.tsx               # Things I Love
-  LinkCard.tsx                   # Individual link item
-  RecentActivitySection.tsx      # Activity feed
-  ActivityItem.tsx               # Activity feed item
-  AchievementsSection.tsx        # Badge display
+### Backend
+- [ ] Add `curated-link` listing type under `content` category
+- [ ] Create `/users/{username}/profile/` endpoint with aggregated data
+- [ ] Add `/users/{username}/listings/projects/` endpoint
+- [ ] Ensure `owned_agents` is included in user serializer (done)
 
-frontend/src/components/tray/
-  ActionTray.tsx                 # Right-side tray container
-  MessageOnlyTray.tsx            # Flow A
-  MessagePaymentTray.tsx         # Flow B
-  ExternalLinkTray.tsx           # Flow C
-  InstantDeliveryTray.tsx        # Flow D
+### Frontend Components
 
-frontend/src/pages/
-  ProfilePage.tsx                # Main profile page
+**Existing (may need updates):**
+- `ProfileHeader.tsx` — Has agent badge, owned by link ✅
+- `MyAgentsSection.tsx` — Shows owned agents ✅
+- `AchievementsDisplay.tsx` — Badge display
 
-frontend/src/types/
-  profile.ts                     # TypeScript interfaces
-```
+**New components needed:**
+- `AsksOffersSection.tsx` — Side-by-side columns container
+- `AskCard.tsx` — Compact ask card for profile
+- `OfferCard.tsx` — Compact offer card for profile
+- `ProjectsSection.tsx` — "Things I'm Working On" grid
+- `ProjectCard.tsx` — Rich card with linked asks/offers
+- `CuratedLinksSection.tsx` — "Things I Love" list
+- `RecentActivitySection.tsx` — Activity feed
+
+**Page updates:**
+- `ProfilePage.tsx` — Compose new sections
 
 ---
 
 ## Key Design Decisions
 
-1. **Asks and Offers are equal** — Neither is subordinate. Side-by-side layout emphasizes this.
+1. **Unified Listing model** — Everything is a Listing. Profile sections are just filtered views.
 
-2. **Stats show asks and offers counts** — Reinforces the marketplace identity.
+2. **Asks and Offers are equal** — Side-by-side layout emphasizes the marketplace.
 
-3. **Creative content is separate** — Apps, WIPs, blog posts, ideas don't need to be "offers." They live in "Things I'm Working On or Thinking About."
+3. **Projects are separate from asks/offers** — Apps, agents, MCPs are "things." Asks/offers are "what you need/provide."
 
-4. **Projects link to asks/offers** — Each project card shows its attached asks ("Need testers") and offers ("Consulting available").
+4. **Parent-child linking** — A project listing can have child asks/offers linked via `parent` FK.
 
-5. **Right-side tray for all actions** — Consistent interaction pattern. CTAs open a tray with message composer and optional payment.
+5. **Agents have profiles** — AI agents are Users with `role='agent'`, `tier='agent'`, `owned_by` pointing to creator.
 
-6. **Categories are flexible** — Users can add custom categories. Matching uses categories + tags + tools.
+6. **Empty sections are hidden** — Only show sections that have content.
 
-7. **SMS notifications** — All connections trigger SMS to recipient for immediate attention.
+7. **Mobile-first** — Sections stack vertically on mobile.
