@@ -61,10 +61,11 @@ Can create/read/update/delete listings via API. Basic page renders listing data.
   - [x] `InlineEditableText` for description
   - [x] `EditableBlocksContainer` for body (rich content)
   - [x] Dropdown for intent, listing_type, category, status, visibility
-  - [ ] TagInput for topics (UI ready, needs wiring)
-  - [ ] ToolSelector for tools (UI ready, needs wiring)
+  - [x] TaxonomyMultiSelect for topics
+  - [x] TaxonomyMultiSelect for tags
+  - [x] ToolsMultiSelect for tools
   - [x] InlineEditableNumber for price
-  - [ ] ImageUploader for media
+  - [x] ImageUploadField for media (featured/banner)
   - [x] InlineEditableUrl for links
 - [x] Conditional field display by listing_type (with intent-based rules)
 - [x] Auto-save with 2000ms debounce
@@ -76,7 +77,7 @@ Full inline editing experience identical to Projects. All fields editable in pla
 
 ---
 
-## Phase 3: Engagement & Social (Partial) 🟡
+## Phase 3: Engagement & Social ✅
 
 **Goal:** Add hearts, comments, saves, and engagement tracking.
 
@@ -92,13 +93,13 @@ Full inline editing experience identical to Projects. All fields editable in pla
   - POST `/api/v1/listings/:id/heart/`
   - POST `/api/v1/listings/:id/save/`
   - GET/POST `/api/v1/listings/:id/comments/`
-- [ ] Signals to update count fields on heart/save/comment
+- [x] Signals to update count fields on heart/save/comment/view
 
 ### Frontend Tasks
 - [x] Heart button component
 - [x] Save/bookmark button
-- [ ] Comments section with replies
-- [ ] Engagement stats display
+- [x] ListingComments component with reply threading
+- [ ] Engagement stats display (partially in place)
 - [ ] Share functionality (reuse ShareModal)
 
 ### Deliverable
