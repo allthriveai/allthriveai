@@ -112,6 +112,9 @@ export type ProfileSectionType =
   | 'battle_stats'       // Win/loss record for battle bots
   | 'recent_battles'     // Battle history for battle bots
   | 'custom'             // Free-form blocks
+  // Collective listings sections
+  | 'asks_offers'        // User's asks and offers (The Collective)
+  | 'listing_projects'   // Project-type listings (apps, agents, MCP servers)
   // Legacy types (deprecated, kept for backwards compatibility)
   | 'hero'               // @deprecated - Header now handles profile display
   | 'stats';             // @deprecated - Header now shows XP/level/achievements
@@ -270,6 +273,30 @@ export interface AllProjectsSectionContent {
 }
 
 // ============================================================================
+// ASKS & OFFERS SECTION (The Collective)
+// ============================================================================
+
+export interface AsksOffersSectionContent {
+  showAsks?: boolean;         // Show asks (default: true)
+  showOffers?: boolean;       // Show offers (default: true)
+  maxItems?: number;          // Max items per tab (default: 6)
+  layout?: 'grid' | 'list';   // Display layout
+  title?: string;             // Custom title (default: "Asks & Offers")
+}
+
+// ============================================================================
+// LISTING PROJECTS SECTION (Apps, Agents, MCP Servers)
+// ============================================================================
+
+export interface ListingProjectsSectionContent {
+  maxItems?: number;          // Max projects to show (default: 6)
+  showDescription?: boolean;  // Show project descriptions
+  layout?: 'grid' | 'masonry';
+  title?: string;             // Custom title (default: "Things I Built")
+  listingTypes?: string[];    // Filter by listing type slugs
+}
+
+// ============================================================================
 // UNIFIED SECTION CONTENT TYPE
 // ============================================================================
 
@@ -284,7 +311,9 @@ export type ProfileSectionContent =
   | BattleStatsSectionContent
   | RecentBattlesSectionContent
   | CustomSectionContent
-  | AllProjectsSectionContent;
+  | AllProjectsSectionContent
+  | AsksOffersSectionContent
+  | ListingProjectsSectionContent;
 
 // ============================================================================
 // PROFILE SECTION
@@ -476,6 +505,25 @@ export const PROFILE_SECTION_METADATA: Record<ProfileSectionType, ProfileSection
     defaultVisible: false,
     singleton: false,
   },
+  // Collective listings sections
+  asks_offers: {
+    type: 'asks_offers',
+    title: 'Asks & Offers',
+    description: 'Display your asks (what you need) and offers (what you provide)',
+    icon: 'ArrowsRightLeftIcon',
+    defaultVisible: true,
+    singleton: true,
+    forTemplates: ['builder', 'creator'],
+  },
+  listing_projects: {
+    type: 'listing_projects',
+    title: 'Projects',
+    description: 'Showcase apps, agents, MCP servers, and other things you built',
+    icon: 'FolderIcon',
+    defaultVisible: true,
+    singleton: true,
+    forTemplates: ['builder'],
+  },
   // Legacy types - deprecated, kept for backwards compatibility
   hero: {
     type: 'hero',
@@ -586,6 +634,23 @@ export function createDefaultProfileSectionContent(
         title: 'Custom Section',
         blocks: [],
       } as CustomSectionContent;
+
+    case 'asks_offers':
+      return {
+        showAsks: true,
+        showOffers: true,
+        maxItems: 6,
+        layout: 'grid',
+        title: 'Asks & Offers',
+      } as AsksOffersSectionContent;
+
+    case 'listing_projects':
+      return {
+        maxItems: 6,
+        showDescription: true,
+        layout: 'grid',
+        title: 'Things I Built',
+      } as ListingProjectsSectionContent;
 
     default:
       return {

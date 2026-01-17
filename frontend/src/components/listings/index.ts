@@ -6,3 +6,5 @@ export type { ListingEditorProps, ListingEditorRenderProps } from './ListingEdit
 export { ListingEditView } from './ListingEditView';
 
 export { ListingComments } from './ListingComments';
+
+export { ListingCard } from './ListingCard';

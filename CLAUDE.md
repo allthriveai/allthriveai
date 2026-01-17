@@ -360,3 +360,74 @@ Taxonomy.objects.filter(taxonomy_type='interest', is_active=True)
 ## Notes
 - Run `make help` to see all available commands
 - The web container is named `web` (not `backend`) in docker-compose
+
+## Ralph Workflow (Autonomous Development)
+
+AllThrive uses Ralph-style iterative development for autonomous coding sessions.
+
+### Core Files
+| File | Purpose |
+|------|---------|
+| `PROMPT.md` | Master prompt for development loops |
+| `claude-progress.txt` | Cross-session progress log |
+| `features.json` | Feature list with pass/fail status |
+
+### Session Startup Routine
+Every autonomous session should:
+1. `pwd` - Confirm working directory
+2. `cat claude-progress.txt` - Read recent progress
+3. `cat features.json | jq '.features[] | select(.passes == false) | {id, name, testSteps}'` - Find next task with test steps
+4. `git status` - Check for uncommitted work
+5. `make ps` - Verify Docker services running (if backend work)
+6. Pick ONE failing feature and implement it
+
+### Ending a Session
+1. **Execute ALL testSteps** from features.json for the feature
+2. **Run verification**: `npx tsc --noEmit`, `make lint`, curl endpoints
+3. Update `claude-progress.txt` with work completed
+4. Update `features.json`: change `"passes": false` to `"passes": true` **only after ALL testSteps pass**
+5. `git add . && git commit -m "feat: [feature-name]"`
+6. Document any new "signs" learned in PROMPT.md
+
+### Verification Checklist (REQUIRED)
+Before changing `passes` to `true`, you MUST:
+- [ ] `npx tsc --noEmit` - TypeScript compiles
+- [ ] `make lint` or `ruff check` - No lint errors
+- [ ] Execute EVERY testStep in the feature's testSteps array
+- [ ] `curl` API endpoints to verify response shape
+- [ ] Visit the page in browser and confirm it renders
+- [ ] Test the happy path user flow end-to-end
+
+**If ANY testStep fails, keep `passes: false` and document the blocker.**
+
+### Signs (Learned Patterns)
+When something fails, add a "sign" to PROMPT.md to prevent recurrence:
+- Signs are lessons learned from failures
+- Format: `- [Category] Lesson learned`
+- Example: `- [Frontend] Always use displayUser.firstName not displayUser.first_name`
+
+### Running the Loop
+```bash
+# Single iteration (recommended)
+cat PROMPT.md | claude-code
+
+# Limited iterations (safer than infinite)
+for i in {1..5}; do cat PROMPT.md | claude-code; done
+
+# Full autonomous loop (use with extreme caution - can rack up costs)
+# while :; do cat PROMPT.md | claude-code; done
+```
+
+### Integration with Speckit
+The Ralph workflow complements (not replaces) the existing speckit system:
+
+| Workflow | When to Use |
+|----------|-------------|
+| **Speckit** | New features requiring design decisions, API contracts, data models |
+| **Ralph Loop** | Executing known tasks, iterating on implementation, fixing bugs |
+
+**Handoff pattern:**
+1. Use `/speckit.specify` -> `/speckit.plan` -> `/speckit.tasks` for planning
+2. Transfer tasks to `features.json` for Ralph execution
+3. Use Ralph loop for autonomous implementation
+4. Return to speckit for next feature design

@@ -9,6 +9,7 @@
  * - Creator: About, Storefront, Featured Projects, Links
  * - Curation: About, Featured Content, Links
  * - Battle Bot: About, Battle Stats, Recent Battles
+ * - Collective: Asks & Offers, Listing Projects (new unified Listing model)
  */
 
 export { ProfileSectionRenderer, ProfileSections, type ProfileUser } from './ProfileSectionRenderer';
@@ -35,3 +36,7 @@ export { FeaturedContentSection } from './FeaturedContentSection';
 // Battle Bot sections
 export { BattleStatsSection } from './BattleStatsSection';
 export { RecentBattlesSection } from './RecentBattlesSection';
+
+// Collective sections (new unified Listing model)
+export { AsksOffersSection } from './AsksOffersSection';
+export { ListingProjectsSection } from './ListingProjectsSection';

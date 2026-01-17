@@ -1,0 +1,58 @@
+# AllThrive Development Progress
+
+## Format
+Each entry: [TIMESTAMP] [STATUS] Description
+
+---
+
+## Progress Log
+
+[2025-01-16T14:00] [COMPLETED] CollectiveProfileSection - Asks/Offers side-by-side
+  - Created glass-panel layout with two columns
+  - Used styleguide patterns (btn-outline, glass-card)
+  - Fixed camelCase prop mapping from displayUser
+
+[2025-01-16T14:15] [COMPLETED] CollectiveProfileSection - Things I'm Working On
+  - Added project cards with ProjectCard component
+  - Filters by listing type slugs: app, agent, listing-mcp-server, side-project
+
+[2025-01-16T14:30] [COMPLETED] CollectiveProfileSection - Things I Love
+  - Added curated links section with LinkCard component
+  - Uses glass-card styling with hover effects
+
+[2025-01-16T15:00] [IN_PROGRESS] CollectiveProfileSection - needs Recent Activity and Achievements
+  - Asks/Offers: Done
+  - Projects: Done
+  - Things I Love: Done
+  - Recent Activity: TODO
+  - Achievements: TODO
+
+[2025-01-16T16:00] [COMPLETED] Ralph Workflow Setup
+  - Created PROMPT.md with session startup routine
+  - Created claude-progress.txt (this file)
+  - Created features.json with all Collective features
+  - Updated CLAUDE.md with Ralph workflow documentation
+
+[2025-01-16T17:00] [COMPLETED] Recent Activity Section
+  - Added ActivityItem component with time formatting
+  - Integrated getMyPointActivities() from thriveCircle service
+  - Only shown on own profile (privacy)
+  - Shows last 8 activities with points earned
+
+[2025-01-16T18:00] [COMPLETED] Ralph Workflow Improvements (per Anthropic article)
+  - Changed features.json to use `passes` boolean instead of status string
+  - Added detailed `testSteps` array to each feature
+  - Updated PROMPT.md with "ONE feature per session" rule
+  - Added verification checklist requiring ALL testSteps to pass
+  - Updated CLAUDE.md with new session routines
+
+## Blockers
+- None currently
+
+## Next Session Should
+1. Read this file
+2. Run: `cat features.json | jq '.features[] | select(.passes == false) | {id, name}'`
+3. Pick FIRST failing feature (profile-achievements)
+4. Implement it
+5. Execute ALL testSteps before marking passes: true
+6. Commit with descriptive message

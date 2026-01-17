@@ -32,11 +32,12 @@ import { getFilterOptions } from '@/services/explore';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { MyAgentsSection } from '@/components/profile/MyAgentsSection';
+import { CollectiveProfileSection } from '@/components/profile/CollectiveProfileSection';
 import { ProfileTemplatePicker } from '@/components/profile/ProfileTemplatePicker';
 import { AvatarFocalPointEditor } from '@/components/profile/AvatarFocalPointEditor';
 import { logError, parseApiError } from '@/utils/errorHandler';
 import { sanitizeHtml } from '@/utils/sanitize';
-import { ProfileSections, type ProfileUser } from '@/components/profile/sections';
+import { type ProfileUser } from '@/components/profile/sections';
 import type { SocialLinksUpdate } from '@/components/profile/sections/LinksSection';
 import type { ProfileSection, ProfileSectionType, ProfileSectionContent, ProfileTemplate } from '@/types/profileSections';
 import { generateProfileSectionId, createDefaultProfileSectionContent, selectTemplateForUser, getDefaultSectionsForTemplate } from '@/types/profileSections';
@@ -284,7 +285,7 @@ export default function ProfilePage() {
 
   // Profile sections state
   const [profileSections, setProfileSections] = useState<ProfileSection[]>([]);
-  const [sectionsLoading, setSectionsLoading] = useState(true);
+  const [_sectionsLoading, setSectionsLoading] = useState(true);
   const [isEditingShowcase, setIsEditingShowcase] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<ProfileTemplate | undefined>();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -728,14 +729,14 @@ export default function ProfilePage() {
   }, [username, profileSections]);
 
   // Profile sections handlers
-  const handleSectionUpdate = useCallback(async (sectionId: string, content: ProfileSectionContent) => {
+  const _handleSectionUpdate = useCallback(async (sectionId: string, content: ProfileSectionContent) => {
     const updatedSections = profileSections.map(s =>
       s.id === sectionId ? { ...s, content } : s
     );
     setProfileSections(updatedSections);
   }, [profileSections]);
 
-  const handleAddSection = useCallback((type: ProfileSectionType, afterSectionId?: string) => {
+  const _handleAddSection = useCallback((type: ProfileSectionType, afterSectionId?: string) => {
     // Sort sections by order first to match the display order
     const sortedSections = [...profileSections].sort((a, b) => a.order - b.order);
 
@@ -763,21 +764,21 @@ export default function ProfilePage() {
     setProfileSections(newSections);
   }, [profileSections]);
 
-  const handleDeleteSection = useCallback((sectionId: string) => {
+  const _handleDeleteSection = useCallback((sectionId: string) => {
     const newSections = profileSections
       .filter(s => s.id !== sectionId)
       .map((s, idx) => ({ ...s, order: idx }));
     setProfileSections(newSections);
   }, [profileSections]);
 
-  const handleToggleSectionVisibility = useCallback((sectionId: string) => {
+  const _handleToggleSectionVisibility = useCallback((sectionId: string) => {
     const updatedSections = profileSections.map(s =>
       s.id === sectionId ? { ...s, visible: !s.visible } : s
     );
     setProfileSections(updatedSections);
   }, [profileSections]);
 
-  const handleReorderSections = useCallback((reorderedSections: ProfileSection[]) => {
+  const _handleReorderSections = useCallback((reorderedSections: ProfileSection[]) => {
     setProfileSections(reorderedSections);
   }, []);
 
@@ -1079,7 +1080,7 @@ export default function ProfilePage() {
     : 'explorer';
 
   // Convert displayUser to ProfileUser format for sections
-  const profileUserData: ProfileUser | null = displayUser ? {
+  const _profileUserData: ProfileUser | null = displayUser ? {
     id: displayUser.id,
     username: displayUser.username,
     first_name: displayUser.firstName,
@@ -1600,50 +1601,29 @@ export default function ProfilePage() {
             {/* Showcase Tab Content - Full width */}
             {activeTab === 'showcase' && (
               <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-8">
-                {/* Edit Controls - Only show when editing */}
-                {isOwnProfile && isEditingShowcase && (
-                  <div className="flex items-center justify-center gap-3 mb-6">
-                    <button
-                      onClick={() => setShowTemplatePicker(true)}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    >
-                      Change Template
-                    </button>
-                  </div>
+                {/* Collective Profile - New unified Listing-based profile */}
+                {displayUser && (
+                  <CollectiveProfileSection
+                    user={{
+                      id: displayUser.id,
+                      username: displayUser.username,
+                      firstName: displayUser.firstName,
+                      lastName: displayUser.lastName,
+                      avatarUrl: displayUser.avatarUrl,
+                      bio: displayUser.bio,
+                      tagline: displayUser.tagline,
+                    }}
+                    isOwnProfile={isOwnProfile}
+                  />
                 )}
 
-                {sectionsLoading ? (
-                  <div className="flex items-center justify-center py-20">
-                    <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 text-primary-500 animate-spin" />
-                  </div>
-                ) : profileUserData ? (
-                  <>
-                    <ProfileSections
-                      sections={profileSections}
-                      user={profileUserData}
-                      isEditing={isEditingShowcase}
+                {/* My Agents Section - Show if user has agents */}
+                {profileUser?.ownedAgents && profileUser.ownedAgents.length > 0 && (
+                  <div className="mt-8">
+                    <MyAgentsSection
+                      agents={profileUser.ownedAgents}
                       isOwnProfile={isOwnProfile}
-                      onSectionUpdate={handleSectionUpdate}
-                      onAddSection={handleAddSection}
-                      onDeleteSection={handleDeleteSection}
-                      onToggleVisibility={handleToggleSectionVisibility}
-                      onReorderSections={handleReorderSections}
-                      onSocialLinksUpdate={handleSocialLinksUpdate}
                     />
-
-                    {/* My Agents Section - Show if user has agents */}
-                    {profileUser?.ownedAgents && profileUser.ownedAgents.length > 0 && (
-                      <div className="mt-8">
-                        <MyAgentsSection
-                          agents={profileUser.ownedAgents}
-                          isOwnProfile={isOwnProfile}
-                        />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="py-20 text-center">
-                    <p className="text-gray-500 dark:text-gray-400">Unable to load profile sections.</p>
                   </div>
                 )}
               </div>
