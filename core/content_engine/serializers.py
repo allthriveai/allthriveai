@@ -2,7 +2,18 @@
 
 from rest_framework import serializers
 
+from core.taxonomy.models import Taxonomy
+
 from .models import BrainstormSession, BrandVoice, ContentClip, ContentIdea, ScheduledPost
+
+
+class ContentPillarSerializer(serializers.ModelSerializer):
+    """Minimal serializer for content pillar taxonomy."""
+
+    class Meta:
+        model = Taxonomy
+        fields = ['id', 'name', 'slug', 'description', 'color']
+        read_only_fields = fields
 
 
 class BrandVoiceSerializer(serializers.ModelSerializer):
@@ -30,6 +41,8 @@ class ContentIdeaSerializer(serializers.ModelSerializer):
     """Serializer for ContentIdea."""
 
     clips_count = serializers.SerializerMethodField()
+    pillar = ContentPillarSerializer(read_only=True)
+    brainstorm_session_id = serializers.IntegerField(source='brainstorm_session.id', read_only=True, allow_null=True)
 
     class Meta:
         model = ContentIdea
@@ -37,7 +50,10 @@ class ContentIdeaSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'description',
+            'hook',
             'content_pillar',
+            'pillar',
+            'brainstorm_session_id',
             'platforms',
             'source',
             'status',
@@ -47,7 +63,7 @@ class ContentIdeaSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'clips_count']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'clips_count', 'pillar', 'brainstorm_session_id']
 
     def get_clips_count(self, obj):
         return obj.clips.count()
@@ -56,15 +72,39 @@ class ContentIdeaSerializer(serializers.ModelSerializer):
 class ContentIdeaCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating ContentIdea."""
 
+    pillar_id = serializers.PrimaryKeyRelatedField(
+        queryset=Taxonomy.objects.filter(taxonomy_type='content_pillar', is_active=True),
+        source='pillar',
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+    brainstorm_session_id = serializers.PrimaryKeyRelatedField(
+        queryset=BrainstormSession.objects.all(),
+        source='brainstorm_session',
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
+
     class Meta:
         model = ContentIdea
         fields = [
             'title',
             'description',
+            'hook',
             'content_pillar',
+            'pillar_id',
+            'brainstorm_session_id',
             'platforms',
             'source',
         ]
+
+    def validate_pillar_id(self, value):
+        """Validate that pillar is a content_pillar taxonomy."""
+        if value and value.taxonomy_type != 'content_pillar':
+            raise serializers.ValidationError('Invalid content pillar')
+        return value
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
@@ -225,6 +265,7 @@ class BrainstormSessionSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'description',
+            'is_active',
             'messages',
             'target_week',
             'ideas_count',

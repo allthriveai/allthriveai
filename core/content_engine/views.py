@@ -56,17 +56,22 @@ class ContentIdeaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = ContentIdea.objects.filter(user=self.request.user)
+        queryset = ContentIdea.objects.filter(user=self.request.user).select_related('pillar', 'brainstorm_session')
 
         # Filter by status
         status_filter = self.request.query_params.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)
 
-        # Filter by content pillar
+        # Filter by content pillar (legacy field)
         pillar = self.request.query_params.get('pillar')
         if pillar:
             queryset = queryset.filter(content_pillar__icontains=pillar)
+
+        # Filter by pillar_id (FK)
+        pillar_id = self.request.query_params.get('pillar_id')
+        if pillar_id:
+            queryset = queryset.filter(pillar_id=pillar_id)
 
         return queryset
 
@@ -74,6 +79,15 @@ class ContentIdeaViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return ContentIdeaCreateSerializer
         return ContentIdeaSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Create a new content idea and return full serialized response."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        # Return the full response using ContentIdeaSerializer
+        response_serializer = ContentIdeaSerializer(instance)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):

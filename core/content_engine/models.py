@@ -4,6 +4,8 @@ from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
+from core.taxonomy.models import Taxonomy
+
 
 class BrandVoice(models.Model):
     """Brand voice settings for content generation."""
@@ -96,10 +98,31 @@ class ContentIdea(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    hook = models.TextField(
+        blank=True,
+        help_text='Attention-grabbing opener for the content',
+    )
     content_pillar = models.CharField(
         max_length=100,
         blank=True,
-        help_text='Content category: AI, productivity, coding, etc.',
+        help_text='Content category: AI, productivity, coding, etc. (deprecated - use pillar FK)',
+    )
+    pillar = models.ForeignKey(
+        Taxonomy,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='content_ideas',
+        limit_choices_to={'taxonomy_type': 'content_pillar'},
+        help_text='Content pillar taxonomy',
+    )
+    brainstorm_session = models.ForeignKey(
+        'BrainstormSession',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ideas',
+        help_text='Brainstorm session that generated this idea',
     )
     platforms = ArrayField(
         models.CharField(max_length=50),
@@ -289,6 +312,10 @@ class BrainstormSession(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Whether this session is currently active',
+    )
 
     # Session data
     messages = models.JSONField(

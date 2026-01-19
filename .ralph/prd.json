@@ -27,7 +27,9 @@
           "frontend/src/components/content-engine/tabs/TabBar.tsx",
           "frontend/src/components/content-engine/tabs/SideTabBar.tsx"
         ],
-        "modify": ["frontend/src/routes/index.tsx"],
+        "modify": [
+          "frontend/src/routes/index.tsx"
+        ],
         "reuse": []
       },
       "acceptanceCriteria": [
@@ -59,9 +61,13 @@
       "title": "TypeScript types for Content Engine models",
       "passes": true,
       "files": {
-        "create": ["frontend/src/types/contentEngine.ts"],
+        "create": [
+          "frontend/src/types/contentEngine.ts"
+        ],
         "modify": [],
-        "reuse": ["frontend/src/types/models.ts"]
+        "reuse": [
+          "frontend/src/types/models.ts"
+        ]
       },
       "acceptanceCriteria": [
         "IdeaStatus, Platform, ClipStatus union types defined",
@@ -115,7 +121,9 @@
       "loadingState": null,
       "a11y": null,
       "mobile": null,
-      "dependsOn": ["US-002"]
+      "dependsOn": [
+        "US-002"
+      ]
     },
     {
       "id": "US-004",
@@ -163,7 +171,10 @@
       "loadingState": "Skeleton cards with glass background",
       "a11y": "Filter dropdown has aria-label, cards are keyboard navigable",
       "mobile": "Single column layout, touch-friendly card actions",
-      "dependsOn": ["US-001", "US-003"]
+      "dependsOn": [
+        "US-001",
+        "US-003"
+      ]
     },
     {
       "id": "US-005",
@@ -208,7 +219,9 @@
       "loadingState": "Chat panel shows 'Connecting...' until WebSocket ready",
       "a11y": "Chat messages have role='log', input has aria-label",
       "mobile": "Stacked layout with collapsible preview",
-      "dependsOn": ["US-001"]
+      "dependsOn": [
+        "US-001"
+      ]
     },
     {
       "id": "US-006",
@@ -244,7 +257,9 @@
       "loadingState": null,
       "a11y": null,
       "mobile": null,
-      "dependsOn": ["US-002"]
+      "dependsOn": [
+        "US-002"
+      ]
     },
     {
       "id": "US-007",
@@ -290,7 +305,10 @@
       "loadingState": "Calendar grid skeleton with placeholder cells",
       "a11y": "Calendar grid has role='grid', days have aria-selected",
       "mobile": "Full-width calendar, scrollable day schedule below",
-      "dependsOn": ["US-001", "US-006"]
+      "dependsOn": [
+        "US-001",
+        "US-006"
+      ]
     },
     {
       "id": "US-008",
@@ -305,7 +323,9 @@
           "frontend/src/components/content-engine/tabs/CalendarTab.tsx",
           "frontend/src/components/content-engine/ideas/IdeaCard.tsx"
         ],
-        "reuse": ["frontend/src/hooks/useSchedule.ts"]
+        "reuse": [
+          "frontend/src/hooks/useSchedule.ts"
+        ]
       },
       "acceptanceCriteria": [
         "Modal opens from 'Schedule' action in IdeaCard or CalendarTab",
@@ -330,7 +350,10 @@
       "loadingState": "Submit button shows spinner while saving",
       "a11y": "Modal has aria-modal, focus trapped inside",
       "mobile": "Full-screen modal with large touch targets",
-      "dependsOn": ["US-004", "US-007"]
+      "dependsOn": [
+        "US-004",
+        "US-007"
+      ]
     },
     {
       "id": "US-009",
@@ -375,7 +398,10 @@
       "loadingState": "Form fields show skeleton placeholders",
       "a11y": "Color pickers have aria-label, form fields have labels",
       "mobile": "Single column form layout",
-      "dependsOn": ["US-001", "US-002"]
+      "dependsOn": [
+        "US-001",
+        "US-002"
+      ]
     },
     {
       "id": "US-010",
@@ -407,13 +433,17 @@
       "loadingState": null,
       "a11y": null,
       "mobile": null,
-      "dependsOn": ["US-001", "US-005", "US-009"]
+      "dependsOn": [
+        "US-001",
+        "US-005",
+        "US-009"
+      ]
     },
     {
       "id": "US-011",
       "type": "backend",
       "title": "Add CONTENT_PILLAR taxonomy type and seed data",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "core/content_engine/management/commands/seed_content_pillars.py"
@@ -439,10 +469,10 @@
         "make makemigrations",
         "make migrate",
         "docker compose exec web python manage.py seed_content_pillars",
-        "curl http://localhost:8000/api/v1/taxonomy/?taxonomy_type=content_pillar returns 7 pillars"
+        "curl http://localhost:8000/api/v1/taxonomies/?taxonomy_type=content_pillar returns 7 pillars"
       ],
       "apiEndpoints": [
-        "GET /api/v1/taxonomy/?taxonomy_type=content_pillar"
+        "GET /api/v1/taxonomies/?taxonomy_type=content_pillar"
       ],
       "validation": [],
       "auth": "Public read, admin write",
@@ -453,7 +483,7 @@
       "id": "US-012",
       "type": "backend",
       "title": "Add pillar, hook, brainstorm_session fields to ContentIdea",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [],
         "modify": [
@@ -488,7 +518,9 @@
       ],
       "auth": "Authenticated users",
       "scale": "N/A",
-      "dependsOn": ["US-011"]
+      "dependsOn": [
+        "US-011"
+      ]
     },
     {
       "id": "US-013",
@@ -560,7 +592,11 @@
       "validation": [],
       "auth": "N/A",
       "scale": "N/A",
-      "dependsOn": ["US-011", "US-012", "US-013"]
+      "dependsOn": [
+        "US-011",
+        "US-012",
+        "US-013"
+      ]
     },
     {
       "id": "US-015",
@@ -600,7 +636,10 @@
       "validation": [],
       "auth": "N/A",
       "scale": "N/A",
-      "dependsOn": ["US-013", "US-014"]
+      "dependsOn": [
+        "US-013",
+        "US-014"
+      ]
     },
     {
       "id": "US-016",
@@ -636,7 +675,9 @@
       "validation": [],
       "auth": "Authenticated WebSocket",
       "scale": "One connection per user session",
-      "dependsOn": ["US-015"]
+      "dependsOn": [
+        "US-015"
+      ]
     },
     {
       "id": "US-017",
@@ -677,7 +718,9 @@
       "loadingState": null,
       "a11y": null,
       "mobile": null,
-      "dependsOn": ["US-016"]
+      "dependsOn": [
+        "US-016"
+      ]
     },
     {
       "id": "US-018",
@@ -721,7 +764,9 @@
       "loadingState": "Chat shows 'Connecting to Echo...' until WebSocket ready",
       "a11y": "Chat messages have role='log', pillar chips have aria-pressed",
       "mobile": "Full-width layout, pills scroll horizontally",
-      "dependsOn": ["US-017"]
+      "dependsOn": [
+        "US-017"
+      ]
     },
     {
       "id": "US-019",
@@ -761,7 +806,10 @@
       "loadingState": "Both panels show their own loading states",
       "a11y": "Panels have aria-label, resizer has aria-valuenow",
       "mobile": "Stacked layout with collapsible chat",
-      "dependsOn": ["US-004", "US-018"]
+      "dependsOn": [
+        "US-004",
+        "US-018"
+      ]
     },
     {
       "id": "US-020",
@@ -799,7 +847,9 @@
       "loadingState": "Onboarding shows after WebSocket connected",
       "a11y": "Questions have clear labels, focus management",
       "mobile": "Full-width onboarding cards",
-      "dependsOn": ["US-019"]
+      "dependsOn": [
+        "US-019"
+      ]
     }
   ]
 }
