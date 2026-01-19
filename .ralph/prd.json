@@ -1,0 +1,416 @@
+{
+  "feature": {
+    "name": "Content Engine UI",
+    "ideaFile": "docs/ideas/content-engine-ui.md",
+    "branch": "feature/content-engine-ui",
+    "status": "completed"
+  },
+  "metadata": {
+    "createdAt": "2025-01-18T21:00:00Z",
+    "estimatedStories": 10,
+    "complexity": "high"
+  },
+  "stories": [
+    {
+      "id": "US-001",
+      "type": "frontend",
+      "title": "Content Engine page shell with tab navigation",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/pages/content-engine/ContentEnginePage.tsx",
+          "frontend/src/components/content-engine/tabs/TabBar.tsx",
+          "frontend/src/components/content-engine/tabs/SideTabBar.tsx"
+        ],
+        "modify": [
+          "frontend/src/routes/index.tsx"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "ContentEnginePage renders with 4 tab placeholders (Ideas, Create, Calendar, Brand)",
+        "Mobile shows bottom TabBar with icons and labels",
+        "Desktop shows left SideTabBar (w-20) with icons and labels",
+        "Tab state persists in URL via /create/content-engine/:tab"
+      ],
+      "errorHandling": [
+        "Invalid tab parameter defaults to 'ideas' tab",
+        "Missing route shows 404 page"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Visit http://localhost:3000/create/content-engine - page renders with Ideas tab active",
+        "Click each tab - URL updates and content area changes",
+        "Visit http://localhost:3000/create/content-engine/calendar - Calendar tab is active",
+        "Resize browser to mobile width - bottom TabBar appears, side nav hides"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine",
+      "loadingState": "Glass panel skeleton with tab placeholders",
+      "a11y": "Tab buttons have aria-selected, aria-controls attributes",
+      "mobile": "Bottom tab bar with 56px height, touch targets 44x44px minimum",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "type": "frontend",
+      "title": "TypeScript types for Content Engine models",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/types/contentEngine.ts"
+        ],
+        "modify": [],
+        "reuse": [
+          "frontend/src/types/models.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "IdeaStatus, Platform, ClipStatus union types defined",
+        "ContentIdea interface with id, title, description, status, platforms, timestamps",
+        "ContentClip interface with id, title, scenes, status, ideaId, timestamps",
+        "ScheduledPost interface with id, clipId, platform, scheduledFor, status",
+        "BrandVoice interface with tone, personality, topics, colors"
+      ],
+      "errorHandling": [],
+      "testSteps": [
+        "npx tsc --noEmit - no type errors",
+        "Import types in a test component - autocomplete works"
+      ],
+      "testUrl": null,
+      "loadingState": null,
+      "a11y": null,
+      "mobile": null,
+      "dependsOn": []
+    },
+    {
+      "id": "US-003",
+      "type": "frontend",
+      "title": "Ideas API service and hooks",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/services/contentEngine/ideas.ts",
+          "frontend/src/hooks/useIdeas.ts"
+        ],
+        "modify": [],
+        "reuse": [
+          "frontend/src/services/api.ts",
+          "frontend/src/types/contentEngine.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "ideasApi object with list, create, update, delete methods",
+        "useIdeas hook returns { ideas, isLoading, error, refetch }",
+        "useCreateIdea mutation hook for quick capture",
+        "useUpdateIdea mutation hook for status changes"
+      ],
+      "errorHandling": [
+        "Network errors surface through React Query error state",
+        "401 errors redirect to login"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "curl http://localhost:8000/api/v1/content-engine/ideas/ -H 'Authorization: Token <token>' returns 200"
+      ],
+      "testUrl": null,
+      "loadingState": null,
+      "a11y": null,
+      "mobile": null,
+      "dependsOn": ["US-002"]
+    },
+    {
+      "id": "US-004",
+      "type": "frontend",
+      "title": "Ideas Tab with list view and quick capture",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/tabs/IdeasTab.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaCard.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaList.tsx",
+          "frontend/src/components/content-engine/ideas/QuickCapture.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaFilters.tsx",
+          "frontend/src/components/content-engine/ideas/PlatformBadge.tsx",
+          "frontend/src/components/content-engine/ideas/StatusBadge.tsx"
+        ],
+        "modify": [
+          "frontend/src/pages/content-engine/ContentEnginePage.tsx"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useIdeas.ts",
+          "frontend/src/types/contentEngine.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "QuickCapture input at top of Ideas tab, always visible",
+        "IdeaCard shows title, platform badges, status badge",
+        "Filter dropdown filters by status (All, Saved, Planned, In Progress, Archived)",
+        "Click IdeaCard opens action menu (Archive, Create Clip)",
+        "Empty state shows helpful message with QuickCapture"
+      ],
+      "errorHandling": [
+        "Loading state shows skeleton cards",
+        "Error state shows message with retry button",
+        "Quick capture shows inline error on failure"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Visit http://localhost:3000/create/content-engine/ideas",
+        "Type in QuickCapture and submit - new idea appears in list",
+        "Change filter to 'Planned' - only planned ideas show",
+        "Click an idea card - action menu appears"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/ideas",
+      "loadingState": "Skeleton cards with glass background",
+      "a11y": "Filter dropdown has aria-label, cards are keyboard navigable",
+      "mobile": "Single column layout, touch-friendly card actions",
+      "dependsOn": ["US-001", "US-003"]
+    },
+    {
+      "id": "US-005",
+      "type": "frontend",
+      "title": "Create Tab with responsive chat layout",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/tabs/CreateTab.tsx"
+        ],
+        "modify": [
+          "frontend/src/pages/content-engine/ContentEnginePage.tsx",
+          "frontend/src/components/creator/ClipCreatorChatPanel.tsx",
+          "frontend/src/components/creator/ClipPreview.tsx"
+        ],
+        "reuse": [
+          "frontend/src/components/creator/ClipCreatorChatPanel.tsx",
+          "frontend/src/components/creator/ClipPreview.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Mobile: Preview at top (9:16 aspect), chat below, input at bottom",
+        "Desktop: Chat on left, preview on right (side-by-side)",
+        "WebSocket connects when Create tab becomes active",
+        "WebSocket disconnects when switching away from Create tab",
+        "Preview updates in real-time as AI generates clip"
+      ],
+      "errorHandling": [
+        "WebSocket connection error shows reconnect button",
+        "Network disconnect shows offline indicator",
+        "Invalid clip data shows error toast"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Visit http://localhost:3000/create/content-engine/create",
+        "Send a message - AI responds and preview updates",
+        "Switch to Ideas tab - WebSocket disconnects (check network tab)",
+        "Switch back to Create tab - WebSocket reconnects",
+        "Resize to mobile - layout changes to stacked"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/create",
+      "loadingState": "Chat panel shows 'Connecting...' until WebSocket ready",
+      "a11y": "Chat messages have role='log', input has aria-label",
+      "mobile": "Stacked layout with collapsible preview",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-006",
+      "type": "frontend",
+      "title": "Schedule API service and hooks",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/services/contentEngine/schedule.ts",
+          "frontend/src/hooks/useSchedule.ts"
+        ],
+        "modify": [],
+        "reuse": [
+          "frontend/src/services/api.ts",
+          "frontend/src/types/contentEngine.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "scheduleApi object with list, create, update, delete methods",
+        "useSchedule hook accepts date range params",
+        "useScheduleByDay hook returns events grouped by day",
+        "useCreateSchedule mutation hook for scheduling clips"
+      ],
+      "errorHandling": [
+        "Network errors surface through React Query error state",
+        "401 errors redirect to login"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "curl http://localhost:8000/api/v1/content-engine/schedule/ -H 'Authorization: Token <token>' returns 200"
+      ],
+      "testUrl": null,
+      "loadingState": null,
+      "a11y": null,
+      "mobile": null,
+      "dependsOn": ["US-002"]
+    },
+    {
+      "id": "US-007",
+      "type": "frontend",
+      "title": "Calendar Tab with month view",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/tabs/CalendarTab.tsx",
+          "frontend/src/components/content-engine/calendar/MobileCalendar.tsx",
+          "frontend/src/components/content-engine/calendar/DaySchedule.tsx",
+          "frontend/src/components/content-engine/calendar/ScheduleCard.tsx"
+        ],
+        "modify": [
+          "frontend/src/pages/content-engine/ContentEnginePage.tsx"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useSchedule.ts",
+          "frontend/src/components/content-engine/ideas/PlatformBadge.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Month navigation with prev/next arrows",
+        "Days with scheduled content show indicator dot",
+        "Tap day to see schedule in DaySchedule section below",
+        "ScheduleCard shows time, platform badge, clip title",
+        "Platform color coding (LinkedIn blue, YouTube red, Twitter cyan)"
+      ],
+      "errorHandling": [
+        "Loading state shows calendar skeleton",
+        "Error state shows message with retry button",
+        "Empty day shows 'No content scheduled' message"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Visit http://localhost:3000/create/content-engine/calendar",
+        "Calendar renders current month",
+        "Click prev/next arrows - month changes",
+        "Click a day with content - DaySchedule shows events",
+        "Click a day without content - shows empty state"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/calendar",
+      "loadingState": "Calendar grid skeleton with placeholder cells",
+      "a11y": "Calendar grid has role='grid', days have aria-selected",
+      "mobile": "Full-width calendar, scrollable day schedule below",
+      "dependsOn": ["US-001", "US-006"]
+    },
+    {
+      "id": "US-008",
+      "type": "frontend",
+      "title": "Schedule Modal for scheduling clips",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/calendar/ScheduleModal.tsx"
+        ],
+        "modify": [
+          "frontend/src/components/content-engine/tabs/CalendarTab.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaCard.tsx"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useSchedule.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Modal opens from 'Schedule' action in IdeaCard or CalendarTab",
+        "Date picker for selecting publish date",
+        "Time picker for selecting publish time",
+        "Platform checkboxes (LinkedIn, YouTube, Twitter)",
+        "Submit creates ScheduledPost via API"
+      ],
+      "errorHandling": [
+        "Past date/time shows validation error",
+        "No platform selected shows validation error",
+        "API error shows toast with retry option"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "From IdeaCard, click 'Schedule' - modal opens",
+        "Select date, time, and platform - submit",
+        "New event appears on calendar",
+        "Try to submit with past date - shows error"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/ideas",
+      "loadingState": "Submit button shows spinner while saving",
+      "a11y": "Modal has aria-modal, focus trapped inside",
+      "mobile": "Full-screen modal with large touch targets",
+      "dependsOn": ["US-004", "US-007"]
+    },
+    {
+      "id": "US-009",
+      "type": "frontend",
+      "title": "Brand Voice Tab",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/tabs/BrandVoiceTab.tsx",
+          "frontend/src/services/contentEngine/brandVoice.ts",
+          "frontend/src/hooks/useBrandVoice.ts"
+        ],
+        "modify": [
+          "frontend/src/pages/content-engine/ContentEnginePage.tsx"
+        ],
+        "reuse": [
+          "frontend/src/pages/settings/BrandVoiceSettingsPage.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Tone selector dropdown (Professional, Casual, Friendly, etc.)",
+        "Personality traits as editable tag chips",
+        "Topics/pillars as editable tag list",
+        "Signature phrases textarea",
+        "Primary and accent color pickers",
+        "Auto-save on changes with success indicator"
+      ],
+      "errorHandling": [
+        "Loading state shows form skeleton",
+        "Save error shows toast with retry",
+        "Invalid color value shows inline error"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Visit http://localhost:3000/create/content-engine/brand",
+        "Change tone - auto-saves (check network tab)",
+        "Add a personality trait - appears as chip",
+        "Change primary color - preview updates",
+        "Reload page - all changes persisted"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/brand",
+      "loadingState": "Form fields show skeleton placeholders",
+      "a11y": "Color pickers have aria-label, form fields have labels",
+      "mobile": "Single column form layout",
+      "dependsOn": ["US-001", "US-002"]
+    },
+    {
+      "id": "US-010",
+      "type": "frontend",
+      "title": "Update Create Hub and add redirects",
+      "passes": true,
+      "files": {
+        "create": [],
+        "modify": [
+          "frontend/src/pages/CreatePage.tsx",
+          "frontend/src/routes/index.tsx"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "CreatePage shows Content Engine as featured card at top",
+        "Content Engine card has Sparkles icon and prominent styling",
+        "/create/social-clip redirects to /create/content-engine/create",
+        "/create/brand-voice redirects to /create/content-engine/brand"
+      ],
+      "errorHandling": [],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Visit http://localhost:3000/create - Content Engine card is prominent",
+        "Visit http://localhost:3000/create/social-clip - redirects to content-engine/create",
+        "Visit http://localhost:3000/create/brand-voice - redirects to content-engine/brand"
+      ],
+      "testUrl": "http://localhost:3000/create",
+      "loadingState": null,
+      "a11y": null,
+      "mobile": null,
+      "dependsOn": ["US-001", "US-005", "US-009"]
+    }
+  ]
+}

@@ -136,6 +136,7 @@ const ListingDetailPage = lazy(() => import('@/pages/ListingDetailPage'));
 // Creator Tools - lazy loaded
 const CreatePage = lazy(() => import('@/pages/CreatePage'));
 const SocialClipBuilderPage = lazy(() => import('@/pages/SocialClipBuilderPage'));
+const ContentEnginePage = lazy(() => import('@/pages/content-engine/ContentEnginePage'));
 
 // Legal pages - lazy loaded
 const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
@@ -272,6 +273,23 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <SocialClipBuilderPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Content Engine - single page with tabs */}
+      <Route
+        path="/create/content-engine"
+        element={
+          <ProtectedRoute>
+            <ContentEnginePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/create/content-engine/:tab"
+        element={
+          <ProtectedRoute>
+            <ContentEnginePage />
           </ProtectedRoute>
         }
       />

@@ -7,6 +7,7 @@ import {
   faLock,
   faWandMagicSparkles,
   faBullhorn,
+  faSparkles,
 } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,22 +25,31 @@ interface CreatorToolCard {
 
 const CREATOR_TOOLS: CreatorToolCard[] = [
   {
-    title: 'Social Clip Creator',
-    description: 'Create animated educational clips for LinkedIn and YouTube. Chat with AI to build and refine your content.',
-    icon: faVideo,
-    href: '/create/social-clip',
+    title: 'Content Engine',
+    description: 'Your all-in-one content creation hub. Capture ideas, create clips with AI, schedule posts, and define your brand voice.',
+    icon: faSparkles,
+    href: '/create/content-engine',
     color: '#22D3EE', // cyan
     colorTo: '#10B981', // green
     isAvailable: true,
     badge: 'NEW',
   },
   {
+    title: 'Social Clip Creator',
+    description: 'Create animated educational clips for LinkedIn and YouTube. Chat with AI to build and refine your content.',
+    icon: faVideo,
+    href: '/create/social-clip',
+    color: '#A855F7', // purple
+    colorTo: '#EC4899', // pink
+    isAvailable: true,
+  },
+  {
     title: 'Brand Voice',
     description: 'Define your unique tone of voice and style. Your clips will automatically match your brand personality.',
     icon: faBullhorn,
     href: '/account/settings/brand-voice',
-    color: '#A855F7', // purple
-    colorTo: '#EC4899', // pink
+    color: '#F59E0B', // amber
+    colorTo: '#EF4444', // red
     isAvailable: true,
   },
   {
@@ -47,8 +57,8 @@ const CREATOR_TOOLS: CreatorToolCard[] = [
     description: 'Create and share custom learning paths. Curate content from lessons, tools, and projects.',
     icon: faRoute,
     href: '/create/learning-path',
-    color: '#F59E0B', // amber
-    colorTo: '#EF4444', // red
+    color: '#64748B', // slate
+    colorTo: '#475569',
     isAvailable: false,
     badge: 'COMING SOON',
   },
