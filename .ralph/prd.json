@@ -1,14 +1,19 @@
 {
   "feature": {
-    "name": "Content Engine UI",
-    "ideaFile": "docs/ideas/content-engine-ui.md",
-    "branch": "feature/content-engine-ui",
-    "status": "completed"
+    "name": "Content Engine with Echo Creator Coach",
+    "ideaFile": "docs/ideas/echo-creator-coach.md",
+    "branch": "feature/echo-creator-coach",
+    "status": "pending"
   },
   "metadata": {
-    "createdAt": "2025-01-18T21:00:00Z",
-    "estimatedStories": 10,
-    "complexity": "high"
+    "createdAt": "2025-01-18T23:50:00Z",
+    "estimatedStories": 18,
+    "complexity": "high",
+    "previousFeature": {
+      "name": "Content Engine UI",
+      "completedStories": 10,
+      "status": "completed"
+    }
   },
   "stories": [
     {
@@ -22,9 +27,7 @@
           "frontend/src/components/content-engine/tabs/TabBar.tsx",
           "frontend/src/components/content-engine/tabs/SideTabBar.tsx"
         ],
-        "modify": [
-          "frontend/src/routes/index.tsx"
-        ],
+        "modify": ["frontend/src/routes/index.tsx"],
         "reuse": []
       },
       "acceptanceCriteria": [
@@ -56,13 +59,9 @@
       "title": "TypeScript types for Content Engine models",
       "passes": true,
       "files": {
-        "create": [
-          "frontend/src/types/contentEngine.ts"
-        ],
+        "create": ["frontend/src/types/contentEngine.ts"],
         "modify": [],
-        "reuse": [
-          "frontend/src/types/models.ts"
-        ]
+        "reuse": ["frontend/src/types/models.ts"]
       },
       "acceptanceCriteria": [
         "IdeaStatus, Platform, ClipStatus union types defined",
@@ -306,9 +305,7 @@
           "frontend/src/components/content-engine/tabs/CalendarTab.tsx",
           "frontend/src/components/content-engine/ideas/IdeaCard.tsx"
         ],
-        "reuse": [
-          "frontend/src/hooks/useSchedule.ts"
-        ]
+        "reuse": ["frontend/src/hooks/useSchedule.ts"]
       },
       "acceptanceCriteria": [
         "Modal opens from 'Schedule' action in IdeaCard or CalendarTab",
@@ -411,6 +408,398 @@
       "a11y": null,
       "mobile": null,
       "dependsOn": ["US-001", "US-005", "US-009"]
+    },
+    {
+      "id": "US-011",
+      "type": "backend",
+      "title": "Add CONTENT_PILLAR taxonomy type and seed data",
+      "passes": false,
+      "files": {
+        "create": [
+          "core/content_engine/management/commands/seed_content_pillars.py"
+        ],
+        "modify": [
+          "core/taxonomy/models.py"
+        ],
+        "reuse": [
+          "core/taxonomy/models.py"
+        ]
+      },
+      "acceptanceCriteria": [
+        "CONTENT_PILLAR added to TaxonomyType choices",
+        "Migration created and applied",
+        "seed_content_pillars command creates 7 default pillars",
+        "Pillars: Educational, Behind-the-scenes, Hot Takes, Engagement, Authority, Personal, Promotional"
+      ],
+      "errorHandling": [
+        "Command is idempotent - running twice doesn't create duplicates",
+        "Command outputs count of created/skipped pillars"
+      ],
+      "testSteps": [
+        "make makemigrations",
+        "make migrate",
+        "docker compose exec web python manage.py seed_content_pillars",
+        "curl http://localhost:8000/api/v1/taxonomy/?taxonomy_type=content_pillar returns 7 pillars"
+      ],
+      "apiEndpoints": [
+        "GET /api/v1/taxonomy/?taxonomy_type=content_pillar"
+      ],
+      "validation": [],
+      "auth": "Public read, admin write",
+      "scale": "Static data, cacheable",
+      "dependsOn": []
+    },
+    {
+      "id": "US-012",
+      "type": "backend",
+      "title": "Add pillar, hook, brainstorm_session fields to ContentIdea",
+      "passes": false,
+      "files": {
+        "create": [],
+        "modify": [
+          "core/content_engine/models.py",
+          "core/content_engine/serializers.py"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "ContentIdea.pillar FK to Taxonomy (content_pillar type), nullable",
+        "ContentIdea.hook TextField for attention-grabbing opener",
+        "ContentIdea.brainstorm_session FK to BrainstormSession, nullable",
+        "Serializer includes pillar (nested), pillar_id (write), hook fields",
+        "BrainstormSession.is_active boolean field added"
+      ],
+      "errorHandling": [
+        "Invalid pillar_id returns 400 with 'Invalid content pillar' message",
+        "pillar_id with wrong taxonomy_type returns 400"
+      ],
+      "testSteps": [
+        "make makemigrations",
+        "make migrate",
+        "curl -X POST /api/v1/content-engine/ideas/ with pillar_id - returns 201",
+        "curl -X GET /api/v1/content-engine/ideas/{id}/ returns pillar object and hook"
+      ],
+      "apiEndpoints": [
+        "POST /api/v1/content-engine/ideas/",
+        "GET /api/v1/content-engine/ideas/{id}/"
+      ],
+      "validation": [
+        "pillar_id must reference taxonomy with taxonomy_type='content_pillar'"
+      ],
+      "auth": "Authenticated users",
+      "scale": "N/A",
+      "dependsOn": ["US-011"]
+    },
+    {
+      "id": "US-013",
+      "type": "backend",
+      "title": "Create Echo agent structure with state and prompts",
+      "passes": false,
+      "files": {
+        "create": [
+          "services/agents/echo/__init__.py",
+          "services/agents/echo/state.py",
+          "services/agents/echo/prompts.py"
+        ],
+        "modify": [],
+        "reuse": [
+          "services/agents/ava/prompts.py",
+          "services/agents/clip/agent.py"
+        ]
+      },
+      "acceptanceCriteria": [
+        "EchoState TypedDict with messages, user_id, session_id, conversation_phase, content_pillars, target_platforms, brand_voice",
+        "Conversation phases: discovery, ideation, hook, expansion, ready_to_save",
+        "Echo system prompt with SAHR framework (Scope, Angle, Hook, Resonate)",
+        "Echo personality: strategic, confident, direct, uses 'we' language",
+        "Platform-specific guidance for Twitter, LinkedIn, YouTube"
+      ],
+      "errorHandling": [],
+      "testSteps": [
+        "python -c \"from services.agents.echo.state import EchoState; print(EchoState.__annotations__)\"",
+        "python -c \"from services.agents.echo.prompts import ECHO_SYSTEM_PROMPT; print(len(ECHO_SYSTEM_PROMPT) > 500)\""
+      ],
+      "apiEndpoints": [],
+      "validation": [],
+      "auth": "N/A",
+      "scale": "N/A",
+      "dependsOn": []
+    },
+    {
+      "id": "US-014",
+      "type": "backend",
+      "title": "Create Echo tools (save_idea, get_pillars, generate_hooks)",
+      "passes": false,
+      "files": {
+        "create": [
+          "services/agents/echo/tools.py"
+        ],
+        "modify": [],
+        "reuse": [
+          "services/agents/ava/tools.py",
+          "core/content_engine/models.py"
+        ]
+      },
+      "acceptanceCriteria": [
+        "save_idea tool creates ContentIdea with pillar, hook, session link",
+        "get_content_pillars tool returns user's available pillars",
+        "generate_hooks tool generates 3 hook variations for a topic/platform",
+        "expand_to_post tool expands a hook into full post draft",
+        "ECHO_TOOLS list exports all tools",
+        "TOOLS_NEEDING_STATE set exports tools requiring state injection"
+      ],
+      "errorHandling": [
+        "save_idea with invalid pillar returns error dict",
+        "generate_hooks with unsupported platform returns generic hooks"
+      ],
+      "testSteps": [
+        "python -c \"from services.agents.echo.tools import ECHO_TOOLS; print(len(ECHO_TOOLS) >= 4)\"",
+        "python -c \"from services.agents.echo.tools import TOOLS_NEEDING_STATE; print('save_idea' in TOOLS_NEEDING_STATE)\""
+      ],
+      "apiEndpoints": [],
+      "validation": [],
+      "auth": "N/A",
+      "scale": "N/A",
+      "dependsOn": ["US-011", "US-012", "US-013"]
+    },
+    {
+      "id": "US-015",
+      "type": "backend",
+      "title": "Create Echo LangGraph agent with streaming",
+      "passes": false,
+      "files": {
+        "create": [
+          "services/agents/echo/agent.py"
+        ],
+        "modify": [
+          "services/agents/echo/__init__.py"
+        ],
+        "reuse": [
+          "services/agents/ava/agent.py",
+          "services/agents/clip/agent.py"
+        ]
+      },
+      "acceptanceCriteria": [
+        "EchoAgent class with LangGraph StateGraph",
+        "Nodes: route, converse, save_idea",
+        "stream_echo_response async generator yields events",
+        "Events: token, tool_start, tool_end, idea_suggested, complete",
+        "BrandVoice context loaded if user has one",
+        "Conversation phase tracked and updated"
+      ],
+      "errorHandling": [
+        "Missing user returns error event",
+        "LLM timeout returns error event with retry suggestion",
+        "Tool execution error returns error event"
+      ],
+      "testSteps": [
+        "python -c \"from services.agents.echo import stream_echo_response; print(callable(stream_echo_response))\"",
+        "python -c \"from services.agents.echo.agent import EchoAgent; print(EchoAgent.__name__)\""
+      ],
+      "apiEndpoints": [],
+      "validation": [],
+      "auth": "N/A",
+      "scale": "N/A",
+      "dependsOn": ["US-013", "US-014"]
+    },
+    {
+      "id": "US-016",
+      "type": "backend",
+      "title": "Add Echo routing to WebSocket task handler",
+      "passes": false,
+      "files": {
+        "create": [],
+        "modify": [
+          "core/agents/tasks.py"
+        ],
+        "reuse": [
+          "services/agents/echo/agent.py"
+        ]
+      },
+      "acceptanceCriteria": [
+        "conversation_id starting with 'echo-' routes to _process_with_echo",
+        "_process_with_echo function calls stream_echo_response",
+        "Streaming events sent via channel_layer.group_send",
+        "Events: chunk (token), tool_start, tool_end, idea_suggested, complete, error"
+      ],
+      "errorHandling": [
+        "Echo agent errors caught and sent as error event",
+        "Timeout after 60 seconds sends timeout error event"
+      ],
+      "testSteps": [
+        "grep -q '_process_with_echo' core/agents/tasks.py",
+        "grep -q 'echo-' core/agents/tasks.py"
+      ],
+      "apiEndpoints": [
+        "ws://localhost:8000/ws/chat/echo-{session_id}/"
+      ],
+      "validation": [],
+      "auth": "Authenticated WebSocket",
+      "scale": "One connection per user session",
+      "dependsOn": ["US-015"]
+    },
+    {
+      "id": "US-017",
+      "type": "frontend",
+      "title": "Create useEchoChat hook and useContentPillars hook",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/hooks/useEchoChat.ts",
+          "frontend/src/hooks/useContentPillars.ts",
+          "frontend/src/services/contentEngine/pillars.ts"
+        ],
+        "modify": [
+          "frontend/src/types/contentEngine.ts"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useIntelligentChat.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "useEchoChat connects to ws://localhost:8000/ws/chat/echo-{sessionId}/",
+        "Returns: messages, sendMessage, isConnected, isTyping, suggestedIdea",
+        "Handles events: chunk, tool_start, tool_end, idea_suggested, complete, error",
+        "useContentPillars fetches pillars from /api/v1/taxonomy/?taxonomy_type=content_pillar",
+        "Returns: pillars, isLoading, activePillar, setActivePillar",
+        "ContentPillar type added to contentEngine.ts"
+      ],
+      "errorHandling": [
+        "WebSocket disconnect triggers reconnect with exponential backoff",
+        "Error events show in chat as system message"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Import useEchoChat in a test component - no errors",
+        "Import useContentPillars in a test component - no errors"
+      ],
+      "testUrl": null,
+      "loadingState": null,
+      "a11y": null,
+      "mobile": null,
+      "dependsOn": ["US-016"]
+    },
+    {
+      "id": "US-018",
+      "type": "frontend",
+      "title": "Create BrainstormChatPanel and chat UI components",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/chat/BrainstormChatPanel.tsx",
+          "frontend/src/components/content-engine/chat/ContextBar.tsx",
+          "frontend/src/components/content-engine/chat/QuickPromptPills.tsx",
+          "frontend/src/components/content-engine/chat/IdeaSuggestionMessage.tsx",
+          "frontend/src/components/content-engine/chat/EchoAvatar.tsx"
+        ],
+        "modify": [],
+        "reuse": [
+          "frontend/src/hooks/useEchoChat.ts",
+          "frontend/src/hooks/useContentPillars.ts",
+          "frontend/src/components/chat/ChatMessageList.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "BrainstormChatPanel renders ContextBar, ChatMessageList, QuickPromptPills, ChatInput",
+        "ContextBar shows pillar chips and platform toggles (Twitter, LinkedIn, YouTube)",
+        "QuickPromptPills show contextual suggestions below chat",
+        "IdeaSuggestionMessage renders idea card with Save button in chat",
+        "EchoAvatar shows Echo's avatar/icon",
+        "Neon glass styling: cyan gradients, glass-panel, shadow-neon on hover"
+      ],
+      "errorHandling": [
+        "Disconnected state shows reconnecting indicator",
+        "Save idea failure shows error toast with retry"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Import BrainstormChatPanel in IdeasTab - renders without error",
+        "ContextBar shows pillar chips",
+        "QuickPromptPills render below chat input"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/ideas",
+      "loadingState": "Chat shows 'Connecting to Echo...' until WebSocket ready",
+      "a11y": "Chat messages have role='log', pillar chips have aria-pressed",
+      "mobile": "Full-width layout, pills scroll horizontally",
+      "dependsOn": ["US-017"]
+    },
+    {
+      "id": "US-019",
+      "type": "frontend",
+      "title": "Refactor IdeasTab with hybrid chat + list layout",
+      "passes": false,
+      "files": {
+        "create": [],
+        "modify": [
+          "frontend/src/components/content-engine/tabs/IdeasTab.tsx"
+        ],
+        "reuse": [
+          "frontend/src/components/content-engine/chat/BrainstormChatPanel.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaList.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaFilters.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Hybrid layout: BrainstormChatPanel (top 60%), IdeaList (bottom 40%)",
+        "Resizable divider between chat and list (optional)",
+        "onIdeaSaved callback refreshes idea list",
+        "Saved idea animates into list (slide down)",
+        "Mobile: Collapsible sections with toggle"
+      ],
+      "errorHandling": [
+        "If chat fails to connect, show ideas list full-height with banner"
+      ],
+      "testSteps": [
+        "npx tsc --noEmit",
+        "Visit http://localhost:3000/create/content-engine/ideas",
+        "Chat panel renders in top 60% of tab",
+        "Idea list renders in bottom 40%",
+        "Send message to Echo - receive streaming response",
+        "When Echo suggests idea, click Save - idea appears in list below"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/ideas",
+      "loadingState": "Both panels show their own loading states",
+      "a11y": "Panels have aria-label, resizer has aria-valuenow",
+      "mobile": "Stacked layout with collapsible chat",
+      "dependsOn": ["US-004", "US-018"]
+    },
+    {
+      "id": "US-020",
+      "type": "frontend",
+      "title": "Echo first-time onboarding flow",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/chat/EchoOnboarding.tsx"
+        ],
+        "modify": [
+          "frontend/src/components/content-engine/chat/BrainstormChatPanel.tsx"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "First visit shows Echo welcome message with onboarding questions",
+        "Echo asks: What platforms? What topics? Who's your audience?",
+        "Answers stored in localStorage or BrandVoice",
+        "Subsequent visits skip onboarding, show welcome back message",
+        "Skip option available to go straight to chat"
+      ],
+      "errorHandling": [
+        "Skip button always available",
+        "localStorage failure falls back to in-memory state"
+      ],
+      "testSteps": [
+        "Clear localStorage, visit http://localhost:3000/create/content-engine/ideas",
+        "Echo shows welcome message with onboarding",
+        "Answer questions - preferences saved",
+        "Reload page - no onboarding, shows 'Welcome back'",
+        "Clear localStorage - onboarding appears again"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine/ideas",
+      "loadingState": "Onboarding shows after WebSocket connected",
+      "a11y": "Questions have clear labels, focus management",
+      "mobile": "Full-width onboarding cards",
+      "dependsOn": ["US-019"]
     }
   ]
 }
