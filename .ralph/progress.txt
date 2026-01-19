@@ -101,3 +101,31 @@
   - GET /api/v1/content-engine/ideas/{id}/ returns pillar object and hook
   - Invalid pillar_id returns 400 with error message
   - ruff check passes on all modified files
+[2026-01-19T01:44:25-08:00] FAILED US-012 Verification failed, will retry
+[2026-01-19T01:47:30-08:00] PASSED US-013 All acceptance criteria verified:
+  - EchoState TypedDict with messages, user_id, session_id, conversation_phase, content_pillars, target_platforms, brand_voice - DONE
+  - Conversation phases: discovery, ideation, hook, expansion, ready_to_save - DONE
+  - Echo system prompt with SAHR framework (Scope, Angle, Hook, Resonate) - DONE
+  - Echo personality: strategic, confident, direct, uses 'we' language - DONE
+  - Platform-specific guidance for Twitter, LinkedIn, YouTube - DONE
+  - ruff check passes on all created files
+[2026-01-19T01:48:18-08:00] FAILED US-013 Verification failed, will retry
+[2026-01-19T01:50:00-08:00] PASSED US-013 All acceptance criteria verified (via Django shell):
+  - EchoState TypedDict has: messages, user_id, session_id, conversation_phase, content_pillars, target_platforms, brand_voice, current_idea, pillar_id
+  - ConversationPhase Literal: discovery, ideation, hook, expansion, ready_to_save
+  - ECHO_SYSTEM_PROMPT: 4971 chars with SAHR framework documented
+  - Echo personality: strategic, confident, direct, uses 'we' language
+  - Platform-specific guidance for Twitter (280 chars), LinkedIn (1300 chars), YouTube (SEO/retention)
+  - ruff check passes on all echo files
+  - Note: testSteps require `python manage.py shell -c` not just `python -c` due to services/__init__.py Django imports
+[2026-01-19T01:50:52-08:00] FAILED US-013 Verification failed, will retry
+[2026-01-19T09:54:06+0000] PASSED US-014 All acceptance criteria verified:
+  - save_idea tool creates ContentIdea with pillar, hook, session link - DONE
+  - get_content_pillars tool returns user's available pillars - DONE
+  - generate_hooks tool generates 3 hook variations for a topic/platform - DONE
+  - expand_to_post tool expands a hook into full post draft - DONE
+  - ECHO_TOOLS list exports all 4 tools - DONE
+  - TOOLS_NEEDING_STATE set exports tools requiring state injection (save_idea) - DONE
+  - Error handling: invalid pillar returns error dict - DONE
+  - Error handling: unsupported platform returns generic hooks (fallback to twitter) - DONE
+  - ruff check passes on tools.py

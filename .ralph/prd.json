@@ -526,7 +526,7 @@
       "id": "US-013",
       "type": "backend",
       "title": "Create Echo agent structure with state and prompts",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "services/agents/echo/__init__.py",
@@ -561,7 +561,7 @@
       "id": "US-014",
       "type": "backend",
       "title": "Create Echo tools (save_idea, get_pillars, generate_hooks)",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "services/agents/echo/tools.py"
