@@ -1,6 +1,6 @@
 {
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
-    "vibe-and-thrive": "file:../vibe-and-thrive/vibe-and-thrive-1.2.0.tgz"
+    "vibe-and-thrive": "file:../vibe-and-thrive"
   }
 }
