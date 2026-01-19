@@ -46,13 +46,45 @@ Each entry: [TIMESTAMP] [STATUS] Description
   - Added verification checklist requiring ALL testSteps to pass
   - Updated CLAUDE.md with new session routines
 
+[2025-01-19T10:30] [COMPLETED] US-016 Echo routing to WebSocket task handler
+  - Verified _process_with_echo function exists (lines 903-1071)
+  - Verified 'echo-' routing in _process_with_orchestrator (lines 681-690)
+  - All acceptance criteria met:
+    - conversation_id starting with 'echo-' routes correctly
+    - _process_with_echo calls stream_echo_response
+    - Events: chunk, tool_start, tool_end, idea_suggested, complete, error
+    - 60 second timeout with TimeoutError handler
+  - Test steps both passed:
+    - grep -q '_process_with_echo' core/agents/tasks.py
+    - grep -q 'echo-' core/agents/tasks.py
+  - Previous failure was pytest --reuse-db arg issue, not implementation
+
+[2026-01-19T11:00] [COMPLETED] US-017 useEchoChat and useContentPillars hooks
+  - Created frontend/src/types/contentEngine.ts ContentPillar and SuggestedIdea types
+  - Created frontend/src/services/contentEngine/pillars.ts API service
+  - Created frontend/src/hooks/useContentPillars.ts hook
+  - Created frontend/src/hooks/useEchoChat.ts WebSocket hook
+  - All acceptance criteria met:
+    - useEchoChat connects to ws://localhost:8000/ws/chat/echo-{sessionId}/
+    - Returns: messages, sendMessage, isConnected, isTyping, suggestedIdea
+    - Handles events: chunk, tool_start, tool_end, idea_suggested, complete, error
+    - useContentPillars fetches pillars from /api/v1/taxonomies/?taxonomy_type=content_pillar
+    - Returns: pillars, isLoading, activePillar, setActivePillar
+    - ContentPillar type added to contentEngine.ts
+  - Error handling implemented:
+    - WebSocket disconnect triggers reconnect via useWebSocketBase (exponential backoff)
+    - Error events show in chat as system message with type: 'error'
+  - Test steps passed:
+    - npx tsc --noEmit (no errors)
+    - Hook exports verified
+
 ## Blockers
 - None currently
 
 ## Next Session Should
 1. Read this file
-2. Run: `cat features.json | jq '.features[] | select(.passes == false) | {id, name}'`
-3. Pick FIRST failing feature (profile-achievements)
+2. Run: `cat .ralph/prd.json | jq '.stories[] | select(.passes == false) | {id, title}'`
+3. Pick FIRST failing feature (US-018)
 4. Implement it
 5. Execute ALL testSteps before marking passes: true
 6. Commit with descriptive message

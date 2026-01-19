@@ -154,3 +154,30 @@ export interface TabConfig {
   label: string;
   icon: string;
 }
+
+// ContentPillar matching backend Taxonomy with taxonomy_type='content_pillar'
+export interface ContentPillar {
+  id: number;
+  name: string;
+  slug: string;
+  taxonomyType: string;
+  taxonomyTypeDisplay: string;
+  description?: string;
+  isActive: boolean;
+  color?: string;
+  websiteUrl?: string;
+  logoUrl?: string;
+  usageTips?: string;
+  bestFor?: string;
+  parentId?: number | null;
+}
+
+// Suggested idea from Echo agent
+export interface SuggestedIdea {
+  title: string;
+  description?: string;
+  hook?: string;
+  pillarId?: number;
+  pillarName?: string;
+  platforms?: Platform[];
+}

@@ -602,7 +602,7 @@
       "id": "US-015",
       "type": "backend",
       "title": "Create Echo LangGraph agent with streaming",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "services/agents/echo/agent.py"
@@ -645,7 +645,7 @@
       "id": "US-016",
       "type": "backend",
       "title": "Add Echo routing to WebSocket task handler",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [],
         "modify": [
@@ -683,7 +683,7 @@
       "id": "US-017",
       "type": "frontend",
       "title": "Create useEchoChat hook and useContentPillars hook",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/hooks/useEchoChat.ts",
