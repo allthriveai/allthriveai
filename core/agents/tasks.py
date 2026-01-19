@@ -677,6 +677,18 @@ def _process_with_orchestrator(
             channel_layer=channel_layer,
         )
 
+    # Echo agent routing - content brainstorming for creators
+    if conversation_id.startswith('echo-'):
+        logger.info(f'Routing to Echo agent: conversation={conversation_id}')
+        result['intent'] = 'echo'
+        return _process_with_echo(
+            conversation_id=conversation_id,
+            message=message,
+            user=user,
+            channel_name=channel_name,
+            channel_layer=channel_layer,
+        )
+
     # Everything else → Unified Ava agent (has all 27 tools)
     # - Discovery tools (search, recommend, trending, similar, details)
     # - Learning tools (progress, hints, explain, suggest, quiz)
@@ -886,6 +898,177 @@ def _process_with_ava(
     # so no Redis caching needed for Ava responses.
 
     return {}
+
+
+def _process_with_echo(
+    conversation_id: str,
+    message: str,
+    user,
+    channel_name: str,
+    channel_layer,
+) -> dict:
+    """
+    Process message using the Echo agent for content brainstorming.
+
+    The Echo agent guides creators through the SAHR framework:
+    - Scope: Understanding what to communicate
+    - Angle: Finding unique perspectives
+    - Hook: Creating attention-grabbing openers
+    - Resonate: Ensuring the message lands
+
+    Args:
+        conversation_id: Unique conversation identifier (starts with 'echo-')
+        message: Sanitized user message
+        user: User object
+        channel_name: Redis channel for WebSocket
+        channel_layer: Django Channels layer
+
+    Returns:
+        Dict with processing results
+    """
+    import asyncio
+
+    from services.agents.echo.agent import stream_echo_response
+
+    logger.info(f'Processing with Echo agent: conversation={conversation_id}')
+
+    async def run_echo_agent():
+        """Async function to stream Echo agent response and send to WebSocket."""
+        from channels.layers import get_channel_layer as get_async_channel_layer
+
+        async_channel_layer = get_async_channel_layer()
+        full_response = []
+
+        try:
+            # Set a timeout for the entire operation (60 seconds)
+            async with asyncio.timeout(60):
+                async for event in stream_echo_response(
+                    user_message=message,
+                    user_id=user.id,
+                    session_id=conversation_id,
+                ):
+                    event_type = event.get('type')
+
+                    if event_type == 'token':
+                        # Stream text chunk to WebSocket
+                        chunk_content = event.get('content', '')
+                        chunk_content = _sanitize_urls(chunk_content)
+                        full_response.append(chunk_content)
+                        await async_channel_layer.group_send(
+                            channel_name,
+                            {
+                                'type': 'chat.message',
+                                'event': 'chunk',
+                                'chunk': chunk_content,
+                                'conversation_id': conversation_id,
+                            },
+                        )
+
+                    elif event_type == 'tool_start':
+                        await async_channel_layer.group_send(
+                            channel_name,
+                            {
+                                'type': 'chat.message',
+                                'event': 'tool_start',
+                                'tool': event.get('tool', ''),
+                                'conversation_id': conversation_id,
+                            },
+                        )
+                        logger.info(f'Echo tool started: {event.get("tool")}')
+
+                    elif event_type == 'tool_end':
+                        tool_output = event.get('output', {})
+                        tool_name = event.get('tool', '')
+                        await async_channel_layer.group_send(
+                            channel_name,
+                            {
+                                'type': 'chat.message',
+                                'event': 'tool_end',
+                                'tool': tool_name,
+                                'output': tool_output,
+                                'conversation_id': conversation_id,
+                            },
+                        )
+                        logger.info(f'Echo tool ended: {tool_name}')
+
+                    elif event_type == 'idea_suggested':
+                        # Send idea suggestion event for UI handling
+                        await async_channel_layer.group_send(
+                            channel_name,
+                            {
+                                'type': 'chat.message',
+                                'event': 'idea_suggested',
+                                'idea': event.get('idea', {}),
+                                'conversation_id': conversation_id,
+                            },
+                        )
+                        logger.info(f'Echo idea suggested: {event.get("idea")}')
+
+                    elif event_type == 'complete':
+                        # Persist conversation to database (async via Celery)
+                        accumulated_text = ''.join(full_response)
+                        if accumulated_text.strip():
+                            persist_conversation_message.delay(
+                                user_id=user.id,
+                                conversation_id=conversation_id,
+                                user_message=message,
+                                assistant_message=accumulated_text,
+                            )
+                        logger.info('Echo agent stream completed')
+
+                    elif event_type == 'error':
+                        error_msg = event.get('message', 'Unknown error')
+                        logger.error(f'Echo agent error: {error_msg}')
+                        await async_channel_layer.group_send(
+                            channel_name,
+                            {
+                                'type': 'chat.message',
+                                'event': 'error',
+                                'error': error_msg,
+                                'conversation_id': conversation_id,
+                            },
+                        )
+
+        except TimeoutError:
+            logger.error(f'Echo agent timed out for conversation {conversation_id}')
+            await async_channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'error',
+                    'error': 'Request timed out. Please try again with a simpler request.',
+                    'conversation_id': conversation_id,
+                },
+            )
+
+        except Exception as e:
+            logger.error(f'Echo agent streaming error: {e}', exc_info=True)
+            await async_channel_layer.group_send(
+                channel_name,
+                {
+                    'type': 'chat.message',
+                    'event': 'error',
+                    'error': 'Something went wrong. Please try again.',
+                    'conversation_id': conversation_id,
+                },
+            )
+
+    # Run the async function using centralized async runner
+    try:
+        _run_async(run_echo_agent())
+    except Exception as e:
+        logger.error(f'Echo agent error: {e}', exc_info=True)
+        async_to_sync(channel_layer.group_send)(
+            channel_name,
+            {
+                'type': 'chat.message',
+                'event': 'error',
+                'error': 'Something went wrong. Please try again.',
+                'conversation_id': conversation_id,
+            },
+        )
+
+    return {'intent': 'echo'}
 
 
 def _process_with_ai_provider(
