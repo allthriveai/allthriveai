@@ -16,9 +16,10 @@ interface IdeaCardProps {
   onCreateClip?: (id: number) => void;
   onSchedule?: (id: number) => void;
   onDelete?: (id: number) => void;
+  isHighlighted?: boolean;
 }
 
-export function IdeaCard({ idea, onArchive, onCreateClip, onSchedule, onDelete }: IdeaCardProps) {
+export function IdeaCard({ idea, onArchive, onCreateClip, onSchedule, onDelete, isHighlighted }: IdeaCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +43,10 @@ export function IdeaCard({ idea, onArchive, onCreateClip, onSchedule, onDelete }
   };
 
   return (
-    <div className="glass-card p-4 rounded-xl hover:shadow-lg transition-shadow relative group">
+    <div
+      className="glass-card p-4 rounded-xl hover:shadow-lg transition-shadow relative group"
+      data-new-idea={isHighlighted ? 'true' : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           {/* Title */}

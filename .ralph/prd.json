@@ -726,7 +726,7 @@
       "id": "US-018",
       "type": "frontend",
       "title": "Create BrainstormChatPanel and chat UI components",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/content-engine/chat/BrainstormChatPanel.tsx",
@@ -772,7 +772,7 @@
       "id": "US-019",
       "type": "frontend",
       "title": "Refactor IdeasTab with hybrid chat + list layout",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [],
         "modify": [

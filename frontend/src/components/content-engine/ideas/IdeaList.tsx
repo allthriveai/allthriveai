@@ -12,9 +12,10 @@ interface IdeaListProps {
   onCreateClip?: (id: number) => void;
   onSchedule?: (id: number) => void;
   onDelete?: (id: number) => void;
+  highlightedId?: number | null;
 }
 
-export function IdeaList({ ideas, onArchive, onCreateClip, onSchedule, onDelete }: IdeaListProps) {
+export function IdeaList({ ideas, onArchive, onCreateClip, onSchedule, onDelete, highlightedId }: IdeaListProps) {
   return (
     <div className="grid grid-cols-1 gap-3">
       {ideas.map((idea) => (
@@ -25,6 +26,7 @@ export function IdeaList({ ideas, onArchive, onCreateClip, onSchedule, onDelete 
           onCreateClip={onCreateClip}
           onSchedule={onSchedule}
           onDelete={onDelete}
+          isHighlighted={idea.id === highlightedId}
         />
       ))}
     </div>
