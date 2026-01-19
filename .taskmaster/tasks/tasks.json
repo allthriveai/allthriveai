@@ -1,0 +1,144 @@
+{
+  "tasks": [],
+  "metadata": {
+    "projectName": "AllThrive - The AI Network Collective",
+    "createdAt": "2025-01-16T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Hide Legacy Navigation Sections",
+        "description": "Modify the navigation to hide legacy sections while maintaining route functionality.",
+        "details": "Update menuData.ts to remove 'Discover', 'Learn', 'Play', and 'Tools' from the navigation. Ensure 'Lounge' remains visible. Adjust the navigation structure to include only Logo, Search, Ava, and User Menu. Ensure all routes remain accessible via direct URLs.",
+        "testStrategy": "Verify the navigation only shows the specified items. Ensure direct URLs for hidden sections still work and do not return 404 errors.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Create Collective Home Page Placeholder",
+        "description": "Develop a new home page with a placeholder and Ava chat sidebar.",
+        "details": "Create CollectiveHomePage.tsx at the /home route. Include a welcome message with the tagline 'Share what you offer. Ask for what you need.' Add 'Coming soon' messaging for unbuilt features. Integrate the Ava chat sidebar using the existing EmbeddedChatLayout. Include a link for profile completion if onboarding is incomplete. Apply Neon Glass design system styles.",
+        "testStrategy": "Log in as a test user and navigate to /home. Verify the welcome message, Ava chat sidebar, profile completion link, and Neon Glass styling. Check for console errors.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Update Route Configuration",
+        "description": "Adjust routing to support the new home page and preserve legacy routes.",
+        "details": "Configure /home to route to CollectiveHomePage. Redirect logged-in users from / to /home. Ensure all legacy routes (/learn/*, /play/*, /tools/*) still resolve correctly. Verify /collective route remains functional.",
+        "testStrategy": "Test redirection and routing by navigating to various URLs as both logged-in and logged-out users. Ensure correct pages load without 404 errors.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Update User Menu Dropdown",
+        "description": "Simplify the user menu to include only essential items.",
+        "details": "Modify the user menu to display only 'My Profile', 'Settings', and 'Sign Out'. Ensure 'My Profile' links to /@username and 'Settings' links to /settings. Remove any unnecessary legacy menu items.",
+        "testStrategy": "Log in and verify the user menu displays the correct items. Test navigation by clicking each menu item to ensure they link to the correct pages.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Neon Glass Design System",
+        "description": "Apply the Neon Glass design system to the new home page.",
+        "details": "Ensure all elements on the CollectiveHomePage.tsx use the Neon Glass design system. Apply appropriate glass-panel classes to achieve the desired styling.",
+        "testStrategy": "Check the home page for consistent application of Neon Glass styles. Verify visual elements match design specifications.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Ensure Route Accessibility",
+        "description": "Verify all routes are accessible and functional.",
+        "details": "Conduct thorough testing of all routes to ensure they are accessible and do not return 404 errors. This includes both legacy and new routes.",
+        "testStrategy": "Navigate to all specified routes and verify they load correctly. Check for any broken links or errors.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Test User Profile Links",
+        "description": "Ensure user profile links function correctly from the user menu.",
+        "details": "Test the 'My Profile' link in the user menu to ensure it navigates to the correct user profile page (/@username).",
+        "testStrategy": "Log in and click 'My Profile' in the user menu. Verify it navigates to the correct profile page.",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Test Settings Navigation",
+        "description": "Ensure settings link functions correctly from the user menu.",
+        "details": "Test the 'Settings' link in the user menu to ensure it navigates to the /settings page.",
+        "testStrategy": "Log in and click 'Settings' in the user menu. Verify it navigates to the settings page.",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Test Sign Out Functionality",
+        "description": "Ensure the sign-out option works correctly from the user menu.",
+        "details": "Test the 'Sign Out' option in the user menu to ensure it logs out the user and redirects to the appropriate page.",
+        "testStrategy": "Log in and click 'Sign Out' in the user menu. Verify the user is logged out and redirected appropriately.",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Validate Ava Chat Sidebar",
+        "description": "Ensure the Ava chat sidebar is functional on the home page.",
+        "details": "Test the Ava chat sidebar on the CollectiveHomePage to ensure it operates as expected, using the EmbeddedChatLayout pattern.",
+        "testStrategy": "Log in and interact with the Ava chat sidebar. Verify it functions correctly without errors.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-01-17T03:34:34.441Z",
+      "updated": "2026-01-17T03:34:34.441Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

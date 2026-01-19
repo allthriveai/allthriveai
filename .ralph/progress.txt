@@ -1,0 +1,1 @@
+[2026-01-17T18:40:57-08:00] ADDED SIGN sign-003: Always use docker compose exec -T for non-interactive commands

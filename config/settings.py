@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     'core.tools',  # AI tools and technology directory
     'core.battles',  # Prompt battles feature
     'core.clips',  # Social clip creator
+    'core.content_engine',  # Content Engine - personal brand pipeline
     'core.events',  # Events and calendar
     'core.social',  # Social connections
     'core.engagement',  # Engagement tracking for personalization

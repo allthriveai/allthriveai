@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "typescript": "cd frontend && npx tsc --noEmit",
+    "lint": "docker compose exec -T web ruff check .",
+    "tests": "docker compose exec -T web python manage.py test --keepdb --parallel"
+  },
+  "maxIterations": 20,
+  "maxSessionSeconds": 600,
+  "testUrlBase": "http://localhost:3000",
+  "contextRotThreshold": {
+    "maxStories": 10,
+    "maxFilesChanged": 20
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "signs": [
+    {
+      "id": "sign-1768689308982",
+      "pattern": "[Frontend] Always use camelCase in React props, API responses use snake_case",
+      "category": "frontend",
+      "addedAt": "2026-01-17T22:35:08.982Z"
+    },
+    {
+      "id": "sign-1768689314277",
+      "pattern": "[Backend] Use Django REST Framework serializers for API endpoints",
+      "category": "backend",
+      "addedAt": "2026-01-17T22:35:14.277Z"
+    },
+    {
+      "id": "sign-003",
+      "pattern": "Always use docker compose exec -T for non-interactive commands",
+      "category": "docker",
+      "learnedFrom": null,
+      "createdAt": "2026-01-17T18:40:57-08:00"
+    }
+  ]
+}

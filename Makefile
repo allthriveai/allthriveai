@@ -1609,3 +1609,49 @@ ifdef PRESERVE_USERNAME
 else
 	docker-compose exec web python manage.py anonymize_users --confirm --preserve-staff --preserve-agents
 endif
+
+# =============================================================================
+# Ralph - Autonomous AI Development Loop
+# =============================================================================
+
+RALPH := ./frontend/node_modules/.bin/ralph
+
+.PHONY: ralph ralph-init ralph-status ralph-run ralph-check ralph-test ralph-verify
+
+ralph: ralph-status ## Show ralph status
+
+ralph-init: ## Initialize ralph in this project
+	$(RALPH) init
+
+ralph-status: ## Show current feature, queue, completed, blocked
+	$(RALPH) status
+
+ralph-add: ## Add a feature: make ralph-add ID=feature-name PRD=path/to/prd.md
+	$(RALPH) add $(ID) $(PRD)
+
+ralph-start: ## Start a feature: make ralph-start ID=feature-name
+	$(RALPH) start $(ID)
+
+ralph-run: ## Run autonomous loop until current feature passes
+	$(RALPH) run
+
+ralph-check: ## Run verification checks on current feature
+	$(RALPH) check
+
+ralph-test: ## Run Playwright E2E tests
+	$(RALPH) test
+
+ralph-test-generate: ## Generate Playwright tests from PRD
+	$(RALPH) test --generate
+
+ralph-verify: ## Run browser verification with Chrome MCP
+	$(RALPH) verify
+
+ralph-blocked: ## Mark feature as blocked: make ralph-blocked REASON="reason"
+	$(RALPH) blocked "$(REASON)"
+
+ralph-sign: ## Add a learned pattern: make ralph-sign PATTERN="pattern" CAT=category
+	$(RALPH) sign "$(PATTERN)" $(CAT)
+
+ralph-signs: ## Show all learned patterns
+	$(RALPH) signs

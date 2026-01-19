@@ -431,3 +431,20 @@ The Ralph workflow complements (not replaces) the existing speckit system:
 2. Transfer tasks to `features.json` for Ralph execution
 3. Use Ralph loop for autonomous implementation
 4. Return to speckit for next feature design
+
+
+<!-- vibe-and-thrive-detected -->
+## Detected Project Info
+
+- Runtime: Node.js + Python
+- Framework: React + Django
+- Language: TypeScript
+- Styling: Tailwind CSS
+- Testing: pytest
+
+### Project Structure
+- Components: `src/components/` or `frontend/`
+- Hooks: `src/hooks/`
+- Tests: `tests/`
+
+*Auto-detected by vibe-and-thrive. Edit freely.*

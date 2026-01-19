@@ -1422,6 +1422,61 @@ export default function ProfilePage() {
               onEditSocialLinks={() => setShowSocialLinksEditor(true)}
             />
 
+            {/* Achievements Section - Compact horizontal display for non-curation users */}
+            {achievementsByCategory && !isAchievementsLoading && (() => {
+              const earnedAchievements = Object.values(achievementsByCategory)
+                .flat()
+                .filter(a => a.isEarned);
+
+              if (earnedAchievements.length === 0) return null;
+
+              // Show first 6 earned achievements in a compact row
+              const displayAchievements = earnedAchievements.slice(0, 6);
+              const remainingCount = earnedAchievements.length - 6;
+
+              return (
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 border-t border-gray-200/50 dark:border-gray-700/50">
+                  <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="flex items-center gap-4">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 flex-shrink-0">
+                        Achievements
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {displayAchievements.map((achievement) => (
+                          <AchievementBadge
+                            key={achievement.id}
+                            achievement={{
+                              id: achievement.id,
+                              key: achievement.key,
+                              name: achievement.name,
+                              description: achievement.description,
+                              icon: achievement.icon,
+                              category: (achievement.category as 'projects' | 'battles' | 'community' | 'engagement' | 'streaks') || 'projects',
+                              rarity: (achievement.rarity as 'common' | 'rare' | 'epic' | 'legendary') || 'common',
+                              points: achievement.points,
+                              isSecret: achievement.isSecret,
+                            }}
+                            userAchievement={{
+                              id: achievement.id,
+                              earnedAt: achievement.earnedAt || new Date().toISOString(),
+                              progress: achievement.currentValue,
+                              total: achievement.criteriaValue,
+                            }}
+                            size="small"
+                          />
+                        ))}
+                        {remainingCount > 0 && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 self-center ml-1">
+                            +{remainingCount} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Tab Navigation - Always visible */}
             <div className="border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
               <div className="w-full px-4 sm:px-6 lg:px-8">

@@ -37,16 +37,14 @@ export function IdeasTab() {
     refetch();
   }, [deleteIdea, refetch]);
 
-  const handleCreateClip = useCallback((id: number) => {
-    // Navigate to create tab with idea context
-    // For now, just log - will be wired up in later story
-    console.log('Create clip from idea:', id);
+  const handleCreateClip = useCallback((_id: number) => {
+    // TODO: Navigate to create tab with idea context
+    // Will be wired up when clip creation from ideas is implemented
   }, []);
 
-  const handleSchedule = useCallback((id: number) => {
-    // Open schedule modal
-    // For now, just log - will be wired up in later story
-    console.log('Schedule idea:', id);
+  const handleSchedule = useCallback((_id: number) => {
+    // TODO: Open schedule modal
+    // Will be wired up when scheduling from ideas is implemented
   }, []);
 
   // Loading state

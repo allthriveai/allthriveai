@@ -5,7 +5,7 @@
 
 import { useState, useCallback, type FormEvent } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes, faSpinner, faCalendar, faClock } from '@fortawesome/free-solid-svg-icons';
+import { faTimes, faSpinner, faCalendar, faClock, faComment } from '@fortawesome/free-solid-svg-icons';
 import { useCreateSchedule } from '@/hooks/useSchedule';
 import type { Platform } from '@/types/contentEngine';
 
@@ -27,6 +27,7 @@ export function ScheduleModal({ clipId, clipTitle, isOpen, onClose, onSuccess }:
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('09:00');
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
+  const [textContent, setTextContent] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const { createSchedule, isCreating, error: apiError } = useCreateSchedule();
@@ -65,12 +66,19 @@ export function ScheduleModal({ clipId, clipTitle, isOpen, onClose, onSuccess }:
       return;
     }
 
+    // Validate text content
+    if (!textContent.trim()) {
+      setValidationError('Please enter a caption for your post');
+      return;
+    }
+
     // Create schedule for each platform
     try {
       for (const platform of selectedPlatforms) {
         await createSchedule({
-          clipId,
+          clip: clipId,
           platform,
+          textContent: textContent.trim(),
           scheduledFor: scheduledDateTime.toISOString(),
         });
       }
@@ -79,7 +87,7 @@ export function ScheduleModal({ clipId, clipTitle, isOpen, onClose, onSuccess }:
     } catch {
       // Error is handled by the hook
     }
-  }, [selectedDate, selectedTime, selectedPlatforms, clipId, createSchedule, onSuccess, onClose]);
+  }, [selectedDate, selectedTime, selectedPlatforms, textContent, clipId, createSchedule, onSuccess, onClose]);
 
   // Get minimum date (today)
   const minDate = new Date().toISOString().split('T')[0];
@@ -153,6 +161,25 @@ export function ScheduleModal({ clipId, clipTitle, isOpen, onClose, onSuccess }:
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
               className="input-glass w-full"
+              required
+            />
+          </div>
+
+          {/* Post caption */}
+          <div className="mb-4">
+            <label htmlFor="schedule-caption" className="block text-sm text-slate-400 mb-2">
+              <FontAwesomeIcon icon={faComment} className="mr-2" />
+              Caption
+            </label>
+            <textarea
+              id="schedule-caption"
+              value={textContent}
+              onChange={(e) => {
+                setTextContent(e.target.value);
+                setValidationError(null);
+              }}
+              placeholder="Write your post caption..."
+              className="input-glass w-full h-24 resize-none"
               required
             />
           </div>

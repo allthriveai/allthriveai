@@ -40,6 +40,13 @@ export function useIdeas(params?: IdeasListParams): UseIdeasReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoize params to avoid unnecessary re-fetches
+  const status = params?.status;
+  const platform = params?.platform;
+  const search = params?.search;
+  const page = params?.page;
+  const pageSize = params?.pageSize;
+
   const fetchIdeas = useCallback(async () => {
     if (!isAuthenticated) {
       setIsLoading(false);
@@ -50,17 +57,16 @@ export function useIdeas(params?: IdeasListParams): UseIdeasReturn {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await getIdeas(params);
+      const response = await getIdeas({ status, platform, search, page, pageSize });
       setData(response);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load ideas';
       setError(errorMessage);
-      console.error('Failed to load ideas:', err);
       setData(null);
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, params?.status, params?.platform, params?.search, params?.page, params?.pageSize]);
+  }, [isAuthenticated, status, platform, search, page, pageSize]);
 
   useEffect(() => {
     if (!isAuthLoading) {

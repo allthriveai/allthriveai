@@ -536,6 +536,8 @@ urlpatterns = [
     path('community/', include('core.community.urls')),
     # Code validation for code exercises
     path('code/validate/', ValidateCodeView.as_view(), name='validate_code'),
+    # Content Engine (personal brand content pipeline)
+    path('content-engine/', include('core.content_engine.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode)

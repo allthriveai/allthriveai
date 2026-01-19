@@ -8,12 +8,13 @@ from .views import ListingViewSet, UserListingsViewSet
 router = DefaultRouter()
 router.register(r'listings', ListingViewSet, basename='listing')
 
-# Nested routes for user listings
+# User listings viewset (not a nested router to avoid intercepting /users/{username}/)
 user_listings_router = DefaultRouter()
-user_listings_router.register(r'listings', UserListingsViewSet, basename='user-listing')
+user_listings_router.register(r'', UserListingsViewSet, basename='user-listing')
 
 urlpatterns = [
     path('', include(router.urls)),
     # User-specific listings: /api/v1/users/{username}/listings/
-    path('users/<str:username>/', include(user_listings_router.urls)),
+    # NOTE: Must use explicit path to avoid intercepting /users/{username}/ profile route
+    path('users/<str:username>/listings/', include(user_listings_router.urls)),
 ]

@@ -35,7 +35,7 @@ export function ScheduleCard({ post, onDelete }: ScheduleCardProps) {
       {/* Clip title */}
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white truncate">
-          {post.clip?.title || `Clip #${post.clipId}`}
+          {post.clipTitle || `Clip #${post.clip}`}
         </p>
       </div>
 
