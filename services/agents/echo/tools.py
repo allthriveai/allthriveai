@@ -99,6 +99,23 @@ class ExpandToPostInput(BaseModel):
     state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
+class StrategyInput(BaseModel):
+    """Input for strategy tool."""
+
+    model_config = {'extra': 'allow'}
+
+    goals: list[str] | None = Field(
+        default=None, description='Content goals, e.g., ["grow audience", "get clients"]'
+    )
+    platforms: list[str] | None = Field(default=None, description='Platforms: linkedin, twitter, youtube')
+    posts_per_week: int | None = Field(default=None, description='Total posts per week across all platforms')
+    schedule: dict | None = Field(default=None, description='Posting schedule, e.g., {"linkedin": ["Mon", "Wed"]}')
+    pillars: list[str] | None = Field(default=None, description='Content pillars/themes')
+    voice: str | None = Field(default=None, description='Voice description')
+    recommendations: dict | None = Field(default=None, description='Echo coaching recommendations')
+    state: dict | None = Field(default=None, description='Internal - injected by agent')
+
+
 # =============================================================================
 # Tools
 # =============================================================================
@@ -437,6 +454,95 @@ def _expand_for_youtube(hook: str, topic: str, include_cta: bool) -> dict:
     }
 
 
+@tool(args_schema=StrategyInput)
+def strategy(
+    goals: list[str] | None = None,
+    platforms: list[str] | None = None,
+    posts_per_week: int | None = None,
+    schedule: dict | None = None,
+    pillars: list[str] | None = None,
+    voice: str | None = None,
+    recommendations: dict | None = None,
+    state: dict | None = None,
+) -> dict:
+    """
+    Get or update the user's content strategy.
+
+    Called with no args: Returns the current strategy.
+    Called with args: Updates strategy fields (partial updates supported).
+    Creates a new strategy if none exists.
+
+    Returns:
+        Dictionary with strategy data or error
+    """
+    from django.contrib.auth import get_user_model
+
+    from core.content_engine.models import Strategy
+
+    if not state or 'user_id' not in state:
+        return {'success': False, 'error': 'User not authenticated'}
+
+    user_id = state['user_id']
+    User = get_user_model()
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'success': False, 'error': 'User not found'}
+
+    # Get or create strategy
+    user_strategy, created = Strategy.objects.get_or_create(user=user)
+
+    # Check if any update args provided
+    update_fields = {}
+    if goals is not None:
+        update_fields['goals'] = goals
+    if platforms is not None:
+        # Validate platforms
+        valid_platforms = ['linkedin', 'twitter', 'youtube']
+        invalid = [p for p in platforms if p.lower() not in valid_platforms]
+        if invalid:
+            return {'success': False, 'error': f'Invalid platforms: {invalid}. Valid: {valid_platforms}'}
+        update_fields['platforms'] = [p.lower() for p in platforms]
+    if posts_per_week is not None:
+        if posts_per_week < 0:
+            return {'success': False, 'error': 'posts_per_week must be positive'}
+        update_fields['posts_per_week'] = posts_per_week
+    if schedule is not None:
+        update_fields['schedule'] = schedule
+    if pillars is not None:
+        update_fields['pillars'] = pillars
+    if voice is not None:
+        update_fields['voice'] = voice
+    if recommendations is not None:
+        update_fields['recommendations'] = recommendations
+
+    # Apply updates if any
+    if update_fields:
+        for field, value in update_fields.items():
+            setattr(user_strategy, field, value)
+        user_strategy.save()
+        action = 'created' if created else 'updated'
+        logger.info(f'Strategy {action} for user {user.username}: {list(update_fields.keys())}')
+    else:
+        action = 'retrieved'
+
+    # Return strategy data
+    return {
+        'success': True,
+        'action': action,
+        'strategy': {
+            'goals': user_strategy.goals,
+            'platforms': user_strategy.platforms,
+            'posts_per_week': user_strategy.posts_per_week,
+            'schedule': user_strategy.schedule,
+            'pillars': user_strategy.pillars,
+            'voice': user_strategy.voice,
+            'recommendations': user_strategy.recommendations,
+        },
+    }
+
+
 # =============================================================================
 # Tool Registry
 # =============================================================================
@@ -447,6 +553,7 @@ ECHO_TOOLS = [
     get_content_pillars,
     generate_hooks,
     expand_to_post,
+    strategy,
 ]
 
 # Lookup by tool name
@@ -455,6 +562,7 @@ ECHO_TOOLS_BY_NAME = {tool.name: tool for tool in ECHO_TOOLS}
 # Tools that need state injection (user_id, session_id)
 TOOLS_NEEDING_STATE = {
     'save_idea',  # Needs user_id, session_id
+    'strategy',  # Needs user_id
     # get_content_pillars reads public data, state optional
     # generate_hooks is pure computation, no state needed
     # expand_to_post is pure computation, no state needed

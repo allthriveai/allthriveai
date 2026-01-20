@@ -180,6 +180,51 @@ Each entry: [TIMESTAMP] [STATUS] Description
     - OneToOneField relationship verified
     - Created and updated Strategy instance successfully
 
+[2026-01-20T06:45] [COMPLETED] TASK-032 Create Strategy API endpoint
+  - Created StrategySerializer in core/content_engine/serializers.py
+    - All fields serialized: goals, platforms, posts_per_week, schedule, pillars, voice, recommendations
+    - Validates platforms are from allowed list: linkedin, twitter, youtube
+    - Validates posts_per_week is positive if provided
+  - Created StrategyView (APIView) in core/content_engine/views.py
+    - GET: Returns user's strategy, creates if not exists (get_or_create pattern)
+    - PUT: Updates strategy with partial=True for incremental updates
+    - IsAuthenticated permission class
+  - Added URL route in core/content_engine/urls.py
+    - path('strategy/', views.StrategyView.as_view(), name='content-strategy')
+  - All acceptance criteria met:
+    - GET /api/v1/content-engine/strategy/ returns user's strategy (creates if not exists)
+    - PUT /api/v1/content-engine/strategy/ updates strategy (partial updates allowed)
+    - Response includes all strategy fields
+  - Error handling implemented:
+    - 401 if not authenticated
+    - Partial updates don't clear other fields (partial=True in serializer)
+  - Test steps ALL passed:
+    - curl returns 401 for unauthenticated
+    - StrategySerializer imports successfully
+    - StrategyView in views.py
+    - strategy/ in urls.py
+  - Note: Fixed test step URL - API is at /api/v1/content-engine/ not /api/content-engine/
+
+[2026-01-20T06:50] [COMPLETED] TASK-033 Create strategy tool for Echo
+  - Created StrategyInput pydantic model with all strategy fields
+  - Implemented strategy() tool function in services/agents/echo/tools.py
+  - All acceptance criteria met:
+    - strategy tool added to ECHO_TOOLS list
+    - Called with no args returns current strategy (get_or_create pattern)
+    - Called with args updates strategy (partial updates)
+    - Tool uses state['user_id'] for user context
+  - Error handling implemented:
+    - Returns error dict if user not authenticated
+    - Creates strategy if none exists (get_or_create)
+    - Validates platforms are from allowed list
+    - Validates posts_per_week is positive
+  - Test steps ALL passed:
+    - grep -q 'def strategy' services/agents/echo/tools.py
+    - grep -q "'strategy'" services/agents/echo/tools.py
+    - python manage.py shell -c imports ECHO_TOOLS and shows 'strategy'
+  - Added strategy to TOOLS_NEEDING_STATE set
+  - Fixed lint error (line too long)
+
 ## Blockers
 - None currently
 
