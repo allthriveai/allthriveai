@@ -9,9 +9,8 @@ import {
   Bars3Icon,
   SunIcon,
   MoonIcon,
-  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
-import { getMenuSections } from './menuData';
+import { getMenuSections, getFlatNavItems } from './menuData';
 import { NavDropdown } from './NavDropdown';
 import { MobileMenu } from './MobileMenu';
 import { UserMenu } from './UserMenu';
@@ -33,20 +32,10 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
   const { openSearch } = useSearchStore();
 
   const menuSections = getMenuSections(onMenuClick, user?.username);
-
-  // PHASE_1: Simplified navigation for AI Collective pivot
-  // menuSections now only has: [0]=CONNECT, [1]=ACCOUNT
-  // Build mainNavItems from actual sections, excluding ACCOUNT (handled by UserMenu)
-  const mainNavItems = menuSections
-    .filter(section => section.title !== 'ACCOUNT')
-    .map(section => ({
-      label: section.title === 'CONNECT' ? 'Connect' : section.title,
-      path: section.path,
-      section,
-    }));
+  const flatNavItems = getFlatNavItems();
 
   const isActivePath = (path?: string) => {
-    if (!path) return false;
+    if (!path || path === '#') return false;
     return location.pathname === path;
   };
 
@@ -100,31 +89,23 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
                 />
               </button>
 
-              {/* Desktop Navigation Links */}
+              {/* Desktop Navigation Links - Flat nav: Ask | Offer | Chat | Create */}
               <div className="hidden lg:flex items-center gap-1">
-                {mainNavItems.map((item) => (
-                  item.section?.items?.length > 0 ? (
-                    // Dropdown for sections with items
-                    <NavDropdown
-                      key={item.label}
-                      label={item.label}
-                      section={item.section}
-                      isActive={item.path ? isActivePath(item.path) : false}
-                    />
-                  ) : (
-                    // Direct link for sections without items
-                    <button
-                      key={item.label}
-                      onClick={() => item.path && navigate(item.path)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 border ${
-                        isActivePath(item.path)
-                          ? 'bg-teal-400/[0.08] text-teal-700 dark:text-teal-300 border-teal-400/40 shadow-lg shadow-teal-500/10'
-                          : 'hover:bg-white/[0.08] text-gray-900 dark:text-gray-100 border-transparent hover:border-white/30'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  )
+                {flatNavItems.map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={() => item.path !== '#' && navigate(item.path)}
+                    disabled={item.path === '#'}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 border ${
+                      item.path === '#'
+                        ? 'text-gray-400 dark:text-gray-500 border-transparent cursor-default'
+                        : isActivePath(item.path)
+                          ? 'bg-teal-400/[0.08] text-teal-700 dark:text-teal-300 border-teal-400/40 shadow-lg shadow-teal-500/10 hover:scale-105'
+                          : 'hover:bg-white/[0.08] text-gray-900 dark:text-gray-100 border-transparent hover:border-white/30 hover:scale-105'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -152,28 +133,6 @@ export function TopNavigation({ onMenuClick, onOpenActiveQuest }: TopNavigationP
               >
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-800 dark:text-gray-200" />
               </button>
-
-              {/* Chat Button - Opens sidebar chat (except on /home where chat is embedded) */}
-              {isAuthenticated && (
-                <button
-                  onClick={() => onMenuClick('Chat')}
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105 text-sm font-medium border border-white/20 text-slate-900"
-                  style={{
-                    background: 'linear-gradient(135deg, #22d3ee, #4ade80)',
-                    boxShadow: '0 2px 8px rgba(34, 211, 238, 0.15)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 211, 238, 0.25), 0 2px 8px rgba(74, 222, 128, 0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(34, 211, 238, 0.15)';
-                  }}
-                  aria-label="Open chat"
-                >
-                  <ChatBubbleLeftRightIcon className="w-4 h-4" />
-                  <span className="hidden md:inline">Chat</span>
-                </button>
-              )}
 
               {/* Theme Toggle - Hidden on mobile, in hamburger menu */}
               <button

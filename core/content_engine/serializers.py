@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core.taxonomy.models import Taxonomy
 
-from .models import BrainstormSession, BrandVoice, ContentClip, ContentIdea, ScheduledPost
+from .models import BrainstormSession, BrandVoice, ContentClip, ContentIdea, ScheduledPost, Strategy
 
 
 class ContentPillarSerializer(serializers.ModelSerializer):
@@ -296,3 +296,44 @@ class PipelineStatsSerializer(serializers.Serializer):
     clips_approved_count = serializers.IntegerField()
     scheduled_count = serializers.IntegerField()
     published_count = serializers.IntegerField()
+
+
+class StrategySerializer(serializers.ModelSerializer):
+    """Serializer for Strategy.
+
+    Supports partial updates for incremental building of user strategy.
+    """
+
+    VALID_PLATFORMS = ['linkedin', 'twitter', 'youtube']
+
+    class Meta:
+        model = Strategy
+        fields = [
+            'id',
+            'goals',
+            'platforms',
+            'posts_per_week',
+            'schedule',
+            'pillars',
+            'voice',
+            'recommendations',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_platforms(self, value):
+        """Validate platforms are from allowed list."""
+        if value:
+            invalid = [p for p in value if p not in self.VALID_PLATFORMS]
+            if invalid:
+                raise serializers.ValidationError(
+                    f"Invalid platforms: {invalid}. Must be one of: {self.VALID_PLATFORMS}"
+                )
+        return value
+
+    def validate_posts_per_week(self, value):
+        """Validate posts_per_week is positive if provided."""
+        if value is not None and value < 0:
+            raise serializers.ValidationError("posts_per_week must be a positive integer")
+        return value

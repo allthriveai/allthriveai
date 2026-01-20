@@ -1,0 +1,74 @@
+Now I have a complete picture. Let me provide the code review:
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 25,
+      "message": "EchoConversation imports useActiveGoals from '@/hooks/useGoals', but according to the story context (TASK-040, TASK-041), the ContentGoal model and related frontend code (including useGoals.ts, goals.ts service) should be removed - they were added in the same session and are being replaced by Strategy",
+      "suggestion": "The story TASK-037 only creates useStrategy. EchoConversation.tsx should NOT import useActiveGoals since subsequent stories (TASK-040, TASK-041) will remove goal-related code. This creates a broken dependency. Either this diff is incomplete (missing goal removal) or EchoConversation should use useStrategy instead of useActiveGoals."
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "core/content_engine/views.py",
+      "line": 56,
+      "message": "ContentGoalViewSet is being added in this diff, but according to TASK-040 in the stories, ContentGoal model and API should be REMOVED. This is contradictory - the diff adds ContentGoal infrastructure that subsequent stories explicitly say to delete.",
+      "suggestion": "This appears to be residual code from an earlier task. The diff should NOT include ContentGoalViewSet, ContentGoalSerializer additions since they will immediately need to be removed in TASK-040."
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "core/content_engine/serializers.py",
+      "line": 40,
+      "message": "ContentGoalSerializer and ContentGoalCreateSerializer are being added, but TASK-040 in stories explicitly says to remove ContentGoal serializers from serializers.py",
+      "suggestion": "Remove ContentGoalSerializer and ContentGoalCreateSerializer - they shouldn't be added since TASK-040 will remove them. This is dead code."
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "core/content_engine/urls.py",
+      "line": 14,
+      "message": "Adding 'goals' URL registration, but TASK-040 explicitly says 'goals URL registration removed from urls.py'",
+      "suggestion": "Do not add the goals URL registration. It contradicts the planned removal in TASK-040."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 513,
+      "message": "EchoConversation now imports and uses useActiveGoals to conditionally render goal-based or example-based empty states, but the TASK-037 story only requires creating useStrategy hook. This component modification seems to belong to TASK-036 (empty state with goal examples) or TASK-038 (strategy summary for returning users).",
+      "suggestion": "Verify this change belongs in TASK-037 scope. The story only requires creating useStrategy.ts, strategy.ts service, and Strategy interface - not modifying EchoConversation to use goals."
+    },
+    {
+      "severity": "warning",
+      "category": "quality",
+      "file": "frontend/src/components/navigation/TopNavigation.tsx",
+      "line": 89,
+      "message": "Navigation changes (getFlatNavItems, removing Chat button) are unrelated to TASK-037 which is about creating useStrategy hook and strategy service.",
+      "suggestion": "These navigation changes should be in a separate commit/PR. TASK-037 has a narrow scope: Strategy TypeScript interface, strategy.ts service, and useStrategy hook."
+    },
+    {
+      "severity": "warning", 
+      "category": "quality",
+      "file": "frontend/src/components/navigation/menuData.ts",
+      "line": 1,
+      "message": "Major refactoring of navigation menu structure (adding getFlatNavItems, getAvatarMenuItems, restructuring sections) is unrelated to TASK-037 story scope.",
+      "suggestion": "Move navigation refactoring to its own story/PR. This diff should only contain Strategy-related changes per TASK-037."
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": ".ralph/prd.json",
+      "line": 1,
+      "message": "The entire PRD was replaced from 31 stories to 11 stories. This is a significant change but appears intentional (switching from 'Content Engine with Echo Creator Coach' to 'Echo Strategy Coach' feature).",
+      "suggestion": "Ensure this PRD replacement was intentional and coordinated with stakeholders."
+    }
+  ],
+  "summary": "This diff fails review due to several critical compliance issues. The diff adds ContentGoal-related code (ViewSet, Serializers, URLs) that subsequent stories (TASK-040, TASK-041) explicitly say to remove. This creates contradictory changes - code is being added that will immediately need to be deleted. Additionally, EchoConversation.tsx imports useActiveGoals from useGoals.ts, but that file is marked for deletion in TASK-041. The actual TASK-037 deliverables (useStrategy.ts, strategy.ts, Strategy interface) are correctly implemented, but the diff includes unrelated changes (navigation refactoring, goal infrastructure) that should be in separate commits or shouldn't exist at all."
+}
+```

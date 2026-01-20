@@ -424,3 +424,42 @@
   - ruff check passes: All checks passed\!
   - Import test passes in Django shell
   - Prompt building works with and without strategy
+[2026-01-19T23:03:32-08:00] FAILED TASK-035 Verification failed, will retry
+[2026-01-20T07:04:45+0000] COMPLETED TASK-035 All acceptance criteria verified:
+  - When Echo agent initializes, loads user's strategy from DB via _load_user_strategy() (lines 349-390)
+  - Strategy injected into system context via build_echo_prompt(user_strategy=...) (line 472)
+  - If no strategy exists, context indicates new user via _format_new_user_context() (lines 378-386)
+  Error handling:
+  - Strategy load failure continues without it (graceful degradation - lines 387-390)
+  Test steps passed:
+  - grep -q 'Strategy' services/agents/echo/agent.py - PASS
+  - grep -qi 'user.*strategy|strategy.*user' services/agents/echo/agent.py - PASS
+  Code quality:
+  - ruff check passes: All checks passed\!
+  - Django shell import test passes
+  - Prompt building works with and without strategy
+[2026-01-19T23:05:40-08:00] FAILED TASK-035 Verification failed, will retry
+[2026-01-19T23:18:25-08:00] ADDED SIGN sign-006: NEVER hardcode AI model names (gpt-4, claude-3, gemini, - always use environment variables or settings
+[2026-01-19T23:21:37-08:00] FAILED TASK-036 Verification failed, will retry
+[2026-01-19T23:24:12-08:00] FAILED TASK-037 Verification failed, will retry
+[2026-01-19T23:26:17-08:00] FAILED TASK-037 Verification failed, will retry
+[2026-01-20T07:27:45+0000] PASSED TASK-037 All acceptance criteria verified:
+  - Strategy TypeScript interface added to types (line 254-265 in contentEngine.ts)
+  - strategy.ts service with getStrategy() and updateStrategy() functions - DONE
+  - useStrategy hook that fetches and caches user's strategy - DONE
+  - Hook returns { strategy, isLoading, error, refetch } - DONE
+  Error handling:
+  - Returns null strategy if API fails (not authenticated or no strategy) - DONE
+  - Loading state while fetching - DONE
+  Test steps passed:
+  - test -f frontend/src/hooks/useStrategy.ts - PASS
+  - test -f frontend/src/services/contentEngine/strategy.ts - PASS
+  - grep -q 'interface Strategy' frontend/src/types/contentEngine.ts - PASS
+  - cd frontend && npx tsc --noEmit - PASS (no errors)
+[2026-01-19T23:28:34-08:00] FAILED TASK-037 Verification failed, will retry
+[2026-01-19T23:33:45-08:00] FAILED TASK-038 Verification failed, will retry
+[2026-01-19T23:35:31-08:00] FAILED TASK-039 Verification failed, will retry
+[2026-01-19T23:36:45-08:00] FAILED TASK-039 Verification failed, will retry
+[2026-01-19T23:41:00-08:00] FAILED TASK-040 Verification failed, will retry
+[2026-01-19T23:43:17-08:00] FAILED TASK-040 Verification failed, will retry
+[2026-01-19T23:45:45-08:00] FAILED TASK-040 Verification failed, will retry

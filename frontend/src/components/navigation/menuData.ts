@@ -15,6 +15,10 @@ import {
   faCog,
   faStore,
   faCouch,
+  faHandHoldingHeart,
+  faQuestion,
+  faComments,
+  faPaintBrush,
 } from '@fortawesome/free-solid-svg-icons';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -37,35 +41,106 @@ export interface MenuSection {
 }
 
 /**
- * PHASE_1: [HIDDEN] Legacy navigation sections hidden for AI Collective pivot
- * Routes still work, just not shown in nav
- * Delete after Phase 3 when new Discovery is stable
+ * AI Collective flat navigation items
+ * [Ava Logo] | Ask | Offer | Chat | Create | [Avatar]
+ */
+export interface FlatNavItem {
+  label: string;
+  path: string;
+  icon?: IconDefinition;
+}
+
+/**
+ * Get flat navigation items for the new AI Collective nav
+ * All paths go to # for now until pages are built
+ */
+export const getFlatNavItems = (): FlatNavItem[] => [
+  { label: 'Ask', path: '#', icon: faQuestion },
+  { label: 'Offer', path: '#', icon: faHandHoldingHeart },
+  { label: 'Chat', path: '#', icon: faComments },
+  { label: 'Create', path: '#', icon: faPaintBrush },
+];
+
+/**
+ * Avatar dropdown menu items
+ */
+export const getAvatarMenuItems = (username?: string): MenuItem[] => [
+  {
+    label: 'My Profile',
+    path: username ? `/${username}` : '#',
+    icon: faIdCard,
+  },
+  {
+    label: 'My Asks',
+    path: '#',
+    icon: faQuestion,
+  },
+  {
+    label: 'My Offers',
+    path: '#',
+    icon: faHandHoldingHeart,
+  },
+  {
+    label: 'My Learning',
+    path: '#',
+    icon: faGraduationCap,
+  },
+  {
+    label: 'Settings',
+    path: '/account/settings',
+    icon: faCog,
+  },
+];
+
+/**
+ * PHASE_1: Legacy section-based menu (kept for MobileMenu compatibility)
+ * Will be refactored when mobile nav is updated
  */
 export const getMenuSections = (
   _onMenuClick: (item: string) => void,
   username?: string
 ): MenuSection[] => [
-  // PHASE_1: [KEEP] Connect section - messaging essential for Ask/Offer connections
+  // Flat nav items as a section for mobile menu
+  {
+    title: 'BROWSE',
+    icon: faCompass,
+    path: '#',
+    items: [
+      { label: 'Ask', path: '#', icon: faQuestion },
+      { label: 'Offer', path: '#', icon: faHandHoldingHeart },
+    ],
+  },
   {
     title: 'CONNECT',
     icon: faUsers,
-    path: '/lounge',
+    path: '#',
     items: [
-      { label: 'The Lounge', path: '/lounge', icon: faCouch },
+      { label: 'Chat', path: '#', icon: faComments },
+    ],
+  },
+  {
+    title: 'CREATE',
+    icon: faPaintBrush,
+    path: '#',
+    items: [
+      { label: 'Create', path: '#', icon: faPaintBrush },
     ],
   },
   // PHASE_1: [KEEP] Account section - core user functionality
   {
     title: 'ACCOUNT',
     icon: faUser,
-    path: username ? `/${username}?tab=playground` : '#',
+    path: username ? `/${username}` : '#',
     items: [
       {
         label: 'My Profile',
-        path: username ? `/${username}?tab=playground` : '#',
+        path: username ? `/${username}` : '#',
         icon: faIdCard,
       },
-      { label: 'Account Settings', path: '/account/settings', icon: faCog },
+      { label: 'My Asks', path: '#', icon: faQuestion },
+      { label: 'My Offers', path: '#', icon: faHandHoldingHeart },
+      { label: 'My Learning', path: '#', icon: faGraduationCap },
+      { label: 'Settings', path: '/account/settings', icon: faCog },
     ],
   },
 ];

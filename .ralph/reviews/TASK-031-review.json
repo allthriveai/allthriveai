@@ -1,0 +1,93 @@
+Looking at the diff and story context, I need to review the TASK-031 implementation which is about creating the Strategy model. Let me check what the story actually requires versus what the diff shows:
+
+**Story Context**: TASK-031 is for "Create Strategy model" with acceptance criteria:
+1. Strategy model exists with fields: goals, platforms, posts_per_week, schedule, pillars, voice, recommendations
+2. OneToOneField to User with related_name='strategy'
+3. Migration created and applied
+
+However, the diff shows this is actually the **review** of an already completed TASK-031 (passes: true), and the diff includes changes for TASK-032 (Strategy API endpoint) which is also marked as passes: true.
+
+The major issue I notice is that this diff contains a LOT of unrelated changes - it modifies the PRD file substantially, adds ContentGoal model code and API (which is NOT part of the Strategy model story), and includes frontend changes for navigation and Echo conversation.
+
+Let me verify the consistency of what's being reviewed:
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "core/content_engine/serializers.py",
+      "line": 4,
+      "message": "ContentGoal model is imported and serializers created, but ContentGoal is NOT part of TASK-031 (Strategy model). This appears to be scope creep or conflation of tasks.",
+      "suggestion": "TASK-031 is specifically for Strategy model. ContentGoal should be in a separate task. The diff shows ContentGoalSerializer and ContentGoalCreateSerializer being added which are out of scope."
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "core/content_engine/views.py",
+      "line": 56,
+      "message": "ContentGoalViewSet is added with full CRUD operations and custom actions (complete, pause, activate, active). This is NOT part of TASK-031 which only requires Strategy model creation.",
+      "suggestion": "Remove ContentGoalViewSet from this diff - it's out of scope for the Strategy model story."
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "core/content_engine/urls.py",
+      "line": 14,
+      "message": "goals URL registration added (router.register('goals', views.ContentGoalViewSet, basename='content-goal')) which is NOT part of TASK-031.",
+      "suggestion": "This should be in a separate task for ContentGoal API, not the Strategy model task."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 26,
+      "message": "Import of useActiveGoals from '@/hooks/useGoals' added, but the hook file imports from '@/services/contentEngine/goals' which is listed as untracked in git status. This creates a runtime dependency on uncommitted code.",
+      "suggestion": "Ensure frontend/src/services/contentEngine/goals.ts is included in the commit or remove the useActiveGoals integration."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "frontend/src/types/contentEngine.ts",
+      "line": 185,
+      "message": "GoalStatus, GoalType, and ContentGoal types added for ContentGoal model, but this is out of scope for TASK-031 (Strategy model). These types are for a different model.",
+      "suggestion": "These additions should be in a separate task for ContentGoal frontend integration."
+    },
+    {
+      "severity": "warning",
+      "category": "quality",
+      "file": "frontend/src/components/navigation/menuData.ts",
+      "line": 1,
+      "message": "Navigation menu changes are unrelated to TASK-031 Strategy model. The diff includes substantial navigation refactoring (getFlatNavItems, getAvatarMenuItems, menu structure changes).",
+      "suggestion": "Navigation changes should be in a separate PR/task to keep changes focused."
+    },
+    {
+      "severity": "warning",
+      "category": "quality",
+      "file": "frontend/src/components/navigation/TopNavigation.tsx",
+      "line": 1,
+      "message": "TopNavigation component changes are unrelated to TASK-031 Strategy model.",
+      "suggestion": "These changes should be in a separate PR/task."
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "core/content_engine/models.py",
+      "line": 423,
+      "message": "Strategy model implementation looks correct with all required fields: goals (ArrayField), platforms (ArrayField), posts_per_week (PositiveIntegerField), schedule (JSONField), pillars (ArrayField), voice (TextField), recommendations (JSONField). OneToOneField to User with related_name='strategy' is present.",
+      "suggestion": "Strategy model implementation meets acceptance criteria."
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "core/content_engine/views.py",
+      "line": 380,
+      "message": "StrategyView API implementation looks correct with GET (get_or_create pattern) and PUT (partial updates) as specified in TASK-032.",
+      "suggestion": "The StrategyView implementation meets acceptance criteria for TASK-032."
+    }
+  ],
+  "summary": "The diff fails review due to scope creep. TASK-031 is specifically for creating the Strategy model, but this diff includes: (1) ContentGoal model with full CRUD API which is NOT part of the story, (2) Frontend navigation refactoring unrelated to Strategy, (3) EchoConversation changes that depend on uncommitted goals code. The Strategy model itself (lines 423-497 in models.py) and StrategyView (views.py) are correctly implemented. Recommend separating ContentGoal and navigation changes into separate tasks/PRs."
+}
+```

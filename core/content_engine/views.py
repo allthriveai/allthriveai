@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import BrainstormSession, BrandVoice, ContentClip, ContentIdea, ScheduledPost
+from .models import BrainstormSession, BrandVoice, ContentClip, ContentIdea, ScheduledPost, Strategy
 from .serializers import (
     BrainstormSessionSerializer,
     BrandVoiceSerializer,
@@ -18,6 +18,7 @@ from .serializers import (
     ContentIdeaSerializer,
     ScheduledPostCreateSerializer,
     ScheduledPostSerializer,
+    StrategySerializer,
 )
 
 
@@ -315,6 +316,30 @@ class CalendarView(APIView):
 
         # Return flat array of scheduled posts
         return Response(ScheduledPostSerializer(queryset, many=True).data)
+
+
+class StrategyView(APIView):
+    """Single-resource API for user content strategy.
+
+    GET: Returns the user's strategy (creates if not exists)
+    PUT: Updates the strategy (partial updates allowed)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get user's strategy, creating if not exists."""
+        strategy, _ = Strategy.objects.get_or_create(user=request.user)
+        serializer = StrategySerializer(strategy)
+        return Response(serializer.data)
+
+    def put(self, request):
+        """Update user's strategy (partial updates allowed)."""
+        strategy, _ = Strategy.objects.get_or_create(user=request.user)
+        serializer = StrategySerializer(strategy, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class PipelineStatsView(APIView):

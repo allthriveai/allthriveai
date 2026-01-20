@@ -1,0 +1,98 @@
+Now I have a complete picture of the implementation. Let me analyze this diff and provide a code review.
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 26,
+      "message": "The component imports and uses `useActiveGoals` from `@/hooks/useGoals`, but this is inconsistent with the story acceptance criteria. The story TASK-036 is about updating the empty state with goal examples, NOT about integrating with a goals system that fetches from API.",
+      "suggestion": "The story acceptance criteria state: 'Empty state shows What are your goals? heading' and shows clickable example pills. The current implementation conditionally shows different content based on whether the user has active goals (lines 520-544). This adds scope beyond what was requested. Consider whether this was intentional or if the simpler empty state with just example pills should be shown unconditionally."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "frontend/src/hooks/useGoals.ts",
+      "line": 1,
+      "message": "New file `useGoals.ts` was created but is not listed in the story's `files.create` array. The story says create `frontend/tests/e2e/echo-empty-state.spec.ts` and modify `EchoConversation.tsx`. This hook and its service dependency `@/services/contentEngine/goals` are additional scope.",
+      "suggestion": "Either update the story to reflect this additional scope, or keep the implementation simpler by not fetching active goals. The simpler approach would show the goal examples unconditionally as the empty state."
+    },
+    {
+      "severity": "warning",
+      "category": "edge-case",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 517,
+      "message": "The empty state is hidden while `isLoadingGoals` is true, but there's no loading skeleton shown during this time. If goals take time to load, the user sees nothing in the empty state area.",
+      "suggestion": "Add a loading skeleton or show the default empty state while loading goals, then transition if goals exist."
+    },
+    {
+      "severity": "warning",
+      "category": "compliance",
+      "file": "frontend/e2e/echo-empty-state.spec.ts",
+      "line": 1,
+      "message": "E2E test file is created at `frontend/e2e/echo-empty-state.spec.ts` but the story specifies `frontend/tests/e2e/echo-empty-state.spec.ts`. The path doesn't match.",
+      "suggestion": "Move the test file to the correct path: `frontend/tests/e2e/echo-empty-state.spec.ts`"
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 29,
+      "message": "ContentGoal is imported from types but the type is only used implicitly through the goals array. The import is technically unused in TypeScript's strict sense since it's only used for type inference.",
+      "suggestion": "Consider if the explicit import is necessary or if it can be removed."
+    },
+    {
+      "severity": "info",
+      "category": "a11y",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 561,
+      "message": "Example pill buttons have good descriptive text as required by the story. However, for screen readers, adding an aria-describedby with context like 'Click to start a conversation about this goal' would improve UX.",
+      "suggestion": "Consider adding aria-describedby or a visually hidden span for additional context."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": ".ralph/prd.json",
+      "line": 1,
+      "message": "The diff shows a complete replacement of the prd.json file, reducing from 1313 lines to 384 lines. This is a significant structural change that goes beyond TASK-036 scope. Multiple stories (US-001 through US-023) appear to have been removed.",
+      "suggestion": "This prd.json change should be reviewed separately or split into its own PR. Mixing large PRD restructuring with a small frontend feature makes the review harder."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "frontend/src/components/navigation/TopNavigation.tsx",
+      "line": 1,
+      "message": "TopNavigation changes (removing Chat button, changing nav structure) are unrelated to TASK-036 which is about Echo empty state with goal examples.",
+      "suggestion": "Split unrelated navigation changes into a separate PR for cleaner review and easier rollback if needed."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "frontend/src/components/navigation/menuData.ts",
+      "line": 1,
+      "message": "menuData.ts changes (new getFlatNavItems, getAvatarMenuItems, restructured menu sections) are unrelated to TASK-036.",
+      "suggestion": "Split unrelated navigation changes into a separate PR."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "core/content_engine/serializers.py",
+      "line": 40,
+      "message": "ContentGoalSerializer and ContentGoalCreateSerializer are added to serializers.py. This backend change for ContentGoal appears to be from a different story (TASK-040 mentions removing ContentGoal, suggesting it was added earlier). This is scope creep for TASK-036 review.",
+      "suggestion": "The diff should be scoped to only TASK-036 changes. ContentGoal API additions should be in their own PR."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture", 
+      "file": "core/content_engine/views.py",
+      "line": 56,
+      "message": "ContentGoalViewSet is added with complete CRUD operations plus custom actions (complete, pause, activate). This is substantial backend work unrelated to TASK-036's frontend empty state feature.",
+      "suggestion": "Split backend ContentGoal API into its own story/PR."
+    }
+  ],
+  "summary": "This PR has significant scope creep beyond TASK-036. The story was supposed to update the empty state with goal example pills, but the diff includes: 1) A complete useGoals hook and goals API integration that conditionally changes the empty state based on whether user has active goals, 2) Navigation restructuring (TopNavigation, menuData), 3) Backend ContentGoal model and API endpoints, 4) A complete prd.json restructure. The core feature (example pills in empty state) is implemented correctly with proper accessibility and mobile responsiveness, but the additional scope makes this PR fail review. Recommend splitting into separate PRs: one for the simple empty state feature, one for navigation changes, and one for ContentGoal backend API."
+}
+```

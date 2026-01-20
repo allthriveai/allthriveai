@@ -32,6 +32,13 @@
       "category": "backend",
       "learnedFrom": "US-015",
       "createdAt": "2026-01-19T10:13:30-08:00"
+    },
+    {
+      "id": "sign-006",
+      "pattern": "NEVER hardcode AI model names (gpt-4, claude-3, gemini, - always use environment variables or settings",
+      "category": "backend",
+      "learnedFrom": "TASK-036",
+      "createdAt": "2026-01-19T23:18:25-08:00"
     }
   ]
 }

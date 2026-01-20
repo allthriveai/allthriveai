@@ -20,12 +20,14 @@ import {
   CalendarDaysIcon,
   ClipboardDocumentCheckIcon,
   SparklesIcon,
+  PlayIcon,
 } from '@heroicons/react/24/outline';
 import { useEchoAgent } from '@/context/EchoAgentContext';
 import { useEchoChat, type EchoChatMessage } from '@/hooks/useEchoChat';
+import { useStrategy } from '@/hooks/useStrategy';
 import { EchoAvatar } from '@/components/content-engine/chat/EchoAvatar';
 import { IdeaCard } from '@/components/content-engine/ideas/IdeaCard';
-import type { EchoMode, SuggestedIdea, ContentIdea } from '@/types/contentEngine';
+import type { EchoMode, SuggestedIdea, ContentIdea, Strategy } from '@/types/contentEngine';
 
 interface EchoConversationProps {
   sessionId: string;
@@ -175,12 +177,157 @@ function MessageSkeleton() {
   );
 }
 
+// Skeleton loading for strategy summary
+function StrategySummarySkeleton() {
+  return (
+    <div className="w-full max-w-md animate-pulse">
+      <div className="h-5 bg-slate-700/50 rounded w-1/2 mx-auto mb-4" />
+      <div className="space-y-3">
+        <div className="h-4 bg-slate-700/50 rounded w-3/4 mx-auto" />
+        <div className="flex justify-center gap-2">
+          <div className="h-6 bg-slate-700/50 rounded-full w-20" />
+          <div className="h-6 bg-slate-700/50 rounded-full w-24" />
+        </div>
+        <div className="h-4 bg-slate-700/50 rounded w-1/2 mx-auto" />
+        <div className="h-10 bg-slate-700/50 rounded-lg w-48 mx-auto mt-4" />
+      </div>
+    </div>
+  );
+}
+
+// Format platform names for display
+function formatPlatform(platform: string): string {
+  const platformNames: Record<string, string> = {
+    linkedin: 'LinkedIn',
+    twitter: 'Twitter/X',
+    youtube: 'YouTube',
+  };
+  return platformNames[platform.toLowerCase()] || platform;
+}
+
+// Check if strategy has meaningful content to display
+function hasStrategyContent(strategy: Strategy): boolean {
+  return (
+    strategy.platforms.length > 0 ||
+    strategy.pillars.length > 0 ||
+    strategy.postsPerWeek !== null
+  );
+}
+
+// Strategy summary component for returning users
+interface StrategySummaryProps {
+  strategy: Strategy;
+  isConnected: boolean;
+  isTyping: boolean;
+  onContinue: (message: string) => void;
+}
+
+function StrategySummary({ strategy, isConnected, isTyping, onContinue }: StrategySummaryProps) {
+  // Build contextual message based on strategy
+  const buildContinueMessage = useCallback((): string => {
+    const parts: string[] = [];
+
+    if (strategy.platforms.length > 0) {
+      const platformsText = strategy.platforms.map(formatPlatform).join(' and ');
+      parts.push(`posting to ${platformsText}`);
+    }
+
+    if (strategy.postsPerWeek) {
+      parts.push(`${strategy.postsPerWeek}x per week`);
+    }
+
+    if (strategy.pillars.length > 0) {
+      const pillarsText = strategy.pillars.slice(0, 2).join(' and ');
+      parts.push(`focusing on ${pillarsText}`);
+    }
+
+    if (parts.length > 0) {
+      return `Let's continue working on my strategy: ${parts.join(', ')}. What should I focus on next?`;
+    }
+
+    return "Let's continue where we left off with my content strategy.";
+  }, [strategy]);
+
+  return (
+    <div className="w-full max-w-md text-center" aria-label="Your strategy summary">
+      <h3 className="text-lg font-semibold text-white mb-3">
+        Welcome back
+      </h3>
+
+      {/* Strategy summary */}
+      <div className="space-y-3 mb-4">
+        {/* Platforms */}
+        {strategy.platforms.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-2">
+            {strategy.platforms.map((platform) => (
+              <span
+                key={platform}
+                className="px-3 py-1 rounded-full text-sm bg-cyan-500/10 border border-cyan-500/20 text-cyan-300"
+              >
+                {formatPlatform(platform)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Cadence */}
+        {strategy.postsPerWeek && (
+          <p className="text-sm text-slate-400">
+            {strategy.postsPerWeek}x per week
+          </p>
+        )}
+
+        {/* Pillars */}
+        {strategy.pillars.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-2">
+            {strategy.pillars.slice(0, 4).map((pillar) => (
+              <span
+                key={pillar}
+                className="px-2 py-0.5 rounded text-xs bg-slate-800/50 border border-slate-700/50 text-slate-300"
+              >
+                {pillar}
+              </span>
+            ))}
+            {strategy.pillars.length > 4 && (
+              <span className="text-xs text-slate-500">
+                +{strategy.pillars.length - 4} more
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Continue button */}
+      <button
+        type="button"
+        onClick={() => onContinue(buildContinueMessage())}
+        disabled={!isConnected || isTyping}
+        className="
+          inline-flex items-center gap-2 px-4 py-2.5 rounded-lg
+          bg-cyan-500/20 border border-cyan-500/30 text-cyan-300
+          hover:bg-cyan-500/30 hover:border-cyan-500/40
+          transition-all duration-200
+          disabled:opacity-50 disabled:cursor-not-allowed
+        "
+      >
+        <PlayIcon className="w-4 h-4" />
+        Continue where I left off
+      </button>
+
+      <p className="text-xs text-slate-500 mt-3">
+        Or just start typing to chat about anything
+      </p>
+    </div>
+  );
+}
+
 export function EchoConversation({
   sessionId,
   onIdeaSaved,
   className = '',
 }: EchoConversationProps) {
   const { mode, transitionTo, recordIdeaSaved, recordAction } = useEchoAgent();
+  const { strategy, isLoading: isLoadingStrategy, error: strategyError } = useStrategy();
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [savedIdeaTitles, setSavedIdeaTitles] = useState<Set<string>>(new Set());
@@ -514,12 +661,49 @@ export function EchoConversation({
           !isTyping && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <EchoAvatar size="lg" className="mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">
-                {"Hey! I'm Echo"}
-              </h3>
-              <p className="text-sm text-slate-400 max-w-sm">
-                Your content brainstorming partner. Pick a quick action below or just start typing!
-              </p>
+              {/* Loading state for strategy */}
+              {isLoadingStrategy && !strategyError && (
+                <StrategySummarySkeleton />
+              )}
+              {/* Strategy summary for returning users */}
+              {!isLoadingStrategy && strategy && !strategyError && hasStrategyContent(strategy) && (
+                <StrategySummary
+                  strategy={strategy}
+                  isConnected={isConnected}
+                  isTyping={isTyping}
+                  onContinue={handleSendMessage}
+                />
+              )}
+              {/* Default empty state with goal examples for new users */}
+              {!isLoadingStrategy && (!strategy || !hasStrategyContent(strategy)) && (
+                <>
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    What are your goals?
+                  </h3>
+                  <p className="text-sm text-slate-400 max-w-sm mb-4">
+                    {"I'm Echo, your content strategy coach. Click an example or tell me what you want to achieve."}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                    {[
+                      'Post to LinkedIn 3x/week',
+                      'Grow my Twitter audience',
+                      'Build thought leadership',
+                      'Create a content calendar',
+                      'Repurpose my best content',
+                    ].map((example) => (
+                      <button
+                        key={example}
+                        type="button"
+                        onClick={() => handleSendMessage(example)}
+                        disabled={!isConnected || isTyping}
+                        className="px-3 py-1.5 rounded-full text-sm bg-slate-800/50 border border-slate-700/50 text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300 hover:border-cyan-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {example}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

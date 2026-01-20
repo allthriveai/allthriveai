@@ -16,4 +16,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('calendar/', views.CalendarView.as_view(), name='content-calendar'),
     path('stats/', views.PipelineStatsView.as_view(), name='pipeline-stats'),
+    path('strategy/', views.StrategyView.as_view(), name='content-strategy'),
 ]

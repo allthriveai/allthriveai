@@ -1,0 +1,55 @@
+This is a critical issue. The backend ContentGoal model was removed, but:
+1. The frontend still has `useGoals.ts` and `goals.ts` files
+2. The `EchoConversation.tsx` is still importing and using `useActiveGoals` from `useGoals`
+3. The frontend types file still has `ContentGoal`, `GoalStatus`, `GoalType` types
+
+This will cause runtime errors when the frontend tries to call the removed `/api/v1/content-engine/goals/` endpoint.
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 27,
+      "message": "Frontend imports `useActiveGoals` from `useGoals.ts` but the backend ContentGoal model and API have been removed. This will cause runtime errors when the hook tries to call the deleted `/api/v1/content-engine/goals/` endpoint.",
+      "suggestion": "TASK-041 must be completed to remove the frontend goals code. Either revert TASK-040 changes, or complete TASK-041 to remove: `frontend/src/hooks/useGoals.ts`, `frontend/src/services/contentEngine/goals.ts`, ContentGoal types from `contentEngine.ts`, and the useActiveGoals import/usage from EchoConversation.tsx"
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/hooks/useGoals.ts",
+      "line": 1,
+      "message": "This file still exists and references the removed ContentGoal API endpoint. The backend ContentGoal model and ContentGoalViewSet were deleted, but the frontend service and hook still exist.",
+      "suggestion": "Delete `frontend/src/hooks/useGoals.ts` as part of TASK-041"
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/services/contentEngine/goals.ts",
+      "line": 1,
+      "message": "This file still exists and will make API calls to the removed `/api/v1/content-engine/goals/` endpoint.",
+      "suggestion": "Delete `frontend/src/services/contentEngine/goals.ts` as part of TASK-041"
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/types/contentEngine.ts",
+      "line": 185,
+      "message": "ContentGoal, GoalStatus, and GoalType types still exist in the frontend but the backend model has been removed.",
+      "suggestion": "Remove ContentGoal-related types from contentEngine.ts as part of TASK-041"
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "core/content_engine/migrations/0005_remove_content_goal.py",
+      "line": 1,
+      "message": "Migration correctly removes ContentGoal model from the database.",
+      "suggestion": "None - this is correct"
+    }
+  ],
+  "summary": "CRITICAL FAILURE: TASK-040 removed the backend ContentGoal model and API, but the frontend code that depends on it (useGoals.ts, goals.ts, EchoConversation.tsx imports) was NOT removed. This creates a broken frontend that will crash when trying to call the deleted API endpoint. TASK-040 should NOT have been completed without also completing TASK-041 (which removes the frontend goals code). The acceptance criteria for TASK-040 are technically met (backend removal), but the implementation is incomplete because it breaks the frontend. Either revert TASK-040 or immediately complete TASK-041 to fix this critical regression."
+}
+```

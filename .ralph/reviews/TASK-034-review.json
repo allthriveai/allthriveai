@@ -1,0 +1,66 @@
+Now I have enough context to provide the review. The diff is for TASK-034 which is about updating the Echo system prompt for coach personality. Let me analyze the entire diff:
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 26,
+      "message": "Import from useGoals.ts references a file that exists but the diff shows this story (TASK-034) is ONLY supposed to modify services/agents/echo/prompts.py - this adds unrelated frontend changes",
+      "suggestion": "TASK-034 scope is narrowly defined to only modify prompts.py. The EchoConversation.tsx changes belong to a different story (TASK-041 shows these files should be REMOVED, not added). This diff includes out-of-scope work."
+    },
+    {
+      "severity": "critical",
+      "category": "architecture",
+      "file": "frontend/src/hooks/useGoals.ts",
+      "line": 1,
+      "message": "New file created but TASK-034 acceptance criteria only mentions services/agents/echo/prompts.py. Additionally, TASK-041 explicitly says to DELETE these goal-related frontend files",
+      "suggestion": "The ContentGoal model and related frontend code is scheduled for deletion in TASK-040 and TASK-041. This code should not have been added."
+    },
+    {
+      "severity": "critical",
+      "category": "architecture",
+      "file": "core/content_engine/views.py",
+      "line": 56,
+      "message": "ContentGoalViewSet added but TASK-040 explicitly states to REMOVE ContentGoal model and API. This creates code that is already slated for removal.",
+      "suggestion": "Do not add ContentGoalViewSet - it contradicts the PRD which shows TASK-040 removes this exact code."
+    },
+    {
+      "severity": "warning",
+      "category": "compliance",
+      "file": "frontend/src/components/navigation/TopNavigation.tsx",
+      "line": 12,
+      "message": "TopNavigation changes (removing ChatBubbleLeftRightIcon, changing nav structure) are completely unrelated to TASK-034 (Echo system prompt)",
+      "suggestion": "These navigation changes should be in a separate PR/task. TASK-034 is backend-only for prompts.py."
+    },
+    {
+      "severity": "warning",
+      "category": "compliance",
+      "file": "frontend/src/components/navigation/menuData.ts",
+      "line": 1,
+      "message": "Extensive navigation menu restructuring is unrelated to TASK-034's scope of updating Echo system prompt",
+      "suggestion": "These should be separate changes. The story for TASK-034 only modifies services/agents/echo/prompts.py."
+    },
+    {
+      "severity": "warning",
+      "category": "quality",
+      "file": ".ralph/prd.json",
+      "line": 1,
+      "message": "PRD file shows conflicting state - ContentGoal code is being added (in serializers.py, views.py, urls.py) but TASK-040 and TASK-041 in the same PRD say to REMOVE it",
+      "suggestion": "This indicates work was done out of sequence. ContentGoal was added then needs to be removed. Should skip adding ContentGoal entirely."
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "services/agents/echo/prompts.py",
+      "line": 1,
+      "message": "The actual TASK-034 work (Echo system prompt update) appears correctly implemented with coach personality, strategy tool references, proactive/opinionated guidance, and good vs bad response examples",
+      "suggestion": "The prompts.py changes meet all acceptance criteria for TASK-034"
+    }
+  ],
+  "summary": "FAIL - The diff contains significant out-of-scope changes. TASK-034 is a backend-only story that should ONLY modify services/agents/echo/prompts.py. However, this diff includes: (1) Frontend navigation restructuring (TopNavigation.tsx, menuData.ts), (2) ContentGoal model/API/frontend code that is explicitly marked for DELETION in TASK-040/041, (3) Goals hooks and services that shouldn't exist, (4) EchoConversation.tsx changes that belong to different stories. The actual prompts.py changes meet the acceptance criteria, but the PR is polluted with unrelated and contradictory work."
+}
+```

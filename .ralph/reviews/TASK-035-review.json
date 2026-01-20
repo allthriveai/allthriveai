@@ -1,0 +1,58 @@
+Now I have all the context I need to review this diff. Let me analyze the code for the story TASK-035.
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "quality",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 25,
+      "message": "Import references non-existent module - useGoals.ts uses goals.ts service which exists, but this creates a dependency on ContentGoal infrastructure that the later stories (TASK-040, TASK-041) plan to remove",
+      "suggestion": "This appears to be intermediate work - the Goals feature (ContentGoal, useGoals, goals.ts) was added and is being used, but later stories plan to remove it. The story being reviewed (TASK-035) is about injecting Strategy into Echo context, which the agent.py diff implements correctly. However, the frontend changes in this diff add Goals functionality that will break when TASK-040/TASK-041 execute. Consider splitting this PR or ensuring Goals removal stories execute immediately after."
+    },
+    {
+      "severity": "warning",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+      "line": 25,
+      "message": "Story TASK-035 scope creep - the story only requires backend changes to agent.py, but this diff modifies frontend EchoConversation.tsx to use useActiveGoals hook which is unrelated to the acceptance criteria",
+      "suggestion": "The acceptance criteria are: 1) Load user's strategy from DB on init, 2) Inject strategy summary into system context, 3) Handle no strategy as new user. The frontend goal UI changes should be in a separate story (TASK-036 appears to be the correct story for these changes)."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "core/content_engine/views.py",
+      "line": 53,
+      "message": "ContentGoalViewSet added but models.py shows both ContentGoal AND Strategy models exist. The later stories (TASK-040) plan to remove ContentGoal in favor of Strategy, creating duplicate/conflicting models",
+      "suggestion": "The prd.json shows TASK-040 will remove ContentGoal. This means the ContentGoal infrastructure in this diff (serializers, views, urls) is temporary. Document this explicitly or merge TASK-040 removal into this PR to avoid technical debt."
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "frontend/src/components/navigation/TopNavigation.tsx",
+      "line": 1,
+      "message": "Navigation changes are completely unrelated to TASK-035 (Pre-inject strategy into Echo context). This appears to be accidental file inclusion in the diff.",
+      "suggestion": "Remove TopNavigation.tsx and menuData.ts changes from this PR - they implement a new flat navigation pattern unrelated to Echo strategy injection."
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "services/agents/echo/agent.py",
+      "line": 349,
+      "message": "The _load_user_strategy implementation is well-structured with proper error handling and graceful degradation as required by the story",
+      "suggestion": "Good implementation - follows the same pattern as _load_brand_voice and meets all acceptance criteria."
+    },
+    {
+      "severity": "info",
+      "category": "performance",
+      "file": "services/agents/echo/agent.py",
+      "line": 441,
+      "message": "Brand voice and strategy are loaded sequentially (not in parallel as comment suggests)",
+      "suggestion": "Consider using asyncio.gather() to load both in parallel: brand_voice, user_strategy = await asyncio.gather(_load_brand_voice(user_id), _load_user_strategy(user_id))"
+    }
+  ],
+  "summary": "The backend implementation for TASK-035 in agent.py correctly implements strategy pre-injection with proper error handling. However, this PR includes significant scope creep: 1) ContentGoal model and API infrastructure that will be removed in later stories (TASK-040), 2) Frontend useGoals integration that will break when ContentGoal is removed (TASK-041), 3) Unrelated navigation changes (TopNavigation.tsx, menuData.ts). The core story requirements are met in agent.py, but the mixed concerns and temporary code being added make this PR fail review. Recommend splitting into separate PRs: one for TASK-035 (agent.py only), one for the temporary Goals feature, and one for navigation changes."
+}
+```

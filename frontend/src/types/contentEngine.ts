@@ -182,55 +182,6 @@ export interface SuggestedIdea {
   platforms?: Platform[];
 }
 
-// Content goal statuses matching backend ContentGoal.Status
-export type GoalStatus = 'active' | 'completed' | 'paused';
-
-// Content goal types matching backend ContentGoal.GoalType
-export type GoalType =
-  | 'audience_growth'
-  | 'engagement'
-  | 'brand_awareness'
-  | 'lead_generation'
-  | 'product_launch'
-  | 'thought_leadership'
-  | 'community'
-  | 'custom';
-
-// ContentGoal matching backend ContentGoalSerializer
-export interface ContentGoal {
-  id: number;
-  title: string;
-  description?: string;
-  goalType: GoalType;
-  goalTypeDisplay?: string;
-  status: GoalStatus;
-  statusDisplay?: string;
-  targetMetric?: string;
-  targetDate?: string;
-  priority: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateGoalPayload {
-  title: string;
-  description?: string;
-  goalType?: GoalType;
-  targetMetric?: string;
-  targetDate?: string;
-  priority?: number;
-}
-
-export interface UpdateGoalPayload {
-  title?: string;
-  description?: string;
-  goalType?: GoalType;
-  status?: GoalStatus;
-  targetMetric?: string;
-  targetDate?: string;
-  priority?: number;
-}
-
 // Echo Agent mode states for conversation-first UI
 export type EchoMode = 'idle' | 'brainstorm' | 'create' | 'schedule' | 'review';
 
