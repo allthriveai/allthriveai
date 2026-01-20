@@ -1059,7 +1059,7 @@
       "id": "TASK-026",
       "type": "frontend",
       "title": "Create EchoContextPanel dynamic side panel",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/content-engine/agent/EchoContextPanel.tsx"
@@ -1096,7 +1096,7 @@
       "id": "TASK-027",
       "type": "frontend",
       "title": "Create QuickActionsPanel for idle/welcome state",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/content-engine/agent/panels/QuickActionsPanel.tsx"
@@ -1139,7 +1139,7 @@
       "id": "TASK-028",
       "type": "frontend",
       "title": "Create BrainstormContext panel for brainstorm mode",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/content-engine/agent/panels/BrainstormContext.tsx"

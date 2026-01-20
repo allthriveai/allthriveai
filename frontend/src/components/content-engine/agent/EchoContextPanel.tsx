@@ -17,14 +17,16 @@ import {
   ClipboardDocumentCheckIcon,
   SparklesIcon,
   XMarkIcon,
-  ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { useEchoAgent } from '@/context/EchoAgentContext';
+import { QuickActionsPanel } from './panels/QuickActionsPanel';
+import { BrainstormContext } from './panels/BrainstormContext';
 import type { EchoMode } from '@/types/contentEngine';
 
 interface EchoContextPanelProps {
   className?: string;
   onClose?: () => void;
+  onSendMessage?: (message: string) => void;
 }
 
 // Mode-specific icons
@@ -101,51 +103,26 @@ function PanelSkeleton() {
   );
 }
 
-// Placeholder content for each mode
-function ModeContent({ mode }: { mode: EchoMode }) {
+// Mode-specific content components
+interface ModeContentProps {
+  mode: EchoMode;
+  onSendMessage?: (message: string) => void;
+}
+
+function ModeContent({ mode, onSendMessage }: ModeContentProps) {
   const styles = modeStyles[mode];
-  const Icon = modeIcons[mode];
-  const title = modeTitles[mode];
-  const description = modeDescriptions[mode];
 
   switch (mode) {
     case 'idle':
+      // Use QuickActionsPanel for idle/welcome state
       return (
-        <div className="space-y-4">
-          <div className={`p-4 rounded-lg ${styles.bg} border ${styles.border}`}>
-            <h4 className="text-sm font-medium text-white mb-2">Quick Tips</h4>
-            <ul className="text-sm text-slate-400 space-y-2">
-              <li>Type a topic to start brainstorming</li>
-              <li>Use quick actions for common tasks</li>
-              <li>Save ideas you like to your library</li>
-            </ul>
-          </div>
-          <div className={`p-4 rounded-lg ${styles.bg} border ${styles.border}`}>
-            <h4 className="text-sm font-medium text-white mb-2">Your Pillars</h4>
-            <p className="text-sm text-slate-400">
-              Content pillars will appear here based on your settings.
-            </p>
-          </div>
-        </div>
+        <QuickActionsPanel
+          onSendMessage={onSendMessage || (() => {})}
+        />
       );
 
     case 'brainstorm':
-      return (
-        <div className="space-y-4">
-          <div className={`p-4 rounded-lg ${styles.bg} border ${styles.border}`}>
-            <h4 className="text-sm font-medium text-white mb-2">Active Idea</h4>
-            <p className="text-sm text-slate-400">
-              Your current idea being developed will appear here.
-            </p>
-          </div>
-          <div className={`p-4 rounded-lg ${styles.bg} border ${styles.border}`}>
-            <h4 className="text-sm font-medium text-white mb-2">Suggested Hooks</h4>
-            <p className="text-sm text-slate-400">
-              Hook suggestions will appear as you brainstorm.
-            </p>
-          </div>
-        </div>
-      );
+      return <BrainstormContext />;
 
     case 'create':
       return (
@@ -217,7 +194,7 @@ function ModeContent({ mode }: { mode: EchoMode }) {
   }
 }
 
-export function EchoContextPanel({ className = '', onClose }: EchoContextPanelProps) {
+export function EchoContextPanel({ className = '', onClose, onSendMessage }: EchoContextPanelProps) {
   const { mode } = useEchoAgent();
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [displayMode, setDisplayMode] = useState<EchoMode>(mode);
@@ -293,11 +270,11 @@ export function EchoContextPanel({ className = '', onClose }: EchoContextPanelPr
             ${isTransitioning ? 'opacity-0' : 'opacity-100'}
           `}
         >
-          {isTransitioning ? <PanelSkeleton /> : <ModeContent mode={displayMode} />}
+          {isTransitioning ? <PanelSkeleton /> : <ModeContent mode={displayMode} onSendMessage={onSendMessage} />}
         </div>
       </>
     ),
-    [displayMode, isTransitioning, styles, Icon, title, description, onClose, handleClose]
+    [displayMode, isTransitioning, styles, Icon, title, description, onClose, handleClose, onSendMessage]
   );
 
   // Build aria-label describing current mode

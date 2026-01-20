@@ -370,3 +370,18 @@
   Code was already correctly implemented.
 [2026-01-19T20:26:24-08:00] COMPLETED TASK-024 
 [2026-01-19T20:39:45-08:00] FAILED TASK-025 Verification failed, will retry
+[2026-01-19T20:42:34-08:00] COMPLETED TASK-025 
+[2026-01-19T20:46:16-08:00] COMPLETED TASK-026 
+[2026-01-19T20:50:49-08:00] COMPLETED TASK-027 
+[2026-01-20T04:52:44+0000] COMPLETED TASK-028 All acceptance criteria verified:
+  - BrainstormContext shows when mode is 'brainstorm' (EchoContextPanel case 'brainstorm')
+  - Content pillar chips (toggleable) from useContentPillars - DONE
+  - Platform toggles (Twitter, LinkedIn, YouTube) with icons - DONE
+  - Selected pillars/platforms sync with EchoAgentProvider state (activePillars, activePlatforms)
+  - Changes send updated context with next message (synced via context)
+  - Error handling: Pillar fetch error shows retry button - DONE
+  - No pillars shows 'Add content pillars in settings' message - DONE
+  - a11y: Chips have aria-pressed state - DONE
+  - mobile: Horizontal scrolling chips (overflow-x-auto) - DONE
+  - npx tsc --noEmit passes
+  - All test steps pass
