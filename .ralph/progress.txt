@@ -464,3 +464,36 @@
 [2026-01-19T23:43:17-08:00] FAILED TASK-040 Verification failed, will retry
 [2026-01-19T23:45:45-08:00] FAILED TASK-040 Verification failed, will retry
 [2026-01-19T23:51:07-08:00] FAILED TASK-040 Verification failed, will retry
+[2026-01-19T23:51:09-08:00] ARCHIVED FEATURE Echo Strategy Coach
+[2026-01-20T14:05:04-08:00] FAILED US-001 Verification failed, will retry
+[2026-01-20T14:07:57-08:00] FAILED US-001 Verification failed, will retry
+[2026-01-20T14:11:29-08:00] FAILED US-002 Verification failed, will retry
+[2026-01-20T14:13:00-08:00] PASSED US-002 All acceptance criteria verified:
+  - sync_asana_for_user task syncs tasks for a single user (line 33-87)
+  - sync_all_asana_users task runs every 5 minutes via Celery beat (celery.py:304-310)
+  - Token refresh errors disable sync and log warning (line 69-76)
+  - Rate limit errors use exponential backoff (autoretry_for, retry_backoff=True in line 28-31)
+  Error handling:
+  - AsanaTokenExpiredError disables sync_enabled and logs (line 69-76)
+  - AsanaRateLimitError retries with exponential backoff (line 78-81, via Celery retry mechanism)
+  - General errors log but don't crash worker (line 83-87)
+  Test steps passed:
+  - docker compose exec -T web python manage.py shell -c "from core.integrations.asana_tasks import sync_asana_for_user; print('Import OK')" -> Import OK
+  - grep -q "sync-all-asana-users" config/celery.py -> Found
+  - ruff check passes: All checks passed!
+  Code already committed in 28c5ebd1
+  SIGN CONFIRMED: Test steps for Django imports must use 'python manage.py shell -c' not 'python -c'
+[2026-01-20T14:13:49-08:00] FAILED US-002 Verification failed, will retry
+[2026-01-20T14:15:43-08:00] FAILED US-002 Verification failed, will retry
+[2026-01-20T14:17:54-08:00] FAILED US-002 Verification failed, will retry
+[2026-01-20T14:21:00-08:00] PASSED US-003 All acceptance criteria verified:
+  - EchoProfile model created at core/echo/models.py
+  - onboarding_phase with 6 choices (intro, goals, platforms, topics, tasks, complete)
+  - ArrayField for goals, target_platforms, content_pillars
+  - OneToOneField to User with related_name='echo_profile'
+  - App registered in INSTALLED_APPS as 'core.echo'
+  Test steps passed:
+  - docker compose exec -T web python manage.py makemigrations echo --dry-run -> Shows migration
+  - docker compose exec -T web python manage.py migrate -> OK (echo.0001_initial applied)
+  - docker compose exec -T web python manage.py shell -c "from core.echo.models import EchoProfile; print('OK')" -> OK
+  - ruff check core/echo/ -> All checks passed!

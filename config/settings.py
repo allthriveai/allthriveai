@@ -105,6 +105,7 @@ INSTALLED_APPS = [
     'core.battles',  # Prompt battles feature
     'core.clips',  # Social clip creator
     'core.content_engine',  # Content Engine - personal brand pipeline
+    'core.echo',  # Echo - Force Multiplier personal assistant
     'core.events',  # Events and calendar
     'core.social',  # Social connections
     'core.engagement',  # Engagement tracking for personalization
@@ -419,6 +420,17 @@ AZURE_OPENAI_DEPLOYMENT_NAME = config('AZURE_OPENAI_DEPLOYMENT_NAME', default='g
 STRIPE_PUBLIC_KEY = config('STRIPE_PUBLIC_KEY', default='')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
+
+# Encryption Key for sensitive data (OAuth tokens, etc.)
+# Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# IMPORTANT: Never change this key after storing encrypted data, or it will become unreadable
+ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='')
+
+# Asana OAuth Configuration (for Echo task management)
+# Create an OAuth app at: https://app.asana.com/-/developer_console
+ASANA_CLIENT_ID = config('ASANA_CLIENT_ID', default='')
+ASANA_CLIENT_SECRET = config('ASANA_CLIENT_SECRET', default='')
+ASANA_REDIRECT_URI = config('ASANA_REDIRECT_URI', default=f'{BACKEND_URL_DEFAULT}/api/v1/integrations/asana/callback/')
 
 # reCAPTCHA v3 Configuration (for bot protection)
 # Get your keys from: https://www.google.com/recaptcha/admin
