@@ -18,6 +18,20 @@
       "category": "docker",
       "learnedFrom": null,
       "createdAt": "2026-01-17T18:40:57-08:00"
+    },
+    {
+      "id": "sign-004",
+      "pattern": "[Backend] Taxonomy API is at /api/v1/taxonomies/ (plural), not /api/v1/taxonomy/",
+      "category": "backend",
+      "learnedFrom": "US-011",
+      "createdAt": "2026-01-19T01:22:00-08:00"
+    },
+    {
+      "id": "sign-005",
+      "pattern": "[Backend] Test steps for services/* imports must use 'python manage.py shell -c' not 'python -c' due to Django app dependencies",
+      "category": "backend",
+      "learnedFrom": "US-015",
+      "createdAt": "2026-01-19T10:13:30-08:00"
     }
   ]
 }

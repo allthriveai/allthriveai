@@ -74,6 +74,7 @@ class Taxonomy(models.Model):
         LEARNING_STYLE = 'learning_style', 'Learning Style'
         ROLE = 'role', 'Role'
         LISTING_TYPE = 'listing_type', 'Listing Type'
+        CONTENT_PILLAR = 'content_pillar', 'Content Pillar'
 
     taxonomy_type = models.CharField(
         max_length=20, choices=TaxonomyType.choices, default=TaxonomyType.TOOL, db_index=True

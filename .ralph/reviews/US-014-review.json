@@ -1,0 +1,24 @@
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "services/agents/echo/tools.py",
+      "line": null,
+      "message": "The diff does not include the creation of services/agents/echo/tools.py which is required by the story. The story specifies creating this file with save_idea, get_content_pillars, generate_hooks, and expand_to_post tools, plus ECHO_TOOLS list and TOOLS_NEEDING_STATE set exports.",
+      "suggestion": "The diff only shows changes to .ralph/signs.json and core/taxonomy/models.py (adding CONTENT_PILLAR taxonomy type). The actual tools.py file that implements the core functionality is missing from this diff. Either the file wasn't included in the diff or it wasn't created."
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "core/taxonomy/models.py",
+      "line": 77,
+      "message": "Adding CONTENT_PILLAR taxonomy type is a good foundation for the pillar system, but this alone doesn't satisfy the story requirements.",
+      "suggestion": "This change supports the feature but the main implementation in tools.py is required."
+    }
+  ],
+  "summary": "The diff is incomplete - it's missing the primary deliverable (services/agents/echo/tools.py) which should contain the save_idea, get_content_pillars, generate_hooks, and expand_to_post tools. The story cannot pass without this file. The only changes shown are a sign addition and a taxonomy type addition, which are supporting changes but not the core implementation."
+}
+```

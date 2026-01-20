@@ -1,0 +1,32 @@
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/tabs/IdeasTab.tsx",
+      "line": null,
+      "message": "The diff does not include any changes to IdeasTab.tsx, which is the primary file that should be modified according to the story. The story requires implementing a hybrid layout with BrainstormChatPanel (top 60%) and IdeaList (bottom 40%), but no such implementation is present in the diff.",
+      "suggestion": "The diff appears incomplete. The actual IdeasTab.tsx changes implementing the hybrid chat + list layout, resizable divider, onIdeaSaved callback, and mobile collapsible sections are missing. Please include the full diff for the modified file."
+    },
+    {
+      "severity": "warning",
+      "category": "compliance",
+      "file": "core/taxonomy/models.py",
+      "line": 77,
+      "message": "Adding CONTENT_PILLAR taxonomy type is not mentioned in the story's acceptance criteria or files to modify. This appears to be scope creep or an unrelated change bundled into this story's commit.",
+      "suggestion": "Either remove this change and commit it separately with its own story, or document why this taxonomy type is required for the IdeasTab feature."
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": ".ralph/config.json",
+      "line": 5,
+      "message": "Renaming 'tests' to 'test' is a config cleanup but unrelated to the story implementation.",
+      "suggestion": "Consider committing config changes separately from feature work for cleaner git history."
+    }
+  ],
+  "summary": "The diff is critically incomplete - it does not contain any changes to IdeasTab.tsx which is the core deliverable for this story. The story requires implementing a hybrid layout with BrainstormChatPanel and IdeaList components, resizable divider, animations, and mobile responsiveness, but none of these changes are present. The diff only shows ralph config tweaks, new signs, and an unrelated taxonomy model change. The story cannot pass review without the actual feature implementation."
+}
+```

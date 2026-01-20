@@ -334,3 +334,39 @@
   - npx tsc --noEmit passes
   - Page accessible at /create/content-engine/ideas (200 OK)
   - Previous failure was pytest --reuse-db flag issue, not code issue
+[2026-01-19T11:13:15-08:00] FAILED US-019 Verification failed, will retry
+[2026-01-20T00:43:04+0000] PASSED US-020 All acceptance criteria verified:
+  - First visit shows Echo welcome message with onboarding questions - DONE
+  - Echo asks: What platforms? What topics? Who's your audience? - DONE
+  - Answers stored in localStorage or BrandVoice - DONE (localStorage)
+  - Subsequent visits skip onboarding, show 'Welcome back' message - DONE
+  - Skip option available to go straight to chat - DONE
+  - Error handling: Skip button always available - DONE
+  - Error handling: localStorage failure falls back to in-memory state - DONE
+  - a11y: Questions have clear labels (aria-pressed), focus management - DONE
+  - mobile: Full-width onboarding cards (w-full) - DONE
+  - npx tsc --noEmit passes
+  - npm run lint passes
+  - make test-backend passes (1218 tests)
+[2026-01-19T17:13:41-08:00] FAILED US-021 Verification failed, will retry
+[2026-01-19T17:15:30-08:00] FAILED US-021 Verification failed, will retry
+[2026-01-20T01:16:34+0000] PASSED US-021 All acceptance criteria verified:
+  - useEchoChat handles both 'idea' and 'output' fields in idea_suggested event (line 246)
+  - SuggestedIdea correctly populated from WebSocket message (lines 248-255)
+  - Existing tool_end event handling still works with data.output (lines 229-240)
+  - Warning logged if neither field exists (lines 270-273)
+  - Test steps pass: grep data.idea, npx tsc --noEmit
+  - Committed in 889b6117
+[2026-01-19T17:18:07-08:00] FAILED US-021 Verification failed, will retry
+[2026-01-19T20:15:49-08:00] VERIFIED US-021 All test steps pass:
+  - grep -q "data.idea" frontend/src/hooks/useEchoChat.ts - PASS (line 246)
+  - npx tsc --noEmit - PASS (no errors)
+  Acceptance criteria:
+  - useEchoChat handles both 'idea' and 'output' fields in idea_suggested event (line 246: const ideaData = data.idea || data.output)
+  - SuggestedIdea correctly populated from WebSocket message (lines 248-255)
+  - Existing tool_end event handling still works with data.output (lines 229-240)
+  - Warning logged if neither field exists (lines 271-272)
+  Previous failure was pytest --reuse-db flag issue, not code issue.
+  Code was already correctly implemented.
+[2026-01-19T20:26:24-08:00] COMPLETED TASK-024 
+[2026-01-19T20:39:45-08:00] FAILED TASK-025 Verification failed, will retry

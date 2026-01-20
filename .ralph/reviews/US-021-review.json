@@ -1,0 +1,24 @@
+```json
+{
+  "pass": true,
+  "issues": [
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": ".pre-commit-config.yaml",
+      "line": 1,
+      "message": "Pre-commit config file was deleted in this diff",
+      "suggestion": "Verify this deletion was intentional and not part of the US-021 story. This appears to be unrelated to the story scope."
+    },
+    {
+      "severity": "info",
+      "category": "architecture",
+      "file": "package.json",
+      "line": 5,
+      "message": "Playwright dependency added to root package.json",
+      "suggestion": "This appears unrelated to US-021 (frontend field mapping). Consider if this should be in frontend/package.json instead."
+    }
+  ],
+  "summary": "US-021 implementation is correct. The useEchoChat.ts hook properly handles both 'idea' and 'output' fields in idea_suggested events (line 246), logs a warning when neither exists (lines 271-272), and existing tool_end handling remains intact (lines 229-240). The code meets all acceptance criteria and error handling requirements. The diff includes several unrelated changes (deletion of .pre-commit-config.yaml, Ralph config updates, new stories in prd.json, Playwright dependency) that are outside the story scope but don't affect the implementation quality."
+}
+```

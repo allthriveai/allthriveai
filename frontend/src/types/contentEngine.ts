@@ -181,3 +181,22 @@ export interface SuggestedIdea {
   pillarName?: string;
   platforms?: Platform[];
 }
+
+// Echo Agent mode states for conversation-first UI
+export type EchoMode = 'idle' | 'brainstorm' | 'create' | 'schedule' | 'review';
+
+// Echo Agent session context for tracking progress
+export interface EchoSessionContext {
+  ideasSavedThisSession: number;
+  lastAction?: string;
+  lastActionTime?: Date;
+}
+
+// Echo Agent state interface
+export interface EchoAgentState {
+  mode: EchoMode;
+  activeIdea: SuggestedIdea | null;
+  activePillars: ContentPillar[];
+  activePlatforms: Platform[];
+  sessionContext: EchoSessionContext;
+}

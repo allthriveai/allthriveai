@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "playwright": "^1.57.0",
     "vibe-and-thrive": "file:../vibe-and-thrive"
   }
 }

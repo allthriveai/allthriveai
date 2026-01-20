@@ -1,0 +1,40 @@
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "services/agents/echo/agent.py",
+      "line": null,
+      "message": "The story requires creating services/agents/echo/agent.py but this file is not included in the diff. The diff only shows changes to .ralph/progress.txt, .ralph/signs.json, and core/taxonomy/models.py",
+      "suggestion": "The actual agent.py implementation file must be included in the diff for review. The progress.txt mentions the file was committed in 3484869d - please include the actual code changes from that commit in the diff"
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "services/agents/echo/__init__.py",
+      "line": null,
+      "message": "The story requires modifying services/agents/echo/__init__.py but this file is not included in the diff",
+      "suggestion": "Include the __init__.py modifications that export stream_echo_response"
+    },
+    {
+      "severity": "warning",
+      "category": "compliance",
+      "file": "core/taxonomy/models.py",
+      "line": 77,
+      "message": "Adding CONTENT_PILLAR taxonomy type is not part of US-015 acceptance criteria. This appears to be an unrelated change bundled with this story",
+      "suggestion": "Either remove this change from this PR or document why it's related to the Echo agent story"
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": ".ralph/progress.txt",
+      "line": null,
+      "message": "The progress log shows 15+ FAILED/VERIFIED cycles for US-015, indicating significant churn. The repeated 'false positive' claims suggest the review process may have issues",
+      "suggestion": "Consider improving the review workflow to avoid repeated false failures"
+    }
+  ],
+  "summary": "Cannot pass review - the actual implementation files (services/agents/echo/agent.py and services/agents/echo/__init__.py) are not present in the diff. The diff only contains metadata files (.ralph/progress.txt, .ralph/signs.json) and an unrelated taxonomy model change. The story claims the code was committed in 3484869d but the diff provided for review does not include those files. Please provide the actual code implementation for review."
+}
+```

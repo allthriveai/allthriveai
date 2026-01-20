@@ -7,12 +7,18 @@
   },
   "metadata": {
     "createdAt": "2025-01-18T23:50:00Z",
-    "estimatedStories": 18,
+    "estimatedStories": 31,
     "complexity": "high",
     "previousFeature": {
       "name": "Content Engine UI",
       "completedStories": 10,
       "status": "completed"
+    },
+    "phase2": {
+      "name": "Echo Agent Redesign",
+      "ideaFile": "docs/ideas/echo-agent-redesign.md",
+      "addedAt": "2025-01-19T12:00:00Z",
+      "storiesAdded": 8
     }
   },
   "stories": [
@@ -815,7 +821,7 @@
       "id": "US-020",
       "type": "frontend",
       "title": "Echo first-time onboarding flow",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/content-engine/chat/EchoOnboarding.tsx"
@@ -850,6 +856,458 @@
       "dependsOn": [
         "US-019"
       ]
+    },
+    {
+      "id": "US-021",
+      "type": "frontend",
+      "title": "Fix idea_suggested event field mapping",
+      "passes": true,
+      "files": {
+        "create": [],
+        "modify": [
+          "frontend/src/hooks/useEchoChat.ts"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "useEchoChat handles both 'idea' and 'output' fields in idea_suggested event",
+        "SuggestedIdea is correctly populated from WebSocket message",
+        "Existing tool_end event handling still works with data.output"
+      ],
+      "errorHandling": [
+        "If neither 'idea' nor 'output' field exists, log warning and skip",
+        "If idea data is malformed, show error message in chat"
+      ],
+      "testSteps": [
+        "grep -q \"data.idea\" frontend/src/hooks/useEchoChat.ts",
+        "cd frontend && npx tsc --noEmit"
+      ],
+      "testUrl": "/create/content-engine/ideas",
+      "loadingState": "Typing indicator shows while Echo responds",
+      "a11y": "Suggested idea card is keyboard accessible",
+      "mobile": "Idea suggestion renders in scrollable chat area",
+      "dependsOn": [
+        "US-019"
+      ],
+      "notes": "Backend sends 'idea' field but frontend expects 'output'. Fix to support both."
+    },
+    {
+      "id": "US-022",
+      "type": "frontend",
+      "title": "Pass pillar and platform context through WebSocket",
+      "passes": true,
+      "files": {
+        "create": [],
+        "modify": [
+          "frontend/src/hooks/useEchoChat.ts",
+          "frontend/src/components/content-engine/chat/BrainstormChatPanel.tsx"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "sendMessage accepts optional context object with pillarId and platforms",
+        "BrainstormChatPanel passes activePillar.id and activePlatforms to sendMessage",
+        "WebSocket message includes pillar_id and platforms fields (snake_case)"
+      ],
+      "errorHandling": [
+        "If no pillar selected, omit pillar_id from message",
+        "If no platforms selected, send empty array"
+      ],
+      "testSteps": [
+        "grep -q \"pillar_id\" frontend/src/hooks/useEchoChat.ts",
+        "grep -q \"activePillar\" frontend/src/components/content-engine/chat/BrainstormChatPanel.tsx",
+        "cd frontend && npx tsc --noEmit"
+      ],
+      "testUrl": "/create/content-engine/ideas",
+      "loadingState": "N/A - context is sent with message",
+      "a11y": "Pillar selector already accessible",
+      "mobile": "Pillar/platform selection works on mobile",
+      "dependsOn": [
+        "US-021"
+      ],
+      "notes": "UI tracks activePillar and activePlatforms but never sends them to backend."
+    },
+    {
+      "id": "US-023",
+      "type": "backend",
+      "title": "Extract context from WebSocket and pass to Echo agent",
+      "passes": true,
+      "files": {
+        "create": [],
+        "modify": [
+          "core/agents/consumers.py",
+          "core/agents/tasks.py"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "ChatConsumer extracts pillar_id and platforms from incoming message",
+        "process_chat_message_task receives pillar_id and platforms as kwargs",
+        "_process_with_echo passes context to stream_echo_response",
+        "Conversation history is loaded and passed to stream_echo_response"
+      ],
+      "errorHandling": [
+        "Missing context fields default to None/empty list",
+        "If pillar_id not provided, pass None",
+        "If conversation history fails to load, continue with empty list"
+      ],
+      "testSteps": [
+        "grep -q \"pillar_id\" core/agents/consumers.py",
+        "grep -q \"pillar_id\" core/agents/tasks.py",
+        "grep -q \"target_platforms\" core/agents/tasks.py",
+        "docker compose exec -T web python -c \"from core.agents.tasks import _process_with_echo; print('import ok')\""
+      ],
+      "apiEndpoints": [],
+      "validation": [
+        "pillar_id must be int or None",
+        "platforms must be list of strings"
+      ],
+      "auth": "User must be authenticated (enforced by WebSocket consumer)",
+      "scale": "N/A - single user conversation",
+      "dependsOn": [
+        "US-022"
+      ],
+      "notes": "stream_echo_response accepts pillar_id, content_pillars, target_platforms but they're not passed from task handler."
+    },
+    {
+      "id": "TASK-024",
+      "type": "frontend",
+      "title": "Create EchoAgentProvider for centralized state management",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/context/EchoAgentContext.tsx"
+        ],
+        "modify": [
+          "frontend/src/types/contentEngine.ts"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useEchoChat.ts",
+          "frontend/src/hooks/useIdeas.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "EchoAgentProvider context with mode state: idle | brainstorm | create | schedule | review",
+        "EchoAgentState interface with mode, activeIdea, activePillars, activePlatforms, sessionContext",
+        "useEchoAgent hook returns state and actions: setMode, setActiveIdea, transitionTo",
+        "Mode transitions trigger side effects (e.g., brainstorm loads pillars)",
+        "Session context tracks ideasSavedThisSession, lastAction"
+      ],
+      "errorHandling": [
+        "Invalid mode transition logged but allowed (flexible)",
+        "Missing provider throws helpful error message"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -q \"EchoAgentProvider\" frontend/src/context/EchoAgentContext.tsx",
+        "grep -q \"useEchoAgent\" frontend/src/context/EchoAgentContext.tsx",
+        "grep -q \"EchoMode\" frontend/src/types/contentEngine.ts"
+      ],
+      "testUrl": null,
+      "loadingState": null,
+      "a11y": null,
+      "mobile": null,
+      "dependsOn": [
+        "US-020"
+      ],
+      "notes": "Foundation for conversation-first redesign. Centralizes state that was scattered across components."
+    },
+    {
+      "id": "TASK-025",
+      "type": "frontend",
+      "title": "Create EchoConversation unified chat component",
+      "passes": true,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/agent/EchoConversation.tsx"
+        ],
+        "modify": [],
+        "reuse": [
+          "frontend/src/hooks/useEchoChat.ts",
+          "frontend/src/context/EchoAgentContext.tsx",
+          "frontend/src/components/content-engine/chat/EchoAvatar.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaCard.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "EchoConversation renders chat messages with mode-aware styling",
+        "Idea suggestions render inline using IdeaCard (not separate IdeaSuggestionMessage)",
+        "Action buttons in messages trigger mode transitions via useEchoAgent",
+        "Quick action buttons render contextually based on current mode",
+        "Uses glass-panel, neon-glow styling from Neon Glass design system"
+      ],
+      "errorHandling": [
+        "WebSocket disconnect shows inline reconnecting state",
+        "Error messages render as system messages with retry action"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -q \"EchoConversation\" frontend/src/components/content-engine/agent/EchoConversation.tsx",
+        "grep -q \"useEchoAgent\" frontend/src/components/content-engine/agent/EchoConversation.tsx",
+        "grep -q \"glass-panel\" frontend/src/components/content-engine/agent/EchoConversation.tsx"
+      ],
+      "testUrl": null,
+      "loadingState": "Skeleton messages while loading history",
+      "a11y": "Chat has role='log', messages have role='article'",
+      "mobile": "Full-width chat with bottom input",
+      "dependsOn": [
+        "TASK-024"
+      ],
+      "notes": "Evolved from BrainstormChatPanel. Single chat for all modes - no more separate ClipCreatorChatPanel."
+    },
+    {
+      "id": "TASK-026",
+      "type": "frontend",
+      "title": "Create EchoContextPanel dynamic side panel",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/agent/EchoContextPanel.tsx"
+        ],
+        "modify": [],
+        "reuse": [
+          "frontend/src/context/EchoAgentContext.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "EchoContextPanel renders different content based on mode from useEchoAgent",
+        "Smooth CSS transitions between panel content (fade/slide)",
+        "Panel is 30% width on desktop, drawer on mobile",
+        "Each mode has placeholder content for now (filled in subsequent stories)"
+      ],
+      "errorHandling": [
+        "Unknown mode renders empty panel with debug info in dev"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -q \"EchoContextPanel\" frontend/src/components/content-engine/agent/EchoContextPanel.tsx",
+        "grep -q \"switch.*mode\" frontend/src/components/content-engine/agent/EchoContextPanel.tsx"
+      ],
+      "testUrl": null,
+      "loadingState": "Panel skeleton during transitions",
+      "a11y": "Panel has aria-label describing current mode content",
+      "mobile": "Drawer that slides up from bottom, 60% height",
+      "dependsOn": [
+        "TASK-024"
+      ],
+      "notes": "Shell component - content panels added in TASK-027 through TASK-029."
+    },
+    {
+      "id": "TASK-027",
+      "type": "frontend",
+      "title": "Create QuickActionsPanel for idle/welcome state",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/agent/panels/QuickActionsPanel.tsx"
+        ],
+        "modify": [
+          "frontend/src/components/content-engine/agent/EchoContextPanel.tsx"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useIdeas.ts",
+          "frontend/src/context/EchoAgentContext.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "QuickActionsPanel shows when mode is 'idle'",
+        "Displays 3 action cards: Brainstorm new ideas, Develop saved ideas (count), Plan content",
+        "Shows collapsed 'Recent ideas' section with last 3 saved ideas",
+        "Clicking action card triggers mode transition and sends initial message to Echo",
+        "Uses glass-panel cards with cyan/green gradient borders"
+      ],
+      "errorHandling": [
+        "If no saved ideas, 'Develop saved ideas' card is disabled with tooltip",
+        "API error for ideas count shows card without count"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -q \"QuickActionsPanel\" frontend/src/components/content-engine/agent/panels/QuickActionsPanel.tsx",
+        "grep -q \"Brainstorm\" frontend/src/components/content-engine/agent/panels/QuickActionsPanel.tsx",
+        "grep -q \"glass-panel\" frontend/src/components/content-engine/agent/panels/QuickActionsPanel.tsx"
+      ],
+      "testUrl": null,
+      "loadingState": "Skeleton cards while loading ideas count",
+      "a11y": "Action cards are buttons with descriptive labels",
+      "mobile": "Vertical stack of action cards",
+      "dependsOn": [
+        "TASK-026"
+      ],
+      "notes": "This is what users see when they first open Content Engine - the welcome state."
+    },
+    {
+      "id": "TASK-028",
+      "type": "frontend",
+      "title": "Create BrainstormContext panel for brainstorm mode",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/agent/panels/BrainstormContext.tsx"
+        ],
+        "modify": [
+          "frontend/src/components/content-engine/agent/EchoContextPanel.tsx"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useContentPillars.ts",
+          "frontend/src/context/EchoAgentContext.tsx",
+          "frontend/src/components/content-engine/chat/ContextBar.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "BrainstormContext shows when mode is 'brainstorm'",
+        "Content pillar chips (toggleable) from useContentPillars",
+        "Platform toggles (Twitter, LinkedIn, YouTube) with icons",
+        "Selected pillars/platforms sync with EchoAgentProvider state",
+        "Changes send updated context with next message"
+      ],
+      "errorHandling": [
+        "Pillar fetch error shows retry button",
+        "No pillars available shows 'Add content pillars in settings' message"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -q \"BrainstormContext\" frontend/src/components/content-engine/agent/panels/BrainstormContext.tsx",
+        "grep -q \"useContentPillars\" frontend/src/components/content-engine/agent/panels/BrainstormContext.tsx"
+      ],
+      "testUrl": null,
+      "loadingState": "Skeleton chips while loading pillars",
+      "a11y": "Chips have aria-pressed state",
+      "mobile": "Horizontal scrolling chips",
+      "dependsOn": [
+        "TASK-026"
+      ],
+      "notes": "Replaces ContextBar in the old IdeasTab layout."
+    },
+    {
+      "id": "TASK-029",
+      "type": "frontend",
+      "title": "Create IdeasListPanel for review mode",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/content-engine/agent/panels/IdeasListPanel.tsx"
+        ],
+        "modify": [
+          "frontend/src/components/content-engine/agent/EchoContextPanel.tsx"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useIdeas.ts",
+          "frontend/src/components/content-engine/ideas/IdeaList.tsx",
+          "frontend/src/components/content-engine/ideas/IdeaFilters.tsx",
+          "frontend/src/components/content-engine/ideas/QuickCapture.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "IdeasListPanel shows when mode is 'review'",
+        "Renders IdeaFilters at top (status filter)",
+        "Renders scrollable IdeaList below",
+        "QuickCapture input at bottom for fast idea entry",
+        "Clicking an idea card sets it as activeIdea and offers 'Develop' action"
+      ],
+      "errorHandling": [
+        "Empty state shows 'No ideas yet' with prompt to brainstorm",
+        "API error shows retry button"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -q \"IdeasListPanel\" frontend/src/components/content-engine/agent/panels/IdeasListPanel.tsx",
+        "grep -q \"IdeaList\" frontend/src/components/content-engine/agent/panels/IdeasListPanel.tsx"
+      ],
+      "testUrl": null,
+      "loadingState": "Skeleton cards while loading",
+      "a11y": "List has aria-label, cards are keyboard navigable",
+      "mobile": "Full-height scrollable list",
+      "dependsOn": [
+        "TASK-026"
+      ],
+      "notes": "Consolidates the ideas list that was in the bottom 40% of IdeasTab."
+    },
+    {
+      "id": "TASK-030",
+      "type": "frontend",
+      "title": "Refactor ContentEnginePage to conversation-first layout",
+      "passes": false,
+      "files": {
+        "create": [],
+        "modify": [
+          "frontend/src/pages/content-engine/ContentEnginePage.tsx"
+        ],
+        "reuse": [
+          "frontend/src/context/EchoAgentContext.tsx",
+          "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+          "frontend/src/components/content-engine/agent/EchoContextPanel.tsx"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Remove TabBar and SideTabBar imports - no more tabs",
+        "Wrap content in EchoAgentProvider",
+        "Layout: EchoConversation (70%) + EchoContextPanel (30%) on desktop",
+        "Mobile: EchoConversation full-width, EchoContextPanel as bottom drawer",
+        "URL changes from /create/content-engine/:tab to just /create/content-engine"
+      ],
+      "errorHandling": [
+        "Old tab URLs (/create/content-engine/ideas) redirect to /create/content-engine"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -v \"TabBar\" frontend/src/pages/content-engine/ContentEnginePage.tsx || echo 'TabBar removed'",
+        "grep -q \"EchoAgentProvider\" frontend/src/pages/content-engine/ContentEnginePage.tsx",
+        "grep -q \"EchoConversation\" frontend/src/pages/content-engine/ContentEnginePage.tsx",
+        "grep -q \"EchoContextPanel\" frontend/src/pages/content-engine/ContentEnginePage.tsx"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine",
+      "loadingState": "Both panels show their loading states",
+      "a11y": "Main regions have appropriate landmarks",
+      "mobile": "Drawer pattern for context panel",
+      "dependsOn": [
+        "TASK-025",
+        "TASK-026",
+        "TASK-027",
+        "TASK-028",
+        "TASK-029"
+      ],
+      "notes": "The big refactor - removes tabs, wires everything together."
+    },
+    {
+      "id": "TASK-031",
+      "type": "frontend",
+      "title": "Add context-aware greeting to Echo",
+      "passes": false,
+      "files": {
+        "create": [],
+        "modify": [
+          "frontend/src/components/content-engine/agent/EchoConversation.tsx",
+          "frontend/src/hooks/useEchoChat.ts"
+        ],
+        "reuse": [
+          "frontend/src/hooks/useIdeas.ts",
+          "frontend/src/hooks/useSchedule.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "On mount, Echo shows personalized greeting based on user data",
+        "Greeting mentions saved ideas count if > 0",
+        "Greeting mentions if nothing scheduled for next week",
+        "Greeting includes quick action buttons matching QuickActionsPanel",
+        "Returning users see 'Welcome back' with context, not onboarding"
+      ],
+      "errorHandling": [
+        "If APIs fail, show generic greeting without counts",
+        "Fallback: 'Hey! What would you like to create today?'"
+      ],
+      "testSteps": [
+        "cd frontend && npx tsc --noEmit",
+        "grep -q \"savedIdeas\" frontend/src/components/content-engine/agent/EchoConversation.tsx",
+        "grep -q \"Welcome back\" frontend/src/components/content-engine/agent/EchoConversation.tsx"
+      ],
+      "testUrl": "http://localhost:3000/create/content-engine",
+      "loadingState": "Greeting skeleton while loading user data",
+      "a11y": "Greeting is announced to screen readers",
+      "mobile": "Same greeting, responsive buttons",
+      "dependsOn": [
+        "TASK-030"
+      ],
+      "notes": "Makes Echo feel like it knows you. Uses ideas count and schedule data to personalize."
     }
   ]
 }

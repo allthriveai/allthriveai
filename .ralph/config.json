@@ -2,7 +2,7 @@
   "checks": {
     "typescript": "cd frontend && npx tsc --noEmit",
     "lint": "docker compose exec -T web ruff check .",
-    "tests": "docker compose exec -T web python manage.py test --keepdb --parallel"
+    "test": "docker compose exec -T web python manage.py test --keepdb --parallel"
   },
   "maxIterations": 20,
   "maxSessionSeconds": 600,

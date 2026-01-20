@@ -123,7 +123,7 @@ Say: "Now I'll split this into executable PRDs for Ralph. Each story will be sma
 
 Break the idea into small, executable PRDs following the JSON structure below.
 
-### Step 6: Write PRD and Review
+### Step 6: Write PRD
 
 1. Ensure .ralph directory exists:
    ```bash
@@ -132,17 +132,11 @@ Break the idea into small, executable PRDs following the JSON structure below.
 
 2. Write to `.ralph/prd.json`
 
-3. Open the PRD for review:
-   ```bash
-   open -a TextEdit .ralph/prd.json
-   ```
+3. Say: "I've created the PRD with {N} stories in `.ralph/prd.json`.
 
-4. Say: "I've created the PRD with {N} stories.
-
-   Review `.ralph/prd.json` and let me know:
-   - **'approved'** - Ready for `ralph run`
-   - **'edit [changes]'** - Tell me what to change
-   - Or edit the JSON directly and say **'done'**"
+   Review and let me know:
+   - **'approved'** - Ready for `npx ralph run`
+   - **'edit [changes]'** - Tell me what to change"
 
 **STOP and wait for user response. Do not proceed until they approve.**
 
@@ -150,19 +144,17 @@ Break the idea into small, executable PRDs following the JSON structure below.
 
 Once the user approves the PRD, say:
 
-"Your idea is ready for execution!
+"Ready for autonomous development!
 
 **Idea:** `docs/ideas/{feature-name}.md`
 **PRD:** `.ralph/prd.json` ({N} stories)
 
-To start autonomous development:
+Run:
 ```bash
-ralph run
+npx ralph run
 ```
 
-Ralph will work through each story, running tests and committing as it goes."
-
-**DO NOT start implementing code. The user will run `ralph run` separately.**
+**DO NOT start implementing code. The user will run `npx ralph run` separately.**
 
 ---
 
@@ -183,7 +175,7 @@ Ralph will work through each story, running tests and committing as it goes."
   },
   "stories": [
     {
-      "id": "US-001",
+      "id": "TASK-001",
       "type": "frontend|backend",
       "title": "Short description",
       "passes": false,
@@ -203,10 +195,12 @@ Ralph will work through each story, running tests and committing as it goes."
       ],
 
       "testSteps": [
-        "How to verify it works"
+        "MUST be executable shell commands - see examples below"
       ],
 
-      "dependsOn": []
+      "dependsOn": [],
+
+      "notes": ""
     }
   ]
 }
@@ -217,6 +211,20 @@ Ralph will work through each story, running tests and committing as it goes."
 - `loadingState` - What shows during async operations
 - `a11y` - Accessibility requirements
 - `mobile` - How it works on mobile
+
+### E2E Tests
+Add `"e2e": true` to **any frontend story where users interact** with the feature:
+- Forms, buttons, inputs, modals, wizards → e2e
+- Real-time features, drag & drop, file uploads → e2e
+- Multi-page flows, navigation → e2e
+- Static display-only components (no interaction) → skip e2e
+
+When `e2e: true`, the story should:
+- Create a Playwright test file in `tests/e2e/{story-id}.spec.ts`
+- Include the test in `testSteps`: `"npx playwright test tests/e2e/{story-id}.spec.ts"`
+- **Skip in CI** (runs nightly instead): Add `test.skip(!!process.env.CI, 'Runs nightly');` at top of test
+
+Don't ask - if users touch it, test it.
 
 ### Backend stories also need:
 - `apiEndpoints` - Endpoints to test
@@ -229,11 +237,71 @@ Ralph will work through each story, running tests and committing as it goes."
 ## Guidelines
 
 ### Story Guidelines
-- **Keep stories small** - Max 3-4 acceptance criteria per story
-- **Make test steps concrete** - "curl /api/x returns 200" not "user can see X"
+- **Keep stories small** - Max 3-4 acceptance criteria per story, ~1000 tokens max description
 - **Order by dependency** - Stories that depend on others come later
 - **Max 10 stories** - If more, suggest splitting into phases
 - **Define error handling** - Every story specifies what happens on failure
+- **Notes field** - Claude fills this as it works (files created, decisions made, context for next story)
+
+### Context Size Limits
+Each story must be completable in ONE Claude session without context overflow:
+- **Max ~1000 tokens** for story description (title + criteria + error handling)
+- **Max 3-4 files** created or modified per story
+- If a story feels too big, split it
+
+### UI Stories Must Include Browser Verification
+For frontend stories, acceptance criteria MUST include:
+- "Page loads without console errors"
+- "Required elements render" (specify which: header, form, button, etc.)
+- "Works on mobile viewport (375px)"
+
+These get verified by Playwright, not just code review.
+
+### Test Steps - CRITICAL
+**Test steps MUST be executable shell commands.** Ralph runs them with bash.
+
+✅ **GOOD test steps (executable):**
+```json
+"testSteps": [
+  "curl -s http://localhost:3000/api/health | jq -e '.status == \"ok\"'",
+  "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/users | grep 200",
+  "test -f frontend/src/components/Button.tsx",
+  "grep -q 'export function Button' frontend/src/components/Button.tsx",
+  "cd frontend && npx tsc --noEmit",
+  "docker compose exec -T web python manage.py test app.tests.TestUserAPI",
+  "npx playwright test tests/e2e/dashboard.spec.ts",
+  "npx playwright test --grep 'login flow'",
+  "cd frontend && npm test -- --testPathPattern=Button.test.tsx"
+]
+```
+
+**For UI/visual verification, use Playwright tests:**
+```json
+"testSteps": [
+  "npx playwright test tests/e2e/chat-panel.spec.ts"
+]
+```
+
+The Playwright test file can check:
+- Element visibility and positioning
+- Console errors (no errors in DevTools)
+- Network requests completing
+- Visual layout (screenshots, viewport checks)
+- Accessibility (axe-core integration)
+
+❌ **BAD test steps (not executable - will fail):**
+```json
+"testSteps": [
+  "Visit http://localhost:3000/dashboard",
+  "User can see the dashboard",
+  "Click the submit button",
+  "Form validates correctly",
+  "Chat panel renders in top 60%",
+  "Check DevTools for errors"
+]
+```
+
+**If a step can't be automated**, leave it out of testSteps and put it in acceptanceCriteria instead. Ralph will verify acceptanceCriteria via code review, not by running commands.
 
 ### Architecture Guidelines
 - **Domain-driven directories** - Group by feature (`src/contact/`) not type (`src/components/`)
@@ -246,5 +314,33 @@ Ralph will work through each story, running tests and committing as it goes."
 ## Error Handling
 
 - If user provides no arguments, ask what they want to brainstorm
-- If .ralph/prd.json already exists, warn: "A PRD already exists. Archive it first: `mv .ralph/prd.json .ralph/archive/`"
 - If user abandons mid-flow, the idea file is still saved for later
+
+### If PRD Already Exists
+
+Before writing to `.ralph/prd.json`, check if it exists:
+
+```bash
+cat .ralph/prd.json 2>/dev/null | jq '{stories: .stories | length, completed: [.stories[] | select(.passes == true)] | length}'
+```
+
+If it exists, say:
+"📋 `.ralph/prd.json` already exists with {N} stories ({M} completed, {P} pending).
+
+Options:
+- **'append'** - Add new stories to existing PRD (recommended)
+- **'overwrite'** - Replace entirely
+- **'cancel'** - Stop here"
+
+**STOP and wait for user choice.**
+
+If **'append'**:
+- Find highest existing story number (ignore prefix - could be US-019 or TASK-019)
+- **Always use TASK- prefix** for new stories (e.g., if highest is US-019 or TASK-019, new stories start at TASK-020)
+- Read existing PRD, add new stories to the `stories` array
+- Update `metadata.estimatedStories` count
+- Write back to `.ralph/prd.json`
+
+If **'overwrite'**:
+- Archive first: `mkdir -p .ralph/archive && mv .ralph/prd.json .ralph/archive/prd-$(date +%Y%m%d-%H%M%S).json`
+- Write new PRD
