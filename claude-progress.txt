@@ -358,6 +358,53 @@ Each entry: [TIMESTAMP] [STATUS] Description
     - ! grep -q 'GoalStatus' frontend/src/types/contentEngine.ts - PASS (not found)
     - npx tsc --noEmit - PASS (TypeScript compiles)
 
+[2026-01-20T14:03] [COMPLETED] US-001 Asana OAuth API endpoints
+  - Created core/integrations/asana_views.py with 4 endpoints:
+    - GET /api/v1/integrations/asana/authorize/ - Returns OAuth URL with state
+    - GET /api/v1/integrations/asana/callback/ - Exchanges code for tokens, saves integration
+    - GET /api/v1/integrations/asana/status/ - Returns connection status (NEVER tokens)
+    - DELETE /api/v1/integrations/asana/disconnect/ - Removes integration
+  - Created core/integrations/asana_serializers.py with response serializers
+  - Created core/integrations/urls.py with URL routing
+  - Updated core/urls.py to include integrations URLs
+  - Created migration 0014_asanaintegration_taskcache.py and applied
+  - Fixed __init__.py circular import issue
+  - All acceptance criteria met:
+    - GET authorize returns redirect URL with state - PASS
+    - GET callback exchanges code and saves AsanaIntegration - PASS
+    - GET status returns connection status (never tokens) - PASS
+    - DELETE disconnect removes integration - PASS
+  - Error handling implemented:
+    - Invalid state in callback returns redirect with error=invalid_state
+    - OAuth failure returns redirect with error=token_exchange_failed
+    - Unauthenticated requests return 401
+  - Test steps ALL passed:
+    - curl status without auth returns 401 - PASS
+    - curl status with auth returns {"connected": false} - PASS
+    - curl status with connected user shows workspaceName, NOT access_token - PASS
+    - AsanaIntegration.access_token never in any API response - PASS
+
+[2026-01-20T14:10] [COMPLETED] US-002 Celery tasks for Asana background sync
+  - Created core/integrations/asana_tasks.py with two tasks:
+    - sync_asana_for_user: Syncs tasks for a single user
+    - sync_all_asana_users: Periodic task that dispatches individual sync tasks
+  - Updated config/celery.py:
+    - Added asana_tasks to app.conf.imports
+    - Added sync-all-asana-users to beat_schedule (runs every 5 minutes)
+  - All acceptance criteria met:
+    - sync_asana_for_user task syncs tasks for a single user - PASS
+    - sync_all_asana_users task runs every 5 minutes via Celery beat - PASS
+    - Token refresh errors disable sync and log warning - PASS
+    - Rate limit errors use exponential backoff - PASS
+  - Error handling implemented:
+    - AsanaTokenExpiredError disables sync_enabled and logs warning
+    - AsanaRateLimitError retries with exponential backoff (max 3 retries, max 10min delay)
+    - General errors log but don't crash worker
+  - Test steps ALL passed:
+    - docker compose exec web python manage.py shell -c "from core.integrations.asana_tasks import sync_asana_for_user; print('Import OK')" - PASS
+    - 'sync-all-asana-users' in beat_schedule - PASS
+    - ruff check passes - PASS
+
 ## Blockers
 - None currently
 

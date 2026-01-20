@@ -52,6 +52,7 @@ app.autodiscover_tasks(
 app.conf.imports = [
     'core.integrations.rss_tasks',  # Expert curation articles with AI-generated hero images
     'core.integrations.youtube_feed_tasks',
+    'core.integrations.asana_tasks',  # Asana bidirectional task sync
 ]
 
 # Task execution settings for scalability
@@ -297,6 +298,14 @@ app.conf.beat_schedule = {
             'lookback_hours': 24,
             'engagement_threshold': 10,
             'limit': 10,
+        },
+    },
+    # Asana integration sync tasks
+    'sync-all-asana-users': {
+        'task': 'core.integrations.asana_tasks.sync_all_asana_users',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        'options': {
+            'expires': 300,  # Expires after 5 minutes
         },
     },
 }
