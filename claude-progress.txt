@@ -238,6 +238,49 @@ Each entry: [TIMESTAMP] [STATUS] Description
     - grep -qi 'proactive\|opinionated\|recommend' services/agents/echo/prompts.py - PASS
   - ruff check passes: All checks passed!
 
+[2026-01-19T23:30] [COMPLETED] TASK-036 Update empty state with goal examples
+  - Modified EchoConversation.tsx to add clickable example pills to empty state
+  - Created frontend/e2e/echo-empty-state.spec.ts E2E test file
+  - All acceptance criteria met:
+    - Empty state shows 'What are your goals?' heading
+    - Shows 5 clickable example pills below the heading
+    - Clicking example sends it as message to Echo
+    - Examples: 'Post to LinkedIn 3x/week', 'Grow my Twitter audience', 'Build thought leadership', 'Create a content calendar', 'Repurpose my best content'
+  - Error handling implemented:
+    - Pills disabled while disconnected or typing (via disabled prop)
+  - Accessibility:
+    - Example pills are buttons with descriptive text
+  - Mobile:
+    - Pills wrap to multiple lines on small screens (flex-wrap)
+  - Test steps ALL passed:
+    - grep -q 'What are your goals' frontend/src/components/content-engine/agent/EchoConversation.tsx - PASS (line 548)
+    - grep -q 'Post to LinkedIn' frontend/src/components/content-engine/agent/EchoConversation.tsx - PASS (line 555)
+    - npx tsc --noEmit - PASS (no errors)
+    - E2E test created (pending test user seed)
+
+[2026-01-20T07:10] [COMPLETED] TASK-037 Create useStrategy hook and strategy service
+  - Added Strategy interface to frontend/src/types/contentEngine.ts
+    - Fields: id, goals, platforms, postsPerWeek, schedule, pillars, voice, recommendations, createdAt, updatedAt
+    - Added UpdateStrategyPayload interface for partial updates
+  - Created frontend/src/services/contentEngine/strategy.ts
+    - getStrategy() - fetches user's strategy (GET /api/v1/content-engine/strategy/)
+    - updateStrategy() - partial updates (PUT /api/v1/content-engine/strategy/)
+    - strategyApi object for convenience
+  - Created frontend/src/hooks/useStrategy.ts
+    - useStrategy() hook returns { strategy, isLoading, error, refetch }
+    - Returns null strategy if not authenticated
+    - useUpdateStrategy() hook for updating strategy
+  - All acceptance criteria met:
+    - Strategy TypeScript interface added to types
+    - strategy.ts service with getStrategy() and updateStrategy() functions
+    - useStrategy hook that fetches and caches user's strategy
+    - Hook returns { strategy, isLoading, error, refetch }
+  - Test steps ALL passed:
+    - test -f frontend/src/hooks/useStrategy.ts - PASS
+    - test -f frontend/src/services/contentEngine/strategy.ts - PASS
+    - grep -q 'interface Strategy' frontend/src/types/contentEngine.ts - PASS
+    - npx tsc --noEmit - PASS (no errors)
+
 ## Blockers
 - None currently
 
