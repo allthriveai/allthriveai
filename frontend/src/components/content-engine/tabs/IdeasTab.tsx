@@ -70,7 +70,8 @@ export function IdeasTab() {
   }, [refetch]);
 
   // Generate a session ID for brainstorm chat
-  const sessionId = useMemo(() => `ideas-${Date.now()}`, []);
+  // Must start with 'echo-' for backend routing to Echo agent
+  const sessionId = useMemo(() => `echo-ideas-${Date.now()}`, []);
 
   // Clear animation class after timeout
   useEffect(() => {
