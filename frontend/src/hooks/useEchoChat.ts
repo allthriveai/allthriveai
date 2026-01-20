@@ -13,6 +13,26 @@ import type { ChatMessage } from '@/types/chat';
 import type { SuggestedIdea, Platform } from '@/types/contentEngine';
 
 /**
+ * Idea data structure from WebSocket events
+ *
+ * NOTE: Uses snake_case for field names because WebSocket messages
+ * bypass the axios API interceptor that normally converts snake_case ↔ camelCase.
+ */
+interface IdeaData {
+  id?: number;
+  idea_id?: number;
+  success?: boolean;
+  title?: string;
+  description?: string;
+  hook?: string;
+  pillar_id?: number;
+  pillar_name?: string;
+  platforms?: Platform[];
+  message?: string;
+  error?: string;
+}
+
+/**
  * WebSocket Message Interface for Echo events
  *
  * NOTE: Uses snake_case for field names because WebSocket messages
@@ -28,18 +48,9 @@ interface EchoWebSocketMessage {
   message?: string;
   // Tool-related fields
   tool?: string;
-  output?: {
-    success?: boolean;
-    idea_id?: number;
-    title?: string;
-    description?: string;
-    hook?: string;
-    pillar_id?: number;
-    pillar_name?: string;
-    platforms?: Platform[];
-    message?: string;
-    error?: string;
-  };
+  // idea_suggested events use 'idea' field, tool_end uses 'output'
+  idea?: IdeaData;
+  output?: IdeaData;
 }
 
 /**
@@ -229,16 +240,18 @@ export function useEchoChat({
             }
             break;
 
-          case 'idea_suggested':
+          case 'idea_suggested': {
             // Echo is suggesting an idea to save
-            if (data.output) {
+            // Backend sends 'idea' field, but also support 'output' for compatibility
+            const ideaData = data.idea || data.output;
+            if (ideaData) {
               const idea: SuggestedIdea = {
-                title: data.output.title || '',
-                description: data.output.description,
-                hook: data.output.hook,
-                pillarId: data.output.pillar_id,
-                pillarName: data.output.pillar_name,
-                platforms: data.output.platforms,
+                title: ideaData.title || '',
+                description: ideaData.description,
+                hook: ideaData.hook,
+                pillarId: ideaData.pillar_id,
+                pillarName: ideaData.pillar_name,
+                platforms: ideaData.platforms,
               };
               setSuggestedIdea(idea);
 
@@ -254,8 +267,12 @@ export function useEchoChat({
                   suggestedIdea: idea,
                 },
               });
+            } else {
+              // Neither 'idea' nor 'output' field exists
+              console.warn('idea_suggested event missing idea/output data:', data);
             }
             break;
+          }
 
           case 'complete':
           case 'completed':
