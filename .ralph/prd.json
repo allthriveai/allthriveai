@@ -64,7 +64,7 @@
       "id": "US-002",
       "type": "backend",
       "title": "Celery tasks for Asana background sync",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "core/integrations/asana_tasks.py"
@@ -89,7 +89,7 @@
         "General errors log but don't crash worker"
       ],
       "testSteps": [
-        "docker compose exec web python -c \"from core.integrations.asana_tasks import sync_asana_for_user; print('Import OK')\"",
+        "docker compose exec web python manage.py shell -c \"from core.integrations.asana_tasks import sync_asana_for_user; print('Import OK')\"",
         "Verify celery beat schedule includes sync_all_asana_users"
       ],
       "apiEndpoints": [],
