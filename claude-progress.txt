@@ -225,6 +225,19 @@ Each entry: [TIMESTAMP] [STATUS] Description
   - Added strategy to TOOLS_NEEDING_STATE set
   - Fixed lint error (line too long)
 
+[2026-01-19T23:15] [COMPLETED] TASK-034 Update Echo system prompt for coach personality
+  - Rewrote ECHO_SYSTEM_PROMPT to be a proactive coach, not a passive assistant
+  - All acceptance criteria met:
+    - System prompt instructs Echo to be a proactive coach ("You're a coach, not an assistant")
+    - Includes guidance on giving opinions and recommendations ("Proactive and opinionated", "Give real advice")
+    - Includes examples of good vs bad responses (3 scenarios: sharing goal, creating content, what to work on)
+    - References strategy tool usage ("Using the Strategy Tool" section with save/update/recall guidance)
+  - Test steps ALL passed:
+    - grep -q 'coach' services/agents/echo/prompts.py - PASS
+    - grep -q 'strategy' services/agents/echo/prompts.py - PASS
+    - grep -qi 'proactive\|opinionated\|recommend' services/agents/echo/prompts.py - PASS
+  - ruff check passes: All checks passed!
+
 ## Blockers
 - None currently
 
