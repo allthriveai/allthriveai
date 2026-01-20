@@ -1,6 +1,7 @@
 /**
  * BrainstormChatPanel - Main chat panel for Echo Creator Coach
  * US-018: Brainstorm chat panel with ContextBar, ChatMessageList, QuickPromptPills, ChatInput
+ * US-020: Echo first-time onboarding flow
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -11,6 +12,12 @@ import { ContextBar } from './ContextBar';
 import { QuickPromptPills } from './QuickPromptPills';
 import { IdeaSuggestionMessage } from './IdeaSuggestionMessage';
 import { EchoAvatar } from './EchoAvatar';
+import {
+  EchoOnboarding,
+  WelcomeBackMessage,
+  isOnboardingComplete,
+  type EchoPreferences,
+} from './EchoOnboarding';
 import type { ContentPillar, Platform, SuggestedIdea } from '@/types/contentEngine';
 
 interface BrainstormChatPanelProps {
@@ -24,6 +31,23 @@ export function BrainstormChatPanel({
   onIdeaSaved,
   className = '',
 }: BrainstormChatPanelProps) {
+  // Onboarding state - check localStorage on mount
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try {
+      return !isOnboardingComplete();
+    } catch {
+      return false; // Default to no onboarding if localStorage fails
+    }
+  });
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => {
+    try {
+      return isOnboardingComplete();
+    } catch {
+      return false;
+    }
+  });
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+
   const [activePlatforms, setActivePlatforms] = useState<Platform[]>(['twitter', 'linkedin']);
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +161,32 @@ export function BrainstormChatPanel({
     [inputValue, handleSendMessage]
   );
 
+  // Handle onboarding complete
+  const handleOnboardingComplete = useCallback((preferences: EchoPreferences) => {
+    setShowOnboarding(false);
+    setHasCompletedOnboarding(true);
+    // Apply saved preferences to current session
+    if (preferences.platforms.length > 0) {
+      setActivePlatforms(preferences.platforms);
+    }
+  }, []);
+
+  // Handle onboarding skip
+  const handleOnboardingSkip = useCallback(() => {
+    setShowOnboarding(false);
+    setHasCompletedOnboarding(true);
+  }, []);
+
+  // Show welcome back message for returning users
+  useEffect(() => {
+    if (hasCompletedOnboarding && !showOnboarding && messages.length === 0 && isConnected) {
+      setShowWelcomeBack(true);
+      // Auto-hide welcome back after 3 seconds
+      const timer = setTimeout(() => setShowWelcomeBack(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasCompletedOnboarding, showOnboarding, messages.length, isConnected]);
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -226,6 +276,18 @@ export function BrainstormChatPanel({
     return null;
   }, [isConnecting, isConnected, connect]);
 
+  // Show onboarding once WebSocket is connected
+  if (showOnboarding && isConnected) {
+    return (
+      <div className={`flex flex-col h-full glass-panel rounded-xl ${className}`}>
+        <EchoOnboarding
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col h-full glass-panel rounded-xl ${className}`}>
       {/* Context Bar */}
@@ -249,8 +311,13 @@ export function BrainstormChatPanel({
         {/* Connection status */}
         {connectionStatus}
 
-        {/* Empty state */}
-        {!connectionStatus && messages.length === 0 && !isTyping && (
+        {/* Welcome back message for returning users */}
+        {showWelcomeBack && !connectionStatus && messages.length === 0 && (
+          <WelcomeBackMessage />
+        )}
+
+        {/* Empty state - only show if not showing welcome back */}
+        {!connectionStatus && messages.length === 0 && !isTyping && !showWelcomeBack && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <EchoAvatar size="lg" className="mb-4" />
             <h3 className="text-lg font-semibold text-white mb-2">
