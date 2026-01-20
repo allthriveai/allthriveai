@@ -24,7 +24,7 @@ from langgraph.graph import END, StateGraph
 
 from .prompts import build_echo_prompt
 from .state import BrandVoiceContext, ConversationPhase, EchoState, StrategyContext
-from .tools import ECHO_TOOLS
+from .tools import ECHO_TOOLS, ECHO_TOOLS_BY_NAME, TOOLS_NEEDING_STATE
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class EchoAgent:
         # Add nodes
         graph.add_node('route', self._route_node)
         graph.add_node('converse', self._converse_node)
-        graph.add_node('save_idea', self._save_idea_node)
+        graph.add_node('execute_tools', self._execute_tools_node)
 
         # Set entry point
         graph.set_entry_point('route')
@@ -90,7 +90,7 @@ class EchoAgent:
             self._route_decision,
             {
                 'converse': 'converse',
-                'save_idea': 'save_idea',
+                'execute_tools': 'execute_tools',
                 'end': END,
             },
         )
@@ -105,12 +105,12 @@ class EchoAgent:
             },
         )
 
-        # Save idea leads to end
-        graph.add_edge('save_idea', END)
+        # Tool execution leads to end
+        graph.add_edge('execute_tools', END)
 
         return graph.compile()
 
-    def _route_decision(self, state: EchoState) -> Literal['converse', 'save_idea', 'end']:
+    def _route_decision(self, state: EchoState) -> Literal['converse', 'execute_tools', 'end']:
         """Determine which node to route to based on state."""
         messages = state.get('messages', [])
         if not messages:
@@ -120,9 +120,8 @@ class EchoAgent:
 
         # Check if the LLM requested tool calls
         if isinstance(last_message, AIMessage) and last_message.tool_calls:
-            for tool_call in last_message.tool_calls:
-                if tool_call.get('name') == 'save_idea':
-                    return 'save_idea'
+            # Route to tool execution for any tool call
+            return 'execute_tools'
 
         # Default to conversation
         return 'converse'
@@ -185,48 +184,58 @@ class EchoAgent:
             )
             return {'messages': [error_response]}
 
-    async def _save_idea_node(self, state: EchoState) -> dict:
-        """Execute the save_idea tool."""
+    async def _execute_tools_node(self, state: EchoState) -> dict:
+        """Execute any tool calls from the LLM."""
         from langchain_core.messages import ToolMessage
 
         messages = state.get('messages', [])
         user_id = state.get('user_id')
         session_id = state.get('session_id', '')
 
-        # Find the save_idea tool call
+        # Find tool calls in the last message
         last_message = messages[-1] if messages else None
         if not isinstance(last_message, AIMessage) or not last_message.tool_calls:
             return {}
 
         tool_results = []
         for tool_call in last_message.tool_calls:
-            if tool_call.get('name') != 'save_idea':
-                continue
-
+            tool_name = tool_call.get('name', '')
             tool_id = tool_call.get('id', '')
             tool_args = dict(tool_call.get('args', {}))
 
-            # Inject state for the tool
-            tool_args['state'] = {
-                'user_id': user_id,
-                'session_id': session_id,
-            }
+            # Get the tool from registry
+            tool_func = ECHO_TOOLS_BY_NAME.get(tool_name)
+            if not tool_func:
+                logger.warning(f'Unknown tool requested: {tool_name}')
+                tool_results.append(
+                    ToolMessage(
+                        content=str({'success': False, 'error': f'Unknown tool: {tool_name}'}),
+                        tool_call_id=tool_id,
+                        name=tool_name,
+                    )
+                )
+                continue
+
+            # Inject state for tools that need it
+            if tool_name in TOOLS_NEEDING_STATE:
+                tool_args['state'] = {
+                    'user_id': user_id,
+                    'session_id': session_id,
+                }
 
             # Execute the tool
-            from .tools import save_idea
-
             try:
-                result = save_idea.invoke(tool_args)
-                logger.info(f'Saved idea via Echo: {result}')
+                result = tool_func.invoke(tool_args)
+                logger.info(f'Executed tool {tool_name} via Echo: {result}')
             except Exception as e:
-                logger.error(f'Failed to save idea: {e}')
+                logger.error(f'Failed to execute tool {tool_name}: {e}')
                 result = {'success': False, 'error': str(e)}
 
             tool_results.append(
                 ToolMessage(
                     content=str(result),
                     tool_call_id=tool_id,
-                    name='save_idea',
+                    name=tool_name,
                 )
             )
 

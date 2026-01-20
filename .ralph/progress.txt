@@ -623,3 +623,22 @@
   - npx tsc --noEmit passes
   Files created: ContextCard.tsx, TaskCard.tsx, IdeaCard.tsx
   Files modified: EchoWorkspace.tsx
+[2026-01-20T15:02:13-08:00] FAILED US-008 Verification failed, will retry
+[2026-01-20T15:07:55-08:00] PASSED US-009 All acceptance criteria verified:
+  - manage_task tool creates/updates/completes tasks via AsanaService - DONE
+  - manage_idea tool saves/updates/archives ContentIdea - DONE
+  - get_context tool returns tasks summary, ideas, profile, brand voice - DONE
+  - sync_asana tool triggers immediate sync - DONE
+  - save_onboarding_response tool updates EchoProfile with goals, platforms, pillars - DONE
+  Error handling:
+  - AsanaNotConnectedError returns user-friendly message - DONE (user_message key)
+  - Tool errors return {success: false, user_message: ...} - DONE
+  Validation:
+  - action parameter required for manage_task - DONE
+  - title required for create action - DONE
+  Test steps verified:
+  - docker compose exec web python -c 'from services.agents.echo.tools import manage_task; print("OK")' - PASS
+  - Tool returns dict with success and data keys - PASS
+  Code quality:
+  - ruff check passes: All checks passed!
+  Files modified: services/agents/echo/tools.py, services/agents/echo/agent.py
