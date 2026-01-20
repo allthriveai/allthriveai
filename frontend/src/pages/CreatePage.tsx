@@ -7,7 +7,6 @@ import {
   faLock,
   faWandMagicSparkles,
   faBullhorn,
-  faSparkles,
 } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,7 +26,7 @@ const CREATOR_TOOLS: CreatorToolCard[] = [
   {
     title: 'Content Engine',
     description: 'Your all-in-one content creation hub. Capture ideas, create clips with AI, schedule posts, and define your brand voice.',
-    icon: faSparkles,
+    icon: faWandMagicSparkles,
     href: '/create/content-engine',
     color: '#22D3EE', // cyan
     colorTo: '#10B981', // green

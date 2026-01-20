@@ -418,21 +418,6 @@ for i in {1..5}; do cat PROMPT.md | claude-code; done
 # while :; do cat PROMPT.md | claude-code; done
 ```
 
-### Integration with Speckit
-The Ralph workflow complements (not replaces) the existing speckit system:
-
-| Workflow | When to Use |
-|----------|-------------|
-| **Speckit** | New features requiring design decisions, API contracts, data models |
-| **Ralph Loop** | Executing known tasks, iterating on implementation, fixing bugs |
-
-**Handoff pattern:**
-1. Use `/speckit.specify` -> `/speckit.plan` -> `/speckit.tasks` for planning
-2. Transfer tasks to `features.json` for Ralph execution
-3. Use Ralph loop for autonomous implementation
-4. Return to speckit for next feature design
-
-
 <!-- vibe-and-thrive-detected -->
 ## Detected Project Info
 
