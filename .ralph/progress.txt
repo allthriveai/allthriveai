@@ -386,3 +386,41 @@
   - npx tsc --noEmit passes
   - All test steps pass
 [2026-01-19T20:54:34-08:00] COMPLETED TASK-028 
+[2026-01-19T20:58:10-08:00] COMPLETED TASK-029 
+[2026-01-19T22:42:30-08:00] FAILED TASK-031 Verification failed, will retry
+[2026-01-19T22:47:37-08:00] FAILED TASK-031 Verification failed, will retry
+[2026-01-19T22:50:59-08:00] FAILED TASK-033 Verification failed, will retry
+[2026-01-19T22:52:08-08:00] FAILED TASK-033 Verification failed, will retry
+[2026-01-19T22:53:00-08:00] PASSED TASK-033 All acceptance criteria verified:
+  - strategy tool added to ECHO_TOOLS list - DONE (line 556)
+  - Called with no args returns current strategy (action: 'retrieved') - DONE
+  - Called with args updates strategy with partial updates (action: 'updated') - DONE
+  - Tool uses state['user_id'] for user context - DONE (line 485)
+  Error handling:
+  - Returns error dict if user not authenticated - DONE (lines 482-483)
+  - Creates strategy if none exists via get_or_create - DONE (line 494)
+  Code quality:
+  - ruff check passes: All checks passed!
+  - strategy in TOOLS_NEEDING_STATE set (line 565)
+  Test steps all pass:
+  - grep -q 'def strategy' services/agents/echo/tools.py - PASS
+  - grep -q "'strategy'" services/agents/echo/tools.py - PASS
+  - docker compose exec -T web python manage.py shell -c "from services.agents.echo.tools import ECHO_TOOLS; print([t.name for t in ECHO_TOOLS])" | grep -q 'strategy' - PASS
+  SIGN CONFIRMED: Test steps for services/* imports must use 'python manage.py shell -c' not 'python -c'
+  Fixed testSteps in prd.json for TASK-033 and TASK-039
+[2026-01-19T22:54:17-08:00] FAILED TASK-033 Verification failed, will retry
+[2026-01-19T22:57:41-08:00] FAILED TASK-034 Verification failed, will retry
+[2026-01-19T22:59:11-08:00] FAILED TASK-034 Verification failed, will retry
+[2026-01-19T23:02:10-08:00] COMPLETED TASK-035 All acceptance criteria verified:
+  - When Echo agent initializes, loads user's strategy from DB via _load_user_strategy()
+  - Strategy injected into system context via build_echo_prompt(user_strategy=...)
+  - If no strategy exists, context indicates new user via _format_new_user_context()
+  Error handling:
+  - Strategy load failure continues without it (graceful degradation - lines 387-390)
+  Test steps passed:
+  - grep -q 'Strategy' services/agents/echo/agent.py - PASS
+  - grep -qi 'user.*strategy|strategy.*user' services/agents/echo/agent.py - PASS
+  Code quality:
+  - ruff check passes: All checks passed\!
+  - Import test passes in Django shell
+  - Prompt building works with and without strategy

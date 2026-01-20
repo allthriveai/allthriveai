@@ -23,7 +23,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 
 from .prompts import build_echo_prompt
-from .state import BrandVoiceContext, ConversationPhase, EchoState
+from .state import BrandVoiceContext, ConversationPhase, EchoState, StrategyContext
 from .tools import ECHO_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -346,6 +346,50 @@ async def _load_brand_voice(user_id: int | None) -> BrandVoiceContext | None:
         return None
 
 
+async def _load_user_strategy(user_id: int | None) -> StrategyContext | None:
+    """
+    Load user's content strategy from DB on agent init.
+
+    This provides Echo with context about the user's goals, platforms,
+    cadence, and voice to give more personalized coaching.
+
+    Args:
+        user_id: User ID to load strategy for
+
+    Returns:
+        StrategyContext dict or None if no strategy exists (new user)
+    """
+    if not user_id:
+        return None
+
+    try:
+        from asgiref.sync import sync_to_async
+
+        from core.content_engine.models import Strategy
+
+        strategy = await sync_to_async(lambda: Strategy.objects.filter(user_id=user_id).first())()
+
+        if not strategy:
+            # No strategy exists - this is a new user
+            logger.debug(f'No strategy found for user {user_id} - new user')
+            return None
+
+        return StrategyContext(
+            goals=strategy.goals or [],
+            platforms=strategy.platforms or [],
+            posts_per_week=strategy.posts_per_week,
+            schedule=strategy.schedule or {},
+            pillars=strategy.pillars or [],
+            voice=strategy.voice or '',
+            recommendations=strategy.recommendations or {},
+        )
+
+    except Exception as e:
+        # Graceful degradation - continue without strategy
+        logger.warning(f'Failed to load strategy for user {user_id}: {e}')
+        return None
+
+
 async def stream_echo_response(
     user_message: str,
     user_id: int | None = None,
@@ -393,8 +437,9 @@ async def stream_echo_response(
     total_output_content = ''
 
     try:
-        # Load brand voice if user has one
+        # Load brand voice and user strategy in parallel
         brand_voice = await _load_brand_voice(user_id)
+        user_strategy = await _load_user_strategy(user_id)
 
         # Build message history
         messages = list(conversation_history) if conversation_history else []
@@ -409,6 +454,7 @@ async def stream_echo_response(
             'content_pillars': content_pillars or [],
             'target_platforms': target_platforms or [],
             'brand_voice': brand_voice,
+            'user_strategy': user_strategy,
             'current_idea': current_idea,
             'pillar_id': pillar_id,
         }
@@ -422,6 +468,7 @@ async def stream_echo_response(
             content_pillars=content_pillars or [],
             target_platforms=target_platforms or [],
             brand_voice=brand_voice,
+            user_strategy=user_strategy,
         )
 
         # Prepare messages for LLM

@@ -34,6 +34,18 @@ class BrandVoiceContext(TypedDict, total=False):
     keywords: list[str]
 
 
+class StrategyContext(TypedDict, total=False):
+    """User's content strategy context for Echo coaching."""
+
+    goals: list[str]  # What they want to achieve
+    platforms: list[str]  # Where they post
+    posts_per_week: int | None  # How often they post
+    schedule: dict  # Platform-specific posting days
+    pillars: list[str]  # Content topics/themes
+    voice: str  # How they want to sound
+    recommendations: dict  # Echo's previous coaching advice
+
+
 class EchoState(TypedDict):
     """
     State for the Echo agent graph.
@@ -52,6 +64,7 @@ class EchoState(TypedDict):
         content_pillars: Active content pillars (e.g., 'educational', 'hot_takes')
         target_platforms: Platforms being targeted (twitter, linkedin, youtube)
         brand_voice: Optional brand voice for personalization
+        user_strategy: User's content strategy for contextual coaching
         current_idea: The idea being developed (dict with title, hook, body, etc.)
         pillar_id: Selected content pillar taxonomy ID
     """
@@ -63,5 +76,6 @@ class EchoState(TypedDict):
     content_pillars: list[str]
     target_platforms: list[str]
     brand_voice: BrandVoiceContext | None
+    user_strategy: StrategyContext | None
     current_idea: dict | None
     pillar_id: int | None

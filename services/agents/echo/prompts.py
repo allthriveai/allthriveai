@@ -242,6 +242,7 @@ def build_echo_prompt(
     content_pillars: list[str] | None = None,
     target_platforms: list[str] | None = None,
     brand_voice: dict | None = None,
+    user_strategy: dict | None = None,
 ) -> str:
     """
     Build the complete Echo system prompt with context.
@@ -251,11 +252,20 @@ def build_echo_prompt(
         content_pillars: Active content pillars
         target_platforms: Target platforms (twitter, linkedin, youtube)
         brand_voice: Optional brand voice context
+        user_strategy: User's content strategy for contextual coaching
 
     Returns:
         Complete system prompt string
     """
     prompt_parts = [ECHO_SYSTEM_PROMPT]
+
+    # Add user strategy context first (most important for personalization)
+    if user_strategy:
+        strategy_context = _format_user_strategy(user_strategy)
+        prompt_parts.append(strategy_context)
+    else:
+        # Indicate new user - no strategy yet
+        prompt_parts.append(_format_new_user_context())
 
     # Add phase-specific guidance
     phase_addition = get_phase_prompt(phase)
@@ -324,3 +334,53 @@ def _format_brand_voice(brand_voice: dict) -> str:
     lines.append('Match this brand voice in all suggestions.')
 
     return '\n'.join(lines)
+
+
+def _format_user_strategy(strategy: dict) -> str:
+    """Format user's content strategy for the prompt."""
+    lines = ["## Creator's Strategy (Pre-loaded)"]
+    lines.append("")
+    lines.append("This creator has an existing strategy. Reference it in your advice.")
+    lines.append("")
+
+    if strategy.get('goals'):
+        goals = ', '.join(strategy['goals'])
+        lines.append(f"**Goals**: {goals}")
+
+    if strategy.get('platforms'):
+        platforms = ', '.join(strategy['platforms'])
+        lines.append(f"**Platforms**: {platforms}")
+
+    if strategy.get('posts_per_week'):
+        lines.append(f"**Cadence**: {strategy['posts_per_week']} posts/week")
+
+    if strategy.get('schedule'):
+        schedule_parts = []
+        for platform, days in strategy['schedule'].items():
+            if days:
+                schedule_parts.append(f"{platform}: {', '.join(days)}")
+        if schedule_parts:
+            lines.append(f"**Schedule**: {'; '.join(schedule_parts)}")
+
+    if strategy.get('pillars'):
+        pillars = ', '.join(strategy['pillars'])
+        lines.append(f"**Content Pillars**: {pillars}")
+
+    if strategy.get('voice'):
+        lines.append(f"**Voice**: {strategy['voice']}")
+
+    lines.append("")
+    lines.append("Connect every suggestion back to their goals and strategy.")
+
+    return '\n'.join(lines)
+
+
+def _format_new_user_context() -> str:
+    """Format context for a new user without a strategy."""
+    return """## New Creator (No Strategy Yet)
+
+This creator doesn't have a strategy saved yet. Help them build one!
+
+As you learn about their goals, platforms, and topics, use the `strategy` tool to save their preferences so they don't have to repeat themselves next time.
+
+Start by understanding what they want to achieve."""
