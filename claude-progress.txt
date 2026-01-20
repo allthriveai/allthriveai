@@ -161,6 +161,25 @@ Each entry: [TIMESTAMP] [STATUS] Description
     - grep -q "EchoConversation" (conversation component present)
     - grep -q "EchoContextPanel" (context panel present)
 
+[2026-01-20T06:40] [COMPLETED] TASK-031 Create Strategy model
+  - Created Strategy model in core/content_engine/models.py
+  - All acceptance criteria met:
+    - Strategy model exists with fields: goals, platforms, posts_per_week, schedule, pillars, voice, recommendations
+    - OneToOneField to User with related_name='strategy'
+    - Migration 0004_add_strategy.py created and applied
+  - Error handling implemented:
+    - All fields (except user FK) allow blank/empty for incremental building
+    - goals, platforms, pillars use ArrayField with default=list
+    - schedule, recommendations use JSONField with default=dict
+    - posts_per_week is nullable PositiveIntegerField
+    - voice is TextField with blank=True
+  - Test steps ALL passed:
+    - Strategy model imports successfully
+    - goals field exists
+    - platforms field exists
+    - OneToOneField relationship verified
+    - Created and updated Strategy instance successfully
+
 ## Blockers
 - None currently
 

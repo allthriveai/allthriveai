@@ -76,6 +76,81 @@ class BrandVoice(models.Model):
         return f'Brand Voice for {self.user.username}'
 
 
+class ContentGoal(models.Model):
+    """User content goals to guide Echo conversations and content strategy."""
+
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        COMPLETED = 'completed', 'Completed'
+        PAUSED = 'paused', 'Paused'
+
+    class GoalType(models.TextChoices):
+        AUDIENCE_GROWTH = 'audience_growth', 'Grow Audience'
+        ENGAGEMENT = 'engagement', 'Increase Engagement'
+        BRAND_AWARENESS = 'brand_awareness', 'Build Brand Awareness'
+        LEAD_GENERATION = 'lead_generation', 'Generate Leads'
+        PRODUCT_LAUNCH = 'product_launch', 'Launch Product/Service'
+        THOUGHT_LEADERSHIP = 'thought_leadership', 'Establish Thought Leadership'
+        COMMUNITY = 'community', 'Build Community'
+        CUSTOM = 'custom', 'Custom Goal'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='content_goals',
+    )
+    title = models.CharField(
+        max_length=255,
+        help_text='Short description of the goal',
+    )
+    description = models.TextField(
+        blank=True,
+        help_text='Detailed description of what you want to achieve',
+    )
+    goal_type = models.CharField(
+        max_length=50,
+        choices=GoalType.choices,
+        default=GoalType.CUSTOM,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_index=True,
+    )
+
+    # Optional target metrics
+    target_metric = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='E.g., "10,000 followers", "100 email subscribers"',
+    )
+    target_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Target completion date',
+    )
+
+    # Priority for ordering
+    priority = models.PositiveIntegerField(
+        default=0,
+        help_text='Higher number = higher priority',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-priority', '-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['user', '-priority']),
+        ]
+
+    def __str__(self):
+        return f'{self.title} ({self.get_status_display()})'
+
+
 class ContentIdea(models.Model):
     """A content idea in the pipeline."""
 
@@ -343,3 +418,80 @@ class BrainstormSession(models.Model):
 
     def __str__(self):
         return f'Brainstorm: {self.title}'
+
+
+class Strategy(models.Model):
+    """
+    User's social media content strategy.
+
+    Consolidates goals, platforms, cadence, schedule, topics, and voice
+    into a single model that Echo can reference for contextual coaching.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='strategy',
+    )
+
+    # Goals (why) - what user wants to achieve
+    goals = ArrayField(
+        models.CharField(max_length=255),
+        default=list,
+        blank=True,
+        help_text='E.g., ["grow audience", "get consulting clients"]',
+    )
+
+    # Platforms (where) - where they post
+    platforms = ArrayField(
+        models.CharField(max_length=50),
+        default=list,
+        blank=True,
+        help_text='E.g., ["linkedin", "twitter"]',
+    )
+
+    # Cadence (how often) - posts per week total
+    posts_per_week = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Total posts per week across all platforms',
+    )
+
+    # Schedule (when) - platform-specific posting days
+    schedule = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='E.g., {"linkedin": ["Mon", "Wed"], "twitter": ["Tue", "Thu"]}',
+    )
+
+    # Pillars (what topics) - content themes
+    pillars = ArrayField(
+        models.CharField(max_length=100),
+        default=list,
+        blank=True,
+        help_text='E.g., ["AI", "productivity", "coding"]',
+    )
+
+    # Voice (how you sound) - brief description of tone
+    voice = models.TextField(
+        blank=True,
+        help_text='E.g., "professional but approachable, no jargon, use examples"',
+    )
+
+    # Recommendations - Echo's coaching advice for reference
+    recommendations = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Stores Echo coaching advice for reference',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Strategy'
+        verbose_name_plural = 'Strategies'
+
+    def __str__(self):
+        platforms_str = ', '.join(self.platforms) if self.platforms else 'No platforms'
+        return f'Strategy for {self.user.username}: {platforms_str}'
