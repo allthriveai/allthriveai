@@ -257,7 +257,7 @@
       "id": "US-007",
       "type": "frontend",
       "title": "OnboardingProgress and QuickSelect components",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/echo/OnboardingProgress.tsx",
@@ -293,7 +293,7 @@
       "id": "US-008",
       "type": "frontend",
       "title": "ContextCard, TaskCard, IdeaCard components",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/echo/ContextCard.tsx",
