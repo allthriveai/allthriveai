@@ -1,10 +1,13 @@
 """
 Test-only authentication views.
 
-These views are ONLY available when DEBUG=True and should NOT be used in production.
+These views are ONLY available when DEBUG=True or CI=True environment variable is set.
 They provide simple email/password authentication for e2e testing purposes.
+
+SECURITY WARNING: These endpoints should NEVER be available in production.
 """
 
+import os
 import time
 
 from django.conf import settings
@@ -20,6 +23,11 @@ from core.users.models import User
 from .serializers import UserSerializer
 
 
+def is_test_mode() -> bool:
+    """Check if we're in a test/development environment."""
+    return settings.DEBUG or os.environ.get('CI', '').lower() in ('true', '1', 'yes')
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @csrf_exempt
@@ -27,13 +35,14 @@ def test_login(request):
     """
     Test-only login endpoint for e2e testing.
 
-    ONLY available when DEBUG=True.
+    ONLY available when DEBUG=True or CI environment variable is set.
 
     Accepts email/password or username/password and creates a session.
+    Also accepts JSON body in addition to form data.
     """
-    if not settings.DEBUG:
+    if not is_test_mode():
         return Response(
-            {'error': 'This endpoint is only available in development mode'}, status=status.HTTP_403_FORBIDDEN
+            {'error': 'This endpoint is only available in development/CI mode'}, status=status.HTTP_404_NOT_FOUND
         )
 
     start_time = time.time()

@@ -540,8 +540,10 @@ urlpatterns = [
     path('content-engine/', include('core.content_engine.urls')),
 ]
 
-# Test-only endpoints (only available in DEBUG mode)
-if settings.DEBUG:
+# Test-only endpoints (only available in DEBUG mode or CI environment)
+import os
+
+if settings.DEBUG or os.environ.get('CI', '').lower() in ('true', '1', 'yes'):
     from .auth.testing_views import test_login
 
     urlpatterns += [
