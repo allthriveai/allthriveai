@@ -21,6 +21,7 @@ import {
 import { useEchoAgent } from '@/context/EchoAgentContext';
 import { QuickActionsPanel } from './panels/QuickActionsPanel';
 import { BrainstormContext } from './panels/BrainstormContext';
+import { IdeasListPanel } from './panels/IdeasListPanel';
 import type { EchoMode } from '@/types/contentEngine';
 
 interface EchoContextPanelProps {
@@ -161,22 +162,8 @@ function ModeContent({ mode, onSendMessage }: ModeContentProps) {
       );
 
     case 'review':
-      return (
-        <div className="space-y-4">
-          <div className={`p-4 rounded-lg ${styles.bg} border ${styles.border}`}>
-            <h4 className="text-sm font-medium text-white mb-2">Idea Details</h4>
-            <p className="text-sm text-slate-400">
-              Full details of the selected idea will appear here.
-            </p>
-          </div>
-          <div className={`p-4 rounded-lg ${styles.bg} border ${styles.border}`}>
-            <h4 className="text-sm font-medium text-white mb-2">Improvement Suggestions</h4>
-            <p className="text-sm text-slate-400">
-              Echo&apos;s suggestions for improving the idea will appear here.
-            </p>
-          </div>
-        </div>
-      );
+      // Use IdeasListPanel for review mode - full-height list with filters and quick capture
+      return <IdeasListPanel className="h-full -m-4" />;
 
     default:
       // Unknown mode - show debug info in dev

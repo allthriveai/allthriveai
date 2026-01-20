@@ -118,6 +118,28 @@ Each entry: [TIMESTAMP] [STATUS] Description
     - grep -q "EchoContextPanel" (component exported)
     - grep -q "switch.*mode" (mode switch logic)
 
+[2026-01-19T23:00] [COMPLETED] TASK-029 IdeasListPanel for review mode
+  - Created frontend/src/components/content-engine/agent/panels/IdeasListPanel.tsx
+  - Modified EchoContextPanel.tsx to use IdeasListPanel for review mode
+  - All acceptance criteria met:
+    - IdeasListPanel shows when mode is 'review'
+    - Renders IdeaFilters at top (status filter)
+    - Renders scrollable IdeaList below
+    - QuickCapture input at bottom for fast idea entry
+    - Clicking an idea card sets it as activeIdea and offers 'Develop' action
+  - Error handling implemented:
+    - Empty state shows 'No ideas yet' with prompt to brainstorm
+    - API error shows retry button with ErrorState component
+  - Accessibility:
+    - List has aria-label="Ideas list panel"
+    - Cards are keyboard navigable (inherited from IdeaCard)
+  - Mobile: Full-height scrollable list with flex layout
+  - Loading state: SkeletonCard/SkeletonList while loading
+  - Test steps ALL passed:
+    - npx tsc --noEmit (TypeScript compiles)
+    - grep -q "IdeasListPanel" (component exists)
+    - grep -q "IdeaList" (IdeaList is used)
+
 ## Blockers
 - None currently
 
