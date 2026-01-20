@@ -140,6 +140,27 @@ Each entry: [TIMESTAMP] [STATUS] Description
     - grep -q "IdeasListPanel" (component exists)
     - grep -q "IdeaList" (IdeaList is used)
 
+[2026-01-19T24:00] [COMPLETED] TASK-030 Refactor ContentEnginePage to conversation-first layout
+  - Removed TabBar, SideTabBar, IdeasTab, CreateTab, CalendarTab, BrandVoiceTab imports
+  - Wrapped content in EchoAgentProvider with initialMode="idle"
+  - Desktop layout: EchoConversation (70%, flex-1 lg:w-[70%]) + EchoContextPanel (30%)
+  - Mobile layout: EchoConversation full-width, EchoContextPanel as bottom drawer (via its own mobile implementation)
+  - Old tab URLs (/create/content-engine/ideas, etc.) redirect to /create/content-engine
+  - Added sessionId generation for EchoConversation WebSocket connection
+  - Added proper ARIA landmarks (role="main", aria-label)
+  - All acceptance criteria met:
+    - Remove TabBar and SideTabBar imports - no more tabs
+    - Wrap content in EchoAgentProvider
+    - Layout: EchoConversation (70%) + EchoContextPanel (30%) on desktop
+    - Mobile: EchoConversation full-width, EchoContextPanel as bottom drawer
+    - URL changes from /create/content-engine/:tab to just /create/content-engine
+  - Test steps ALL passed:
+    - npx tsc --noEmit (TypeScript compiles)
+    - grep -v "TabBar" (TabBar removed)
+    - grep -q "EchoAgentProvider" (provider present)
+    - grep -q "EchoConversation" (conversation component present)
+    - grep -q "EchoContextPanel" (context panel present)
+
 ## Blockers
 - None currently
 

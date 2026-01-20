@@ -1,0 +1,32 @@
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/agent/panels/IdeasListPanel.tsx",
+      "line": null,
+      "message": "Story requires creating IdeasListPanel.tsx but the diff only shows a progress.txt update. The actual component file is not included in the diff.",
+      "suggestion": "The diff appears incomplete. The story specifies creating 'frontend/src/components/content-engine/agent/panels/IdeasListPanel.tsx' and modifying 'EchoContextPanel.tsx', but neither file appears in the diff. Only a progress log entry was added."
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "frontend/src/components/content-engine/agent/EchoContextPanel.tsx",
+      "line": null,
+      "message": "Story requires modifying EchoContextPanel.tsx to render IdeasListPanel when mode is 'review', but this file is not in the diff.",
+      "suggestion": "EchoContextPanel.tsx needs to be updated to conditionally render IdeasListPanel based on the mode prop."
+    },
+    {
+      "severity": "warning",
+      "category": "compliance",
+      "file": ".ralph/progress.txt",
+      "line": 388,
+      "message": "Progress log marks TASK-028 as completed but this review is for TASK-029. The progress entry doesn't match the story being reviewed.",
+      "suggestion": "Ensure the correct task is being implemented and the progress log reflects TASK-029, not TASK-028."
+    }
+  ],
+  "summary": "The diff is incomplete - it only contains a progress.txt update for TASK-028 but the review is for TASK-029. None of the required files (IdeasListPanel.tsx creation, EchoContextPanel.tsx modification) are present in the diff. The actual implementation appears to be missing entirely."
+}
+```

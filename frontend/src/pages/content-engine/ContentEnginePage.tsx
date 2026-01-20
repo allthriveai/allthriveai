@@ -1,81 +1,66 @@
-// Content Engine - Single page with tabbed navigation
-// US-001: Content Engine page shell with tab navigation
+/**
+ * Content Engine - Conversation-first layout with Echo Creator Coach
+ * TASK-030: Refactored to remove tabs, uses EchoConversation + EchoContextPanel
+ *
+ * Layout:
+ * - Desktop: EchoConversation (70%) + EchoContextPanel (30%)
+ * - Mobile: EchoConversation full-width, EchoContextPanel as bottom drawer
+ */
 
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { TabBar } from '@/components/content-engine/tabs/TabBar';
-import { SideTabBar } from '@/components/content-engine/tabs/SideTabBar';
-import { IdeasTab } from '@/components/content-engine/tabs/IdeasTab';
-import { CreateTab } from '@/components/content-engine/tabs/CreateTab';
-import { CalendarTab } from '@/components/content-engine/tabs/CalendarTab';
-import { BrandVoiceTab } from '@/components/content-engine/tabs/BrandVoiceTab';
-import type { ContentEngineTab } from '@/types/contentEngine';
+import { EchoAgentProvider } from '@/context/EchoAgentContext';
+import { EchoConversation } from '@/components/content-engine/agent/EchoConversation';
+import { EchoContextPanel } from '@/components/content-engine/agent/EchoContextPanel';
 
-const VALID_TABS: ContentEngineTab[] = ['ideas', 'create', 'calendar', 'brand'];
-const DEFAULT_TAB: ContentEngineTab = 'ideas';
-
-function isValidTab(tab: string | undefined): tab is ContentEngineTab {
-  return VALID_TABS.includes(tab as ContentEngineTab);
-}
+// Old tab paths that should redirect to the base content-engine path
+const OLD_TAB_PATHS = ['ideas', 'create', 'calendar', 'brand'];
 
 export default function ContentEnginePage() {
   const navigate = useNavigate();
   const { tab } = useParams<{ tab?: string }>();
 
-  // Validate and normalize tab parameter
-  const activeTab: ContentEngineTab = isValidTab(tab) ? tab : DEFAULT_TAB;
+  // Generate a unique session ID for this page visit (stable across renders)
+  const sessionId = useMemo(() => {
+    // Use a stable ID based on timestamp when component mounts
+    return `echo-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }, []);
 
-  // Redirect invalid tabs to default
+  // Redirect old tab URLs to the base content-engine path
   useEffect(() => {
-    if (tab && !isValidTab(tab)) {
-      navigate('/create/content-engine/ideas', { replace: true });
+    if (tab && OLD_TAB_PATHS.includes(tab)) {
+      navigate('/create/content-engine', { replace: true });
     }
   }, [tab, navigate]);
 
-  const handleTabChange = useCallback(
-    (newTab: ContentEngineTab) => {
-      navigate(`/create/content-engine/${newTab}`);
-    },
-    [navigate]
-  );
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'ideas':
-        return <IdeasTab />;
-      case 'create':
-        return <CreateTab isActive={activeTab === 'create'} />;
-      case 'calendar':
-        return <CalendarTab />;
-      case 'brand':
-        return <BrandVoiceTab />;
-      default:
-        return <IdeasTab />;
-    }
-  };
+  // Handle idea saved callback
+  const handleIdeaSaved = useCallback((ideaId: number, title: string) => {
+    // Could show a toast notification here in the future
+    console.log(`Idea saved: ${title} (ID: ${ideaId})`);
+  }, []);
 
   return (
     <DashboardLayout>
-      <div className="h-full flex flex-col md:flex-row">
-        {/* Side Tab Bar (Desktop) */}
-        <aside className="hidden md:flex flex-col w-20 glass-panel border-r border-slate-700/50 shrink-0">
-          <SideTabBar activeTab={activeTab} onTabChange={handleTabChange} />
-        </aside>
+      <EchoAgentProvider initialMode="idle">
+        <div className="h-full flex flex-col lg:flex-row gap-4 p-4">
+          {/* Main conversation area - 70% on desktop, full-width on mobile */}
+          <main
+            role="main"
+            aria-label="Content creation conversation with Echo"
+            className="flex-1 lg:w-[70%] min-h-0"
+          >
+            <EchoConversation
+              sessionId={sessionId}
+              onIdeaSaved={handleIdeaSaved}
+              className="h-full"
+            />
+          </main>
 
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col min-h-0 pb-14 md:pb-0">
-          {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {renderTabContent()}
-          </div>
-        </main>
-
-        {/* Bottom Tab Bar (Mobile) */}
-        <nav className="fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-700/50 md:hidden z-50">
-          <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
-        </nav>
-      </div>
+          {/* Context panel - 30% on desktop, drawer on mobile */}
+          <EchoContextPanel className="hidden lg:flex" />
+        </div>
+      </EchoAgentProvider>
     </DashboardLayout>
   );
 }

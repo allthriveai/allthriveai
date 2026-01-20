@@ -1182,7 +1182,7 @@
       "id": "TASK-029",
       "type": "frontend",
       "title": "Create IdeasListPanel for review mode",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/components/content-engine/agent/panels/IdeasListPanel.tsx"
@@ -1226,7 +1226,7 @@
       "id": "TASK-030",
       "type": "frontend",
       "title": "Refactor ContentEnginePage to conversation-first layout",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [],
         "modify": [
