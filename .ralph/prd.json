@@ -1,384 +1,408 @@
 {
   "feature": {
-    "name": "Echo Strategy Coach",
-    "ideaFile": "docs/ideas/echo-strategy-coach.md",
-    "branch": "feature/echo-strategy-coach",
-    "status": "pending",
-    "techContext": "Echo uses AI gateway (LangChain + configurable provider via core/config) - NOT hardcoded to Anthropic. Tools use @tool decorator from langchain.tools."
+    "name": "Echo Force Multiplier",
+    "ideaFile": "docs/ideas/echo-force-multiplier.md",
+    "branch": "feature/echo-force-multiplier",
+    "status": "pending"
   },
   "metadata": {
-    "createdAt": "2026-01-20T06:30:00Z",
+    "createdAt": "2026-01-20T00:00:00Z",
     "estimatedStories": 10,
-    "complexity": "medium"
+    "complexity": "high",
+    "notes": "Phase 1 (encryption) and partial Phase 2 (models, service) already implemented"
   },
   "stories": [
     {
-      "id": "TASK-031",
+      "id": "US-001",
       "type": "backend",
-      "title": "Create Strategy model",
-      "passes": true,
-      "files": {
-        "create": [],
-        "modify": ["core/content_engine/models.py"],
-        "reuse": []
-      },
-      "acceptanceCriteria": [
-        "Strategy model exists with fields: goals, platforms, posts_per_week, schedule, pillars, voice, recommendations",
-        "OneToOneField to User with related_name='strategy'",
-        "Migration created and applied"
-      ],
-      "errorHandling": [
-        "Model allows all fields to be blank/empty for incremental building"
-      ],
-      "testSteps": [
-        "docker compose exec -T web python manage.py shell -c \"from core.content_engine.models import Strategy; print('Strategy model exists')\"",
-        "docker compose exec -T web python manage.py shell -c \"from core.content_engine.models import Strategy; s = Strategy._meta.get_fields(); print([f.name for f in s])\" | grep -q 'goals'",
-        "docker compose exec -T web python manage.py shell -c \"from core.content_engine.models import Strategy; s = Strategy._meta.get_fields(); print([f.name for f in s])\" | grep -q 'platforms'"
-      ],
-      "dependsOn": [],
-      "apiEndpoints": [],
-      "validation": ["All fields optional except user FK"],
-      "auth": "User must be authenticated",
-      "scale": "One strategy per user (OneToOne)",
-      "notes": ""
-    },
-    {
-      "id": "TASK-032",
-      "type": "backend",
-      "title": "Create Strategy API endpoint",
-      "passes": true,
-      "files": {
-        "create": [],
-        "modify": [
-          "core/content_engine/serializers.py",
-          "core/content_engine/views.py",
-          "core/content_engine/urls.py"
-        ],
-        "reuse": []
-      },
-      "acceptanceCriteria": [
-        "GET /api/v1/content-engine/strategy/ returns user's strategy (creates if not exists)",
-        "PUT /api/v1/content-engine/strategy/ updates strategy (partial updates allowed)",
-        "Response includes all strategy fields"
-      ],
-      "errorHandling": [
-        "401 if not authenticated",
-        "Partial updates don't clear other fields"
-      ],
-      "testSteps": [
-        "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/v1/content-engine/strategy/ | grep -q '401'",
-        "docker compose exec -T web python manage.py shell -c \"from core.content_engine.serializers import StrategySerializer; print('StrategySerializer exists')\"",
-        "grep -q 'StrategyView' core/content_engine/views.py",
-        "grep -q 'strategy/' core/content_engine/urls.py"
-      ],
-      "dependsOn": ["TASK-031"],
-      "apiEndpoints": [
-        "GET /api/v1/content-engine/strategy/",
-        "PUT /api/v1/content-engine/strategy/"
-      ],
-      "validation": [
-        "platforms must be valid: linkedin, twitter, youtube",
-        "posts_per_week must be positive integer"
-      ],
-      "auth": "IsAuthenticated",
-      "scale": "Single object per user, no pagination needed",
-      "notes": ""
-    },
-    {
-      "id": "TASK-033",
-      "type": "backend",
-      "title": "Create strategy tool for Echo",
-      "passes": true,
-      "files": {
-        "create": [],
-        "modify": ["services/agents/echo/tools.py"],
-        "reuse": ["core/content_engine/models.py"]
-      },
-      "acceptanceCriteria": [
-        "strategy tool added to ECHO_TOOLS list",
-        "Called with no args returns current strategy",
-        "Called with args updates strategy (partial updates)",
-        "Tool uses state['user_id'] for user context"
-      ],
-      "errorHandling": [
-        "Returns error dict if user not authenticated",
-        "Creates strategy if none exists"
-      ],
-      "testSteps": [
-        "grep -q 'def strategy' services/agents/echo/tools.py",
-        "grep -q \"'strategy'\" services/agents/echo/tools.py",
-        "docker compose exec -T web python manage.py shell -c \"from services.agents.echo.tools import ECHO_TOOLS; print([t.name for t in ECHO_TOOLS])\" | grep -q 'strategy'"
-      ],
-      "dependsOn": ["TASK-031"],
-      "apiEndpoints": [],
-      "validation": ["Same as Strategy model"],
-      "auth": "Uses state['user_id'] injected by agent",
-      "scale": "N/A - tool call",
-      "notes": ""
-    },
-    {
-      "id": "TASK-034",
-      "type": "backend",
-      "title": "Update Echo system prompt for coach personality",
-      "passes": true,
-      "files": {
-        "create": [],
-        "modify": ["services/agents/echo/prompts.py"],
-        "reuse": []
-      },
-      "acceptanceCriteria": [
-        "System prompt instructs Echo to be a proactive coach",
-        "Includes guidance on giving opinions and recommendations",
-        "Includes examples of good vs bad responses",
-        "References strategy tool usage"
-      ],
-      "errorHandling": [],
-      "testSteps": [
-        "grep -q 'coach' services/agents/echo/prompts.py",
-        "grep -q 'strategy' services/agents/echo/prompts.py",
-        "grep -qi 'proactive\\|opinionated\\|recommend' services/agents/echo/prompts.py"
-      ],
-      "dependsOn": [],
-      "apiEndpoints": [],
-      "validation": [],
-      "auth": "N/A",
-      "scale": "N/A",
-      "notes": ""
-    },
-    {
-      "id": "TASK-035",
-      "type": "backend",
-      "title": "Pre-inject strategy into Echo context on connect",
-      "passes": true,
-      "files": {
-        "create": [],
-        "modify": ["services/agents/echo/agent.py"],
-        "reuse": ["core/content_engine/models.py"]
-      },
-      "acceptanceCriteria": [
-        "When Echo agent initializes, load user's strategy from DB",
-        "Inject strategy summary into system context/state",
-        "If no strategy exists, context indicates new user"
-      ],
-      "errorHandling": [
-        "If strategy load fails, continue without it (graceful degradation)"
-      ],
-      "testSteps": [
-        "grep -q 'Strategy' services/agents/echo/agent.py",
-        "grep -qi 'user.*strategy\\|strategy.*user' services/agents/echo/agent.py"
-      ],
-      "dependsOn": ["TASK-031", "TASK-034"],
-      "apiEndpoints": [],
-      "validation": [],
-      "auth": "Uses user_id from state",
-      "scale": "One DB query on agent init",
-      "notes": ""
-    },
-    {
-      "id": "TASK-036",
-      "type": "frontend",
-      "title": "Update empty state with goal examples",
-      "passes": true,
-      "files": {
-        "create": ["frontend/tests/e2e/echo-empty-state.spec.ts"],
-        "modify": ["frontend/src/components/content-engine/agent/EchoConversation.tsx"],
-        "reuse": []
-      },
-      "acceptanceCriteria": [
-        "Empty state shows 'What are your goals?' heading",
-        "Shows 4-5 clickable example pills below the heading",
-        "Clicking example sends it as message to Echo",
-        "Examples include: 'Post to LinkedIn 3x/week', 'Grow my Twitter audience', 'Build thought leadership'"
-      ],
-      "errorHandling": [
-        "Pills disabled while disconnected or typing"
-      ],
-      "testSteps": [
-        "grep -q 'What are your goals' frontend/src/components/content-engine/agent/EchoConversation.tsx",
-        "grep -q 'Post to LinkedIn' frontend/src/components/content-engine/agent/EchoConversation.tsx",
-        "cd frontend && npx tsc --noEmit",
-        "npx playwright test frontend/tests/e2e/echo-empty-state.spec.ts || echo 'E2E test pending'"
-      ],
-      "dependsOn": [],
-      "testUrl": "http://localhost:3000/create/content-engine",
-      "loadingState": "N/A - static content",
-      "a11y": "Example pills are buttons with descriptive text",
-      "mobile": "Pills wrap to multiple lines on small screens",
-      "e2e": true,
-      "notes": ""
-    },
-    {
-      "id": "TASK-037",
-      "type": "frontend",
-      "title": "Create useStrategy hook and strategy service",
+      "title": "Asana OAuth API endpoints",
       "passes": true,
       "files": {
         "create": [
-          "frontend/src/hooks/useStrategy.ts",
-          "frontend/src/services/contentEngine/strategy.ts"
+          "core/integrations/asana_views.py",
+          "core/integrations/asana_serializers.py"
         ],
-        "modify": ["frontend/src/types/contentEngine.ts"],
-        "reuse": []
+        "modify": [
+          "core/integrations/urls.py",
+          "core/urls.py"
+        ],
+        "reuse": [
+          "core/integrations/asana_service.py",
+          "core/integrations/asana_models.py"
+        ]
       },
       "acceptanceCriteria": [
-        "Strategy TypeScript interface added to types",
-        "strategy.ts service with getStrategy() and updateStrategy() functions",
-        "useStrategy hook that fetches and caches user's strategy",
-        "Hook returns { strategy, isLoading, error, refetch }"
+        "GET /api/v1/integrations/asana/authorize/ returns redirect URL with state",
+        "GET /api/v1/integrations/asana/callback/ exchanges code for tokens and saves AsanaIntegration",
+        "GET /api/v1/integrations/asana/status/ returns connection status (never tokens)",
+        "DELETE /api/v1/integrations/asana/disconnect/ removes integration"
       ],
       "errorHandling": [
-        "Returns null strategy if API fails (not authenticated or no strategy)",
-        "Loading state while fetching"
+        "Invalid state in callback returns 400 with error message",
+        "OAuth failure returns 400 with user-friendly error",
+        "Unauthenticated requests return 401"
       ],
       "testSteps": [
-        "test -f frontend/src/hooks/useStrategy.ts",
-        "test -f frontend/src/services/contentEngine/strategy.ts",
-        "grep -q 'interface Strategy' frontend/src/types/contentEngine.ts",
-        "cd frontend && npx tsc --noEmit"
+        "curl -X GET localhost:8000/api/v1/integrations/asana/status/ -H 'Authorization: Bearer {token}' returns {\"connected\": false}",
+        "Verify AsanaIntegration.access_token is never in any API response"
       ],
-      "dependsOn": ["TASK-032"],
-      "testUrl": "N/A",
-      "loadingState": "Hook returns isLoading: true while fetching",
-      "a11y": "N/A",
-      "mobile": "N/A",
-      "e2e": false,
-      "notes": ""
+      "apiEndpoints": [
+        "GET /api/v1/integrations/asana/authorize/",
+        "GET /api/v1/integrations/asana/callback/",
+        "GET /api/v1/integrations/asana/status/",
+        "DELETE /api/v1/integrations/asana/disconnect/"
+      ],
+      "validation": [
+        "state parameter required in callback",
+        "code parameter required in callback"
+      ],
+      "auth": "JWT required for all except callback",
+      "scale": "No rate limiting needed (low volume)",
+      "dependsOn": []
     },
     {
-      "id": "TASK-038",
-      "type": "frontend",
-      "title": "Show strategy summary for returning users",
-      "passes": true,
-      "files": {
-        "create": ["frontend/e2e/echo-strategy-summary.spec.ts"],
-        "modify": ["frontend/src/components/content-engine/agent/EchoConversation.tsx"],
-        "reuse": ["frontend/src/hooks/useStrategy.ts"]
-      },
-      "acceptanceCriteria": [
-        "If user has strategy, show summary instead of goal examples",
-        "Summary displays: platforms, cadence (Xx/week), pillars",
-        "Shows 'Continue where I left off' button",
-        "Clicking button sends contextual message to Echo"
-      ],
-      "errorHandling": [
-        "If strategy fetch fails, fall back to goal examples",
-        "Skeleton shown while loading"
-      ],
-      "testSteps": [
-        "grep -q 'useStrategy' frontend/src/components/content-engine/agent/EchoConversation.tsx",
-        "grep -q 'Continue' frontend/src/components/content-engine/agent/EchoConversation.tsx",
-        "cd frontend && npx tsc --noEmit",
-        "npx playwright test frontend/e2e/echo-strategy-summary.spec.ts || echo 'E2E test pending'"
-      ],
-      "dependsOn": ["TASK-036", "TASK-037"],
-      "testUrl": "http://localhost:3000/create/content-engine",
-      "loadingState": "Skeleton while loading strategy",
-      "a11y": "Strategy summary is readable by screen readers",
-      "mobile": "Summary fits on mobile viewport",
-      "e2e": true,
-      "notes": ""
-    },
-    {
-      "id": "TASK-039",
+      "id": "US-002",
       "type": "backend",
-      "title": "Remove old Echo tools",
-      "passes": true,
+      "title": "Celery tasks for Asana background sync",
+      "passes": false,
       "files": {
-        "create": [],
-        "modify": ["services/agents/echo/tools.py"],
-        "reuse": []
+        "create": [
+          "core/integrations/asana_tasks.py"
+        ],
+        "modify": [
+          "config/celery.py"
+        ],
+        "reuse": [
+          "core/integrations/asana_service.py",
+          "core/integrations/asana_models.py"
+        ]
       },
       "acceptanceCriteria": [
-        "generate_hooks function and schema removed",
-        "expand_to_post function and schema removed",
-        "get_content_pillars function and schema removed",
-        "ECHO_TOOLS list only contains: save_idea, strategy"
+        "sync_asana_for_user task syncs tasks for a single user",
+        "sync_all_asana_users task runs every 5 minutes via Celery beat",
+        "Token refresh errors disable sync and log warning",
+        "Rate limit errors use exponential backoff"
       ],
-      "errorHandling": [],
+      "errorHandling": [
+        "AsanaTokenExpiredError disables sync_enabled and logs",
+        "AsanaRateLimitError retries with exponential backoff",
+        "General errors log but don't crash worker"
+      ],
       "testSteps": [
-        "! grep -q 'def generate_hooks' services/agents/echo/tools.py",
-        "! grep -q 'def expand_to_post' services/agents/echo/tools.py",
-        "! grep -q 'def get_content_pillars' services/agents/echo/tools.py",
-        "docker compose exec -T web python manage.py shell -c \"from services.agents.echo.tools import ECHO_TOOLS; names = [t.name for t in ECHO_TOOLS]; assert 'save_idea' in names; assert 'strategy' in names; assert len(names) == 2; print('OK')\""
+        "docker compose exec web python -c \"from core.integrations.asana_tasks import sync_asana_for_user; print('Import OK')\"",
+        "Verify celery beat schedule includes sync_all_asana_users"
       ],
-      "dependsOn": ["TASK-033"],
       "apiEndpoints": [],
       "validation": [],
-      "auth": "N/A",
-      "scale": "N/A",
-      "notes": ""
+      "auth": "N/A (background task)",
+      "scale": "Runs every 5 min, handles 100+ users",
+      "dependsOn": ["US-001"]
     },
     {
-      "id": "TASK-040",
+      "id": "US-003",
       "type": "backend",
-      "title": "Remove ContentGoal model and API",
-      "passes": true,
+      "title": "EchoProfile model and migrations",
+      "passes": false,
+      "files": {
+        "create": [
+          "core/echo/__init__.py",
+          "core/echo/apps.py",
+          "core/echo/models.py",
+          "core/echo/admin.py"
+        ],
+        "modify": [
+          "config/settings.py"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "EchoProfile model with onboarding_phase (5 phases + complete)",
+        "ArrayField for goals, target_platforms, content_pillars",
+        "OneToOneField to User",
+        "App registered in INSTALLED_APPS"
+      ],
+      "errorHandling": [
+        "Migration handles existing users gracefully"
+      ],
+      "testSteps": [
+        "docker compose exec web python manage.py makemigrations echo --dry-run shows migration",
+        "docker compose exec web python manage.py migrate runs without error",
+        "docker compose exec web python -c \"from core.echo.models import EchoProfile; print('OK')\""
+      ],
+      "apiEndpoints": [],
+      "validation": [
+        "onboarding_phase must be valid choice"
+      ],
+      "auth": "N/A (model only)",
+      "scale": "N/A",
+      "dependsOn": []
+    },
+    {
+      "id": "US-004",
+      "type": "backend",
+      "title": "EchoConversation and EchoMessage models",
+      "passes": false,
       "files": {
         "create": [],
         "modify": [
-          "core/content_engine/models.py",
-          "core/content_engine/serializers.py",
-          "core/content_engine/views.py",
-          "core/content_engine/urls.py"
+          "core/echo/models.py"
         ],
         "reuse": []
       },
       "acceptanceCriteria": [
-        "ContentGoal model removed from models.py",
-        "ContentGoal serializers removed from serializers.py",
-        "ContentGoalViewSet removed from views.py",
-        "goals URL registration removed from urls.py",
-        "Migration created to drop content goal table"
+        "EchoConversation model with session_id, title, timestamps",
+        "EchoMessage model with role, content, quick_select JSONField, inline_cards JSONField",
+        "ForeignKey from EchoMessage to EchoConversation",
+        "Proper ordering (conversations by updated_at desc, messages by created_at asc)"
       ],
-      "errorHandling": [],
+      "errorHandling": [
+        "Cascade delete messages when conversation deleted"
+      ],
       "testSteps": [
-        "! grep -q 'class ContentGoal' core/content_engine/models.py",
-        "! grep -q 'ContentGoalSerializer' core/content_engine/serializers.py",
-        "! grep -q 'ContentGoalViewSet' core/content_engine/views.py",
-        "! grep -q \"goals.*ViewSet\\|'goals'\" core/content_engine/urls.py",
-        "docker compose exec -T web python manage.py migrate --check"
+        "docker compose exec web python manage.py makemigrations echo --dry-run shows migration",
+        "docker compose exec web python manage.py migrate runs without error"
       ],
-      "dependsOn": ["TASK-031"],
       "apiEndpoints": [],
-      "validation": [],
-      "auth": "N/A",
+      "validation": [
+        "role must be user/assistant/system/tool"
+      ],
+      "auth": "N/A (model only)",
       "scale": "N/A",
-      "notes": "ContentGoal was added earlier in this session - this removes it"
+      "dependsOn": ["US-003"]
     },
     {
-      "id": "TASK-041",
-      "type": "frontend",
-      "title": "Remove goals frontend code",
-      "passes": true,
+      "id": "US-005",
+      "type": "backend",
+      "title": "Echo profile API endpoints",
+      "passes": false,
       "files": {
-        "create": [],
+        "create": [
+          "core/echo/views.py",
+          "core/echo/serializers.py",
+          "core/echo/urls.py"
+        ],
         "modify": [
-          "frontend/src/types/contentEngine.ts",
-          "frontend/src/components/content-engine/agent/EchoConversation.tsx"
+          "core/urls.py"
+        ],
+        "reuse": [
+          "core/echo/models.py"
+        ]
+      },
+      "acceptanceCriteria": [
+        "GET /api/v1/echo/profile/ returns user's EchoProfile (creates if missing)",
+        "PATCH /api/v1/echo/profile/ updates profile fields",
+        "Response includes onboarding_phase, goals, target_platforms, content_pillars"
+      ],
+      "errorHandling": [
+        "Unauthenticated returns 401",
+        "Invalid onboarding_phase returns 400"
+      ],
+      "testSteps": [
+        "curl -X GET localhost:8000/api/v1/echo/profile/ -H 'Authorization: Bearer {token}' returns profile",
+        "curl -X PATCH with {\"onboarding_phase\": \"platforms\"} updates phase"
+      ],
+      "apiEndpoints": [
+        "GET /api/v1/echo/profile/",
+        "PATCH /api/v1/echo/profile/"
+      ],
+      "validation": [
+        "onboarding_phase must be valid choice",
+        "target_platforms must be list of strings"
+      ],
+      "auth": "JWT required",
+      "scale": "No pagination needed (single object)",
+      "dependsOn": ["US-003", "US-004"]
+    },
+    {
+      "id": "US-006",
+      "type": "frontend",
+      "title": "EchoWorkspace page with chat layout",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/pages/EchoWorkspace.tsx",
+          "frontend/src/components/echo/EchoChat.tsx",
+          "frontend/src/hooks/useEchoProfile.ts"
+        ],
+        "modify": [
+          "frontend/src/App.tsx"
+        ],
+        "reuse": [
+          "frontend/src/components/chat/ChatInput.tsx",
+          "frontend/src/hooks/useWebSocket.ts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "/echo route renders EchoWorkspace page",
+        "Chat takes 70% of screen height",
+        "Context cards area below chat (collapsed by default)",
+        "useEchoProfile hook fetches and caches profile"
+      ],
+      "errorHandling": [
+        "Loading state shows skeleton",
+        "Auth redirect if not logged in"
+      ],
+      "testSteps": [
+        "Navigate to /echo shows workspace",
+        "Chat input is visible and focusable",
+        "Network tab shows GET /api/v1/echo/profile/"
+      ],
+      "testUrl": "http://localhost:3000/echo",
+      "loadingState": "Skeleton with chat area and context card placeholders",
+      "a11y": "role=main on workspace, role=log on chat messages",
+      "mobile": "Full width, context cards stack below chat",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-007",
+      "type": "frontend",
+      "title": "OnboardingProgress and QuickSelect components",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/echo/OnboardingProgress.tsx",
+          "frontend/src/components/echo/QuickSelect.tsx"
+        ],
+        "modify": [
+          "frontend/src/components/echo/EchoChat.tsx"
         ],
         "reuse": []
       },
       "acceptanceCriteria": [
-        "frontend/src/hooks/useGoals.ts deleted",
-        "frontend/src/services/contentEngine/goals.ts deleted",
-        "GoalStatus, GoalType, ContentGoal types removed from contentEngine.ts",
-        "useActiveGoals import and usage removed from EchoConversation.tsx"
+        "OnboardingProgress shows 5 steps with filled/empty dots",
+        "Current step highlighted in cyan",
+        "QuickSelect renders tappable pill buttons",
+        "Multi-select mode shows 'Continue' button when items selected",
+        "Progress bar only visible during onboarding (phase !== 'complete')"
       ],
-      "errorHandling": [],
+      "errorHandling": [
+        "Invalid phase defaults to first step"
+      ],
       "testSteps": [
-        "! test -f frontend/src/hooks/useGoals.ts",
-        "! test -f frontend/src/services/contentEngine/goals.ts",
-        "! grep -q 'useActiveGoals' frontend/src/components/content-engine/agent/EchoConversation.tsx",
-        "! grep -q 'GoalStatus' frontend/src/types/contentEngine.ts",
-        "cd frontend && npx tsc --noEmit"
+        "Progress bar shows at /echo for new user",
+        "Clicking QuickSelect option highlights it",
+        "Progress bar hidden after onboarding complete"
       ],
-      "dependsOn": ["TASK-038"],
-      "testUrl": "http://localhost:3000/create/content-engine",
-      "loadingState": "N/A",
-      "a11y": "N/A",
-      "mobile": "N/A",
-      "e2e": false,
-      "notes": "These files were created earlier in this session - removing them"
+      "testUrl": "http://localhost:3000/echo",
+      "loadingState": "N/A (sync render)",
+      "a11y": "aria-current on active step, buttons have aria-pressed",
+      "mobile": "Pills wrap to multiple lines",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-008",
+      "type": "frontend",
+      "title": "ContextCard, TaskCard, IdeaCard components",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/components/echo/ContextCard.tsx",
+          "frontend/src/components/echo/TaskCard.tsx",
+          "frontend/src/components/echo/IdeaCard.tsx"
+        ],
+        "modify": [
+          "frontend/src/pages/EchoWorkspace.tsx"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "ContextCard shows collapsed summary (title, count)",
+        "ContextCard expands on click to show items",
+        "TaskCard shows checkbox, title, due date, overdue indicator",
+        "IdeaCard shows title, status badge, platform icon"
+      ],
+      "errorHandling": [
+        "Empty state when no tasks/ideas"
+      ],
+      "testSteps": [
+        "Context cards visible below chat",
+        "Clicking Tasks card expands to show task list",
+        "Overdue tasks show red indicator"
+      ],
+      "testUrl": "http://localhost:3000/echo",
+      "loadingState": "Skeleton cards during fetch",
+      "a11y": "aria-expanded on collapsible cards, checkbox has label",
+      "mobile": "Cards stack vertically, full width",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-009",
+      "type": "backend",
+      "title": "Echo agent tools (manage_task, manage_idea, get_context, sync_asana)",
+      "passes": false,
+      "files": {
+        "create": [
+          "services/agents/echo/tools.py"
+        ],
+        "modify": [
+          "services/agents/echo/graph.py",
+          "services/agents/echo/state.py"
+        ],
+        "reuse": [
+          "core/integrations/asana_service.py",
+          "core/content_engine/models.py"
+        ]
+      },
+      "acceptanceCriteria": [
+        "manage_task tool creates/updates/completes tasks via AsanaService",
+        "manage_idea tool saves/updates/archives ContentIdea",
+        "get_context tool returns tasks summary, ideas, profile, brand voice",
+        "sync_asana tool triggers immediate sync",
+        "save_onboarding_response tool updates EchoProfile with goals, platforms, pillars"
+      ],
+      "errorHandling": [
+        "AsanaNotConnectedError returns user-friendly message",
+        "Tool errors return {success: false, user_message: ...}"
+      ],
+      "testSteps": [
+        "docker compose exec web python -c \"from services.agents.echo.tools import manage_task; print('OK')\"",
+        "Tool returns dict with success and data keys"
+      ],
+      "apiEndpoints": [],
+      "validation": [
+        "action parameter required for manage_task",
+        "title required for create action"
+      ],
+      "auth": "User ID from agent state",
+      "scale": "N/A (single user per call)",
+      "dependsOn": ["US-002", "US-005"]
+    },
+    {
+      "id": "US-010",
+      "type": "frontend",
+      "title": "Asana Settings page (connect/disconnect)",
+      "passes": false,
+      "files": {
+        "create": [
+          "frontend/src/pages/settings/IntegrationsPage.tsx",
+          "frontend/src/hooks/useAsanaStatus.ts"
+        ],
+        "modify": [
+          "frontend/src/App.tsx"
+        ],
+        "reuse": []
+      },
+      "acceptanceCriteria": [
+        "/settings/integrations route shows IntegrationsPage",
+        "Asana section shows 'Connect' button when not connected",
+        "Asana section shows workspace name and 'Disconnect' when connected",
+        "Connect redirects to Asana OAuth flow",
+        "Disconnect calls DELETE endpoint and updates UI"
+      ],
+      "errorHandling": [
+        "OAuth error shows toast notification",
+        "Disconnect error shows retry option"
+      ],
+      "testSteps": [
+        "Navigate to /settings/integrations",
+        "'Connect with Asana' button visible for unconnected user",
+        "After connecting, workspace name displayed"
+      ],
+      "testUrl": "http://localhost:3000/settings/integrations",
+      "loadingState": "Button shows spinner during OAuth redirect",
+      "a11y": "Buttons have descriptive labels",
+      "mobile": "Full width buttons, stacked layout",
+      "dependsOn": ["US-001"]
     }
   ]
 }
