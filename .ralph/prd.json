@@ -217,7 +217,7 @@
       "id": "US-006",
       "type": "frontend",
       "title": "EchoWorkspace page with chat layout",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "frontend/src/pages/EchoWorkspace.tsx",
