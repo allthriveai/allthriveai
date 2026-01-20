@@ -445,6 +445,8 @@ urlpatterns = [
     path('stats/', include('core.stats.urls')),
     # YouTube integration endpoints
     path('integrations/', include('core.integrations.youtube.urls')),
+    # Asana integration endpoints
+    path('integrations/', include('core.integrations.urls')),
     # GitHub integration endpoints (legacy - use generic endpoints above)
     path('github/repos/', list_user_repos, name='github_repos'),
     path('github/import/', import_github_repo_async, name='github_import'),
@@ -538,6 +540,8 @@ urlpatterns = [
     path('code/validate/', ValidateCodeView.as_view(), name='validate_code'),
     # Content Engine (personal brand content pipeline)
     path('content-engine/', include('core.content_engine.urls')),
+    # Echo Personal Assistant
+    path('echo/', include('core.echo.urls')),
 ]
 
 # Test-only endpoints (only available in DEBUG mode or CI environment)

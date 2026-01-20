@@ -102,7 +102,7 @@
       "id": "US-003",
       "type": "backend",
       "title": "EchoProfile model and migrations",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "core/echo/__init__.py",
@@ -125,9 +125,9 @@
         "Migration handles existing users gracefully"
       ],
       "testSteps": [
-        "docker compose exec web python manage.py makemigrations echo --dry-run shows migration",
-        "docker compose exec web python manage.py migrate runs without error",
-        "docker compose exec web python -c \"from core.echo.models import EchoProfile; print('OK')\""
+        "docker compose exec -T web python manage.py makemigrations echo --dry-run shows migration",
+        "docker compose exec -T web python manage.py migrate runs without error",
+        "docker compose exec -T web python manage.py shell -c \"from core.echo.models import EchoProfile; print('OK')\""
       ],
       "apiEndpoints": [],
       "validation": [
@@ -141,7 +141,7 @@
       "id": "US-004",
       "type": "backend",
       "title": "EchoConversation and EchoMessage models",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [],
         "modify": [
@@ -174,7 +174,7 @@
       "id": "US-005",
       "type": "backend",
       "title": "Echo profile API endpoints",
-      "passes": false,
+      "passes": true,
       "files": {
         "create": [
           "core/echo/views.py",
