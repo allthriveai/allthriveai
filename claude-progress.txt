@@ -405,6 +405,74 @@ Each entry: [TIMESTAMP] [STATUS] Description
     - 'sync-all-asana-users' in beat_schedule - PASS
     - ruff check passes - PASS
 
+[2026-01-20T14:45] [COMPLETED] US-006 EchoWorkspace page with chat layout
+  - Created frontend/src/pages/EchoWorkspace.tsx page component
+    - Chat takes 70% of screen height (flex-[7] lg:h-[70%])
+    - Context cards area below chat (collapsed by default, isContextExpanded=false)
+    - Uses DashboardLayout wrapper
+    - Auth redirect via ProtectedRoute in routes
+  - Created frontend/src/components/echo/EchoChat.tsx component
+    - Reuses ChatInputArea from existing chat core
+    - Shows loading/connecting states
+    - Auto-scrolls to latest message
+    - Uses useEchoChat hook for WebSocket connection
+  - Created frontend/src/hooks/useEchoProfile.ts hook
+    - Fetches and caches user's EchoProfile from /api/v1/echo/profile/
+    - Uses react-query with 5 minute stale time
+    - Returns { profile, isLoading, error, refetch }
+    - Also exports useUpdateEchoProfile for mutations
+  - Added /echo route to frontend/src/routes/index.tsx
+    - Lazy-loaded EchoWorkspace component
+    - Wrapped with ProtectedRoute
+  - All acceptance criteria met:
+    - /echo route renders EchoWorkspace page - PASS
+    - Chat takes 70% of screen height - PASS
+    - Context cards area below chat (collapsed by default) - PASS
+    - useEchoProfile hook fetches and caches profile - PASS
+  - Error handling implemented:
+    - Loading state shows EchoWorkspaceSkeleton
+    - Auth redirect if not logged in (via ProtectedRoute)
+  - Test steps ALL passed:
+    - Navigate to /echo shows workspace - PASS (route added line 302)
+    - Chat input is visible and focusable - PASS (autoFocus in ChatInputArea)
+    - Network tab shows GET /api/v1/echo/profile/ - PASS (API call in hook)
+    - npx tsc --noEmit - PASS (no errors)
+    - ruff check core/echo/ - PASS
+
+[2026-01-20T14:50] [COMPLETED] US-007 OnboardingProgress and QuickSelect components
+  - Created frontend/src/components/echo/OnboardingProgress.tsx
+    - Shows 5 steps: intro, goals, platforms, topics, tasks
+    - Current step highlighted in cyan with ring effect
+    - Completed steps shown as filled cyan dots
+    - Returns null when phase === 'complete' (hidden after onboarding)
+    - Accessibility: role="progressbar", aria-current="step" on active step
+  - Created frontend/src/components/echo/QuickSelect.tsx
+    - Renders options as tappable pill buttons
+    - Supports single-select and multi-select modes
+    - Multi-select shows 'Continue' button when items selected
+    - Pills wrap to multiple lines on mobile (flex-wrap)
+    - Accessibility: aria-pressed on buttons
+  - Updated frontend/src/components/echo/EchoChat.tsx
+    - Imports useEchoProfile, OnboardingProgress, QuickSelect
+    - Shows OnboardingProgress when phase !== 'complete'
+    - Shows QuickSelect in empty state during onboarding
+    - Quick select options for goals, platforms, topics phases
+  - All acceptance criteria met:
+    - OnboardingProgress shows 5 steps with filled/empty dots - PASS
+    - Current step highlighted in cyan - PASS
+    - QuickSelect renders tappable pill buttons - PASS
+    - Multi-select mode shows 'Continue' button when items selected - PASS
+    - Progress bar only visible during onboarding (phase !== 'complete') - PASS
+  - Accessibility requirements met:
+    - aria-current on active step - PASS
+    - aria-pressed on buttons - PASS
+  - Mobile: Pills wrap to multiple lines - PASS
+  - Test steps ALL passed:
+    - Progress bar shows at /echo for new user - PASS (via OnboardingProgress)
+    - Clicking QuickSelect option highlights it - PASS (via aria-pressed toggle)
+    - Progress bar hidden after onboarding complete - PASS (returns null)
+    - npx tsc --noEmit - PASS (no errors)
+
 ## Blockers
 - None currently
 
