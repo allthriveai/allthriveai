@@ -1,0 +1,90 @@
+Now I have enough context to provide a comprehensive code review. The diff provided is incomplete - it doesn't include the main `tools.py` file that was supposed to be created for US-009. However, the `tools.py` file does exist and I've read it. Let me provide a thorough review:
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "N/A",
+      "line": null,
+      "message": "The diff does not include the main deliverable (services/agents/echo/tools.py) specified in the story",
+      "suggestion": "The story specifies creating services/agents/echo/tools.py with manage_task, manage_idea, get_context, sync_asana, and save_onboarding_response tools. This file exists but was not included in the diff for review. The diff only shows unrelated changes to tour.md, echo/models.py, integrations/__init__.py, frontend routes, and package.json updates."
+    },
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "services/agents/echo/tools.py",
+      "line": null,
+      "message": "Story specifies modifying services/agents/echo/graph.py but this file does not exist",
+      "suggestion": "The story's 'files.modify' section lists 'services/agents/echo/graph.py' but no such file exists in services/agents/echo/. Either the file needs to be created or the tools need to be integrated into the agent differently."
+    },
+    {
+      "severity": "warning",
+      "category": "error-handling",
+      "file": "services/agents/echo/tools.py",
+      "line": 449,
+      "message": "Exception message exposed to user in manage_task could leak internal details",
+      "suggestion": "Line 451: `return {'success': False, 'user_message': f'Failed to {action} task: {e}'}` - Instead of exposing the raw exception, return a generic error message and log the details. Example: `return {'success': False, 'user_message': f'Failed to {action} task. Please try again.'}`"
+    },
+    {
+      "severity": "warning",
+      "category": "error-handling",
+      "file": "services/agents/echo/tools.py",
+      "line": 594,
+      "message": "Exception message exposed to user in manage_idea could leak internal details",
+      "suggestion": "Line 596: `return {'success': False, 'user_message': f'Failed to {action} idea: {e}'}` - Same issue as manage_task. Sanitize error messages before returning to user."
+    },
+    {
+      "severity": "warning",
+      "category": "error-handling",
+      "file": "services/agents/echo/tools.py",
+      "line": 789,
+      "message": "Exception message exposed to user in sync_asana could leak internal details",
+      "suggestion": "Line 791: `return {'success': False, 'user_message': f'Failed to sync tasks: {e}'}` - Same pattern. Use generic user-facing message while logging full error."
+    },
+    {
+      "severity": "warning",
+      "category": "edge-case",
+      "file": "services/agents/echo/tools.py",
+      "line": 636,
+      "message": "get_context queries tasks ordered by due_date but due_date can be NULL, which may cause inconsistent ordering",
+      "suggestion": "Use `order_by(models.F('due_date').asc(nulls_last=True), '-synced_at')` to ensure consistent ordering with NULL due dates at the end."
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "services/agents/echo/tools.py",
+      "line": 156,
+      "message": "Inconsistent error key naming between tools - 'error' vs 'user_message'",
+      "suggestion": "save_idea tool uses 'error' key (line 156, 165, 173) while manage_task/manage_idea/etc. use 'user_message'. Standardize on 'user_message' for consistency with story's error handling requirements."
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "services/agents/echo/tools.py",
+      "line": 241,
+      "message": "strategy tool also uses 'error' key instead of 'user_message'",
+      "suggestion": "Lines 241, 249, 263, 267 use 'error' key. Standardize to 'user_message' per the errorHandling spec: 'Tool errors return {success: false, user_message: ...}'"
+    },
+    {
+      "severity": "info",
+      "category": "architecture",
+      "file": "core/echo/models.py",
+      "line": 123,
+      "message": "New EchoConversation and EchoMessage models added but not part of US-009 story scope",
+      "suggestion": "These models appear to be for a different story. Consider if this change should be in a separate PR/commit to maintain clean story tracking."
+    },
+    {
+      "severity": "info",
+      "category": "architecture",
+      "file": "frontend/src/routes/index.tsx",
+      "line": 141,
+      "message": "EchoWorkspace route added but US-009 is backend-only (type: backend)",
+      "suggestion": "The story is scoped as 'type: backend' but frontend changes are included. This should either be in a separate story or the story type should be updated."
+    }
+  ],
+  "summary": "FAIL - The diff does not include the main deliverable file (services/agents/echo/tools.py). While the file exists and implements all required tools (manage_task, manage_idea, get_context, sync_asana, save_onboarding_response), the diff only shows unrelated auxiliary changes. Additionally, graph.py mentioned in the story's modify list doesn't exist. There are also inconsistencies in error key naming ('error' vs 'user_message') that don't match the story's errorHandling spec. The tools.py implementation is generally well-structured with proper error handling for AsanaNotConnectedError, but exception messages are exposed directly to users which could leak internal details."
+}
+```

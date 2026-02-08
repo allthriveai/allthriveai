@@ -8,6 +8,20 @@ You are helping the user go from a rough idea to executable PRDs for Ralph.
 
 **CRITICAL: This command does NOT write code. It produces documentation files only.**
 
+## When to Use
+
+| Workflow | Best For |
+|----------|----------|
+| **`/idea`** | Structured brainstorming with guided questions - Claude leads |
+| **Plan mode → save to `docs/ideas/`** | Free-form exploration - you lead the thinking |
+| **`/prd "description"`** | Quick PRD, no docs artifact needed |
+
+**Both `/idea` and plan mode can produce `docs/ideas/*.md` files.** The difference is who drives the conversation:
+- `/idea` asks you structured questions (scope, UX, edge cases, etc.)
+- Plan mode lets you explore freely with Claude's help
+
+Use `/idea` when you want the structured checklist. Use plan mode when you prefer to think through it your way.
+
 ## User Input
 
 ```text
@@ -106,12 +120,11 @@ Once the user confirms, write the idea file:
    open -a TextEdit docs/ideas/{feature-name}.md
    ```
 
-4. Say: "I've written the idea to `docs/ideas/{feature-name}.md` and opened it in TextEdit.
+4. Say: "I've written the idea to `docs/ideas/{feature-name}.md`.
 
    Review it and let me know:
    - **'approved'** - Ready to split into PRDs
-   - **'edit [changes]'** - Tell me what to change
-   - Or make edits in the file and say **'done'**"
+   - **'edit [changes]'** - Tell me what to change"
 
 **STOP and wait for user response. Do not proceed until they say 'approved' or 'done'.**
 
@@ -125,14 +138,24 @@ Break the idea into small, executable PRDs following the JSON structure below.
 
 ### Step 6: Write PRD
 
-1. Ensure .ralph directory exists:
+1. Ensure .ralph directory exists and allow PRD edit:
    ```bash
-   mkdir -p .ralph
+   mkdir -p .ralph && touch .ralph/.prd-edit-allowed
    ```
 
-2. Write to `.ralph/prd.json`
+2. Write to `.ralph/prd.json` ensuring:
+   - Valid JSON syntax
+   - `feature.name` is set (not null/empty)
+   - `feature.status` is "pending"
+   - `stories` array is not empty
+   - Each story has `id`, `title`, and `passes: false`
 
-3. Say: "I've created the PRD with {N} stories in `.ralph/prd.json`.
+3. Validate the PRD was written correctly:
+   ```bash
+   jq -e '.feature.name and (.stories | length > 0) and (.stories | all(.id and .title and .passes == false))' .ralph/prd.json && echo "PRD valid" || echo "PRD invalid"
+   ```
+
+4. Say: "I've created the PRD with {N} stories in `.ralph/prd.json`.
 
    Review and let me know:
    - **'approved'** - Ready for `npx ralph run`
@@ -140,7 +163,35 @@ Break the idea into small, executable PRDs following the JSON structure below.
 
 **STOP and wait for user response. Do not proceed until they approve.**
 
-### Step 7: Final Instructions
+### Step 7: Final Review
+
+Before finishing, do a quick sanity check on the PRD:
+
+1. **Read the PRD back:**
+   ```bash
+   cat .ralph/prd.json | jq '.'
+   ```
+
+2. **Review for common issues:**
+   - Are story IDs sequential and unique?
+   - Does each story have testable acceptance criteria?
+   - Are file paths specific (not vague like "src/")?
+   - Are dependencies correctly ordered?
+   - Are testSteps actually executable shell commands?
+   - Is any story too large (>4 acceptance criteria)?
+
+3. **If issues found**, say:
+   "I found some issues with the PRD:
+   - [issue 1]
+   - [issue 2]
+
+   Fixing now..."
+
+   Then fix the issues and rewrite the PRD.
+
+4. **If no issues**, proceed to final instructions.
+
+### Step 8: Final Instructions
 
 Once the user approves the PRD, say:
 
@@ -343,4 +394,5 @@ If **'append'**:
 
 If **'overwrite'**:
 - Archive first: `mkdir -p .ralph/archive && mv .ralph/prd.json .ralph/archive/prd-$(date +%Y%m%d-%H%M%S).json`
+- Allow edit: `touch .ralph/.prd-edit-allowed`
 - Write new PRD

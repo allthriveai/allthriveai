@@ -585,7 +585,7 @@ test-intent-detection:
 test-e2e-smoke:
 	@echo "Running Smoke Tests (includes AI quality checks)..."
 	@echo "Note: Make sure backend is running (make up)"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/smoke.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test e2e/smoke.spec.ts
 
 test-backend:
 	@echo "Running backend tests..."
@@ -665,7 +665,7 @@ test-proxy:
 	@echo ""
 	@echo "=== Proxy Configuration Summary ==="
 	@echo "For Docker: VITE_API_PROXY_TARGET is set in docker-compose.yml"
-	@echo "For local dev (non-Docker): Set VITE_API_PROXY_TARGET=http://localhost:8000 in frontend/.env"
+	@echo "For local dev (non-Docker): Set VITE_API_PROXY_TARGET=http://localhost:4847 in frontend/.env"
 
 test-coverage:
 	@echo "Running backend tests with coverage..."
@@ -677,43 +677,43 @@ test-coverage:
 test-e2e:
 	@echo "Running all E2E tests..."
 	@echo "Note: Make sure backend is running (make up)"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test
 
 test-e2e-chat:
 	@echo "Running Intelligent Chat E2E tests..."
 	@echo "Note: Make sure backend is running (make up)"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/intelligent-chat.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test e2e/intelligent-chat.spec.ts
 
 test-e2e-chat-ai:
 	@echo "Running AI workflow E2E tests (requires API keys)..."
 	@echo "Note: Make sure backend is running (make up) and AI API keys are configured"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/intelligent-chat.spec.ts --grep "Real User Workflows"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test e2e/intelligent-chat.spec.ts --grep "Real User Workflows"
 
 test-e2e-chat-edge:
 	@echo "Running Chat Edge Case E2E tests..."
 	@echo "Note: Make sure backend is running (make up)"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/intelligent-chat.spec.ts --grep "Edge Cases"
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test e2e/intelligent-chat.spec.ts --grep "Edge Cases"
 
 test-e2e-battles:
 	@echo "Running Prompt Battles E2E tests (quick)..."
 	@echo "Note: Make sure backend is running (make up)"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test e2e/prompt-battles.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test e2e/prompt-battles.spec.ts
 
 test-e2e-battles-critical:
 	@echo "Running Prompt Battles CRITICAL E2E tests (with full AI judging ~90s)..."
 	@echo "Note: Make sure backend is running (make up)"
 	@echo "This test waits for AI image generation and judging to complete."
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_CRITICAL_E2E=true npx playwright test e2e/prompt-battles.spec.ts --headed
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_CRITICAL_E2E=true npx playwright test e2e/prompt-battles.spec.ts --headed
 
 test-e2e-ui:
 	@echo "Running E2E tests with UI (headed mode)..."
 	@echo "Note: Make sure backend is running (make up)"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test --headed
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test --headed
 
 test-e2e-debug:
 	@echo "Running E2E tests in debug mode..."
 	@echo "Note: Make sure backend is running (make up)"
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 npx playwright test --debug
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 npx playwright test --debug
 
 # Deep E2E tests - Nightly/weekly regression tests with real AI calls
 test-e2e-deep:
@@ -725,31 +725,31 @@ test-e2e-deep:
 	@echo "Note: Make sure backend is running (make up)"
 	@echo "These tests use REAL AI calls and may cost ~\$$1-5 per run."
 	@echo ""
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test --project=deep
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_DEEP_E2E=true npx playwright test --project=deep
 
 test-e2e-deep-ai:
 	@echo "Running Deep AI Chat tests (sidebar/home parity, multi-turn, routing)..."
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/chat*.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_DEEP_E2E=true npx playwright test e2e/deep/chat*.spec.ts
 
 test-e2e-deep-battles:
 	@echo "Running Deep Battles tests (full lifecycle with real AI judging)..."
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/battles*.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_DEEP_E2E=true npx playwright test e2e/deep/battles*.spec.ts
 
 test-e2e-deep-community:
 	@echo "Running Deep Community tests (messaging, presence, WebSocket)..."
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/community*.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_DEEP_E2E=true npx playwright test e2e/deep/community*.spec.ts
 
 test-e2e-deep-learning:
 	@echo "Running Deep Learning tests (progression, quizzes, skill levels)..."
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/learning*.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_DEEP_E2E=true npx playwright test e2e/deep/learning*.spec.ts
 
 test-e2e-deep-journeys:
 	@echo "Running Deep User Journey tests (activation, retention, AI chat)..."
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test e2e/deep/journeys/*.spec.ts
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_DEEP_E2E=true npx playwright test e2e/deep/journeys/*.spec.ts
 
 test-e2e-deep-headed:
 	@echo "Running Deep E2E tests with UI (headed mode)..."
-	cd frontend && VITE_WS_URL=ws://127.0.0.1:8000 RUN_DEEP_E2E=true npx playwright test --project=deep --headed
+	cd frontend && VITE_WS_URL=ws://127.0.0.1:4847 RUN_DEEP_E2E=true npx playwright test --project=deep --headed
 
 # Docker sync commands (for when automatic volume sync isn't working)
 sync-backend:
@@ -878,7 +878,7 @@ reset-onboarding:
 
 stop-impersonation:
 	@echo ""
-	@echo "🎭 To stop impersonation, run this in your browser console (on localhost:3000):"
+	@echo "🎭 To stop impersonation, run this in your browser console (on localhost:4848):"
 	@echo ""
 	@echo "fetch('/api/v1/admin/impersonate/stop/', { method: 'POST', credentials: 'include' })"
 	@echo "  .then(r => r.json())"
@@ -981,7 +981,7 @@ aws-validate:
 		FRONTEND_URL=$$(aws ecs describe-task-definition --task-definition $$TASK_DEF --region $$AWS_REGION \
 			--query 'taskDefinition.containerDefinitions[0].environment[?name==`FRONTEND_URL`].value' --output text 2>/dev/null); \
 		if [ -z "$$FRONTEND_URL" ] || [ "$$FRONTEND_URL" = "None" ]; then \
-			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:3000)"; \
+			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:4848)"; \
 		elif echo "$$FRONTEND_URL" | grep -q "localhost"; then \
 			echo "   ❌ FRONTEND_URL = $$FRONTEND_URL (PROBLEM: points to localhost)"; \
 		else \
@@ -1024,7 +1024,7 @@ aws-validate:
 		CELERY_FRONTEND=$$(aws ecs describe-task-definition --task-definition $$CELERY_TASK --region $$AWS_REGION \
 			--query 'taskDefinition.containerDefinitions[0].environment[?name==`FRONTEND_URL`].value' --output text 2>/dev/null); \
 		if [ -z "$$CELERY_FRONTEND" ] || [ "$$CELERY_FRONTEND" = "None" ]; then \
-			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:3000)"; \
+			echo "   ❌ FRONTEND_URL = NOT SET (will default to localhost:4848)"; \
 		elif echo "$$CELERY_FRONTEND" | grep -q "localhost"; then \
 			echo "   ❌ FRONTEND_URL = $$CELERY_FRONTEND (PROBLEM: points to localhost)"; \
 		else \

@@ -7,7 +7,7 @@
 ### Quick Start
 ```bash
 make up              # Start all services (Docker)
-make frontend        # Run frontend locally (or cd frontend && npm run dev -- --port 3000)
+make frontend        # Run frontend locally (or cd frontend && npm run dev -- --port 4848)
 ```
 
 ### Fresh Database Setup
@@ -158,16 +158,16 @@ make cloudfront-clear-cache ENVIRONMENT=staging
 
 ## Frontend (Local Development)
 ```bash
-cd frontend && npm run dev -- --port 3000   # Start dev server
+cd frontend && npm run dev -- --port 4848   # Start dev server
 cd frontend && npm install                   # Install deps
 cd frontend && npm run build                 # Build
 cd frontend && npm test                      # Run tests
 ```
 
 ## Environment
-- Backend API: http://localhost:8000
-- Frontend: http://localhost:3000
-- Backend proxied through Vite with `VITE_API_PROXY_TARGET=http://localhost:8000`
+- Backend API: http://localhost:4847
+- Frontend: http://localhost:4848
+- Backend proxied through Vite with `VITE_API_PROXY_TARGET=http://localhost:4847`
 
 ## Tech Stack
 - **Backend**: Django 5, Django REST Framework, Django Channels (WebSockets)
@@ -433,3 +433,15 @@ for i in {1..5}; do cat PROMPT.md | claude-code; done
 - Tests: `tests/`
 
 *Auto-detected by vibe-and-thrive. Edit freely.*
+
+<!-- agentic-loop-detected -->
+## Detected Project Info
+
+- Runtime: Node.js + Python
+- Framework: React + Django
+- Language: TypeScript
+- Styling: Tailwind CSS
+- Testing: Playwright
+- Python: Use `uv run python` (not bare `python`)
+
+*Auto-detected by agentic-loop. Edit freely.*

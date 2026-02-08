@@ -1,0 +1,42 @@
+Now I have all the context needed. Let me provide my review:
+
+```json
+{
+  "pass": true,
+  "issues": [
+    {
+      "severity": "info",
+      "category": "scalability",
+      "file": "core/integrations/asana_tasks.py",
+      "line": 102,
+      "message": "sync_all_asana_users fetches all integrations without pagination",
+      "suggestion": "For 100+ users as specified in scale requirements, consider using .iterator() for memory efficiency: `AsanaIntegration.objects.filter(sync_enabled=True).select_related('user').iterator()`"
+    },
+    {
+      "severity": "info",
+      "category": "performance",
+      "file": "core/integrations/asana_tasks.py",
+      "line": 102,
+      "message": "select_related('user') is unnecessary since only user_id is used",
+      "suggestion": "Remove select_related('user') and just use .values_list('user_id', flat=True) since you only need the ID for dispatching tasks"
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "config/celery.py",
+      "line": 55,
+      "message": "Good practice: asana_tasks is properly registered in conf.imports for autodiscovery",
+      "suggestion": "None - this is correct"
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "config/settings.py",
+      "line": 424,
+      "message": "Asana OAuth configuration added with sensible defaults",
+      "suggestion": "Ensure ENCRYPTION_KEY is documented in deployment docs and added to AWS Secrets Manager"
+    }
+  ],
+  "summary": "The implementation correctly meets all acceptance criteria for US-002. The Celery tasks properly handle: (1) single-user sync with sync_asana_for_user, (2) periodic sync every 5 minutes via Celery beat schedule, (3) token expiration handling that disables sync_enabled and logs, (4) rate limit handling with exponential backoff via autoretry_for/retry_backoff. Error handling follows the spec: AsanaTokenExpiredError disables sync, AsanaRateLimitError uses exponential backoff, and general errors log without crashing the worker. The code is well-structured with proper separation of concerns, good logging, and transaction.atomic() for database consistency. The diff also includes unrelated changes (package.json, tour.md) that appear to be incidental commits but don't affect the story implementation."
+}
+```

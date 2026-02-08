@@ -27,8 +27,8 @@
   ],
   "host_permissions": [
     "https://allthrive.ai/*",
-    "http://localhost:8000/*",
-    "http://localhost:3000/*"
+    "http://localhost:4847/*",
+    "http://localhost:4848/*"
   ],
   "background": {
     "service_worker": "background.js",

@@ -1,5 +1,5 @@
 ---
-description: Show complete reference for all vibe-and-thrive commands (slash commands, Ralph CLI, vibe CLI).
+description: Show complete reference for all agentic-loop commands (slash commands, Ralph CLI, vibe CLI).
 ---
 
 # Vibe & Thrive - Complete Reference
@@ -13,12 +13,13 @@ Print this complete reference for the user. Do not add any commentary.
 | Command | Description |
 |---------|-------------|
 | `/idea [feature]` | Brainstorm in plan mode, generate PRD for Ralph |
+| `/sign` | Add a learned pattern for Ralph to remember |
 | `/my-dna` | Set up your personal style preferences |
 | `/vibe-check` | Audit code quality before shipping |
 | `/review` | Code review with OWASP security checks |
 | `/explain` | Explain code line by line |
 | `/styleguide` | Generate UI component design system |
-| `/tour` | Interactive walkthrough of vibe-and-thrive |
+| `/tour` | Interactive walkthrough of agentic-loop |
 | `/vibe-help` | Quick reference cheatsheet |
 | `/vibe-list` | This complete reference |
 
@@ -199,4 +200,4 @@ docs/ideas/          # Brainstorm outputs from /idea
 
 ---
 
-*https://github.com/allthriveai/vibe-and-thrive*
+*https://github.com/allthriveai/agentic-loop*

@@ -80,7 +80,7 @@ class MockWebSocket {
 // Mock utilities
 vi.mock('@/utils/websocket', () => ({
   buildWebSocketUrl: vi.fn((path: string, params?: Record<string, string>) => {
-    const url = `ws://localhost:8000${path}`;
+    const url = `ws://localhost:4847${path}`;
     if (params && Object.keys(params).length > 0) {
       return `${url}?${new URLSearchParams(params).toString()}`;
     }

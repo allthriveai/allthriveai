@@ -14,7 +14,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-allthrive}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-allthrive}
     ports:
-      - "5432:5432"
+      - "4849:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -36,8 +36,8 @@ services:
     image: minio/minio:latest
     restart: unless-stopped
     ports:
-      - "9000:9000"  # API
-      - "9001:9001"  # Console
+      - "4850:9000"  # API
+      - "4851:9001"  # Console
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -59,8 +59,8 @@ services:
     # Production uses non-root user via Dockerfile USER directive
     user: root
     ports:
-      - "8000:8000"
-      - "6006:6006"  # Phoenix LLM observability UI
+      - "4847:8000"
+      - "4852:6006"  # Phoenix LLM observability UI
     environment:
       - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,web
@@ -195,7 +195,7 @@ services:
     image: node:20  # Use Debian-based image for better ARM64/AMD64 compatibility
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "4848:3000"
     working_dir: /app
     volumes:
       - ./frontend:/app
@@ -214,7 +214,7 @@ services:
     image: prom/prometheus:latest
     restart: unless-stopped
     ports:
-      - "9090:9090"
+      - "4853:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -233,7 +233,7 @@ services:
     image: grafana/grafana:latest
     restart: unless-stopped
     ports:
-      - "3001:3000"  # Using 3001 to avoid conflict with frontend
+      - "4854:3000"  # Grafana UI
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
@@ -241,7 +241,7 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_SERVER_ROOT_URL=http://localhost:4854
     depends_on:
       - prometheus
     healthcheck:
@@ -254,8 +254,8 @@ services:
     image: cr.weaviate.io/semitechnologies/weaviate:1.27.0
     restart: unless-stopped
     ports:
-      - "8080:8080"  # REST API
-      - "50051:50051"  # gRPC
+      - "4855:8080"  # REST API
+      - "4856:50051"  # gRPC
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
@@ -280,7 +280,7 @@ services:
     image: redislabs/agent-memory-server:latest
     restart: unless-stopped
     ports:
-      - "8001:8000"  # API server (8001 to avoid conflict with Django)
+      - "4857:8000"  # Agent Memory API
     environment:
       - REDIS_URL=redis://redis:6379/4
       - OPENAI_API_KEY=${OPENAI_API_KEY}

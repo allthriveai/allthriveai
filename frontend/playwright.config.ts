@@ -30,7 +30,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:4848',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -89,12 +89,12 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:4848',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
     env: {
-      VITE_API_PROXY_TARGET: 'http://127.0.0.1:8000',
-      VITE_WS_URL: 'ws://127.0.0.1:8000',
+      VITE_API_PROXY_TARGET: 'http://127.0.0.1:4847',
+      VITE_WS_URL: 'ws://127.0.0.1:4847',
     },
   },
 });

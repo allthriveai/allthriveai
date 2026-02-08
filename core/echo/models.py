@@ -1,4 +1,4 @@
-"""Data models for Echo Personal Assistant."""
+"""Data models for Echo Social Media Coach."""
 
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -12,7 +12,6 @@ class OnboardingPhase(models.TextChoices):
     GOALS = 'goals', 'Goals'
     PLATFORMS = 'platforms', 'Platforms'
     TOPICS = 'topics', 'Topics'
-    TASKS = 'tasks', 'Tasks (Asana)'
     COMPLETE = 'complete', 'Complete'
 
 
@@ -62,12 +61,6 @@ class EchoProfile(models.Model):
         default=list,
         blank=True,
         help_text='E.g., ["AI agents", "autonomous coding", "developer tools"]',
-    )
-
-    # Asana integration enabled
-    asana_enabled = models.BooleanField(
-        default=False,
-        help_text='Whether user has connected Asana for task management',
     )
 
     # Additional context
@@ -120,3 +113,109 @@ class EchoProfile(models.Model):
         """Mark onboarding as complete."""
         self.onboarding_phase = OnboardingPhase.COMPLETE
         self.save(update_fields=['onboarding_phase', 'updated_at'])
+
+
+class MessageRole(models.TextChoices):
+    """Valid roles for Echo messages."""
+
+    USER = 'user', 'User'
+    ASSISTANT = 'assistant', 'Assistant'
+    SYSTEM = 'system', 'System'
+    TOOL = 'tool', 'Tool'
+
+
+class EchoConversation(models.Model):
+    """
+    A conversation session with Echo.
+
+    Each conversation has a unique session_id and can contain multiple messages.
+    Conversations are ordered by most recently updated first.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='echo_conversations',
+    )
+
+    session_id = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text='Unique identifier for the conversation session',
+    )
+
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='Auto-generated or user-set conversation title',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Echo Conversation'
+        verbose_name_plural = 'Echo Conversations'
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['user', '-updated_at']),
+            models.Index(fields=['session_id']),
+        ]
+
+    def __str__(self):
+        title_preview = self.title[:50] if self.title else 'Untitled'
+        return f'Conversation {self.session_id}: {title_preview}'
+
+
+class EchoMessage(models.Model):
+    """
+    A single message in an Echo conversation.
+
+    Messages can be from user, assistant, system, or tool.
+    They may include quick_select options (clickable response options)
+    and inline_cards (rich content cards rendered inline).
+    """
+
+    conversation = models.ForeignKey(
+        EchoConversation,
+        on_delete=models.CASCADE,
+        related_name='messages',
+    )
+
+    role = models.CharField(
+        max_length=20,
+        choices=MessageRole.choices,
+        db_index=True,
+        help_text='Who sent this message',
+    )
+
+    content = models.TextField(
+        help_text='The message text content',
+    )
+
+    quick_select = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Clickable response options, e.g., [{"label": "Yes", "value": "yes"}]',
+    )
+
+    inline_cards = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Rich content cards, e.g., [{"type": "idea", "id": 123, "title": "..."}]',
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Echo Message'
+        verbose_name_plural = 'Echo Messages'
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['conversation', 'created_at']),
+        ]
+
+    def __str__(self):
+        content_preview = self.content[:50] if self.content else ''
+        return f'{self.role}: {content_preview}...'

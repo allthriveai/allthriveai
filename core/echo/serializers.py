@@ -14,7 +14,7 @@ class EchoProfileSerializer(serializers.ModelSerializer):
     """
 
     VALID_PHASES = [choice[0] for choice in OnboardingPhase.choices]
-    VALID_PLATFORMS = ['twitter', 'linkedin', 'youtube', 'newsletter', 'tiktok', 'instagram']
+    VALID_PLATFORMS = ['twitter', 'linkedin', 'youtube', 'newsletter', 'blog', 'tiktok', 'instagram']
 
     class Meta:
         model = EchoProfile
@@ -24,7 +24,6 @@ class EchoProfileSerializer(serializers.ModelSerializer):
             'goals',
             'target_platforms',
             'content_pillars',
-            'asana_enabled',
             'audience_description',
             'preferred_posting_times',
             'is_onboarded',

@@ -19,20 +19,22 @@ interface RalphSceneProps {
 // Phases (1.5s initial delay for screen recording)
 const DELAY = 1500;
 const PHASE = {
-  // Phase 1: Hook + Agents
+  // Phase 1: Hook + Agents (1s shorter)
   hook: DELAY,
-  person: DELAY + 800,
-  agents: DELAY + 1200,
+  person: DELAY + 600,
+  agents: DELAY + 1000,
 
-  // Phase 2: RALPH intro
-  ralph: DELAY + 3000,
-  bashCode: DELAY + 4200,
-  beauty: DELAY + 5500,
+  // Phase 2: RALPH intro (1s longer)
+  ralph: DELAY + 2000,
+  bashCode: DELAY + 3200,
+  beauty: DELAY + 4500,
 
   // Phase 3: My flavor
-  myFlavor: DELAY + 8000,
-  loop: DELAY + 9000,
-  cta: DELAY + 17000,
+  myFlavor: DELAY + 9000,
+  loop: DELAY + 10000,
+  prdPreview: DELAY + 17000,  // After PRD step (step 2)
+  loopResume: DELAY + 21000,  // Resume at code step (step 3)
+  cta: DELAY + 29000,
 };
 
 // Full agents animation - person scales up, then agents fan out
@@ -87,7 +89,7 @@ function AgentsAnimation({ showPerson, showAgents }: { showPerson: boolean; show
 }
 
 // Loop bubbles with synced explanations
-function LoopDiagram({ elapsed, startTime }: { elapsed: number; startTime: number }) {
+function LoopDiagram({ elapsed, startTime, maxStep = 5, startStep = 0 }: { elapsed: number; startTime: number; maxStep?: number; startStep?: number }) {
   const timeSince = elapsed - startTime;
 
   const steps = [
@@ -104,8 +106,8 @@ function LoopDiagram({ elapsed, startTime }: { elapsed: number; startTime: numbe
 
   // Each step gets 1.5 seconds, no repeat
   const stepDuration = 1500;
-  const activeIndex = timeSince > 500 ? Math.min(5, Math.floor((timeSince - 500) / stepDuration)) : -1;
-  const activeStep = activeIndex >= 0 ? steps[activeIndex] : null;
+  const rawIndex = timeSince > 500 ? Math.floor((timeSince - 500) / stepDuration) + startStep : startStep - 1;
+  const activeIndex = Math.min(maxStep, Math.max(-1, rawIndex));
 
   const renderStep = (step: typeof steps[0], globalIndex: number) => {
     const isActive = globalIndex === activeIndex;
@@ -149,7 +151,7 @@ function LoopDiagram({ elapsed, startTime }: { elapsed: number; startTime: numbe
       <div className="flex flex-col items-center gap-1 mt-3">
         {steps.map((step, index) => (
           <AnimatePresence key={step.label}>
-            {index <= activeIndex && (
+            {index >= startStep && index <= activeIndex && index <= maxStep && (
               <motion.p
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -183,6 +185,45 @@ function Type({ text, speed = 30 }: { text: string; speed?: number }) {
         </motion.span>
       ))}
     </motion.span>
+  );
+}
+
+// PRD.json preview - real example
+function PrdPreview() {
+  const jsonCode = `{
+  "id": "TASK-001",
+  "title": "Create user registration",
+  "testing": {
+    "types": ["unit", "integration"],
+    "approach": "TDD"
+  },
+  "testSteps": [
+    "curl -X POST /api/users...",
+    "npm test -- users"
+  ],
+  "apiContract": {
+    "endpoint": "POST /api/users",
+    "request": { "email", "password" }
+  }
+}`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="flex flex-col items-start w-full"
+    >
+      <div className="bg-[#1a1a2e] rounded-xl p-4 border border-white/10 font-mono w-full">
+        <div className="flex items-center gap-1.5 mb-3">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+          <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+          <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+          <span className="text-white/40 text-xs ml-2">prd.json</span>
+        </div>
+        <pre className="text-sm leading-relaxed text-green-400 whitespace-pre">{jsonCode}</pre>
+      </div>
+    </motion.div>
   );
 }
 
@@ -244,7 +285,7 @@ export function RalphScene({ elapsed, hidePlaceholder = false }: RalphSceneProps
                 animate={{ opacity: 1, y: 0 }}
                 className="text-white/90 text-lg mb-1 text-center"
               >
-                The future of coding isn't writing code.
+                The future of software isn't coding.
               </motion.p>
               <motion.h1
                 initial={{ opacity: 0, y: 8 }}
@@ -319,24 +360,64 @@ It's directing coding agents.
               transition={{ duration: 0.4 }}
               className="flex flex-col"
             >
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-lg text-white/80 text-center"
-              >
-                What I put in my RALPH loop:
-              </motion.p>
+              {elapsed < PHASE.prdPreview && (
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-lg text-white/80 text-center"
+                >
+                  What I put in my RALPH loop:
+                </motion.p>
+              )}
 
-              {elapsed >= PHASE.loop && (
-                <LoopDiagram elapsed={elapsed} startTime={PHASE.loop} />
+              {elapsed >= PHASE.prdPreview && elapsed < PHASE.loopResume && (
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-lg text-white/80 text-center mb-3 font-mono"
+                >
+                  prd.json
+                </motion.p>
+              )}
+
+              {elapsed >= PHASE.loopResume && elapsed < PHASE.cta && (
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-lg text-white/80 text-center"
+                >
+                  What I put in my RALPH loop:
+                </motion.p>
               )}
 
               {elapsed >= PHASE.cta && (
-                <motion.div
+                <motion.p
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3"
-                />
+                  className="text-lg text-white/80 text-center"
+                >
+                  Try my loop for yourself:
+                </motion.p>
+              )}
+
+              {/* Loop steps 1-2 (idea, PRD) */}
+              {elapsed >= PHASE.loop && elapsed < PHASE.prdPreview && (
+                <LoopDiagram elapsed={elapsed} startTime={PHASE.loop} maxStep={1} />
+              )}
+
+              {/* PRD preview */}
+              {elapsed >= PHASE.prdPreview && elapsed < PHASE.loopResume && (
+                <PrdPreview />
+              )}
+
+              {/* Loop steps 3-6 (code, test, fix, repeat) */}
+              {elapsed >= PHASE.loopResume && elapsed < PHASE.cta && (
+                <LoopDiagram elapsed={elapsed} startTime={PHASE.loopResume} startStep={2} />
+              )}
+
+              {/* Full loop on CTA screen */}
+              {elapsed >= PHASE.cta && (
+                <LoopDiagram elapsed={elapsed} startTime={PHASE.loop} />
               )}
             </motion.div>
           )}
@@ -348,8 +429,8 @@ It's directing coding agents.
         className="absolute bottom-0 left-0 right-0 flex"
         style={{ height: '40%', zIndex: 50 }}
       >
-        {/* Left: CTA content - appears at 17s */}
-        <div className="w-1/2 h-full flex flex-col justify-start -mt-4 pl-10 pr-4">
+        {/* Left: CTA content - appears at 22s */}
+        <div className="w-1/2 h-full flex flex-col justify-start -mt-8 pl-10 pr-4">
           <AnimatePresence>
             {elapsed >= PHASE.cta && (
               <motion.div

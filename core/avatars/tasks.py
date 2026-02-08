@@ -214,10 +214,10 @@ def process_avatar_generation_task(
 
                     is_in_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER')
                     if is_in_docker:
-                        if 'localhost:9000' in download_url:
-                            download_url = download_url.replace('localhost:9000', 'minio:9000')
-                        elif 'localhost:8000' in download_url:
-                            download_url = download_url.replace('localhost:8000', 'web:8000')
+                        if 'localhost:4850' in download_url:
+                            download_url = download_url.replace('localhost:4850', 'minio:9000')
+                        elif 'localhost:4847' in download_url:
+                            download_url = download_url.replace('localhost:4847', 'web:8000')
 
                     logger.info(f'Downloading reference image via HTTP: {download_url}')
                     resp = requests.get(download_url, timeout=10)

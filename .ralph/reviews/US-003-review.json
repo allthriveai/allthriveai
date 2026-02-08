@@ -1,0 +1,52 @@
+Looking at this diff, I need to analyze what's being reviewed for the US-003 story "EchoProfile model and migrations".
+
+**Key observation**: The diff does NOT contain the actual EchoProfile model implementation. The diff shows:
+1. Changes to `.claude/commands/tour.md` (unrelated tooling)
+2. Changes to `.ralph/prd.json` (marking story as passing, fixing testSteps)
+3. Changes to `.ralph/progress.txt` (progress logging)
+4. Changes to `core/integrations/__init__.py` (Asana-related comment)
+5. Changes to `core/urls.py` (Asana URL routes)
+6. Changes to `package.json` and `package-lock.json` (vibe-and-thrive dependency update)
+
+The progress.txt indicates the actual EchoProfile files were committed in `0df73bf5`, but those files are NOT in this diff.
+
+```json
+{
+  "pass": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "compliance",
+      "file": "N/A",
+      "line": null,
+      "message": "The diff does not contain the actual story implementation. US-003 requires EchoProfile model files (core/echo/__init__.py, core/echo/apps.py, core/echo/models.py, core/echo/admin.py) and config/settings.py modification, but none of these are in the diff.",
+      "suggestion": "The review diff appears to show uncommitted changes from a different story (Asana integration) rather than the committed Echo files from 0df73bf5. Re-run the review with the correct diff using: git show 0df73bf5 --stat or git diff 0df73bf5^..0df73bf5"
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "core/urls.py",
+      "line": 448,
+      "message": "Asana integration URL added but this change is unrelated to US-003 (EchoProfile model). This appears to be uncommitted work from a different story leaking into this review.",
+      "suggestion": "These Asana changes should be in a separate commit/PR for the Asana integration story"
+    },
+    {
+      "severity": "warning",
+      "category": "architecture",
+      "file": "core/integrations/__init__.py",
+      "line": 10,
+      "message": "Asana-related comment added but this is unrelated to US-003 EchoProfile story.",
+      "suggestion": "Keep changes scoped to the story being implemented"
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "package.json",
+      "line": 5,
+      "message": "vibe-and-thrive changed from local file reference to npm registry version ^1.4.0. This is unrelated to US-003.",
+      "suggestion": "This dependency change should be in a separate commit"
+    }
+  ],
+  "summary": "CANNOT VERIFY STORY COMPLIANCE. The diff provided does not contain the actual EchoProfile implementation files that US-003 requires. According to progress.txt, the Echo files were committed in 0df73bf5, but this diff shows only uncommitted changes (mostly Asana integration work and tooling updates). The review cannot pass because the core deliverables (EchoProfile model, migrations, admin, app config) are not present in the diff to review."
+}
+```

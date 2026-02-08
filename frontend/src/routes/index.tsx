@@ -129,6 +129,8 @@ const ExtensionPage = lazy(() => import('@/pages/ExtensionPage'));
 const PitchDeckPage = lazy(() => import('@/pages/PitchDeckPage'));
 const PromoPage = lazy(() => import('@/pages/PromoPage'));
 const PromoVideoPage = lazy(() => import('@/pages/PromoVideoPage'));
+const RalphPromoPage = lazy(() => import('@/pages/RalphPromoPage'));
+const DisciplinePromoPage = lazy(() => import('@/pages/DisciplinePromoPage'));
 const AllieConnectPage = lazy(() => import('@/pages/AllieConnectPage'));
 const CollectiveLandingPage = lazy(() => import('@/pages/CollectiveLandingPage'));
 const ListingDetailPage = lazy(() => import('@/pages/ListingDetailPage'));
@@ -137,6 +139,9 @@ const ListingDetailPage = lazy(() => import('@/pages/ListingDetailPage'));
 const CreatePage = lazy(() => import('@/pages/CreatePage'));
 const SocialClipBuilderPage = lazy(() => import('@/pages/SocialClipBuilderPage'));
 const ContentEnginePage = lazy(() => import('@/pages/content-engine/ContentEnginePage'));
+
+// Echo Personal Assistant - lazy loaded
+const EchoWorkspace = lazy(() => import('@/pages/EchoWorkspace'));
 
 // Legal pages - lazy loaded
 const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
@@ -253,6 +258,12 @@ export function AppRoutes() {
       {/* Promo video with real video clips */}
       <Route path="/promo" element={<PromoVideoPage />} />
 
+      {/* Ralph / agentic-loop promo */}
+      <Route path="/ralph-promo" element={<RalphPromoPage />} />
+
+      {/* Discipline Your Loop promo */}
+      <Route path="/discipline-promo" element={<DisciplinePromoPage />} />
+
       {/* Allie's personal connect page - public */}
       <Route path="/allie-connect" element={<AllieConnectPage />} />
 
@@ -290,6 +301,16 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <ContentEnginePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Echo Personal Assistant - protected */}
+      <Route
+        path="/echo"
+        element={
+          <ProtectedRoute>
+            <EchoWorkspace />
           </ProtectedRoute>
         }
       />

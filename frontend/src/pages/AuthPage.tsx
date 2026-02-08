@@ -241,7 +241,7 @@ export default function AuthPage() {
   }, [isAuthenticated, user?.username, navigate]);
 
   const handleOAuthLogin = (provider: 'google' | 'github' | 'linkedin') => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4847';
     // LinkedIn uses OpenID Connect with a different URL pattern
     const providerPath = provider === 'linkedin' ? 'oidc/linkedin' : provider;
     // Check for next param to redirect after OAuth

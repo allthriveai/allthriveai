@@ -12,11 +12,10 @@ class EchoProfileAdmin(admin.ModelAdmin):
     list_display = [
         'user',
         'onboarding_phase',
-        'asana_enabled',
         'created_at',
         'updated_at',
     ]
-    list_filter = ['onboarding_phase', 'asana_enabled']
+    list_filter = ['onboarding_phase']
     search_fields = ['user__username', 'user__email']
     readonly_fields = ['created_at', 'updated_at']
 
@@ -29,9 +28,6 @@ class EchoProfileAdmin(admin.ModelAdmin):
         }),
         ('Audience', {
             'fields': ['audience_description'],
-        }),
-        ('Integrations', {
-            'fields': ['asana_enabled'],
         }),
         ('Preferences', {
             'fields': ['preferred_posting_times'],

@@ -37,7 +37,7 @@ const App: React.FC = () => {
 
   const getApiBaseUrl = (): string => {
     // TODO: Change to 'https://allthrive.ai' for production
-    return 'http://localhost:8000';
+    return 'http://localhost:4847';
   };
 
   const fetchCategories = async () => {

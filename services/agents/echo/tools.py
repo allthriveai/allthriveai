@@ -1,20 +1,18 @@
 """
 LangChain tools for the Echo agent.
 
-These tools help creators capture ideas and manage their content strategy.
+Echo is a social media coach that helps creators with content strategy
+and brainstorming. These tools support content creation workflows.
 
 Tools:
 - save_idea: Create ContentIdea with pillar, hook, session link
 - strategy: Get or update user's content strategy
-- manage_task: Create/update/complete tasks via AsanaService
 - manage_idea: Save/update/archive ContentIdea
-- get_context: Return tasks summary, ideas, profile, brand voice
-- sync_asana: Trigger immediate Asana sync
+- get_context: Return ideas, profile, brand voice
 - save_onboarding_response: Update EchoProfile with goals, platforms, pillars
 """
 
 import logging
-from datetime import date
 from typing import Literal
 
 from langchain.tools import tool
@@ -58,21 +56,6 @@ class StrategyInput(BaseModel):
     state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
-class ManageTaskInput(BaseModel):
-    """Input for manage_task tool."""
-
-    model_config = {'extra': 'allow'}
-
-    action: Literal['create', 'update', 'complete', 'delete'] = Field(
-        description='Action to perform: create, update, complete, or delete'
-    )
-    title: str | None = Field(default=None, description='Task title (required for create)')
-    task_id: int | None = Field(default=None, description='Task ID (required for update/complete/delete)')
-    notes: str | None = Field(default=None, description='Task notes/description')
-    due_date: str | None = Field(default=None, description='Due date in YYYY-MM-DD format')
-    state: dict | None = Field(default=None, description='Internal - injected by agent')
-
-
 class ManageIdeaInput(BaseModel):
     """Input for manage_idea tool."""
 
@@ -96,18 +79,9 @@ class GetContextInput(BaseModel):
 
     model_config = {'extra': 'allow'}
 
-    include_tasks: bool = Field(default=True, description='Include task summary')
     include_ideas: bool = Field(default=True, description='Include recent ideas')
     include_profile: bool = Field(default=True, description='Include Echo profile')
     include_brand_voice: bool = Field(default=True, description='Include brand voice settings')
-    state: dict | None = Field(default=None, description='Internal - injected by agent')
-
-
-class SyncAsanaInput(BaseModel):
-    """Input for sync_asana tool."""
-
-    model_config = {'extra': 'allow'}
-
     state: dict | None = Field(default=None, description='Internal - injected by agent')
 
 
@@ -153,7 +127,7 @@ def save_idea(
     from core.taxonomy.models import Taxonomy
 
     if not state or 'user_id' not in state:
-        return {'success': False, 'error': 'User not authenticated'}
+        return {'success': False, 'user_message': 'User not authenticated'}
 
     user_id = state['user_id']
     session_id = state.get('session_id')
@@ -162,7 +136,7 @@ def save_idea(
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return {'success': False, 'error': 'User not found'}
+        return {'success': False, 'user_message': 'User not found'}
 
     # Validate pillar if provided
     pillar = None
@@ -170,7 +144,7 @@ def save_idea(
         try:
             pillar = Taxonomy.objects.get(id=pillar_id, taxonomy_type='content_pillar')
         except Taxonomy.DoesNotExist:
-            return {'success': False, 'error': f'Invalid content pillar ID: {pillar_id}'}
+            return {'success': False, 'user_message': f'Invalid content pillar ID: {pillar_id}'}
 
     # Find or create brainstorm session
     brainstorm_session = None
@@ -238,7 +212,7 @@ def strategy(
     from core.content_engine.models import Strategy
 
     if not state or 'user_id' not in state:
-        return {'success': False, 'error': 'User not authenticated'}
+        return {'success': False, 'user_message': 'User not authenticated'}
 
     user_id = state['user_id']
     User = get_user_model()
@@ -246,7 +220,7 @@ def strategy(
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return {'success': False, 'error': 'User not found'}
+        return {'success': False, 'user_message': 'User not found'}
 
     # Get or create strategy
     user_strategy, created = Strategy.objects.get_or_create(user=user)
@@ -260,11 +234,11 @@ def strategy(
         valid_platforms = ['linkedin', 'twitter', 'youtube']
         invalid = [p for p in platforms if p.lower() not in valid_platforms]
         if invalid:
-            return {'success': False, 'error': f'Invalid platforms: {invalid}. Valid: {valid_platforms}'}
+            return {'success': False, 'user_message': f'Invalid platforms: {invalid}. Valid: {valid_platforms}'}
         update_fields['platforms'] = [p.lower() for p in platforms]
     if posts_per_week is not None:
         if posts_per_week < 0:
-            return {'success': False, 'error': 'posts_per_week must be positive'}
+            return {'success': False, 'user_message': 'posts_per_week must be positive'}
         update_fields['posts_per_week'] = posts_per_week
     if schedule is not None:
         update_fields['schedule'] = schedule
@@ -299,156 +273,6 @@ def strategy(
             'recommendations': user_strategy.recommendations,
         },
     }
-
-
-@tool(args_schema=ManageTaskInput)
-def manage_task(
-    action: str,
-    title: str | None = None,
-    task_id: int | None = None,
-    notes: str | None = None,
-    due_date: str | None = None,
-    state: dict | None = None,
-) -> dict:
-    """
-    Create, update, complete, or delete a task via Asana.
-
-    Actions:
-    - create: Create a new task (requires title)
-    - update: Update an existing task (requires task_id)
-    - complete: Mark a task as complete (requires task_id)
-    - delete: Delete a task (requires task_id)
-
-    Returns:
-        Dictionary with success status and task data or error message
-    """
-    from django.contrib.auth import get_user_model
-
-    from core.integrations.asana_models import TaskCache
-    from core.integrations.asana_service import (
-        AsanaNotConnectedError,
-        AsanaService,
-    )
-
-    if not state or 'user_id' not in state:
-        return {'success': False, 'user_message': 'User not authenticated'}
-
-    user_id = state['user_id']
-    User = get_user_model()
-
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return {'success': False, 'user_message': 'User not found'}
-
-    # Try to get Asana service
-    try:
-        asana_service = AsanaService(user)
-    except AsanaNotConnectedError:
-        return {
-            'success': False,
-            'user_message': 'Connect your Asana account in Settings to manage tasks.',
-        }
-
-    # Parse due_date if provided
-    parsed_due_date = None
-    if due_date:
-        try:
-            parsed_due_date = date.fromisoformat(due_date)
-        except ValueError:
-            return {'success': False, 'user_message': f'Invalid due date format: {due_date}. Use YYYY-MM-DD.'}
-
-    try:
-        if action == 'create':
-            if not title:
-                return {'success': False, 'user_message': 'Title is required for creating a task.'}
-
-            task = asana_service.create_task(
-                title=title,
-                notes=notes or '',
-                due_date=parsed_due_date,
-            )
-            logger.info(f'Created task "{title}" for user {user.username}')
-            return {
-                'success': True,
-                'data': {
-                    'id': task.id,
-                    'title': task.title,
-                    'notes': task.notes,
-                    'due_date': task.due_date.isoformat() if task.due_date else None,
-                    'completed': task.completed,
-                },
-                'user_message': f'Task "{title}" created successfully.',
-            }
-
-        elif action == 'update':
-            if not task_id:
-                return {'success': False, 'user_message': 'Task ID is required for updating a task.'}
-
-            try:
-                task = TaskCache.objects.get(id=task_id, user=user, is_deleted=False)
-            except TaskCache.DoesNotExist:
-                return {'success': False, 'user_message': f'Task {task_id} not found.'}
-
-            task = asana_service.update_task(
-                task=task,
-                title=title,
-                notes=notes,
-                due_date=parsed_due_date,
-            )
-            logger.info(f'Updated task "{task.title}" for user {user.username}')
-            return {
-                'success': True,
-                'data': {
-                    'id': task.id,
-                    'title': task.title,
-                    'notes': task.notes,
-                    'due_date': task.due_date.isoformat() if task.due_date else None,
-                    'completed': task.completed,
-                },
-                'user_message': f'Task "{task.title}" updated.',
-            }
-
-        elif action == 'complete':
-            if not task_id:
-                return {'success': False, 'user_message': 'Task ID is required for completing a task.'}
-
-            try:
-                task = TaskCache.objects.get(id=task_id, user=user, is_deleted=False)
-            except TaskCache.DoesNotExist:
-                return {'success': False, 'user_message': f'Task {task_id} not found.'}
-
-            task = asana_service.complete_task(task)
-            logger.info(f'Completed task "{task.title}" for user {user.username}')
-            return {
-                'success': True,
-                'data': {'id': task.id, 'title': task.title, 'completed': True},
-                'user_message': f'Task "{task.title}" marked as complete.',
-            }
-
-        elif action == 'delete':
-            if not task_id:
-                return {'success': False, 'user_message': 'Task ID is required for deleting a task.'}
-
-            try:
-                task = TaskCache.objects.get(id=task_id, user=user, is_deleted=False)
-            except TaskCache.DoesNotExist:
-                return {'success': False, 'user_message': f'Task {task_id} not found.'}
-
-            task_title = task.title
-            asana_service.delete_task(task)
-            logger.info(f'Deleted task "{task_title}" for user {user.username}')
-            return {
-                'success': True,
-                'user_message': f'Task "{task_title}" deleted.',
-            }
-
-        else:
-            return {'success': False, 'user_message': f'Invalid action: {action}'}
-
-    except Exception as e:
-        logger.error(f'manage_task error for user {user.username}: {e}')
-        return {'success': False, 'user_message': f'Failed to {action} task: {e}'}
 
 
 @tool(args_schema=ManageIdeaInput)
@@ -598,23 +422,21 @@ def manage_idea(
 
 @tool(args_schema=GetContextInput)
 def get_context(
-    include_tasks: bool = True,
     include_ideas: bool = True,
     include_profile: bool = True,
     include_brand_voice: bool = True,
     state: dict | None = None,
 ) -> dict:
     """
-    Get user context including tasks, ideas, profile, and brand voice.
+    Get user context including ideas, profile, and brand voice.
 
     Returns a summary of the user's current state to help Echo provide
-    contextual assistance.
+    contextual content coaching.
 
     Returns:
         Dictionary with context data or error message
     """
     from django.contrib.auth import get_user_model
-    from django.utils import timezone
 
     if not state or 'user_id' not in state:
         return {'success': False, 'user_message': 'User not authenticated'}
@@ -628,40 +450,6 @@ def get_context(
         return {'success': False, 'user_message': 'User not found'}
 
     context = {'success': True, 'data': {}}
-
-    # Tasks summary
-    if include_tasks:
-        from core.integrations.asana_models import TaskCache
-
-        tasks = TaskCache.objects.filter(user=user, is_deleted=False).order_by('due_date', '-synced_at')[:20]
-        today = timezone.now().date()
-
-        pending_tasks = []
-        overdue_tasks = []
-        completed_today = []
-
-        for task in tasks:
-            task_data = {
-                'id': task.id,
-                'title': task.title,
-                'due_date': task.due_date.isoformat() if task.due_date else None,
-                'completed': task.completed,
-            }
-            if task.completed:
-                if task.synced_at.date() == today:
-                    completed_today.append(task_data)
-            elif task.due_date and task.due_date < today:
-                overdue_tasks.append(task_data)
-            else:
-                pending_tasks.append(task_data)
-
-        context['data']['tasks'] = {
-            'pending': pending_tasks[:10],
-            'overdue': overdue_tasks[:5],
-            'completed_today': completed_today[:5],
-            'total_pending': len(pending_tasks),
-            'total_overdue': len(overdue_tasks),
-        }
 
     # Recent ideas
     if include_ideas:
@@ -693,7 +481,6 @@ def get_context(
                 'goals': profile.goals,
                 'target_platforms': profile.target_platforms,
                 'content_pillars': profile.content_pillars,
-                'asana_enabled': profile.asana_enabled,
                 'audience_description': profile.audience_description,
             }
         except EchoProfile.DoesNotExist:
@@ -703,7 +490,7 @@ def get_context(
                 'goals': [],
                 'target_platforms': [],
                 'content_pillars': [],
-                'asana_enabled': False,
+                'audience_description': '',
             }
 
     # Brand voice
@@ -723,72 +510,6 @@ def get_context(
             context['data']['brand_voice'] = None
 
     return context
-
-
-@tool(args_schema=SyncAsanaInput)
-def sync_asana(state: dict | None = None) -> dict:
-    """
-    Trigger an immediate sync of tasks from Asana.
-
-    Fetches the latest tasks from the user's connected Asana account
-    and updates the local cache.
-
-    Returns:
-        Dictionary with sync result or error message
-    """
-    from django.contrib.auth import get_user_model
-
-    from core.integrations.asana_service import (
-        AsanaNotConnectedError,
-        AsanaRateLimitError,
-        AsanaService,
-    )
-
-    if not state or 'user_id' not in state:
-        return {'success': False, 'user_message': 'User not authenticated'}
-
-    user_id = state['user_id']
-    User = get_user_model()
-
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return {'success': False, 'user_message': 'User not found'}
-
-    try:
-        asana_service = AsanaService(user)
-        tasks = asana_service.sync_tasks()
-        logger.info(f'Synced {len(tasks)} tasks from Asana for user {user.username}')
-        return {
-            'success': True,
-            'data': {
-                'synced_count': len(tasks),
-                'tasks': [
-                    {
-                        'id': t.id,
-                        'title': t.title,
-                        'completed': t.completed,
-                        'due_date': t.due_date.isoformat() if t.due_date else None,
-                    }
-                    for t in tasks[:10]  # Return first 10 for preview
-                ],
-            },
-            'user_message': f'Synced {len(tasks)} tasks from Asana.',
-        }
-
-    except AsanaNotConnectedError:
-        return {
-            'success': False,
-            'user_message': 'Connect your Asana account in Settings to sync tasks.',
-        }
-    except AsanaRateLimitError:
-        return {
-            'success': False,
-            'user_message': 'Asana is rate-limiting requests. Please try again in a few minutes.',
-        }
-    except Exception as e:
-        logger.error(f'sync_asana error for user {user.username}: {e}')
-        return {'success': False, 'user_message': f'Failed to sync tasks: {e}'}
 
 
 @tool(args_schema=SaveOnboardingResponseInput)
@@ -885,10 +606,8 @@ def save_onboarding_response(
 ECHO_TOOLS = [
     save_idea,
     strategy,
-    manage_task,
     manage_idea,
     get_context,
-    sync_asana,
     save_onboarding_response,
 ]
 
@@ -899,9 +618,7 @@ ECHO_TOOLS_BY_NAME = {tool.name: tool for tool in ECHO_TOOLS}
 TOOLS_NEEDING_STATE = {
     'save_idea',  # Needs user_id, session_id
     'strategy',  # Needs user_id
-    'manage_task',  # Needs user_id
     'manage_idea',  # Needs user_id
     'get_context',  # Needs user_id
-    'sync_asana',  # Needs user_id
     'save_onboarding_response',  # Needs user_id
 }

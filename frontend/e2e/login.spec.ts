@@ -9,7 +9,7 @@ test.describe('Authentication', () => {
     // Verify we're authenticated by checking the auth endpoint
     const authCheck = await page.evaluate(async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/v1/auth/me/', {
+        const response = await fetch('http://localhost:4847/api/v1/auth/me/', {
           credentials: 'include'
         });
         if (response.ok) {

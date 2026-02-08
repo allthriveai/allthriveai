@@ -7,7 +7,7 @@ import browser from 'webextension-polyfill';
 import type { AuthState, CreateProjectRequest, CreateProjectResponse, ExtensionMessage } from '../types';
 
 // TODO: Change to 'https://allthrive.ai' for production
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:4847';
 
 // Handle extension installation
 browser.runtime.onInstalled.addListener(async (details) => {

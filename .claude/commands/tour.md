@@ -1,5 +1,5 @@
 ---
-description: Take an interactive tour of vibe-and-thrive - the system for going from idea to shipped code with AI.
+description: Take an interactive tour of agentic-loop - the system for going from idea to shipped code with AI.
 ---
 
 # Vibe & Thrive Tour
@@ -31,7 +31,7 @@ Print this exactly:
    ```
    - If missing or count is 0: Copy from node_modules:
      ```bash
-     mkdir -p .claude/commands && cp -r node_modules/vibe-and-thrive/.claude/commands/* .claude/commands/
+     mkdir -p .claude/commands && cp -r node_modules/agentic-loop/.claude/commands/* .claude/commands/
      ```
    - Then: ✓ Slash commands installed
 
@@ -52,7 +52,17 @@ Print this exactly:
      ```
    - Then: ✓ CLAUDE.md created
 
-5. **Check Docker:**
+5. **Check Claude Code hooks:**
+   ```bash
+   test -f .claude/settings.json && jq -e '.hooks' .claude/settings.json > /dev/null 2>&1
+   ```
+   - If missing: Install hooks:
+     ```bash
+     npx ralph hooks
+     ```
+   - Then: ✓ Claude Code hooks installed
+
+6. **Check Docker:**
    ```bash
    test -f docker-compose.yml || test -f docker-compose.yaml || test -f compose.yml
    ```
@@ -61,7 +71,7 @@ Print this exactly:
      - Say: "✓ Docker detected - Ralph will run commands inside containers"
      - **Skip Playwright check** (browser verification uses curl in Docker mode)
 
-6. **Check & Install Playwright (if not Docker):**
+7. **Check & Install Playwright (if not Docker):**
 
    Check BOTH the npm package AND browser binaries:
    ```bash
@@ -169,12 +179,24 @@ Detect test framework:
 test -f playwright.config.ts && echo "playwright"
 test -f vitest.config.ts && echo "vitest"
 test -f jest.config.js && echo "jest"
+test -f manage.py && echo "django"
+test -f pytest.ini && echo "pytest"
+test -f pyproject.toml && grep -q "pytest" pyproject.toml && echo "pytest"
 ```
 
 Update config:
 ```bash
 # If playwright found
 jq '.playwright.enabled = true' .ralph/config.json > .ralph/config.tmp && mv .ralph/config.tmp .ralph/config.json
+
+# If Django found (NO --parallel - it hides errors)
+jq '.checks.test = "python manage.py test --keepdb"' .ralph/config.json > .ralph/config.tmp && mv .ralph/config.tmp .ralph/config.json
+
+# If Django + Docker
+jq '.checks.test = "docker compose exec -T web python manage.py test --keepdb"' .ralph/config.json > .ralph/config.tmp && mv .ralph/config.tmp .ralph/config.json
+
+# If pytest found
+jq '.checks.test = "pytest"' .ralph/config.json > .ralph/config.tmp && mv .ralph/config.tmp .ralph/config.json
 
 # If vitest/jest found
 jq '.checks.test = "npm test"' .ralph/config.json > .ralph/config.tmp && mv .ralph/config.tmp .ralph/config.json

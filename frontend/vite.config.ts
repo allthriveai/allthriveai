@@ -11,14 +11,14 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 4848,
     strictPort: true,
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        // Default to localhost:8000 for local development
+        // Default to localhost:4847 for local development
         // Set VITE_API_PROXY_TARGET=http://web:8000 when running in Docker
-        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:4847',
         changeOrigin: true,
         secure: false,
         cookieDomainRewrite: '',
@@ -38,12 +38,12 @@ export default defineConfig({
         },
       },
       '/media': {
-        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:4847',
         changeOrigin: true,
         secure: false,
       },
       // NOTE: WebSocket connections (/ws/*) are NOT proxied through Vite.
-      // They connect directly to the backend (ws://localhost:8000 in dev).
+      // They connect directly to the backend (ws://localhost:4847 in dev).
       // See src/utils/websocket.ts for the architecture decision and VITE_WS_URL config.
     },
   },

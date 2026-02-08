@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useRef, useEffect, useState, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
@@ -20,6 +21,67 @@ import { useEchoChat, type EchoChatMessage } from '@/hooks/useEchoChat';
 import { useEchoProfile, type OnboardingPhase } from '@/hooks/useEchoProfile';
 import { OnboardingProgress } from './OnboardingProgress';
 import { QuickSelect, type QuickSelectOption } from './QuickSelect';
+
+// Markdown components for Echo messages
+const markdownComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="mb-3 ml-4 space-y-1.5 list-disc list-outside">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="mb-3 ml-4 space-y-1.5 list-decimal list-outside">{children}</ol>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="leading-relaxed pl-1">{children}</li>
+  ),
+  h1: ({ children }: { children?: React.ReactNode }) => (
+    <h1 className="text-lg font-bold mb-2 mt-3 first:mt-0 text-white">{children}</h1>
+  ),
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0 text-white">{children}</h2>
+  ),
+  h3: ({ children }: { children?: React.ReactNode }) => (
+    <h3 className="text-sm font-semibold mb-1.5 mt-2 first:mt-0 text-white">{children}</h3>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-white">{children}</strong>
+  ),
+  em: ({ children }: { children?: React.ReactNode }) => (
+    <em className="italic text-slate-300">{children}</em>
+  ),
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="border-l-2 border-cyan-500/50 pl-3 my-3 italic text-slate-300">
+      {children}
+    </blockquote>
+  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-cyan-400 hover:text-cyan-300 hover:underline"
+    >
+      {children}
+    </a>
+  ),
+  pre: ({ children }: { children?: React.ReactNode }) => (
+    <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-slate-900/50 p-3 rounded-lg text-sm my-3 text-slate-300">
+      {children}
+    </pre>
+  ),
+  code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
+    const isInline = !className;
+    return isInline ? (
+      <code className="bg-slate-700/50 px-1.5 py-0.5 rounded text-sm font-mono text-cyan-300">
+        {children}
+      </code>
+    ) : (
+      <code className="text-slate-300 font-mono">{children}</code>
+    );
+  },
+};
 
 interface EchoChatProps {
   sessionId: string;
@@ -72,15 +134,13 @@ function getOptionsForPhase(phase: OnboardingPhase): QuickSelectOption[] {
 function getPromptForPhase(phase: OnboardingPhase): string {
   switch (phase) {
     case 'intro':
-      return "Hi! I'm Echo, your content coach. Ready to get started?";
+      return "Hi! I'm Echo, your social media coach. Ready to get started?";
     case 'goals':
       return "What are your content goals?";
     case 'platforms':
       return "Which platforms do you create content for?";
     case 'topics':
       return "What topics do you cover?";
-    case 'tasks':
-      return "What would you like help with today?";
     default:
       return '';
   }
@@ -249,8 +309,10 @@ export function EchoChat({ sessionId, className = '' }: EchoChatProps) {
     return (
       <div role="article" className="flex gap-3 max-w-[85%]">
         <EchoAvatarSmall />
-        <div className="rounded-2xl px-4 py-2 bg-slate-800/50 text-slate-200 border border-cyan-500/20">
-          {message.content}
+        <div className="rounded-2xl px-4 py-3 bg-slate-800/50 text-slate-200 border border-cyan-500/20">
+          <ReactMarkdown components={markdownComponents}>
+            {message.content}
+          </ReactMarkdown>
         </div>
       </div>
     );
@@ -303,7 +365,7 @@ export function EchoChat({ sessionId, className = '' }: EchoChatProps) {
   }, [isLoadingHistory, messages.length]);
 
   return (
-    <div className={`flex flex-col h-full glass-panel rounded-xl ${className}`}>
+    <div className={`flex flex-col h-full ${className}`}>
       {/* Onboarding progress bar - only visible during onboarding */}
       {isOnboarding && !isLoadingProfile && (
         <OnboardingProgress phase={onboardingPhase} />
@@ -332,13 +394,27 @@ export function EchoChat({ sessionId, className = '' }: EchoChatProps) {
                 <SparklesIcon className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">
-                {isOnboarding ? phasePrompt : 'Echo Personal Assistant'}
+                {isOnboarding ? phasePrompt : 'Echo Social Media Coach'}
               </h3>
               <p className="text-sm text-slate-400 max-w-sm mb-4">
-                {isOnboarding
-                  ? 'Select one or more options below, or type your own response.'
-                  : "Your AI-powered assistant for content strategy and creation. Let's get started!"}
+                {onboardingPhase === 'intro'
+                  ? "I'll help you brainstorm content ideas, craft hooks, and build your social media strategy."
+                  : isOnboarding
+                    ? 'Select one or more options below, or type your own response.'
+                    : "Your AI-powered coach for social media strategy and content creation. Let's brainstorm!"}
               </p>
+
+              {/* Get Started button for intro phase */}
+              {onboardingPhase === 'intro' && (
+                <button
+                  type="button"
+                  onClick={() => sendMessage("Let's get started!")}
+                  disabled={!isConnected}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-medium hover:from-cyan-400 hover:to-cyan-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Get Started
+                </button>
+              )}
 
               {/* Quick select options for onboarding phases */}
               {isOnboarding && quickSelectOptions.length > 0 && (

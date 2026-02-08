@@ -149,9 +149,12 @@ class EchoAgent:
         """Handle conversational turns with the creator."""
         messages = state.get('messages', [])
         phase = state.get('conversation_phase', 'discovery')
+        onboarding_phase = state.get('onboarding_phase', 'complete')
+        echo_profile = state.get('echo_profile')
         content_pillars = state.get('content_pillars', [])
         target_platforms = state.get('target_platforms', [])
         brand_voice = state.get('brand_voice')
+        user_strategy = state.get('user_strategy')
 
         # Build system prompt with context
         system_prompt = build_echo_prompt(
@@ -159,6 +162,9 @@ class EchoAgent:
             content_pillars=content_pillars,
             target_platforms=target_platforms,
             brand_voice=brand_voice,
+            user_strategy=user_strategy,
+            onboarding_phase=onboarding_phase,
+            profile_data=echo_profile,
         )
 
         # Trim messages to prevent context bloat
@@ -399,6 +405,49 @@ async def _load_user_strategy(user_id: int | None) -> StrategyContext | None:
         return None
 
 
+async def _load_echo_profile(user_id: int | None) -> tuple[str, dict | None]:
+    """
+    Load user's Echo profile from DB on agent init.
+
+    Returns the onboarding phase and profile data for context.
+
+    Args:
+        user_id: User ID to load profile for
+
+    Returns:
+        Tuple of (onboarding_phase, profile_data dict or None)
+    """
+    if not user_id:
+        return 'intro', None
+
+    try:
+        from asgiref.sync import sync_to_async
+
+        from core.echo.models import EchoProfile
+
+        profile = await sync_to_async(lambda: EchoProfile.objects.filter(user_id=user_id).first())()
+
+        if not profile:
+            # No profile exists - new user starting at intro
+            logger.debug(f'No Echo profile for user {user_id} - starting onboarding')
+            return 'intro', None
+
+        profile_data = {
+            'onboarding_phase': profile.onboarding_phase,
+            'goals': profile.goals or [],
+            'target_platforms': profile.target_platforms or [],
+            'content_pillars': profile.content_pillars or [],
+            'audience_description': profile.audience_description or '',
+            'is_onboarded': profile.is_onboarded,
+        }
+
+        return profile.onboarding_phase, profile_data
+
+    except Exception as e:
+        logger.warning(f'Failed to load Echo profile for user {user_id}: {e}')
+        return 'intro', None
+
+
 async def stream_echo_response(
     user_message: str,
     user_id: int | None = None,
@@ -446,9 +495,10 @@ async def stream_echo_response(
     total_output_content = ''
 
     try:
-        # Load brand voice and user strategy in parallel
+        # Load brand voice, user strategy, and echo profile
         brand_voice = await _load_brand_voice(user_id)
         user_strategy = await _load_user_strategy(user_id)
+        onboarding_phase, echo_profile = await _load_echo_profile(user_id)
 
         # Build message history
         messages = list(conversation_history) if conversation_history else []
@@ -460,6 +510,8 @@ async def stream_echo_response(
             'user_id': user_id,
             'session_id': session_id,
             'conversation_phase': conversation_phase,
+            'onboarding_phase': onboarding_phase,
+            'echo_profile': echo_profile,
             'content_pillars': content_pillars or [],
             'target_platforms': target_platforms or [],
             'brand_voice': brand_voice,
@@ -478,6 +530,8 @@ async def stream_echo_response(
             target_platforms=target_platforms or [],
             brand_voice=brand_voice,
             user_strategy=user_strategy,
+            onboarding_phase=onboarding_phase,
+            profile_data=echo_profile,
         )
 
         # Prepare messages for LLM

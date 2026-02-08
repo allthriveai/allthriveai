@@ -3,7 +3,7 @@
  *
  * ARCHITECTURE DECISION: Direct WebSocket Connection
  * ================================================
- * We use DIRECT WebSocket connections to the backend (localhost:8000 in dev,
+ * We use DIRECT WebSocket connections to the backend (localhost:4847 in dev,
  * production URL in prod) rather than proxying through Vite.
  *
  * Why direct connection:
@@ -13,8 +13,8 @@
  * 4. Simpler architecture - fewer moving parts
  *
  * Configuration:
- * - VITE_WS_URL: Full WebSocket URL (e.g., "ws://localhost:8000")
- *   - Development default: ws://localhost:8000
+ * - VITE_WS_URL: Full WebSocket URL (e.g., "ws://localhost:4847")
+ *   - Development default: ws://localhost:4847
  *   - Production: wss://allthrive.ai (same domain, /ws/* routed by CloudFront)
  *
  * The /api proxy in vite.config.ts is still used for REST API calls,
@@ -28,7 +28,7 @@
  * 1. VITE_WS_URL environment variable (explicit configuration)
  * 2. Derive from VITE_API_URL (convert https:// to wss://)
  * 3. Derive from current page domain (for production fallback)
- * 4. Default: ws://localhost:8000 for local development only
+ * 4. Default: ws://localhost:4847 for local development only
  *
  * @returns The WebSocket base URL without trailing slash
  */
@@ -54,7 +54,7 @@ export function getWebSocketBaseUrl(): string {
   }
 
   // 4. Default for local development only
-  return 'ws://localhost:8000';
+  return 'ws://localhost:4847';
 }
 
 /**
@@ -66,7 +66,7 @@ export function getWebSocketBaseUrl(): string {
  *
  * @example
  * buildWebSocketUrl('/ws/chat/project-123/', { connection_token: 'abc123' })
- * // => "ws://localhost:8000/ws/chat/project-123/?connection_token=abc123"
+ * // => "ws://localhost:4847/ws/chat/project-123/?connection_token=abc123"
  */
 export function buildWebSocketUrl(
   path: string,

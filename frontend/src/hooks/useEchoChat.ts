@@ -346,7 +346,7 @@ export function useEchoChat({
   const shouldConnect = !authLoading && isAuthenticated;
 
   // Use the base WebSocket hook
-  // Connect to ws://localhost:8000/ws/chat/{sessionId}/
+  // Connect to ws://localhost:4847/ws/chat/{sessionId}/
   // Note: sessionId should already be prefixed with 'echo-' by the caller
   const {
     isConnected,

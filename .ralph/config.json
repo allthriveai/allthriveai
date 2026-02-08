@@ -6,17 +6,23 @@
   },
   "maxIterations": 20,
   "maxSessionSeconds": 600,
-  "testUrlBase": "http://localhost:3000",
+  "testUrlBase": "http://localhost:4848",
   "contextRotThreshold": {
     "maxStories": 10,
     "maxFilesChanged": 20
   },
   "auth": {
-    "loginUrl": "http://localhost:8000/api/v1/auth/test-login/",
+    "loginUrl": "http://localhost:4847/api/v1/auth/test-login/",
     "testUser": "test@test.local",
     "testPassword": "testpass123",
     "usernameSelector": "input[name='email']",
     "passwordSelector": "input[name='password']",
     "submitSelector": "button[type='submit']"
+  },
+  "playwright": {
+    "testDir": "tests/e2e"
+  },
+  "directories": {
+    "frontend": "frontend"
   }
 }

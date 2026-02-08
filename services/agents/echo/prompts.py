@@ -243,34 +243,43 @@ def build_echo_prompt(
     target_platforms: list[str] | None = None,
     brand_voice: dict | None = None,
     user_strategy: dict | None = None,
+    onboarding_phase: str = 'complete',
+    profile_data: dict | None = None,
 ) -> str:
     """
     Build the complete Echo system prompt with context.
 
     Args:
-        phase: Current conversation phase
+        phase: Current conversation phase (SAHR framework)
         content_pillars: Active content pillars
         target_platforms: Target platforms (twitter, linkedin, youtube)
         brand_voice: Optional brand voice context
         user_strategy: User's content strategy for contextual coaching
+        onboarding_phase: User's onboarding phase (intro, goals, platforms, topics, complete)
+        profile_data: User's EchoProfile data for context
 
     Returns:
         Complete system prompt string
     """
     prompt_parts = [ECHO_SYSTEM_PROMPT]
 
-    # Add user strategy context first (most important for personalization)
-    if user_strategy:
-        strategy_context = _format_user_strategy(user_strategy)
-        prompt_parts.append(strategy_context)
+    # Add onboarding context if not complete (takes priority over everything else)
+    if onboarding_phase != 'complete':
+        onboarding_context = _format_onboarding_context(onboarding_phase, profile_data)
+        prompt_parts.append(onboarding_context)
     else:
-        # Indicate new user - no strategy yet
-        prompt_parts.append(_format_new_user_context())
+        # Add user strategy context (only if onboarding is complete)
+        if user_strategy:
+            strategy_context = _format_user_strategy(user_strategy)
+            prompt_parts.append(strategy_context)
+        else:
+            # Indicate new user - no strategy yet
+            prompt_parts.append(_format_new_user_context())
 
-    # Add phase-specific guidance
-    phase_addition = get_phase_prompt(phase)
-    if phase_addition:
-        prompt_parts.append(phase_addition)
+        # Add phase-specific guidance (SAHR framework - only after onboarding)
+        phase_addition = get_phase_prompt(phase)
+        if phase_addition:
+            prompt_parts.append(phase_addition)
 
     # Add context about active pillars
     if content_pillars:
@@ -384,3 +393,88 @@ This creator doesn't have a strategy saved yet. Help them build one!
 As you learn about their goals, platforms, and topics, use the `strategy` tool to save their preferences so they don't have to repeat themselves next time.
 
 Start by understanding what they want to achieve."""
+
+
+def _format_onboarding_context(onboarding_phase: str, profile_data: dict | None = None) -> str:
+    """Format context based on user's onboarding phase."""
+    if onboarding_phase == 'complete':
+        return ""  # No special onboarding context needed
+
+    phases_info = {
+        'intro': {
+            'description': 'just getting started',
+            'goal': 'Welcome them warmly and explain what you can help with',
+            'next_action': 'Ask about their content goals',
+        },
+        'goals': {
+            'description': 'setting their content goals',
+            'goal': 'Help them define clear, achievable content goals',
+            'next_action': 'Ask which platforms they want to focus on',
+        },
+        'platforms': {
+            'description': 'choosing their platforms',
+            'goal': 'Help them pick 1-2 platforms to focus on',
+            'next_action': 'Ask about their content topics/pillars',
+        },
+        'topics': {
+            'description': 'defining their content pillars',
+            'goal': 'Help them identify 2-3 topics they want to be known for',
+            'next_action': 'Wrap up onboarding and offer to start brainstorming',
+        },
+    }
+
+    phase_info = phases_info.get(onboarding_phase, phases_info['intro'])
+
+    # Build context about what's already been collected
+    collected = []
+    if profile_data:
+        if profile_data.get('goals'):
+            collected.append(f"- Goals: {', '.join(profile_data['goals'])}")
+        if profile_data.get('target_platforms'):
+            collected.append(f"- Platforms: {', '.join(profile_data['target_platforms'])}")
+        if profile_data.get('content_pillars'):
+            collected.append(f"- Content pillars: {', '.join(profile_data['content_pillars'])}")
+
+    collected_str = '\n'.join(collected) if collected else "Nothing collected yet."
+
+    return f"""## Onboarding Mode
+
+**Current Phase:** {onboarding_phase} - User is {phase_info['description']}
+**Your Goal:** {phase_info['goal']}
+**Next Step:** {phase_info['next_action']}
+
+**Already Collected:**
+{collected_str}
+
+### Onboarding Instructions
+
+1. **Take it slow** - Don't overwhelm with questions. One topic at a time.
+2. **Be warm and encouraging** - This is their first time, make it feel easy.
+3. **Save their answers** - Use `save_onboarding_response` tool after each phase:
+   - For goals: `save_onboarding_response(goals=[...], advance_phase=True)`
+   - For platforms: `save_onboarding_response(platforms=[...], advance_phase=True)`
+   - For topics/pillars: `save_onboarding_response(pillars=[...], advance_phase=True)`
+4. **Mention brand voice** - Suggest they can customize their brand voice at /account/settings/brand-voice
+5. **Don't dive into content creation yet** - Complete onboarding first!
+
+### Phase-Specific Guidance
+
+**Intro Phase:**
+- Welcome them! Explain you're their social media coach.
+- Briefly mention what you can help with: brainstorming ideas, crafting hooks, building strategy.
+- Ask what they're hoping to achieve with their content.
+
+**Goals Phase:**
+- Help them articulate 1-3 clear goals (grow audience, get clients, build authority, stay consistent).
+- Save goals with `save_onboarding_response(goals=[...], advance_phase=True)`.
+
+**Platforms Phase:**
+- Ask which platforms they use or want to focus on.
+- Recommend starting with 1-2 platforms max.
+- Save with `save_onboarding_response(platforms=[...], advance_phase=True)`.
+
+**Topics Phase:**
+- Help them identify 2-3 content pillars (topics they want to be known for).
+- Save with `save_onboarding_response(pillars=[...], advance_phase=True)`.
+- Once saved, congratulate them and offer to start brainstorming!
+"""

@@ -1,0 +1,50 @@
+Now I have the full picture. Let me provide the review:
+
+```json
+{
+  "pass": true,
+  "issues": [
+    {
+      "severity": "warning",
+      "category": "a11y",
+      "file": "frontend/src/components/echo/TaskCard.tsx",
+      "line": 152,
+      "message": "Label htmlFor references checkboxId but the button does not have a matching id attribute",
+      "suggestion": "Add id={checkboxId} to the button element at line 127, or remove htmlFor from the label since aria-labelledby is already correctly linking them"
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "frontend/src/pages/EchoWorkspace.tsx",
+      "line": 189,
+      "message": "console.log statement left in handleIdeaClick callback",
+      "suggestion": "Remove the console.log or replace with proper logging when TODO is implemented"
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "frontend/src/pages/EchoWorkspace.tsx",
+      "line": 246,
+      "message": "Chevron icons are inverted - shows ChevronDown when expanded (should show up to indicate collapse)",
+      "suggestion": "Swap ChevronDownIcon and ChevronUpIcon on lines 247 and 249 to match expected UX pattern (up arrow when expanded, down arrow when collapsed)"
+    },
+    {
+      "severity": "info",
+      "category": "architecture",
+      "file": "frontend/src/pages/EchoWorkspace.tsx",
+      "line": 74,
+      "message": "Mock data hardcoded in component - appropriate for initial implementation but noted for future cleanup",
+      "suggestion": "This is acceptable for the MVP; will need API integration in a future story"
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "core/echo/models.py",
+      "line": 124,
+      "message": "EchoConversation and EchoMessage models added but not part of US-008 scope",
+      "suggestion": "These backend models appear to be preparation for future stories - consider separating into their own commit for clearer history"
+    }
+  ],
+  "summary": "The US-008 implementation is solid. All three components (ContextCard, TaskCard, IdeaCard) are correctly implemented with proper TypeScript types, accessibility attributes (aria-expanded, role=\"checkbox\", aria-checked), skeleton loading states, and empty state handling. The components correctly show: collapsed summary with title/count, expand on click, checkbox with due date and overdue indicator (red), and status badges with platform icons. Mobile responsiveness is addressed with stacking columns. Minor issues include an htmlFor mismatch in TaskCard (warning), inverted chevron icons, and a console.log left in. The code quality is good overall and meets acceptance criteria."
+}
+```

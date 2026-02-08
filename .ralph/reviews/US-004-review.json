@@ -1,0 +1,32 @@
+```json
+{
+  "pass": true,
+  "issues": [
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "core/echo/models.py",
+      "line": 228,
+      "message": "EchoMessage.__str__ appends '...' even when content is short or empty",
+      "suggestion": "Consider conditionally adding ellipsis: `return f'{self.role}: {content_preview}' + ('...' if len(self.content) > 50 else '')`"
+    },
+    {
+      "severity": "info",
+      "category": "architecture",
+      "file": "core/urls.py",
+      "line": 448,
+      "message": "Two 'integrations/' paths registered which may cause routing conflicts depending on url patterns in each module",
+      "suggestion": "Verify that core.integrations.youtube.urls and core.integrations.urls have non-overlapping URL patterns, or consolidate into a single integrations router"
+    },
+    {
+      "severity": "info",
+      "category": "compliance",
+      "file": "core/echo/models.py",
+      "line": 0,
+      "message": "Diff includes unrelated changes (Asana integration, package.json, tour.md) outside the story scope",
+      "suggestion": "These changes should be in separate commits/PRs for cleaner history, though they don't affect the story implementation"
+    }
+  ],
+  "summary": "The EchoConversation and EchoMessage models are correctly implemented according to all acceptance criteria. Models have proper fields (session_id, title, timestamps for conversation; role, content, quick_select JSONField, inline_cards JSONField for message), correct ForeignKey relationship with CASCADE delete, appropriate ordering (conversations by -updated_at, messages by created_at), MessageRole TextChoices with all required values (user, assistant, system, tool), and useful indexes for common query patterns. The implementation follows Django best practices and matches the story requirements exactly."
+}
+```

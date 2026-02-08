@@ -1,5 +1,5 @@
 ---
-description: Quick reference cheatsheet for all vibe-and-thrive commands including Ralph.
+description: Quick reference cheatsheet for all agentic-loop commands including Ralph.
 ---
 
 # Vibe & Thrive Cheatsheet
@@ -33,13 +33,15 @@ npx ralph check          run verification only
 
 ---
 
-## Setup
+## Setup & Learning
 
 ```
 /tour                    guided setup
 /my-dna                  set preferences
+/sign                    teach Ralph a pattern
+npx ralph signs          view learned patterns
 ```
 
 ---
 
-*https://github.com/allthriveai/vibe-and-thrive*
+*https://github.com/allthriveai/agentic-loop*

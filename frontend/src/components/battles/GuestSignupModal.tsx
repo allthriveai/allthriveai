@@ -53,7 +53,7 @@ export function GuestSignupModal({
       }
 
       // Redirect to OAuth provider (full page redirect for session persistence)
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4847';
       // LinkedIn uses OpenID Connect with a different URL pattern
       const providerPath = provider === 'linkedin' ? 'oidc/linkedin' : provider;
       const loginUrl = `${backendUrl}/accounts/${providerPath}/login/?process=login`;

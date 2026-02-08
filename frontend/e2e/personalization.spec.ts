@@ -188,7 +188,7 @@ test.describe('Personalization Settings', () => {
 
     // Verify via API that settings were saved
     const settingsResponse = await page.evaluate(async () => {
-      const resp = await fetch('http://localhost:8000/api/v1/me/personalization/settings/', {
+      const resp = await fetch('http://localhost:4847/api/v1/me/personalization/settings/', {
         credentials: 'include'
       });
       return resp.json();
@@ -201,7 +201,7 @@ test.describe('Personalization Settings', () => {
 
     // Check settings after reload via API - this verifies backend persistence
     const settingsAfterReload = await page.evaluate(async () => {
-      const resp = await fetch('http://localhost:8000/api/v1/me/personalization/settings/', {
+      const resp = await fetch('http://localhost:4847/api/v1/me/personalization/settings/', {
         credentials: 'include'
       });
       return resp.json();
@@ -378,7 +378,7 @@ test.describe('Personalization Settings', () => {
 
     // Get initial API state
     const initialSettings = await page.evaluate(async () => {
-      const resp = await fetch('http://localhost:8000/api/v1/me/personalization/settings/', {
+      const resp = await fetch('http://localhost:4847/api/v1/me/personalization/settings/', {
         credentials: 'include'
       });
       return resp.json();
@@ -405,7 +405,7 @@ test.describe('Personalization Settings', () => {
 
     // Verify via GET that settings were saved
     const updatedSettings = await page.evaluate(async () => {
-      const resp = await fetch('http://localhost:8000/api/v1/me/personalization/settings/', {
+      const resp = await fetch('http://localhost:4847/api/v1/me/personalization/settings/', {
         credentials: 'include'
       });
       return resp.json();

@@ -73,3 +73,6 @@ e2e-results/
 .ralph/last_*
 .ralph/screenshots/
 .ralph/archive/
+.backups/
+infrastructure/backups/
+.claude/settings.json

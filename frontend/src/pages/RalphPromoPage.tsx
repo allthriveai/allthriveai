@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RalphScene } from '@/components/promo/scenes/RalphScene';
 
-const SCENE_DURATION = 25000; // 25 seconds total
+const SCENE_DURATION = 38000; // 38 seconds total
 
 export default function RalphPromoPage() {
   const [searchParams] = useSearchParams();

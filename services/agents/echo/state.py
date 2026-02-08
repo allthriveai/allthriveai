@@ -46,6 +46,21 @@ class StrategyContext(TypedDict, total=False):
     recommendations: dict  # Echo's previous coaching advice
 
 
+# Onboarding phases
+OnboardingPhase = Literal['intro', 'goals', 'platforms', 'topics', 'complete']
+
+
+class EchoProfileContext(TypedDict, total=False):
+    """User's Echo profile context for onboarding."""
+
+    onboarding_phase: str
+    goals: list[str]
+    target_platforms: list[str]
+    content_pillars: list[str]
+    audience_description: str
+    is_onboarded: bool
+
+
 class EchoState(TypedDict):
     """
     State for the Echo agent graph.
@@ -61,6 +76,8 @@ class EchoState(TypedDict):
         user_id: User's database ID
         session_id: Brainstorm session identifier
         conversation_phase: Current phase in SAHR framework
+        onboarding_phase: User's onboarding phase (intro, goals, platforms, topics, complete)
+        echo_profile: User's EchoProfile data for onboarding context
         content_pillars: Active content pillars (e.g., 'educational', 'hot_takes')
         target_platforms: Platforms being targeted (twitter, linkedin, youtube)
         brand_voice: Optional brand voice for personalization
@@ -73,6 +90,8 @@ class EchoState(TypedDict):
     user_id: int | None
     session_id: str
     conversation_phase: ConversationPhase
+    onboarding_phase: OnboardingPhase
+    echo_profile: EchoProfileContext | None
     content_pillars: list[str]
     target_platforms: list[str]
     brand_voice: BrandVoiceContext | None

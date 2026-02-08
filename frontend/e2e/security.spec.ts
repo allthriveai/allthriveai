@@ -244,7 +244,7 @@ test.describe('Security', () => {
           currentUrl.includes('/auth') ||
           currentUrl.includes('/login') ||
           currentUrl.includes('accounts.google.com') ||
-          currentUrl === 'http://localhost:3000/';
+          currentUrl === 'http://localhost:4848/';
 
         const hasLoginPrompt =
           (await page.locator('text=Sign in').count()) > 0 ||
